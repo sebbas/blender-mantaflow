@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,12 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) Blender Foundation, 2008
- *
- * ***** END GPL/BL DUAL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_api/spacetypes.c
- *  \ingroup spapi
+/** \file
+ * \ingroup spapi
  */
 
 
@@ -61,6 +57,7 @@
 #include "ED_space_api.h"
 #include "ED_sound.h"
 #include "ED_uvedit.h"
+#include "ED_userpref.h"
 #include "ED_lattice.h"
 #include "ED_mball.h"
 #include "ED_logic.h"
@@ -68,6 +65,7 @@
 #include "ED_mask.h"
 #include "ED_sequencer.h"
 #include "ED_gizmo_library.h"
+#include "ED_transform.h"
 
 #include "io_ops.h"
 
@@ -102,6 +100,7 @@ void ED_spacetypes_init(void)
 //	...
 
 	/* register operator types for screen and all spaces */
+	ED_operatortypes_userpref();
 	ED_operatortypes_workspace();
 	ED_operatortypes_scene();
 	ED_operatortypes_screen();
@@ -215,6 +214,8 @@ void ED_spacetypes_keymap(wmKeyConfig *keyconf)
 
 	ED_keymap_view2d(keyconf);
 	ED_keymap_ui(keyconf);
+
+	ED_keymap_transform(keyconf);
 
 	spacetypes = BKE_spacetypes_list();
 	for (stype = spacetypes->first; stype; stype = stype->next) {

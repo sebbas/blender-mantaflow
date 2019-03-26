@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,19 +12,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008), Joshua Leung, Roland Hess
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_constraint.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
 
 #include "BLI_math.h"
+
+#include "MEM_guardedalloc.h"
 
 #include "BLT_translation.h"
 
@@ -92,6 +88,8 @@ const EnumPropertyItem rna_enum_constraint_type_items[] = {
 	{0, "", 0, N_("Relationship"), ""},
 	{CONSTRAINT_TYPE_ACTION,     "ACTION", ICON_CONSTRAINT, "Action",
 	                             "Use transform property of target to look up pose for owner from an Action"},
+	{CONSTRAINT_TYPE_ARMATURE,   "ARMATURE", ICON_CONSTRAINT, "Armature",
+	                             "Apply weight-blended transformation from multiple bones like the Armature modifier"},
 	{CONSTRAINT_TYPE_CHILDOF,    "CHILD_OF", ICON_CONSTRAINT, "Child Of",
 	                             "Make target the 'detachable' parent of owner"},
 	{CONSTRAINT_TYPE_MINMAX,     "FLOOR", ICON_CONSTRAINT, "Floor",
@@ -106,7 +104,7 @@ const EnumPropertyItem rna_enum_constraint_type_items[] = {
 	                             "Custom constraint(s) written in Python (Not yet implemented)"}, */
 	{CONSTRAINT_TYPE_SHRINKWRAP, "SHRINKWRAP", ICON_CONSTRAINT, "Shrinkwrap",
 	                             "Restrict movements to surface of target mesh"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem target_space_pchan_items[] = {
@@ -122,7 +120,7 @@ static const EnumPropertyItem target_space_pchan_items[] = {
 	{CONSTRAINT_SPACE_LOCAL,    "LOCAL", 0, "Local Space",
 	                            "The transformation of the target is evaluated relative to its local "
 	                            "coordinate system"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem owner_space_pchan_items[] = {
@@ -135,7 +133,7 @@ static const EnumPropertyItem owner_space_pchan_items[] = {
 	                            "with the parent transformation added"},
 	{CONSTRAINT_SPACE_LOCAL,    "LOCAL", 0, "Local Space",
 	                            "The constraint is applied relative to the local coordinate system of the object"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem track_axis_items[] = {
@@ -145,7 +143,7 @@ static const EnumPropertyItem track_axis_items[] = {
 	{TRACK_nX, "TRACK_NEGATIVE_X", 0, "-X", ""},
 	{TRACK_nY, "TRACK_NEGATIVE_Y", 0, "-Y", ""},
 	{TRACK_nZ, "TRACK_NEGATIVE_Z", 0, "-Z", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #ifdef RNA_RUNTIME
@@ -155,7 +153,7 @@ static const EnumPropertyItem space_object_items[] = {
 	                         "The transformation of the target is evaluated relative to the world coordinate system"},
 	{CONSTRAINT_SPACE_LOCAL, "LOCAL", 0, "Local Space",
 	                         "The transformation of the target is evaluated relative to its local coordinate system"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #include "DNA_cachefile_types.h"
@@ -192,6 +190,8 @@ static StructRNA *rna_ConstraintType_refine(struct PointerRNA *ptr)
 			return &RNA_MaintainVolumeConstraint;
 		case CONSTRAINT_TYPE_PYTHON:
 			return &RNA_PythonConstraint;
+		case CONSTRAINT_TYPE_ARMATURE:
+			return &RNA_ArmatureConstraint;
 		case CONSTRAINT_TYPE_ACTION:
 			return &RNA_ActionConstraint;
 		case CONSTRAINT_TYPE_LOCKTRACK:
@@ -235,6 +235,17 @@ static StructRNA *rna_ConstraintType_refine(struct PointerRNA *ptr)
 	}
 }
 
+static void rna_ConstraintTargetBone_target_set(PointerRNA *ptr, PointerRNA value)
+{
+	bConstraintTarget *tgt = (bConstraintTarget *)ptr->data;
+	Object *ob = value.data;
+
+	if (!ob || ob->type == OB_ARMATURE) {
+		id_lib_extern((ID *)ob);
+		tgt->tar = ob;
+	}
+}
+
 static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
 {
 	bConstraint *con = ptr->data;
@@ -260,10 +271,8 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
 	BKE_animdata_fix_paths_rename_all(NULL, "constraints", oldname, con->name);
 }
 
-static char *rna_Constraint_path(PointerRNA *ptr)
+static char *rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
 {
-	Object *ob = ptr->id.data;
-	bConstraint *con = ptr->data;
 	bPoseChannel *pchan;
 	ListBase *lb = get_constraint_lb(ob, con, &pchan);
 
@@ -285,6 +294,55 @@ static char *rna_Constraint_path(PointerRNA *ptr)
 	}
 }
 
+static char *rna_Constraint_path(PointerRNA *ptr)
+{
+	Object *ob = ptr->id.data;
+	bConstraint *con = ptr->data;
+
+	return rna_Constraint_do_compute_path(ob, con);
+}
+
+static bConstraint *rna_constraint_from_target(PointerRNA *ptr)
+{
+	Object *ob = ptr->id.data;
+	bConstraintTarget *tgt = ptr->data;
+
+	return BKE_constraint_find_from_target(ob, tgt, NULL);
+}
+
+static char *rna_ConstraintTarget_path(PointerRNA *ptr)
+{
+	Object *ob = ptr->id.data;
+	bConstraintTarget *tgt = ptr->data;
+	bConstraint *con = rna_constraint_from_target(ptr);
+	int index = -1;
+
+	if (con != NULL) {
+		if (con->type == CONSTRAINT_TYPE_ARMATURE) {
+			bArmatureConstraint *acon = con->data;
+			index = BLI_findindex(&acon->targets, tgt);
+		}
+		else if (con->type == CONSTRAINT_TYPE_PYTHON) {
+			bPythonConstraint *pcon = con->data;
+			index = BLI_findindex(&pcon->targets, tgt);
+		}
+	}
+
+	if (index >= 0) {
+		char *con_path = rna_Constraint_do_compute_path(ob, con);
+		char *result = BLI_sprintfN("%s.targets[%d]", con_path, index);
+
+		MEM_freeN(con_path);
+		return result;
+	}
+	else {
+		printf("%s: internal error, constraint '%s' of object '%s' does not contain the target\n",
+		       __func__, con->name, ob->id.name);
+	}
+
+	return NULL;
+}
+
 static void rna_Constraint_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	ED_object_constraint_tag_update(bmain, ptr->id.data, ptr->data);
@@ -293,6 +351,16 @@ static void rna_Constraint_update(Main *bmain, Scene *UNUSED(scene), PointerRNA 
 static void rna_Constraint_dependency_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
 	ED_object_constraint_dependency_tag_update(bmain, ptr->id.data, ptr->data);
+}
+
+static void rna_ConstraintTarget_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+{
+	ED_object_constraint_tag_update(bmain, ptr->id.data, rna_constraint_from_target(ptr));
+}
+
+static void rna_ConstraintTarget_dependency_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+{
+	ED_object_constraint_dependency_tag_update(bmain, ptr->id.data, rna_constraint_from_target(ptr));
 }
 
 static void rna_Constraint_influence_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -323,8 +391,9 @@ static void rna_Constraint_ik_type_set(struct PointerRNA *ptr, int value)
 	}
 }
 
-static const EnumPropertyItem *rna_Constraint_owner_space_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                          PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_Constraint_owner_space_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	Object *ob = (Object *)ptr->id.data;
 	bConstraint *con = (bConstraint *)ptr->data;
@@ -335,8 +404,9 @@ static const EnumPropertyItem *rna_Constraint_owner_space_itemf(bContext *UNUSED
 		return space_object_items;
 }
 
-static const EnumPropertyItem *rna_Constraint_target_space_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                           PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
+static const EnumPropertyItem *rna_Constraint_target_space_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *UNUSED(r_free))
 {
 	bConstraint *con = (bConstraint *)ptr->data;
 	const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
@@ -358,6 +428,43 @@ static const EnumPropertyItem *rna_Constraint_target_space_itemf(bContext *UNUSE
 	}
 
 	return space_object_items;
+}
+
+static bConstraintTarget *rna_ArmatureConstraint_target_new(ID *id, bConstraint *con, Main *bmain)
+{
+	bArmatureConstraint *acon = con->data;
+	bConstraintTarget *tgt = MEM_callocN(sizeof(bConstraintTarget), "Constraint Target");
+
+	tgt->weight = 1.0f;
+	BLI_addtail(&acon->targets, tgt);
+
+	ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+	return tgt;
+}
+
+static void rna_ArmatureConstraint_target_remove(
+        ID *id, bConstraint *con, Main *bmain, ReportList *reports, PointerRNA *target_ptr)
+{
+	bArmatureConstraint *acon = con->data;
+	bConstraintTarget *tgt = target_ptr->data;
+
+	if (BLI_findindex(&acon->targets, tgt) < 0) {
+		BKE_report(reports, RPT_ERROR, "Target is not in the constraint target list");
+		return;
+	}
+
+	BLI_freelinkN(&acon->targets, tgt);
+
+	ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+}
+
+static void rna_ArmatureConstraint_target_clear(ID *id, bConstraint *con, Main *bmain)
+{
+	bArmatureConstraint *acon = con->data;
+
+	BLI_freelistN(&acon->targets);
+
+	ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
 }
 
 static void rna_ActionConstraint_minmax_range(PointerRNA *ptr, float *min, float *max,
@@ -525,7 +632,7 @@ static const EnumPropertyItem constraint_distance_items[] = {
 	{LIMITDIST_ONSURFACE, "LIMITDIST_ONSURFACE", 0, "On Surface",
 	                      "The object is constrained on the surface of a virtual sphere around the target object, "
 	                      "with a radius defined by the limit distance"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 
@@ -564,14 +671,56 @@ static void rna_def_constraint_target_common(StructRNA *srna)
 static void rna_def_constrainttarget(BlenderRNA *brna)
 {
 	StructRNA *srna;
+	PropertyRNA *prop;
 
 	srna = RNA_def_struct(brna, "ConstraintTarget", NULL);
 	RNA_def_struct_ui_text(srna, "Constraint Target", "Target object for multi-target constraints");
+	RNA_def_struct_path_func(srna, "rna_ConstraintTarget_path");
 	RNA_def_struct_sdna(srna, "bConstraintTarget");
 
-	rna_def_constraint_target_common(srna);
+	prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "tar");
+	RNA_def_property_ui_text(prop, "Target", "Target object");
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_dependency_update");
+
+	prop = RNA_def_property(srna, "subtarget", PROP_STRING, PROP_NONE);
+	RNA_def_property_string_sdna(prop, NULL, "subtarget");
+	RNA_def_property_ui_text(prop, "Sub-Target", "Armature bone, mesh or lattice vertex group, ...");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_dependency_update");
 
 	/* space, flag and type still to do  */
+}
+
+static void rna_def_constrainttarget_bone(BlenderRNA *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	srna = RNA_def_struct(brna, "ConstraintTargetBone", NULL);
+	RNA_def_struct_ui_text(srna, "Constraint Target Bone", "Target bone for multi-target constraints");
+	RNA_def_struct_path_func(srna, "rna_ConstraintTarget_path");
+	RNA_def_struct_sdna(srna, "bConstraintTarget");
+
+	prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
+	RNA_def_property_pointer_sdna(prop, NULL, "tar");
+	RNA_def_property_ui_text(prop, "Target", "Target armature");
+	RNA_def_property_pointer_funcs(prop, NULL, "rna_ConstraintTargetBone_target_set", NULL, "rna_Armature_object_poll");
+	RNA_def_property_flag(prop, PROP_EDITABLE);
+	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_dependency_update");
+
+	prop = RNA_def_property(srna, "subtarget", PROP_STRING, PROP_NONE);
+	RNA_def_property_string_sdna(prop, NULL, "subtarget");
+	RNA_def_property_ui_text(prop, "Sub-Target", "Target armature bone");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_dependency_update");
+
+	prop = RNA_def_property(srna, "weight", PROP_FLOAT, PROP_FACTOR);
+	RNA_def_property_float_sdna(prop, NULL, "weight");
+	RNA_def_property_range(prop, 0.0f, 1.0f);
+	RNA_def_property_ui_text(prop, "Blend Weight", "Blending weight of this bone");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_ConstraintTarget_update");
 }
 
 static void rna_def_constraint_childof(BlenderRNA *brna)
@@ -671,6 +820,70 @@ static void rna_def_constraint_python(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", PYCON_SCRIPTERROR);
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Script Error", "The linked Python script has thrown an error");
+}
+
+
+static void rna_def_constraint_armature_deform_targets(BlenderRNA *brna, PropertyRNA *cprop)
+{
+	StructRNA *srna;
+	FunctionRNA *func;
+	PropertyRNA *parm;
+
+	RNA_def_property_srna(cprop, "ArmatureConstraintTargets");
+	srna = RNA_def_struct(brna, "ArmatureConstraintTargets", NULL);
+	RNA_def_struct_sdna(srna, "bConstraint");
+	RNA_def_struct_ui_text(srna, "Armature Deform Constraint Targets", "Collection of target bones and weights");
+
+	func = RNA_def_function(srna, "new", "rna_ArmatureConstraint_target_new");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+	RNA_def_function_ui_description(func, "Add a new target to the constraint");
+	parm = RNA_def_pointer(func, "target", "ConstraintTargetBone", "", "New target bone");
+	RNA_def_function_return(func, parm);
+
+	func = RNA_def_function(srna, "remove", "rna_ArmatureConstraint_target_remove");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+	RNA_def_function_ui_description(func, "Delete target from the constraint");
+	parm = RNA_def_pointer(func, "target", "ConstraintTargetBone", "", "Target to remove");
+	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+	RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+
+	func = RNA_def_function(srna, "clear", "rna_ArmatureConstraint_target_clear");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+	RNA_def_function_ui_description(func, "Delete all targets from object");
+}
+
+static void rna_def_constraint_armature_deform(BlenderRNA *brna)
+{
+	StructRNA *srna;
+	PropertyRNA *prop;
+
+	srna = RNA_def_struct(brna, "ArmatureConstraint", "Constraint");
+	RNA_def_struct_ui_text(srna, "Armature Constraint", "Applies transformations done by the Armature modifier");
+	RNA_def_struct_sdna_from(srna, "bArmatureConstraint", "data");
+
+	prop = RNA_def_property(srna, "targets", PROP_COLLECTION, PROP_NONE);
+	RNA_def_property_collection_sdna(prop, NULL, "targets", NULL);
+	RNA_def_property_struct_type(prop, "ConstraintTargetBone");
+	RNA_def_property_ui_text(prop, "Targets", "Target Bones");
+	rna_def_constraint_armature_deform_targets(brna, prop);
+
+	prop = RNA_def_property(srna, "use_deform_preserve_volume", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_ARMATURE_QUATERNION);
+	RNA_def_property_ui_text(prop, "Preserve Volume", "Deform rotation interpolation with quaternions");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "use_bone_envelopes", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_ARMATURE_ENVELOPE);
+	RNA_def_property_ui_text(prop, "Use Envelopes",
+	                         "Multiply weights by envelope for all bones, instead of acting like Vertex Group based blending. "
+	                         "The specified weights are still used, and only the listed bones are considered");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	prop = RNA_def_property(srna, "use_current_location", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_ARMATURE_CUR_LOCATION);
+	RNA_def_property_ui_text(prop, "Use Current Location",
+	                         "Use the current bone location for envelopes and choosing B-Bone segments instead of rest position");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 }
 
 static void rna_def_constraint_kinematic(BlenderRNA *brna)
@@ -822,7 +1035,7 @@ static void rna_def_constraint_track_to(BlenderRNA *brna)
 		{TRACK_X, "UP_X", 0, "X", ""},
 		{TRACK_Y, "UP_Y", 0, "Y", ""},
 		{TRACK_Z, "UP_Z", 0, "Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "TrackToConstraint", "Constraint");
@@ -995,7 +1208,7 @@ static void rna_def_constraint_same_volume(BlenderRNA *brna)
 		{SAMEVOL_X, "SAMEVOL_X", 0, "X", ""},
 		{SAMEVOL_Y, "SAMEVOL_Y", 0, "Y", ""},
 		{SAMEVOL_Z, "SAMEVOL_Z", 0, "Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "MaintainVolumeConstraint", "Constraint");
@@ -1042,7 +1255,7 @@ static void rna_def_constraint_minmax(BlenderRNA *brna)
 		{TRACK_nX, "FLOOR_NEGATIVE_X", 0, "-X", ""},
 		{TRACK_nY, "FLOOR_NEGATIVE_Y", 0, "-Y", ""},
 		{TRACK_nZ, "FLOOR_NEGATIVE_Z", 0, "-Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "FloorConstraint", "Constraint");
@@ -1088,7 +1301,7 @@ static void rna_def_constraint_action(BlenderRNA *brna)
 		{10, "SCALE_X", 0, "X Scale", ""},
 		{11, "SCALE_Y", 0, "Y Scale", ""},
 		{12, "SCALE_Z", 0, "Z Scale", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "ActionConstraint", "Constraint");
@@ -1155,7 +1368,7 @@ static void rna_def_constraint_locked_track(BlenderRNA *brna)
 		{TRACK_X, "LOCK_X", 0, "X", ""},
 		{TRACK_Y, "LOCK_Y", 0, "Y", ""},
 		{TRACK_Z, "LOCK_Z", 0, "Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "LockedTrackConstraint", "Constraint");
@@ -1193,14 +1406,14 @@ static void rna_def_constraint_follow_path(BlenderRNA *brna)
 		{TRACK_nX, "TRACK_NEGATIVE_X", 0, "-X", ""},
 		{TRACK_nY, "TRACK_NEGATIVE_Y", 0, "-Y", ""},
 		{TRACK_nZ, "TRACK_NEGATIVE_Z", 0, "-Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem pathup_items[] = {
 		{TRACK_X, "UP_X", 0, "X", ""},
 		{TRACK_Y, "UP_Y", 0, "Y", ""},
 		{TRACK_Z, "UP_Z", 0, "Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "FollowPathConstraint", "Constraint");
@@ -1266,13 +1479,13 @@ static void rna_def_constraint_stretch_to(BlenderRNA *brna)
 		{VOLUME_X, "VOLUME_X", 0, "X", ""},
 		{VOLUME_Z, "VOLUME_Z", 0, "Z", ""},
 		{NO_VOLUME, "NO_VOLUME", 0, "None", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem plane_items[] = {
 		{PLANE_X, "PLANE_X", 0, "X", "Keep X Axis"},
 		{PLANE_Z, "PLANE_Z", 0, "Z", "Keep Z Axis"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "StretchToConstraint", "Constraint");
@@ -1344,7 +1557,7 @@ static void rna_def_constraint_clamp_to(BlenderRNA *brna)
 		{CLAMPTO_X, "CLAMPTO_X", 0, "X", ""},
 		{CLAMPTO_Y, "CLAMPTO_Y", 0, "Y", ""},
 		{CLAMPTO_Z, "CLAMPTO_Z", 0, "Z", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "ClampToConstraint", "Constraint");
@@ -1381,7 +1594,7 @@ static void rna_def_constraint_transform(BlenderRNA *brna)
 		{TRANS_LOCATION, "LOCATION", 0, "Loc", ""},
 		{TRANS_ROTATION, "ROTATION", 0, "Rot", ""},
 		{TRANS_SCALE, "SCALE", 0, "Scale", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "TransformConstraint", "Constraint");
@@ -1917,14 +2130,17 @@ static void rna_def_constraint_shrinkwrap(BlenderRNA *brna)
 		                         "Shrink the location to the nearest target surface along a given axis"},
 		{MOD_SHRINKWRAP_NEAREST_VERTEX, "NEAREST_VERTEX", 0, "Nearest Vertex",
 		                                "Shrink the location to the nearest target vertex"},
-		{0, NULL, 0, NULL, NULL}
+		{MOD_SHRINKWRAP_TARGET_PROJECT, "TARGET_PROJECT", 0, "Target Normal Project",
+		                                "Shrink the location to the nearest target surface "
+		                                "along the interpolated vertex normals of the target"},
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem shrink_face_cull_items[] = {
 		{0, "OFF", 0, "Off", "No culling"},
 		{CON_SHRINKWRAP_PROJECT_CULL_FRONTFACE, "FRONT", 0, "Front", "No projection when in front of the face"},
 		{CON_SHRINKWRAP_PROJECT_CULL_BACKFACE, "BACK", 0, "Back", "No projection when behind the face"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "ShrinkwrapConstraint", "Constraint");
@@ -2043,7 +2259,7 @@ static void rna_def_constraint_spline_ik(BlenderRNA *brna)
 		                                    "Scale of the X and Z axes is the inverse of the Y-Scale"},
 		{CONSTRAINT_SPLINEIK_XZS_VOLUMETRIC, "VOLUME_PRESERVE", 0, "Volume Preservation",
 		                                     "Scale of the X and Z axes are adjusted to preserve the volume of the bones"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "SplineIKConstraint", "Constraint");
@@ -2160,7 +2376,7 @@ static void rna_def_constraint_pivot(BlenderRNA *brna)
 		{PIVOTCON_AXIS_X, "X", 0, "X Rot", "Use the pivot point in the positive rotation range around the X-axis"},
 		{PIVOTCON_AXIS_Y, "Y", 0, "Y Rot", "Use the pivot point in the positive rotation range around the Y-axis"},
 		{PIVOTCON_AXIS_Z, "Z", 0, "Z Rot", "Use the pivot point in the positive rotation range around the Z-axis"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "PivotConstraint", "Constraint");
@@ -2190,7 +2406,7 @@ static void rna_def_constraint_pivot(BlenderRNA *brna)
 	                         "Offset will be an absolute point in space instead of relative to the target");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
-	prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_XYZ);
+	prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_TRANSLATION);
 	RNA_def_property_float_sdna(prop, NULL, "offset");
 	RNA_def_property_ui_text(prop, "Offset",
 	                         "Offset of pivot from target (when set), or from owner's location "
@@ -2214,7 +2430,7 @@ static void rna_def_constraint_follow_track(BlenderRNA *brna)
 		{FOLLOWTRACK_FRAME_STRETCH, "STRETCH", 0, "Stretch", ""},
 		{FOLLOWTRACK_FRAME_FIT, "FIT", 0, "Fit", ""},
 		{FOLLOWTRACK_FRAME_CROP, "CROP", 0, "Crop", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "FollowTrackConstraint", "Constraint");
@@ -2408,24 +2624,27 @@ void RNA_def_constraint(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, owner_space_pchan_items);
 	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_Constraint_owner_space_itemf");
 	RNA_def_property_ui_text(prop, "Owner Space", "Space that owner is evaluated in");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
 	prop = RNA_def_property(srna, "target_space", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "tarspace");
 	RNA_def_property_enum_items(prop, target_space_pchan_items);
 	RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_Constraint_target_space_itemf");
 	RNA_def_property_ui_text(prop, "Target Space", "Space that target is evaluated in");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
 	/* flags */
 	prop = RNA_def_property(srna, "mute", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_OFF);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 	RNA_def_property_ui_text(prop, "Disable", "Enable/Disable Constraint");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
 	prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_EXPAND);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 	RNA_def_property_ui_text(prop, "Expanded", "Constraint's panel is expanded in UI");
-	RNA_def_property_ui_icon(prop, ICON_TRIA_RIGHT, 1);
+	RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 
 	/* XXX this is really an internal flag, but it may be useful for some tools to be able to access this... */
 	prop = RNA_def_property(srna, "is_valid", PROP_BOOLEAN, PROP_NONE);
@@ -2465,9 +2684,11 @@ void RNA_def_constraint(BlenderRNA *brna)
 
 	/* pointers */
 	rna_def_constrainttarget(brna);
+	rna_def_constrainttarget_bone(brna);
 
 	rna_def_constraint_childof(brna);
 	rna_def_constraint_python(brna);
+	rna_def_constraint_armature_deform(brna);
 	rna_def_constraint_stretch_to(brna);
 	rna_def_constraint_follow_path(brna);
 	rna_def_constraint_locked_track(brna);

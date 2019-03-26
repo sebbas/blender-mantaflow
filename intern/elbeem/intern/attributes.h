@@ -1,5 +1,5 @@
-/** \file elbeem/intern/attributes.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

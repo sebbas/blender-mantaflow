@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) Blender Foundation
  * All rights reserved.
- *
- * Contributor(s): Daniel Genrich
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/cloth.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -146,7 +140,7 @@ void cloth_init(ClothModifierData *clmd )
 	clmd->sim_parms->bending_model = CLOTH_BENDING_ANGULAR;
 
 	if (!clmd->sim_parms->effector_weights)
-		clmd->sim_parms->effector_weights = BKE_add_effector_weights(NULL);
+		clmd->sim_parms->effector_weights = BKE_effector_add_weights(NULL);
 
 	if (clmd->point_cache)
 		clmd->point_cache->step = 1;
@@ -515,8 +509,9 @@ void cloth_free_modifier(ClothModifierData *clmd )
 void cloth_free_modifier_extern(ClothModifierData *clmd )
 {
 	Cloth	*cloth = NULL;
-	if (G.debug_value > 0)
+	if (G.debug & G_DEBUG_SIMDATA) {
 		printf("cloth_free_modifier_extern\n");
+	}
 
 	if ( !clmd )
 		return;
@@ -524,8 +519,9 @@ void cloth_free_modifier_extern(ClothModifierData *clmd )
 	cloth = clmd->clothObject;
 
 	if ( cloth ) {
-		if (G.debug_value > 0)
+		if (G.debug & G_DEBUG_SIMDATA) {
 			printf("cloth_free_modifier_extern in\n");
+		}
 
 		BPH_cloth_solver_free(clmd);
 
@@ -588,9 +584,8 @@ void cloth_free_modifier_extern(ClothModifierData *clmd )
  ******************************************************************************/
 
 /**
- * cloth_to_object - copies the deformed vertices to the object.
- *
- **/
+ * Copies the deformed vertices to the object.
+ */
 static void cloth_to_object (Object *ob,  ClothModifierData *clmd, float (*vertexCos)[3])
 {
 	unsigned int i = 0;
@@ -618,12 +613,11 @@ int cloth_uses_vgroup(ClothModifierData *clmd)
 }
 
 /**
- * cloth_apply_vgroup - applies a vertex group as specified by type
- *
- **/
-/* can be optimized to do all groups in one loop */
+ * Applies a vertex group as specified by type.
+ */
 static void cloth_apply_vgroup ( ClothModifierData *clmd, Mesh *mesh )
 {
+	/* Can be optimized to do all groups in one loop. */
 	int i = 0;
 	int j = 0;
 	MDeformVert *dvert = NULL;
@@ -728,8 +722,9 @@ static int cloth_from_object(Object *ob, ClothModifierData *clmd, Mesh *mesh, fl
 	// If we have a clothObject, free it.
 	if ( clmd->clothObject != NULL ) {
 		cloth_free_modifier ( clmd );
-		if (G.debug_value > 0)
+		if (G.debug & G_DEBUG_SIMDATA) {
 			printf("cloth_free_modifier cloth_from_object\n");
+		}
 	}
 
 	// Allocate a new cloth object.
@@ -804,7 +799,6 @@ static int cloth_from_object(Object *ob, ClothModifierData *clmd, Mesh *mesh, fl
 	if ( !cloth_build_springs ( clmd, mesh ) ) {
 		cloth_free_modifier ( clmd );
 		modifier_setError(&(clmd->modifier), "Cannot build springs");
-		printf("cloth_free_modifier cloth_build_springs\n");
 		return 0;
 	}
 
@@ -1357,6 +1351,11 @@ static int cloth_build_springs ( ClothModifierData *clmd, Mesh *mesh )
 		}
 	}
 
+	clmd->sim_parms->avg_spring_len = 0.0f;
+	for (int i = 0; i < mvert_num; i++) {
+		cloth->verts[i].avg_spring_len = 0.0f;
+	}
+
 	/* Structural springs. */
 	for (int i = 0; i < numedges; i++) {
 		spring = (ClothSpring *)MEM_callocN ( sizeof ( ClothSpring ), "cloth spring" );
@@ -1576,13 +1575,13 @@ static int cloth_build_springs ( ClothModifierData *clmd, Mesh *mesh )
 			}
 		}
 		else {
-			/* bending springs for hair strands */
-			/* The current algorithm only goes through the edges in order of the mesh edges list	*/
-			/* and makes springs between the outer vert of edges sharing a vertice. This works just */
-			/* fine for hair, but not for user generated string meshes. This could/should be later	*/
-			/* extended to work with non-ordered edges so that it can be used for general "rope		*/
-			/* dynamics" without the need for the vertices or edges to be ordered through the length*/
-			/* of the strands. -jahka */
+			/* bending springs for hair strands
+			 * The current algorithm only goes through the edges in order of the mesh edges list
+			 * and makes springs between the outer vert of edges sharing a vertice. This works just
+			 * fine for hair, but not for user generated string meshes. This could/should be later
+			 * extended to work with non-ordered edges so that it can be used for general "rope
+			 * dynamics" without the need for the vertices or edges to be ordered through the length
+			 * of the strands. -jahka */
 			search = cloth->springs;
 			search2 = search->next;
 			while (search && search2) {

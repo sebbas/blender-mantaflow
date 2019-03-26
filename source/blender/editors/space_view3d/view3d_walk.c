@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Dalai Felinto, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_view3d/view3d_walk.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 /* defines VIEW3D_OT_navigate - walk modal operator */
@@ -41,9 +35,6 @@
 #include "BKE_report.h"
 
 #include "BLT_translation.h"
-
-
-#include "BIF_gl.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -65,7 +56,8 @@
 
 #ifdef WITH_INPUT_NDOF
 //#  define NDOF_WALK_DEBUG
-//#  define NDOF_WALK_DRAW_TOOMUCH  /* is this needed for ndof? - commented so redraw doesn't thrash - campbell */
+/* is this needed for ndof? - commented so redraw doesn't thrash - campbell */
+//#  define NDOF_WALK_DRAW_TOOMUCH
 #endif
 
 #define USE_TABLET_SUPPORT
@@ -76,7 +68,8 @@
 /* prototypes */
 static float getVelocityZeroTime(const float gravity, const float velocity);
 
-/* NOTE: these defines are saved in keymap files, do not change values but just add new ones */
+/* NOTE: these defines are saved in keymap files,
+ * do not change values but just add new ones */
 enum {
 	WALK_MODAL_CANCEL = 1,
 	WALK_MODAL_CONFIRM,
@@ -167,68 +160,17 @@ void walk_modal_keymap(wmKeyConfig *keyconf)
 
 		{WALK_MODAL_TOGGLE, "GRAVITY_TOGGLE", 0, "Toggle Gravity", "Toggle gravity effect"},
 
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "View3D Walk Modal");
 
 	/* this function is called for each spacetype, only needs to add map once */
-	if (keymap && keymap->modal_items)
+	if (keymap && keymap->modal_items) {
 		return;
+	}
 
 	keymap = WM_modalkeymap_add(keyconf, "View3D Walk Modal", modal_items);
-
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_ANY, KM_ANY, 0, WALK_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, ESCKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_CANCEL);
-
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_ANY, KM_ANY, 0, WALK_MODAL_CONFIRM);
-	WM_modalkeymap_add_item(keymap, RETKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_CONFIRM);
-	WM_modalkeymap_add_item(keymap, PADENTER, KM_PRESS, KM_ANY, 0, WALK_MODAL_CONFIRM);
-
-	WM_modalkeymap_add_item(keymap, LEFTSHIFTKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_FAST_ENABLE);
-	WM_modalkeymap_add_item(keymap, LEFTSHIFTKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_FAST_DISABLE);
-
-	WM_modalkeymap_add_item(keymap, LEFTALTKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_SLOW_ENABLE);
-	WM_modalkeymap_add_item(keymap, LEFTALTKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_SLOW_DISABLE);
-
-	/* WASD */
-	WM_modalkeymap_add_item(keymap, WKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_DIR_FORWARD);
-	WM_modalkeymap_add_item(keymap, SKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_DIR_BACKWARD);
-	WM_modalkeymap_add_item(keymap, AKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_DIR_LEFT);
-	WM_modalkeymap_add_item(keymap, DKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_DIR_RIGHT);
-	WM_modalkeymap_add_item(keymap, EKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_DIR_UP);
-	WM_modalkeymap_add_item(keymap, QKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_DIR_DOWN);
-
-	WM_modalkeymap_add_item(keymap, WKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_FORWARD_STOP);
-	WM_modalkeymap_add_item(keymap, SKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_BACKWARD_STOP);
-	WM_modalkeymap_add_item(keymap, AKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_LEFT_STOP);
-	WM_modalkeymap_add_item(keymap, DKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_RIGHT_STOP);
-	WM_modalkeymap_add_item(keymap, EKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_UP_STOP);
-	WM_modalkeymap_add_item(keymap, QKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_DOWN_STOP);
-
-	WM_modalkeymap_add_item(keymap, UPARROWKEY, KM_PRESS, 0, 0, WALK_MODAL_DIR_FORWARD);
-	WM_modalkeymap_add_item(keymap, DOWNARROWKEY, KM_PRESS, 0, 0, WALK_MODAL_DIR_BACKWARD);
-	WM_modalkeymap_add_item(keymap, LEFTARROWKEY, KM_PRESS, 0, 0, WALK_MODAL_DIR_LEFT);
-	WM_modalkeymap_add_item(keymap, RIGHTARROWKEY, KM_PRESS, 0, 0, WALK_MODAL_DIR_RIGHT);
-
-	WM_modalkeymap_add_item(keymap, UPARROWKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_FORWARD_STOP);
-	WM_modalkeymap_add_item(keymap, DOWNARROWKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_BACKWARD_STOP);
-	WM_modalkeymap_add_item(keymap, LEFTARROWKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_LEFT_STOP);
-	WM_modalkeymap_add_item(keymap, RIGHTARROWKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_DIR_RIGHT_STOP);
-
-	WM_modalkeymap_add_item(keymap, TABKEY, KM_PRESS, 0, 0, WALK_MODAL_TOGGLE);
-	WM_modalkeymap_add_item(keymap, GKEY, KM_PRESS, 0, 0, WALK_MODAL_TOGGLE);
-
-	WM_modalkeymap_add_item(keymap, VKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_JUMP);
-	WM_modalkeymap_add_item(keymap, VKEY, KM_RELEASE, KM_ANY, 0, WALK_MODAL_JUMP_STOP);
-
-	WM_modalkeymap_add_item(keymap, SPACEKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_TELEPORT);
-	WM_modalkeymap_add_item(keymap, MIDDLEMOUSE, KM_ANY, KM_ANY, 0, WALK_MODAL_TELEPORT);
-
-	WM_modalkeymap_add_item(keymap, PADPLUSKEY, KM_PRESS, KM_ANY, 0, WALK_MODAL_ACCELERATE);
-	WM_modalkeymap_add_item(keymap, PADMINUS, KM_PRESS, KM_ANY, 0, WALK_MODAL_DECELERATE);
-	WM_modalkeymap_add_item(keymap, WHEELUPMOUSE, KM_PRESS, KM_ANY, 0, WALK_MODAL_ACCELERATE);
-	WM_modalkeymap_add_item(keymap, WHEELDOWNMOUSE, KM_PRESS, KM_ANY, 0, WALK_MODAL_DECELERATE);
 
 	/* assign map to operators */
 	WM_modalkeymap_assign(keymap, "VIEW3D_OT_walk");
@@ -333,7 +275,7 @@ static void drawWalkPixel(const struct bContext *UNUSED(C), ARegion *ar, void *a
 	int xoff, yoff;
 	rctf viewborder;
 
-	if (walk->scene->camera) {
+	if (ED_view3d_cameracontrol_object_get(walk->v3d_camera_control)) {
 		ED_view3d_calc_camera_border(walk->scene, walk->depsgraph, ar, walk->v3d, walk->rv3d, &viewborder, false);
 		xoff = viewborder.xmin + BLI_rctf_size_x(&viewborder) * 0.5f;
 		yoff = viewborder.ymin + BLI_rctf_size_y(&viewborder) * 0.5f;
@@ -422,7 +364,7 @@ static void walk_navigation_mode_set(bContext *C, wmOperator *op, WalkInfo *walk
 }
 
 /**
- * \param r_distance  Distance to the hit point
+ * \param r_distance: Distance to the hit point
  */
 static bool walk_floor_distance_get(
         RegionView3D *rv3d, WalkInfo *walk, const float dvec[3],
@@ -456,9 +398,9 @@ static bool walk_floor_distance_get(
 }
 
 /**
- * \param ray_distance  Distance to the hit point
- * \param r_location  Location of the hit point
- * \param r_normal  Normal of the hit surface, transformed to always face the camera
+ * \param ray_distance: Distance to the hit point
+ * \param r_location: Location of the hit point
+ * \param r_normal: Normal of the hit surface, transformed to always face the camera
  */
 static bool walk_ray_cast(
         RegionView3D *rv3d, WalkInfo *walk,
@@ -557,10 +499,12 @@ static bool initWalkInfo(bContext *C, WalkInfo *walk, wmOperator *op)
 	walk->teleport.duration = U.walk_navigation.teleport_time;
 	walk->mouse_speed = U.walk_navigation.mouse_speed;
 
-	if ((U.walk_navigation.flag & USER_WALK_GRAVITY))
+	if ((U.walk_navigation.flag & USER_WALK_GRAVITY)) {
 		walk_navigation_mode_set(C, op, walk, WALK_MODE_GRAVITY);
-	else
+	}
+	else {
 		walk_navigation_mode_set(C, op, walk, WALK_MODE_FREE);
+	}
 
 	walk->view_height = U.walk_navigation.view_height;
 	walk->jump_height = U.walk_navigation.jump_height;
@@ -642,8 +586,9 @@ static int walkEnd(bContext *C, WalkInfo *walk)
 	wmWindow *win;
 	RegionView3D *rv3d;
 
-	if (walk->state == WALK_RUNNING)
+	if (walk->state == WALK_RUNNING) {
 		return OPERATOR_RUNNING_MODAL;
+	}
 
 #ifdef NDOF_WALK_DEBUG
 	puts("\n-- walk end --");
@@ -663,8 +608,9 @@ static int walkEnd(bContext *C, WalkInfo *walk)
 	rv3d->rflag &= ~RV3D_NAVIGATING;
 
 #ifdef WITH_INPUT_NDOF
-	if (walk->ndof)
+	if (walk->ndof) {
 		MEM_freeN(walk->ndof);
+	}
 #endif
 
 	/* restore the cursor */
@@ -998,15 +944,17 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 	RegionView3D *rv3d = walk->rv3d;
 	ARegion *ar = walk->ar;
 
-	float mat[3][3]; /* 3x3 copy of the view matrix so we can move along the view axis */
-	float dvec[3] = {0.0f, 0.0f, 0.0f}; /* this is the direction that's added to the view offset per redraw */
+	/* 3x3 copy of the view matrix so we can move along the view axis */
+	float mat[3][3];
+	/* this is the direction that's added to the view offset per redraw */
+	float dvec[3] = {0.0f, 0.0f, 0.0f};
 
 	int moffset[2]; /* mouse offset from the views center */
 	float tmp_quat[4]; /* used for rotating the view */
 
 #ifdef NDOF_WALK_DEBUG
 	{
-		static unsigned int iteration = 1;
+		static uint iteration = 1;
 		printf("walk timer %d\n", iteration++);
 	}
 #endif
@@ -1076,11 +1024,12 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 					/* it ranges from 90.0f to -90.0f */
 					angle = -asinf(rv3d->viewmat[2][2]);
 
-					if (angle > WALK_TOP_LIMIT && y > 0.0f)
+					if (angle > WALK_TOP_LIMIT && y > 0.0f) {
 						y = 0.0f;
-
-					else if (angle < WALK_BOTTOM_LIMIT && y < 0.0f)
+					}
+					else if (angle < WALK_BOTTOM_LIMIT && y < 0.0f) {
 						y = 0.0f;
+					}
 
 					copy_v3_fl3(upvec, 1.0f, 0.0f, 0.0f);
 					mul_m3_v3(mat, upvec);
@@ -1098,8 +1047,9 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 					copy_v3_fl3(upvec, 0.0f, 1.0f, 0.0f);
 					mul_m3_v3(mat, upvec);
 
-					if (upvec[2] < 0.0f)
+					if (upvec[2] < 0.0f) {
 						moffset[0] = -moffset[0];
+					}
 
 					/* relative offset */
 					x = (float) moffset[0] / ar->winx;
@@ -1130,11 +1080,13 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 
 					direction = 0;
 
-					if ((walk->active_directions & WALK_BIT_FORWARD))
+					if ((walk->active_directions & WALK_BIT_FORWARD)) {
 						direction += 1;
+					}
 
-					if ((walk->active_directions & WALK_BIT_BACKWARD))
+					if ((walk->active_directions & WALK_BIT_BACKWARD)) {
 						direction -= 1;
+					}
 
 					copy_v3_fl3(dvec_tmp, 0.0f, 0.0f, direction);
 					mul_m3_v3(mat, dvec_tmp);
@@ -1154,11 +1106,13 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 
 					direction = 0;
 
-					if ((walk->active_directions & WALK_BIT_LEFT))
+					if ((walk->active_directions & WALK_BIT_LEFT)) {
 						direction += 1;
+					}
 
-					if ((walk->active_directions & WALK_BIT_RIGHT))
+					if ((walk->active_directions & WALK_BIT_RIGHT)) {
 						direction -= 1;
+					}
 
 					dvec_tmp[0] = direction * rv3d->viewinv[0][0];
 					dvec_tmp[1] = direction * rv3d->viewinv[0][1];
@@ -1177,11 +1131,13 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 
 						direction = 0;
 
-						if ((walk->active_directions & WALK_BIT_UP))
+						if ((walk->active_directions & WALK_BIT_UP)) {
 							direction -= 1;
+						}
 
-						if ((walk->active_directions & WALK_BIT_DOWN))
+						if ((walk->active_directions & WALK_BIT_DOWN)) {
 							direction = 1;
+						}
 
 						copy_v3_fl3(dvec_tmp, 0.0f, 0.0f, direction);
 						add_v3_v3(dvec, dvec_tmp);
@@ -1219,8 +1175,9 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 					dvec[2] -= difference;
 
 					/* in case we switched from FREE to GRAVITY too close to the ground */
-					if (walk->gravity_state == WALK_GRAVITY_STATE_START)
+					if (walk->gravity_state == WALK_GRAVITY_STATE_START) {
 						walk->gravity_state = WALK_GRAVITY_STATE_OFF;
+					}
 				}
 				else {
 					/* hijack the teleport variables */
@@ -1306,9 +1263,15 @@ static int walkApply(bContext *C, wmOperator *op, WalkInfo *walk)
 
 			if (rv3d->persp == RV3D_CAMOB) {
 				Object *lock_ob = ED_view3d_cameracontrol_object_get(walk->v3d_camera_control);
-				if (lock_ob->protectflag & OB_LOCK_LOCX) dvec[0] = 0.0f;
-				if (lock_ob->protectflag & OB_LOCK_LOCY) dvec[1] = 0.0f;
-				if (lock_ob->protectflag & OB_LOCK_LOCZ) dvec[2] = 0.0f;
+				if (lock_ob->protectflag & OB_LOCK_LOCX) {
+					dvec[0] = 0.0f;
+				}
+				if (lock_ob->protectflag & OB_LOCK_LOCY) {
+					dvec[1] = 0.0f;
+				}
+				if (lock_ob->protectflag & OB_LOCK_LOCZ) {
+					dvec[2] = 0.0f;
+				}
 			}
 
 			/* scale the movement to the scene size */
@@ -1367,8 +1330,9 @@ static int walk_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 	RegionView3D *rv3d = CTX_wm_region_view3d(C);
 	WalkInfo *walk;
 
-	if (rv3d->viewlock & RV3D_LOCKED)
+	if (rv3d->viewlock & RV3D_LOCKED) {
 		return OPERATOR_CANCELLED;
+	}
 
 	walk = MEM_callocN(sizeof(WalkInfo), "NavigationWalkOperation");
 
@@ -1423,20 +1387,23 @@ static int walk_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
 	exit_code = walkEnd(C, walk);
 
-	if (exit_code != OPERATOR_RUNNING_MODAL)
+	if (exit_code != OPERATOR_RUNNING_MODAL) {
 		do_draw = true;
+	}
 
 	if (do_draw) {
 		if (rv3d->persp == RV3D_CAMOB) {
 			WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, walk_object);
 		}
 
-		// puts("redraw!"); // too frequent, commented with NDOF_WALK_DRAW_TOOMUCH for now
+		// too frequent, commented with NDOF_WALK_DRAW_TOOMUCH for now
+		// puts("redraw!");
 		ED_region_tag_redraw(CTX_wm_region(C));
 	}
 
-	if (ELEM(exit_code, OPERATOR_FINISHED, OPERATOR_CANCELLED))
+	if (ELEM(exit_code, OPERATOR_FINISHED, OPERATOR_CANCELLED)) {
 		ED_workspace_status_text(C, NULL);
+	}
 
 	return exit_code;
 }

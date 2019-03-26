@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2017 by Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file draw_cache_impl_metaball.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  *
  * \brief MetaBall API for render engines
  */
@@ -39,6 +35,7 @@
 
 #include "GPU_batch.h"
 
+
 #include "draw_cache_impl.h"  /* own include */
 
 
@@ -50,8 +47,16 @@ static void metaball_batch_cache_clear(MetaBall *mb);
 typedef struct MetaBallBatchCache {
 	GPUBatch *batch;
 	GPUBatch **shaded_triangles;
-
 	int mat_len;
+
+	/* Shared */
+	GPUVertBuf *pos_nor_in_order;
+
+	/* Wireframe */
+	struct {
+		GPUBatch *batch;
+	} face_wire;
+
 	/* settings to determine if cache is invalid */
 	bool is_dirty;
 } MetaBallBatchCache;
@@ -80,6 +85,8 @@ static void metaball_batch_cache_init(MetaBall *mb)
 	cache->mat_len = 0;
 	cache->shaded_triangles = NULL;
 	cache->is_dirty = false;
+	cache->pos_nor_in_order = NULL;
+	cache->face_wire.batch = NULL;
 }
 
 static MetaBallBatchCache *metaball_batch_cache_get(MetaBall *mb)
@@ -113,7 +120,9 @@ static void metaball_batch_cache_clear(MetaBall *mb)
 		return;
 	}
 
+	GPU_BATCH_DISCARD_SAFE(cache->face_wire.batch);
 	GPU_BATCH_DISCARD_SAFE(cache->batch);
+	GPU_VERTBUF_DISCARD_SAFE(cache->pos_nor_in_order);
 	/* Note: shaded_triangles[0] is already freed by cache->batch */
 	MEM_SAFE_FREE(cache->shaded_triangles);
 	cache->mat_len = 0;
@@ -125,8 +134,17 @@ void DRW_mball_batch_cache_free(MetaBall *mb)
 	MEM_SAFE_FREE(mb->batch_cache);
 }
 
-/* -------------------------------------------------------------------- */
+static GPUVertBuf *mball_batch_cache_get_pos_and_normals(Object *ob, MetaBallBatchCache *cache)
+{
+	if (cache->pos_nor_in_order == NULL) {
+		ListBase *lb = &ob->runtime.curve_cache->disp;
+		cache->pos_nor_in_order = MEM_callocN(sizeof(GPUVertBuf), __func__);
+		DRW_displist_vertbuf_create_pos_and_nor(lb, cache->pos_nor_in_order);
+	}
+	return cache->pos_nor_in_order;
+}
 
+/* -------------------------------------------------------------------- */
 /** \name Public Object/MetaBall API
  * \{ */
 
@@ -141,11 +159,13 @@ GPUBatch *DRW_metaball_batch_cache_get_triangles_with_normals(Object *ob)
 
 	if (cache->batch == NULL) {
 		ListBase *lb = &ob->runtime.curve_cache->disp;
+		GPUIndexBuf *ibo = MEM_callocN(sizeof(GPUIndexBuf), __func__);
+		DRW_displist_indexbuf_create_triangles_in_order(lb, ibo);
 		cache->batch = GPU_batch_create_ex(
 		        GPU_PRIM_TRIS,
-		        DRW_displist_vertbuf_calc_pos_with_normals(lb),
-		        DRW_displist_indexbuf_calc_triangles_in_order(lb),
-		        GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+		        mball_batch_cache_get_pos_and_normals(ob, cache),
+		        ibo,
+		        GPU_BATCH_OWNS_INDEX);
 	}
 
 	return cache->batch;
@@ -168,4 +188,34 @@ GPUBatch **DRW_metaball_batch_cache_get_surface_shaded(Object *ob, MetaBall *mb,
 	}
 	return cache->shaded_triangles;
 
+}
+
+GPUBatch *DRW_metaball_batch_cache_get_wireframes_face(Object *ob)
+{
+	if (!BKE_mball_is_basis(ob)) {
+		return NULL;
+	}
+
+	MetaBall *mb = ob->data;
+	MetaBallBatchCache *cache = metaball_batch_cache_get(mb);
+
+	if (cache->face_wire.batch == NULL) {
+		ListBase *lb = &ob->runtime.curve_cache->disp;
+
+		GPUVertBuf *vbo_wiredata = MEM_callocN(sizeof(GPUVertBuf), __func__);
+		DRW_displist_vertbuf_create_wiredata(lb, vbo_wiredata);
+
+		GPUIndexBuf *ibo = MEM_callocN(sizeof(GPUIndexBuf), __func__);
+		DRW_displist_indexbuf_create_lines_in_order(lb, ibo);
+
+		cache->face_wire.batch = GPU_batch_create_ex(
+		        GPU_PRIM_LINES,
+		        mball_batch_cache_get_pos_and_normals(ob, cache),
+		        ibo,
+		        GPU_BATCH_OWNS_INDEX);
+
+		GPU_batch_vertbuf_add_ex(cache->face_wire.batch, vbo_wiredata, true);
+	}
+
+	return cache->face_wire.batch;
 }

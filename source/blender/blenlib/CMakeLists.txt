@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -30,6 +25,7 @@ set(INC
 	../../../intern/guardedalloc
 	../../../intern/atomic
 	../../../intern/eigen
+	../../../intern/numaapi/include
 	../../../extern/wcwidth
 )
 
@@ -47,18 +43,20 @@ set(SRC
 	intern/BLI_ghash.c
 	intern/BLI_ghash_utils.c
 	intern/BLI_heap.c
+	intern/BLI_heap_simple.c
 	intern/BLI_kdopbvh.c
-	intern/BLI_kdtree.c
 	intern/BLI_linklist.c
 	intern/BLI_linklist_lockfree.c
 	intern/BLI_memarena.c
 	intern/BLI_memiter.c
 	intern/BLI_mempool.c
+	intern/BLI_timer.c
 	intern/DLRB_tree.c
 	intern/array_store.c
 	intern/array_store_utils.c
 	intern/array_utils.c
 	intern/astar.c
+	intern/bitmap.c
 	intern/bitmap_draw_2d.c
 	intern/boxpack_2d.c
 	intern/buffer.c
@@ -77,8 +75,11 @@ set(SRC
 	intern/hash_mm2a.c
 	intern/hash_mm3.c
 	intern/jitter_2d.c
+	intern/kdtree_1d.c
+	intern/kdtree_2d.c
+	intern/kdtree_3d.c
+	intern/kdtree_4d.c
 	intern/lasso_2d.c
-	intern/list_sort_impl.h
 	intern/listbase.c
 	intern/math_base.c
 	intern/math_base_inline.c
@@ -125,6 +126,10 @@ set(SRC
 	intern/winstuff.c
 	intern/winstuff_dir.c
 
+	# Header as source (included in C files above).
+	intern/kdtree_impl.h
+	intern/list_sort_impl.h
+
 	BLI_alloca.h
 	BLI_args.h
 	BLI_array.h
@@ -163,10 +168,12 @@ set(SRC
 	BLI_hash_mm2a.h
 	BLI_hash_mm3.h
 	BLI_heap.h
+	BLI_heap_simple.h
 	BLI_iterator.h
 	BLI_jitter_2d.h
 	BLI_kdopbvh.h
 	BLI_kdtree.h
+	BLI_kdtree_impl.h
 	BLI_lasso_2d.h
 	BLI_link_utils.h
 	BLI_linklist.h
@@ -212,6 +219,7 @@ set(SRC
 	BLI_task.h
 	BLI_threads.h
 	BLI_timecode.h
+	BLI_timer.h
 	BLI_utildefines.h
 	BLI_utildefines_iter.h
 	BLI_utildefines_stack.h

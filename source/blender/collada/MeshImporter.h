@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Nathan Letwory.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file MeshImporter.h
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #ifndef __MESHIMPORTER_H__
@@ -111,23 +105,26 @@ private:
 	std::map<COLLADAFW::UniqueId, MaterialIdPrimitiveArrayMap> geom_uid_mat_mapping_map; // crazy name!
 	std::multimap<COLLADAFW::UniqueId, COLLADAFW::UniqueId> materials_mapped_to_geom; //< materials that have already been mapped to a geometry. A pair of geom uid and mat uid, one geometry can have several materials
 
-	bool set_poly_indices(MPoly *mpoly,
-						  MLoop *mloop,
-						  int loop_index,
-						  unsigned int *indices,
-						  int loop_count);
+	bool set_poly_indices(
+	        MPoly *mpoly,
+	        MLoop *mloop,
+	        int loop_index,
+	        unsigned int *indices,
+	        int loop_count);
 
-	void set_face_uv(MLoopUV *mloopuv,
-					 UVDataWrapper &uvs,
-					 int loop_index,
-					 COLLADAFW::IndexList& index_list,
-					 int count);
+	void set_face_uv(
+	        MLoopUV *mloopuv,
+	        UVDataWrapper &uvs,
+	        int loop_index,
+	        COLLADAFW::IndexList& index_list,
+	        int count);
 
-	void set_vcol(MLoopCol *mloopcol,
-		          VCOLDataWrapper &vob,
-		          int loop_index,
-		          COLLADAFW::IndexList& index_list,
-		          int count);
+	void set_vcol(
+	        MLoopCol *mloopcol,
+	        VCOLDataWrapper &vob,
+	        int loop_index,
+	        COLLADAFW::IndexList& index_list,
+	        int count);
 
 #ifdef COLLADA_DEBUG
 	void print_index_list(COLLADAFW::IndexList& index_list);

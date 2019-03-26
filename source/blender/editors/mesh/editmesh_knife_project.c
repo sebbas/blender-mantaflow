@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_knife_project.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  */
 
 #include "DNA_curve_types.h"
@@ -44,6 +37,7 @@
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "RNA_define.h"
 #include "RNA_access.h"
@@ -67,12 +61,17 @@ static LinkNode *knifeproject_poly_from_object(const bContext *C, Scene *scene, 
 	bool me_eval_needs_free;
 
 	if (ob->type == OB_MESH || ob->runtime.mesh_eval) {
-		me_eval = (ob->runtime.mesh_eval ?
-		           ob->runtime.mesh_eval : mesh_get_eval_final(depsgraph, scene, ob, CD_MASK_BAREMESH));
+		Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+		me_eval = ob_eval->runtime.mesh_eval;
+		if (me_eval == NULL) {
+			Scene *scene_eval = (Scene *)DEG_get_evaluated_id(depsgraph, &scene->id);
+			me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+		}
 		me_eval_needs_free = false;
 	}
 	else if (ELEM(ob->type, OB_FONT, OB_CURVE, OB_SURF)) {
-		me_eval = BKE_mesh_new_nomain_from_curve(ob);
+		Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+		me_eval = BKE_mesh_new_nomain_from_curve(ob_eval);
 		me_eval_needs_free = true;
 	}
 	else {
@@ -173,7 +172,7 @@ void MESH_OT_knife_project(wmOperatorType *ot)
 	ot->poll = ED_operator_editmesh_region_view3d;
 
 	/* flags */
-	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_USE_EVAL_DATA;
 
 	/* parameters */
 	RNA_def_boolean(ot->srna, "cut_through", false, "Cut through", "Cut through all faces, not just visible ones");

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DocumentImporter.h
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #ifndef __DOCUMENTIMPORTER_H__
@@ -49,8 +43,6 @@
 #include "MeshImporter.h"
 #include "ImportSettings.h"
 
-
-
 struct bContext;
 
 /** Importer class. */
@@ -59,8 +51,8 @@ class DocumentImporter : COLLADAFW::IWriter
 public:
 	//! Enumeration to denote the stage of import
 	enum ImportStage {
-		General,		//!< First pass to collect all data except controller
-		Controller,		//!< Second pass to collect controller data
+		Fetching_Scene_data, /* First pass to collect all data except controller */
+		Fetching_Controller_data, /* Second pass to collect controller data */
 	};
 	/** Constructor */
 	DocumentImporter(bContext *C, const ImportSettings *import_settings);
@@ -73,7 +65,7 @@ public:
 
 	/** these should not be here */
 	Object* create_camera_object(COLLADAFW::InstanceCamera*, Scene*);
-	Object* create_lamp_object(COLLADAFW::InstanceLight*, Scene*);
+	Object* create_light_object(COLLADAFW::InstanceLight*, Scene*);
 	Object* create_instance_node(Object*, COLLADAFW::Node*, COLLADAFW::Node*, Scene*, bool);
 	void create_constraints(ExtraTags *et, Object *ob);
 	std::vector<Object *> *write_node(COLLADAFW::Node*, COLLADAFW::Node*, Scene*, Object*, bool);
@@ -84,7 +76,7 @@ public:
 	/**
 	 * This method will be called if an error in the loading process occurred and the loader cannot
 	 * continue to load. The writer should undo all operations that have been performed.
-	 * \param errorMessage A message containing information about the error that occurred.
+	 * \param errorMessage: A message containing information about the error that occurred.
 	 */
 	void cancel(const COLLADAFW::String& errorMessage);
 
@@ -106,6 +98,11 @@ public:
 	bool writeAnimation(const COLLADAFW::Animation*);
 
 	bool writeAnimationList(const COLLADAFW::AnimationList*);
+
+#if WITH_OPENCOLLADA_ANIMATION_CLIP
+	// Please enable this when building with Collada 1.6.65 or newer (also in DocumentImporter.cpp)
+	bool writeAnimationClip(const COLLADAFW::AnimationClip *animationClip);
+#endif
 
 	bool writeGeometry(const COLLADAFW::Geometry*);
 
@@ -155,11 +152,11 @@ private:
 	/** Tags map of unique id as a string and ExtraTags instance. */
 	TagsMap uid_tags_map;
 
-	std::map<COLLADAFW::UniqueId, Image*> uid_image_map;
+	UidImageMap uid_image_map;
 	std::map<COLLADAFW::UniqueId, Material*> uid_material_map;
 	std::map<COLLADAFW::UniqueId, Material*> uid_effect_map;
 	std::map<COLLADAFW::UniqueId, Camera*> uid_camera_map;
-	std::map<COLLADAFW::UniqueId, Lamp*> uid_lamp_map;
+	std::map<COLLADAFW::UniqueId, Light*> uid_light_map;
 	std::map<Material*, TexIndexTextureArrayMap> material_texture_mapping_map;
 	std::multimap<COLLADAFW::UniqueId, Object*> object_map;
 	std::map<COLLADAFW::UniqueId, COLLADAFW::Node*> node_map;
@@ -172,6 +169,7 @@ private:
 	std::string import_from_version;
 
 	void report_unknown_reference(const COLLADAFW::Node &node, const std::string object_type);
+
 };
 
 #endif

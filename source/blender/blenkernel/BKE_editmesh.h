@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_EDITMESH_H__
 #define __BKE_EDITMESH_H__
 
-/** \file BKE_editmesh.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * The \link edmesh EDBM module\endlink is for editmode bmesh stuff.
  * In contrast, this module is for code shared with blenkernel that's
@@ -34,14 +28,14 @@
 #include "BKE_customdata.h"
 #include "bmesh.h"
 
-struct BMesh;
 struct BMLoop;
-struct Mesh;
-struct Scene;
-struct DerivedMesh;
-struct MeshStatVis;
+struct BMesh;
 struct Depsgraph;
+struct DerivedMesh;
 struct EditMeshData;
+struct Mesh;
+struct MeshStatVis;
+struct Scene;
 
 /**
  * This structure is used for mesh edit-mode.
@@ -67,7 +61,7 @@ typedef struct BMEditMesh {
 	struct Mesh *mesh_eval_final, *mesh_eval_cage;
 
 	/*derivedmesh stuff*/
-	CustomDataMask lastDataMask;
+	CustomData_MeshMasks lastDataMask;
 	unsigned char (*derivedVertColor)[4];
 	int derivedVertColorLen;
 	unsigned char (*derivedFaceColor)[4];

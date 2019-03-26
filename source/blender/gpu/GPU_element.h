@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 by Mike Erwin.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpu/GPU_element.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU element list (AKA index buffer)
  */
@@ -53,7 +47,8 @@ typedef struct GPUIndexBuf {
 	uint max_index;
 	uint base_index;
 #endif
-	uint32_t vbo_id; /* 0 indicates not yet sent to VRAM */
+	uint32_t ibo_id; /* 0 indicates not yet sent to VRAM */
+	void *data; /* non-NULL indicates not yet sent to VRAM */
 	bool use_prim_restart;
 } GPUIndexBuf;
 

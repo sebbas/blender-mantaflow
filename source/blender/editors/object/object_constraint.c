@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung, Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/object/object_constraint.c
- *  \ingroup edobj
+/** \file
+ * \ingroup edobj
  */
 
 
@@ -54,7 +46,6 @@
 #include "BKE_constraint.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -105,7 +96,8 @@ ListBase *get_active_constraints(Object *ob)
 	return NULL;
 }
 
-/* Find the list that a given constraint belongs to, and/or also get the posechannel this is from (if applicable) */
+/* Find the list that a given constraint belongs to,
+ * and/or also get the posechannel this is from (if applicable) */
 ListBase *get_constraint_lb(Object *ob, bConstraint *con, bPoseChannel **r_pchan)
 {
 	if (r_pchan)
@@ -162,7 +154,7 @@ static void validate_pyconstraint_cb(Main *bmain, void *arg1, void *arg2)
 	/* exception for no script */
 	if (index) {
 		/* innovative use of a for...loop to search */
-		for (text = bmain->text.first, i = 1; text && index != i; i++, text = text->id.next) ;
+		for (text = bmain->texts.first, i = 1; text && index != i; i++, text = text->id.next) ;
 	}
 	data->text = text;
 }
@@ -185,7 +177,7 @@ static char *buildmenu_pyconstraints(Main *bmain, Text *con_text, int *pyconinde
 		*pyconindex = 0;
 
 	/* loop through markers, adding them */
-	for (text = bmain->text.first, i = 1; text; i++, text = text->id.next) {
+	for (text = bmain->texts.first, i = 1; text; i++, text = text->id.next) {
 		/* this is important to ensure that right script is shown as active */
 		if (text == con_text) *pyconindex = i;
 
@@ -276,8 +268,8 @@ static void test_constraint(Main *bmain, Object *owner, bPoseChannel *pchan, bCo
 		bKinematicConstraint *data = con->data;
 
 		/* bad: we need a separate set of checks here as poletarget is
-		 *		optional... otherwise poletarget must exist too or else
-		 *		the constraint is deemed invalid
+		 * optional... otherwise poletarget must exist too or else
+		 * the constraint is deemed invalid
 		 */
 		/* default IK check ... */
 		if (BKE_object_exists_check(bmain, data->tar) == 0) {
@@ -430,6 +422,11 @@ static void test_constraint(Main *bmain, Object *owner, bPoseChannel *pchan, bCo
 	if (check_targets && cti && cti->get_constraint_targets) {
 		cti->get_constraint_targets(con, &targets);
 
+		/* constraints with empty target list that actually require targets */
+		if (!targets.first && ELEM(con->type, CONSTRAINT_TYPE_ARMATURE)) {
+			con->flag |= CONSTRAINT_DISABLE;
+		}
+
 		/* disable and clear constraints targets that are incorrect */
 		for (ct = targets.first; ct; ct = ct->next) {
 			/* general validity checks (for those constraints that need this) */
@@ -470,6 +467,18 @@ static void test_constraint(Main *bmain, Object *owner, bPoseChannel *pchan, bCo
 
 						/* auto-set 'Path' setting on curve so this works  */
 						cu->flag |= CU_PATH;
+					}
+				}
+			}
+			else if (con->type == CONSTRAINT_TYPE_ARMATURE) {
+				if (ct->tar) {
+					if (ct->tar->type != OB_ARMATURE) {
+						ct->tar = NULL;
+						con->flag |= CONSTRAINT_DISABLE;
+					}
+					else if (!BKE_armature_find_bone_name(BKE_armature_from_object(ct->tar), ct->subtarget)) {
+						/* bone must exist in armature... */
+						con->flag |= CONSTRAINT_DISABLE;
 					}
 				}
 			}
@@ -575,7 +584,8 @@ static void object_test_constraint(Main *bmain, Object *owner, bConstraint *con)
 static const EnumPropertyItem constraint_owner_items[] = {
 	{EDIT_CONSTRAINT_OWNER_OBJECT, "OBJECT", 0, "Object", "Edit a constraint on the active object"},
 	{EDIT_CONSTRAINT_OWNER_BONE, "BONE", 0, "Bone", "Edit a constraint on the active bone"},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 
 static bool edit_constraint_poll_generic(bContext *C, StructRNA *rna_type)
@@ -1211,9 +1221,9 @@ void ED_object_constraint_update(Main *bmain, Object *ob)
 	object_test_constraints(bmain, ob);
 
 	if (ob->type == OB_ARMATURE)
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA | OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_TRANSFORM);
 	else
-		DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 }
 
 static void object_pose_tag_update(Main *bmain, Object *ob)
@@ -1225,7 +1235,7 @@ static void object_pose_tag_update(Main *bmain, Object *ob)
 		 * Note that this is a bit wide here, since we cannot be sure whether there are some locked proxy bones
 		 * or not...
 		 * XXX Temp hack until new depsgraph hopefully solves this. */
-		ob->adt->recalc |= ADT_RECALC_ANIM;
+		DEG_id_tag_update(&ob->id, ID_RECALC_ANIMATION);
 	}
 }
 
@@ -1245,17 +1255,19 @@ void ED_object_constraint_tag_update(Main *bmain, Object *ob, bConstraint *con)
 		BKE_pose_tag_update_constraint_flags(ob->pose);
 	}
 
-	object_test_constraint(bmain, ob, con);
+	if (con) {
+		object_test_constraint(bmain, ob, con);
+	}
 
 	if (ob->type == OB_ARMATURE)
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA | OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_TRANSFORM);
 	else
-		DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
 	/* Do Copy-on-Write tag here too, otherwise constraint
 	 * influence/mute buttons in UI have no effect
 	 */
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 }
 
 void ED_object_constraint_dependency_tag_update(Main *bmain, Object *ob, bConstraint *con)
@@ -1287,7 +1299,8 @@ static int constraint_delete_exec(bContext *C, wmOperator *UNUSED(op))
 	if (BKE_constraint_remove_ex(lb, ob, con, true)) {
 		/* there's no active constraint now, so make sure this is the case */
 		BKE_constraints_active_set(&ob->constraints, NULL);
-		ED_object_constraint_update(bmain, ob); /* needed to set the flags on posebones correctly */
+		/* needed to set the flags on posebones correctly */
+		ED_object_constraint_update(bmain, ob);
 
 		/* relatiols */
 		DEG_relations_tag_update(CTX_data_main(C));
@@ -1430,7 +1443,7 @@ static int pose_constraints_clear_exec(bContext *C, wmOperator *UNUSED(op))
 		pchan->constflag &= ~(PCHAN_HAS_IK | PCHAN_HAS_SPLINEIK | PCHAN_HAS_CONST);
 
 		if (prev_ob != ob) {
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 			WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, ob);
 			prev_ob = ob;
 		}
@@ -1466,7 +1479,7 @@ static int object_constraints_clear_exec(bContext *C, wmOperator *UNUSED(op))
 	CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects)
 	{
 		BKE_constraints_free(&ob->constraints);
-		DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 	}
 	CTX_DATA_END;
 
@@ -1517,7 +1530,7 @@ static int pose_constraint_copy_exec(bContext *C, wmOperator *op)
 
 			if (prev_ob != ob) {
 				BKE_pose_tag_recalc(bmain, ob->pose);
-				DEG_id_tag_update((ID *)ob, OB_RECALC_DATA);
+				DEG_id_tag_update((ID *)ob, ID_RECALC_GEOMETRY);
 				prev_ob = ob;
 			}
 		}
@@ -1558,7 +1571,7 @@ static int object_constraint_copy_exec(bContext *C, wmOperator *UNUSED(op))
 		/* if we're not handling the object we're copying from, copy all constraints over */
 		if (obact != ob) {
 			BKE_constraints_copy(&ob->constraints, &obact->constraints, true);
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		}
 	}
 	CTX_DATA_END;
@@ -1598,13 +1611,13 @@ static bool get_new_constraint_target(bContext *C, int con_type, Object **tar_ob
 	bool found = false;
 
 	/* clear tar_ob and tar_pchan fields before use
-	 *	- assume for now that both always exist...
+	 * - assume for now that both always exist...
 	 */
 	*tar_ob = NULL;
 	*tar_pchan = NULL;
 
 	/* check if constraint type doesn't requires a target
-	 *	- if so, no need to get any targets
+	 * - if so, no need to get any targets
 	 */
 	switch (con_type) {
 		/* no-target constraints --------------------------- */
@@ -1618,7 +1631,8 @@ static bool get_new_constraint_target(bContext *C, int con_type, Object **tar_ob
 			return false;
 
 		/* restricted target-type constraints -------------- */
-		/* NOTE: for these, we cannot try to add a target object if no valid ones are found, since that doesn't work */
+		/* NOTE: for these, we cannot try to add a target object if no valid ones are found,
+		 * since that doesn't work */
 		/* curve-based constraints - set the only_curve and only_ob flags */
 		case CONSTRAINT_TYPE_CLAMPTO:
 		case CONSTRAINT_TYPE_FOLLOWPATH:
@@ -1773,7 +1787,7 @@ static int constraint_add_exec(bContext *C, wmOperator *op, Object *ob, ListBase
 		con = BKE_constraint_add_for_object(ob, NULL, type);
 
 	/* get the first selected object/bone, and make that the target
-	 *	- apart from the buttons-window add buttons, we shouldn't add in this way
+	 * - apart from the buttons-window add buttons, we shouldn't add in this way
 	 */
 	if (setTarget) {
 		Object *tar_ob = NULL;
@@ -1782,7 +1796,7 @@ static int constraint_add_exec(bContext *C, wmOperator *op, Object *ob, ListBase
 		/* get the target objects, adding them as need be */
 		if (get_new_constraint_target(C, type, &tar_ob, &tar_pchan, 1)) {
 			/* method of setting target depends on the type of target we've got
-			 *	- by default, just set the first target (distinction here is only for multiple-targeted constraints)
+			 * - by default, just set the first target (distinction here is only for multiple-targeted constraints)
 			 */
 			if (tar_pchan)
 				set_constraint_nth_target(con, tar_ob, tar_pchan->name, 0);
@@ -1835,12 +1849,12 @@ static int constraint_add_exec(bContext *C, wmOperator *op, Object *ob, ListBase
 			/* We need to make use of ugly POSE_ANIMATION_WORKAROUND here too, else anim data are not reloaded
 			 * after calling `BKE_pose_rebuild()`, which causes T43872.
 			 * XXX Temp hack until new depsgraph hopefully solves this. */
-			ob->adt->recalc |= ADT_RECALC_ANIM;
+			DEG_id_tag_update(&ob->id, ID_RECALC_ANIMATION);
 		}
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA | OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_TRANSFORM);
 	}
 	else
-		DEG_id_tag_update(&ob->id, OB_RECALC_OB);
+		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
 	/* notifiers for updates */
 	WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_ADDED, ob);
@@ -1863,7 +1877,7 @@ static int object_constraint_add_exec(bContext *C, wmOperator *op)
 	}
 
 	/* hack: set constraint targets from selected objects in context is allowed when
-	 *		operator name included 'with_targets', since the menu doesn't allow multiple properties
+	 * operator name included 'with_targets', since the menu doesn't allow multiple properties
 	 */
 	if (strstr(op->idname, "with_targets"))
 		with_targets = 1;
@@ -1884,7 +1898,7 @@ static int pose_constraint_add_exec(bContext *C, wmOperator *op)
 	}
 
 	/* hack: set constraint targets from selected objects in context is allowed when
-	 *		operator name included 'with_targets', since the menu doesn't allow multiple properties
+	 * operator name included 'with_targets', since the menu doesn't allow multiple properties
 	 */
 	if (strstr(op->idname, "with_targets"))
 		with_targets = 1;
@@ -2008,7 +2022,7 @@ static int pose_ik_add_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED
 	/* the type of targets we'll set determines the menu entries to show... */
 	if (get_new_constraint_target(C, CONSTRAINT_TYPE_KINEMATIC, &tar_ob, &tar_pchan, 0)) {
 		/* bone target, or object target?
-		 *	- the only thing that matters is that we want a target...
+		 * - the only thing that matters is that we want a target...
 		 */
 		if (tar_pchan)
 			uiItemBooleanO(layout, IFACE_("To Active Bone"), ICON_NONE, "POSE_OT_ik_add", "with_targets", 1);
@@ -2081,7 +2095,7 @@ static int pose_ik_clear_exec(bContext *C, wmOperator *UNUSED(op))
 			prev_ob = ob;
 
 			/* Refresh depsgraph. */
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
 			/* Note, notifier might evolve. */
 			WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, ob);

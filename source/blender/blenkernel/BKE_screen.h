@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,23 +15,16 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_SCREEN_H__
 #define __BKE_SCREEN_H__
 
-/** \file BKE_screen.h
- *  \ingroup bke
- *  \since March 2001
- *  \author nzc
+/** \file
+ * \ingroup bke
  */
 
 struct ARegion;
+struct GPUFXSettings;
 struct Header;
 struct ID;
 struct ListBase;
@@ -41,25 +32,24 @@ struct Menu;
 struct Panel;
 struct Scene;
 struct ScrArea;
+struct ScrAreaMap;
 struct ScrVert;
 struct SpaceType;
 struct TransformOrientation;
 struct View3D;
 struct View3DShading;
+struct WorkSpace;
 struct bContext;
 struct bContextDataResult;
 struct bScreen;
 struct uiLayout;
 struct uiList;
-struct wmKeyConfig;
 struct wmGizmoMap;
+struct wmKeyConfig;
+struct wmMsgBus;
 struct wmNotifier;
 struct wmWindow;
 struct wmWindowManager;
-struct WorkSpace;
-struct GPUFXSettings;
-struct wmMsgBus;
-struct ScrAreaMap;
 
 #include "BLI_compiler_attrs.h"
 
@@ -238,7 +228,7 @@ typedef void (*uiListDrawItemFunc)(
 
 /* Draw the filtering part of an uiList */
 typedef void (*uiListDrawFilterFunc)(
-        struct uiList *ui_list, struct bContext *C, struct uiLayout *layout, bool reverse);
+        struct uiList *ui_list, struct bContext *C, struct uiLayout *layout);
 
 /* Filter items of an uiList */
 typedef void (*uiListFilterItemsFunc)(
@@ -266,6 +256,7 @@ typedef struct HeaderType {
 	int space_type;
 	int region_type;
 
+	bool (*poll)(const struct bContext *C, struct HeaderType *ht);
 	/* draw entirely, view changes should be handled here */
 	void (*draw)(const struct bContext *C, struct Header *header);
 
@@ -318,6 +309,10 @@ void BKE_spacedata_freelist(ListBase *lb);
 void BKE_spacedata_copylist(ListBase *lb1, ListBase *lb2);
 void BKE_spacedata_draw_locks(int set);
 
+struct ARegion *BKE_spacedata_find_region_type(
+        const struct SpaceLink *slink, const struct ScrArea *sa,
+        int region_type) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
+
 void BKE_spacedata_callback_id_remap_set(
         void (*func)(struct ScrArea *sa, struct SpaceLink *sl, struct ID *old_id, struct ID *new_id));
 void BKE_spacedata_id_unref(struct ScrArea *sa, struct SpaceLink *sl, struct ID *id);
@@ -331,7 +326,7 @@ void            BKE_screen_area_free(struct ScrArea *sa);
 void BKE_region_callback_free_gizmomap_set(void (*callback)(struct wmGizmoMap *));
 void BKE_region_callback_refresh_tag_gizmomap_set(void (*callback)(struct wmGizmoMap *));
 
-struct ARegion *BKE_area_find_region_type(struct ScrArea *sa, int type);
+struct ARegion *BKE_area_find_region_type(const struct ScrArea *sa, int type);
 struct ARegion *BKE_area_find_region_active_win(struct ScrArea *sa);
 struct ARegion *BKE_area_find_region_xy(struct ScrArea *sa, const int regiontype, int x, int y);
 struct ScrArea *BKE_screen_find_area_from_space(struct bScreen *sc, struct SpaceLink *sl) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1, 2);
@@ -362,5 +357,7 @@ void BKE_screen_remove_double_scrverts(struct bScreen *sc);
 void BKE_screen_remove_double_scredges(struct bScreen *sc);
 void BKE_screen_remove_unused_scredges(struct bScreen *sc);
 void BKE_screen_remove_unused_scrverts(struct bScreen *sc);
+
+void BKE_screen_header_alignment_reset(struct bScreen *screen);
 
 #endif

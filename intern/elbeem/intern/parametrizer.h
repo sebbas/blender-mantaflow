@@ -1,5 +1,5 @@
-/** \file elbeem/intern/parametrizer.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

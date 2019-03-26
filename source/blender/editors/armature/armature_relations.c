@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operators for relations between bones and for transferring bones between armature objects
  */
 
-/** \file blender/editors/armature/armature_relations.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "MEM_guardedalloc.h"
@@ -48,7 +41,6 @@
 #include "BKE_constraint.h"
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -144,7 +136,8 @@ static void joined_armature_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data
 			const char *old_name = BLI_ghashIterator_getKey(&gh_iter);
 			const char *new_name = BLI_ghashIterator_getValue(&gh_iter);
 
-			/* only remap if changed; this still means there will be some waste if there aren't many drivers/keys */
+			/* only remap if changed; this still means there will be some
+			 * waste if there aren't many drivers/keys */
 			if (!STREQ(old_name, new_name) && strstr(fcu->rna_path, old_name)) {
 				fcu->rna_path = BKE_animsys_fix_rna_path_rename(id, fcu->rna_path, "pose.bones",
 				                                                old_name, new_name, 0, 0, false);
@@ -166,7 +159,7 @@ static void joined_armature_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data
 		/* Fix driver references to invalid ID's */
 		for (dvar = driver->variables.first; dvar; dvar = dvar->next) {
 			/* only change the used targets, since the others will need fixing manually anyway */
-			DRIVER_TARGETS_USED_LOOPER(dvar)
+			DRIVER_TARGETS_USED_LOOPER_BEGIN(dvar)
 			{
 				/* change the ID's used... */
 				if (dtar->id == src_id) {
@@ -199,7 +192,7 @@ static void joined_armature_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data
 					}
 				}
 			}
-			DRIVER_TARGETS_LOOPER_END
+			DRIVER_TARGETS_LOOPER_END;
 		}
 	}
 }
@@ -212,7 +205,7 @@ static void joined_armature_fix_links(Main *bmain, Object *tarArm, Object *srcAr
 	bPoseChannel *pchant;
 
 	/* let's go through all objects in database */
-	for (ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 		/* do some object-type specific things */
 		if (ob->type == OB_ARMATURE) {
 			pose = ob->pose;
@@ -373,7 +366,7 @@ int join_armature_exec(bContext *C, wmOperator *op)
 			if (ob_iter->adt) {
 				if (ob_active->adt == NULL) {
 					/* no animdata, so just use a copy of the whole thing */
-					ob_active->adt = BKE_animdata_copy(bmain, ob_iter->adt, false, true);
+					ob_active->adt = BKE_animdata_copy(bmain, ob_iter->adt, 0);
 				}
 				else {
 					/* merge in data - we'll fix the drivers manually */
@@ -384,7 +377,7 @@ int join_armature_exec(bContext *C, wmOperator *op)
 			if (curarm->adt) {
 				if (arm->adt == NULL) {
 					/* no animdata, so just use a copy of the whole thing */
-					arm->adt = BKE_animdata_copy(bmain, curarm->adt, false, true);
+					arm->adt = BKE_animdata_copy(bmain, curarm->adt, 0);
 				}
 				else {
 					/* merge in data - we'll fix the drivers manually */
@@ -403,7 +396,7 @@ int join_armature_exec(bContext *C, wmOperator *op)
 	ED_armature_from_edit(bmain, arm);
 	ED_armature_edit_free(arm);
 
-	DEG_id_tag_update(&scene->id, DEG_TAG_SELECT_UPDATE);
+	DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
 	WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
 
 	return OPERATOR_FINISHED;
@@ -424,7 +417,7 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
 	npchans = &newArm->pose->chanbase;
 
 	/* let's go through all objects in database */
-	for (ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 		/* do some object-type specific things */
 		if (ob->type == OB_ARMATURE) {
 			for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
@@ -439,8 +432,8 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
 
 						for (ct = targets.first; ct; ct = ct->next) {
 							/* any targets which point to original armature are redirected to the new one only if:
-							 *	- the target isn't origArm/newArm itself
-							 *	- the target is one that can be found in newArm/origArm
+							 * - the target isn't origArm/newArm itself
+							 * - the target is one that can be found in newArm/origArm
 							 */
 							if (ct->subtarget[0] != 0) {
 								if (ct->tar == origArm) {
@@ -477,8 +470,8 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
 
 					for (ct = targets.first; ct; ct = ct->next) {
 						/* any targets which point to original armature are redirected to the new one only if:
-						 *	- the target isn't origArm/newArm itself
-						 *	- the target is one that can be found in newArm/origArm
+						 * - the target isn't origArm/newArm itself
+						 * - the target is one that can be found in newArm/origArm
 						 */
 						if (ct->subtarget[0] != '\0') {
 							if (ct->tar == origArm) {
@@ -514,8 +507,8 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
 }
 
 /* Helper function for armature separating - remove certain bones from the given armature
- *	sel: remove selected bones from the armature, otherwise the unselected bones are removed
- *  (ob is not in editmode)
+ * sel: remove selected bones from the armature, otherwise the unselected bones are removed
+ * (ob is not in editmode)
  */
 static void separate_armature_bones(Main *bmain, Object *ob, short sel)
 {
@@ -542,15 +535,23 @@ static void separate_armature_bones(Main *bmain, Object *ob, short sel)
 			for (ebo = arm->edbo->first; ebo; ebo = ebo->next) {
 				if (ebo->parent == curbone) {
 					ebo->parent = NULL;
-					ebo->temp.p = NULL; /* this is needed to prevent random crashes with in ED_armature_from_edit */
+					/* this is needed to prevent random crashes with in ED_armature_from_edit */
+					ebo->temp.p = NULL;
 					ebo->flag &= ~BONE_CONNECTED;
 				}
 			}
 
 			/* clear the pchan->parent var of any pchan that had this as its parent */
 			for (pchn = ob->pose->chanbase.first; pchn; pchn = pchn->next) {
-				if (pchn->parent == pchan)
+				if (pchn->parent == pchan) {
 					pchn->parent = NULL;
+				}
+				if (pchn->bbone_next == pchan) {
+					pchn->bbone_next = NULL;
+				}
+				if (pchn->bbone_prev == pchan) {
+					pchn->bbone_prev = NULL;
+				}
 			}
 
 			/* free any of the extra-data this pchan might have */
@@ -580,7 +581,7 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
 	WM_cursor_wait(1);
 
 	uint bases_len = 0;
-	Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(view_layer, &bases_len);
+	Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &bases_len);
 
 	CTX_DATA_BEGIN(C, Base *, base, visible_bases)
 	{
@@ -596,11 +597,11 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
 		Base *oldbase, *newbase;
 
 		/* we are going to do this as follows (unlike every other instance of separate):
-		 *	1. exit editmode +posemode for active armature/base. Take note of what this is.
-		 *	2. duplicate base - BASACT is the new one now
-		 *	3. for each of the two armatures, enter editmode -> remove appropriate bones -> exit editmode + recalc
-		 *	4. fix constraint links
-		 *	5. make original armature active and enter editmode
+		 * 1. exit editmode +posemode for active armature/base. Take note of what this is.
+		 * 2. duplicate base - BASACT is the new one now
+		 * 3. for each of the two armatures, enter editmode -> remove appropriate bones -> exit editmode + recalc
+		 * 4. fix constraint links
+		 * 5. make original armature active and enter editmode
 		 */
 
 		/* 1) only edit-base selected */
@@ -616,7 +617,10 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
 		ED_armature_edit_free(obedit->data);
 
 		/* 2) duplicate base */
-		newbase = ED_object_add_duplicate(bmain, scene, view_layer, oldbase, USER_DUP_ARM); /* only duplicate linked armature */
+
+		/* only duplicate linked armature */
+		newbase = ED_object_add_duplicate(bmain, scene, view_layer, oldbase, USER_DUP_ARM);
+
 		DEG_relations_tag_update(bmain);
 
 		newob = newbase->object;
@@ -631,8 +635,8 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
 		/* 4) fix links before depsgraph flushes */ // err... or after?
 		separated_armature_fix_links(bmain, oldob, newob);
 
-		DEG_id_tag_update(&oldob->id, OB_RECALC_DATA);  /* this is the original one */
-		DEG_id_tag_update(&newob->id, OB_RECALC_DATA);  /* this is the separated one */
+		DEG_id_tag_update(&oldob->id, ID_RECALC_GEOMETRY);  /* this is the original one */
+		DEG_id_tag_update(&newob->id, ID_RECALC_GEOMETRY);  /* this is the separated one */
 
 
 		/* 5) restore original conditions */
@@ -743,7 +747,7 @@ static void bone_connect_to_new_parent(ListBase *edbo, EditBone *selbone, EditBo
 static const EnumPropertyItem prop_editarm_make_parent_types[] = {
 	{ARM_PAR_CONNECT, "CONNECTED", 0, "Connected", ""},
 	{ARM_PAR_OFFSET, "OFFSET", 0, "Keep Offset", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int armature_parent_set_exec(bContext *C, wmOperator *op)
@@ -864,7 +868,7 @@ void ARMATURE_OT_parent_set(wmOperatorType *ot)
 static const EnumPropertyItem prop_editarm_clear_parent_types[] = {
 	{1, "CLEAR", 0, "Clear Parent", ""},
 	{2, "DISCONNECT", 0, "Disconnect Bone", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static void editbone_clear_parent(EditBone *ebone, int mode)
@@ -890,7 +894,7 @@ static int armature_parent_clear_exec(bContext *C, wmOperator *op)
 	CTX_DATA_END;
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;

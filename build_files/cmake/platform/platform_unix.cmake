@@ -16,9 +16,6 @@
 #
 # The Original Code is Copyright (C) 2016, Blender Foundation
 # All rights reserved.
-#
-# Contributor(s): Sergey Sharybin.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 # Libraries configuration for any *nix system including Linux and Unix.
@@ -40,6 +37,10 @@ if(EXISTS ${LIBDIR})
 	set(CMAKE_PREFIX_PATH ${LIBDIR}/zlib ${LIB_SUBDIRS})
 	set(WITH_STATIC_LIBS ON)
 	set(WITH_OPENMP_STATIC ON)
+endif()
+
+if(WITH_STATIC_LIBS)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
 endif()
 
 # Wrapper to prefer static libraries
@@ -245,13 +246,17 @@ if(WITH_OPENVDB)
 	find_package_wrapper(OpenVDB)
 	find_package_wrapper(TBB)
 	find_package_wrapper(Blosc)
-	if(NOT OPENVDB_FOUND OR NOT TBB_FOUND)
+	if(NOT TBB_FOUND)
+		set(WITH_OPENVDB OFF)
+		set(WITH_OPENVDB_BLOSC OFF)
+		message(STATUS "TBB not found, disabling OpenVDB")
+	elseif(NOT OPENVDB_FOUND)
 		set(WITH_OPENVDB OFF)
 		set(WITH_OPENVDB_BLOSC OFF)
 		message(STATUS "OpenVDB not found, disabling it")
 	elseif(NOT BLOSC_FOUND)
 		set(WITH_OPENVDB_BLOSC OFF)
-		message(STATUS "Blosc not found, disabling it")
+		message(STATUS "Blosc not found, disabling it for OpenVBD")
 	endif()
 endif()
 
@@ -359,6 +364,10 @@ if(WITH_OPENCOLORIO)
 	endif()
 endif()
 
+if(WITH_CYCLES_EMBREE)
+	find_package(Embree 3.2.4 REQUIRED)
+endif()
+
 if(WITH_LLVM)
 	if(EXISTS ${LIBDIR})
 		set(LLVM_STATIC ON)
@@ -386,7 +395,7 @@ if(WITH_LLVM OR WITH_SDL_DYNLOAD)
 	)
 endif()
 
-if(WITH_OPENSUBDIV OR WITH_CYCLES_OPENSUBDIV)
+if(WITH_OPENSUBDIV)
 	find_package_wrapper(OpenSubdiv)
 
 	set(OPENSUBDIV_LIBRARIES ${OPENSUBDIV_LIBRARIES})
@@ -394,7 +403,6 @@ if(WITH_OPENSUBDIV OR WITH_CYCLES_OPENSUBDIV)
 
 	if(NOT OPENSUBDIV_FOUND)
 		set(WITH_OPENSUBDIV OFF)
-		set(WITH_CYCLES_OPENSUBDIV OFF)
 		message(STATUS "OpenSubdiv not found")
 	endif()
 endif()

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,57 +15,52 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): (mar-2001 nzc)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_MESH_H__
 #define __BKE_MESH_H__
 
-/** \file BKE_mesh.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 /* defines BLI_INLINE */
-#include "BLI_utildefines.h"
+#include "BLI_compiler_compat.h"
 
 /* defines CustomDataMask */
-#include "BKE_customdata.h"
+//#include "BKE_customdata.h"
 
-struct ID;
+struct BLI_Stack;
+struct BMEditMesh;
+struct BMesh;
 struct BMeshCreateParams;
 struct BMeshFromMeshParams;
 struct BMeshToMeshParams;
 struct BoundBox;
+struct CustomData;
+struct CustomData_MeshMasks;
 struct Depsgraph;
 struct EdgeHash;
-struct ListBase;
-struct LinkNode;
-struct BLI_Stack;
-struct MemArena;
-struct BMesh;
+struct ID;
 struct KeyBlock;
-struct MLoopTri;
-struct Main;
-struct Mesh;
-struct ModifierData;
-struct MPoly;
-struct MLoop;
-struct MFace;
-struct MEdge;
-struct MVert;
-struct MVertTri;
+struct LinkNode;
+struct ListBase;
 struct MDeformVert;
 struct MDisps;
-struct Object;
-struct CustomData;
-struct Scene;
+struct MEdge;
+struct MFace;
+struct MLoop;
+struct MLoopTri;
 struct MLoopUV;
+struct MPoly;
+struct MVert;
+struct MVertTri;
+struct Main;
+struct MemArena;
+struct Mesh;
+struct ModifierData;
+struct Object;
 struct ReportList;
-struct BMEditMesh;
+struct Scene;
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,7 +76,7 @@ extern "C" {
 /* *** mesh.c *** */
 
 struct BMesh *BKE_mesh_to_bmesh_ex(
-        struct Mesh *me,
+        const struct Mesh *me,
         const struct BMeshCreateParams *create_params,
         const struct BMeshFromMeshParams *convert_params);
 struct BMesh *BKE_mesh_to_bmesh(
@@ -91,10 +84,10 @@ struct BMesh *BKE_mesh_to_bmesh(
         const bool add_key_index, const struct BMeshCreateParams *params);
 
 struct Mesh *BKE_mesh_from_bmesh_nomain(struct BMesh *bm, const struct BMeshToMeshParams *params);
-struct Mesh *BKE_mesh_from_bmesh_for_eval_nomain(struct BMesh *bm, int64_t cd_mask_extra);
+struct Mesh *BKE_mesh_from_bmesh_for_eval_nomain(struct BMesh *bm, const struct CustomData_MeshMasks *cd_mask_extra);
 
 struct Mesh *BKE_mesh_from_editmesh_with_coords_thin_wrap(
-        struct BMEditMesh *em, CustomDataMask data_mask, float (*vertexCos)[3]);
+        struct BMEditMesh *em, const struct CustomData_MeshMasks *data_mask, float (*vertexCos)[3]);
 
 int poly_find_loop_from_vert(
         const struct MPoly *poly,
@@ -105,6 +98,7 @@ int poly_get_adj_loops_from_vert(
         unsigned int r_adj[2]);
 
 int BKE_mesh_edge_other_vert(const struct MEdge *e, int v);
+void BKE_mesh_looptri_get_real_edges(const struct Mesh *mesh, const struct MLoopTri *looptri, int r_edges[3]);
 
 void BKE_mesh_free(struct Mesh *me);
 void BKE_mesh_init(struct Mesh *me);
@@ -164,7 +158,7 @@ void BKE_mesh_smooth_flag_set(struct Object *meshOb, int enableSmooth);
 const char *BKE_mesh_cmp(struct Mesh *me1, struct Mesh *me2, float thresh);
 
 struct BoundBox *BKE_mesh_boundbox_get(struct Object *ob);
-void BKE_mesh_texspace_get(struct Mesh *me, float r_loc[3], float r_rot[3], float r_size[3]);
+struct BoundBox *BKE_mesh_texspace_get(struct Mesh *me, float r_loc[3], float r_rot[3], float r_size[3]);
 void BKE_mesh_texspace_get_reference(struct Mesh *me, short **r_texflag,  float **r_loc, float **r_rot, float **r_size);
 void BKE_mesh_texspace_copy_from_object(struct Mesh *me, struct Object *ob);
 
@@ -186,7 +180,7 @@ struct Mesh *BKE_mesh_create_derived_for_modifier(
 
 /* Copies a nomain-Mesh into an existing Mesh. */
 void BKE_mesh_nomain_to_mesh(struct Mesh *mesh_src, struct Mesh *mesh_dst, struct Object *ob,
-                             CustomDataMask mask, bool take_ownership);
+                             const struct CustomData_MeshMasks *mask, bool take_ownership);
 void BKE_mesh_nomain_to_meshkey(struct Mesh *mesh_src, struct Mesh *mesh_dst, struct KeyBlock *kb);
 
 
@@ -210,6 +204,8 @@ void BKE_mesh_mselect_validate(struct Mesh *me);
 int  BKE_mesh_mselect_find(struct Mesh *me, int index, int type);
 int  BKE_mesh_mselect_active_get(struct Mesh *me, int type);
 void BKE_mesh_mselect_active_set(struct Mesh *me, int index, int type);
+
+void BKE_mesh_count_selected_items(const struct Mesh *mesh, int r_count[3]);
 
 void BKE_mesh_apply_vert_coords(struct Mesh *mesh, float (*vertCoords)[3]);
 void BKE_mesh_apply_vert_normals(struct Mesh *mesh, short (*vertNormals)[3]);
@@ -300,6 +296,7 @@ enum {
 	MLNOR_SPACEARR_BMLOOP_PTR = 1,
 };
 
+/* Low-level custom normals functions. */
 void BKE_lnor_spacearr_init(MLoopNorSpaceArray *lnors_spacearr, const int numLoops, const char data_type);
 void BKE_lnor_spacearr_clear(MLoopNorSpaceArray *lnors_spacearr);
 void BKE_lnor_spacearr_free(MLoopNorSpaceArray *lnors_spacearr);
@@ -313,11 +310,7 @@ void BKE_lnor_space_add_loop(
 void BKE_lnor_space_custom_data_to_normal(MLoopNorSpace *lnor_space, const short clnor_data[2], float r_custom_lnor[3]);
 void BKE_lnor_space_custom_normal_to_data(MLoopNorSpace *lnor_space, const float custom_lnor[3], short r_clnor_data[2]);
 
-bool BKE_mesh_has_custom_loop_normals(struct Mesh *me);
-
-void BKE_mesh_calc_normals_split(struct Mesh *mesh);
-void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh, struct MLoopNorSpaceArray *r_lnors_spacearr);
-
+/* Medium-level custom normals functions. */
 void BKE_mesh_normals_loop_split(
         const struct MVert *mverts, const int numVerts, struct MEdge *medges, const int numEdges,
         struct MLoop *mloops, float (*r_loopnors)[3], const int numLoops,
@@ -339,6 +332,16 @@ void BKE_mesh_normals_loop_custom_from_vertices_set(
 void BKE_mesh_normals_loop_to_vertex(
         const int numVerts, const struct MLoop *mloops, const int numLoops,
         const float (*clnors)[3], float (*r_vert_clnors)[3]);
+
+/* High-level custom normals functions. */
+bool BKE_mesh_has_custom_loop_normals(struct Mesh *me);
+
+void BKE_mesh_calc_normals_split(struct Mesh *mesh);
+void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh, struct MLoopNorSpaceArray *r_lnors_spacearr);
+
+void BKE_mesh_set_custom_normals(struct Mesh *mesh, float (*r_custom_loopnors)[3]);
+void BKE_mesh_set_custom_normals_from_vertices(struct Mesh *mesh, float (*r_custom_vertnors)[3]);
+
 
 void BKE_mesh_calc_poly_normal(
         const struct MPoly *mpoly, const struct MLoop *loopstart,
@@ -486,8 +489,10 @@ bool BKE_mesh_validate_arrays(
         bool *r_change);
 
 bool BKE_mesh_validate_all_customdata(
-        struct CustomData *vdata, struct CustomData *edata,
-        struct CustomData *ldata, struct CustomData *pdata,
+        struct CustomData *vdata, const uint totvert,
+        struct CustomData *edata, const uint totedge,
+        struct CustomData *ldata, const uint totloop,
+        struct CustomData *pdata, const uint totpoly,
         const bool check_meshmask,
         const bool do_verbose, const bool do_fixes,
         bool *r_change);
@@ -518,6 +523,9 @@ enum {
 };
 void BKE_mesh_batch_cache_dirty_tag(struct Mesh *me, int mode);
 void BKE_mesh_batch_cache_free(struct Mesh *me);
+
+extern void (*BKE_mesh_batch_cache_dirty_tag_cb)(struct Mesh *me, int mode);
+extern void (*BKE_mesh_batch_cache_free_cb)(struct Mesh *me);
 
 
 /* Inlines */

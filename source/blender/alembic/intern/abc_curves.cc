@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,9 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Kévin Dietrich.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_curves.h"
@@ -193,6 +192,27 @@ void AbcCurveWriter::do_write()
 	m_sample.setSelfBounds(bounds());
 	m_schema.set(m_sample);
 }
+
+
+AbcCurveMeshWriter::AbcCurveMeshWriter(Object *ob,
+                                       AbcTransformWriter *parent,
+                                       uint32_t time_sampling,
+                                       ExportSettings &settings)
+    : AbcGenericMeshWriter(ob, parent, time_sampling, settings)
+{}
+
+Mesh *AbcCurveMeshWriter::getEvaluatedMesh(Scene * /*scene_eval*/, Object *ob_eval, bool &r_needsfree)
+{
+	if (ob_eval->runtime.mesh_eval != NULL) {
+		/* Mesh_eval only exists when generative modifiers are in use. */
+		r_needsfree = false;
+		return ob_eval->runtime.mesh_eval;
+	}
+
+	r_needsfree = true;
+	return BKE_mesh_new_nomain_from_curve(ob_eval);
+}
+
 
 /* ************************************************************************** */
 
@@ -429,10 +449,10 @@ Mesh *AbcCurveReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading curve sample; more detail on the console";
 		printf("Alembic: error reading curve sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_curves_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_curves_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 
@@ -440,18 +460,32 @@ Mesh *AbcCurveReader::read_mesh(Mesh *existing_mesh,
 	const Int32ArraySamplePtr num_vertices = sample.getCurvesNumVertices();
 
 	int vertex_idx = 0;
-	int curve_idx = 0;
+	int curve_idx;
 	Curve *curve = static_cast<Curve *>(m_object->data);
 
 	const int curve_count = BLI_listbase_count(&curve->nurb);
+	bool same_topology = curve_count == num_vertices->size();
 
-	if (curve_count != num_vertices->size()) {
+	if (same_topology) {
+		Nurb *nurbs = static_cast<Nurb *>(curve->nurb.first);
+		for (curve_idx = 0; nurbs; nurbs = nurbs->next, ++curve_idx) {
+			const int num_in_alembic = (*num_vertices)[curve_idx];
+			const int num_in_blender = nurbs->pntsu;
+
+			if (num_in_alembic != num_in_blender) {
+				same_topology = false;
+				break;
+			}
+		}
+	}
+
+	if (!same_topology) {
 		BKE_nurbList_free(&curve->nurb);
 		read_curve_sample(curve, m_curves_schema, sample_sel);
 	}
 	else {
 		Nurb *nurbs = static_cast<Nurb *>(curve->nurb.first);
-		for (; nurbs; nurbs = nurbs->next, ++curve_idx) {
+		for (curve_idx = 0; nurbs; nurbs = nurbs->next, ++curve_idx) {
 			const int totpoint = (*num_vertices)[curve_idx];
 
 			if (nurbs->bp) {

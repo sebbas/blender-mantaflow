@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,21 +12,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_BLENDER_VERSION_H__
 #define __BKE_BLENDER_VERSION_H__
 
-/** \file BKE_blender_version.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 /* these lines are grep'd, watch out for our not-so-awesome regex
  * and keep comment above the defines.
  * Use STRINGIFY() rather than defining with quotes */
 #define BLENDER_VERSION         280
-#define BLENDER_SUBVERSION      27
+#define BLENDER_SUBVERSION      51
 /* Several breakages with 280, e.g. collections vs layers */
 #define BLENDER_MINVERSION      280
 #define BLENDER_MINSUBVERSION   0
@@ -37,7 +33,7 @@
 /* can be left blank, otherwise a,b,c... etc with no quotes */
 #define BLENDER_VERSION_CHAR
 /* alpha/beta/rc/release, docs use this */
-#define BLENDER_VERSION_CYCLE   alpha
+#define BLENDER_VERSION_CYCLE   beta
 
 extern char versionstr[]; /* from blender.c */
 

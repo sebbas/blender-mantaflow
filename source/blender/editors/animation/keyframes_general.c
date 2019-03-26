@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation
  * All rights reserved.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/keyframes_general.c
- *  \ingroup edanimation
+/** \file
+ * \ingroup edanimation
  */
 
 
@@ -47,9 +41,7 @@
 #include "BKE_action.h"
 #include "BKE_fcurve.h"
 #include "BKE_report.h"
-#include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_global.h"
 #include "BKE_deform.h"
 
 #include "RNA_access.h"
@@ -83,8 +75,8 @@ void delete_fcurve_key(FCurve *fcu, int index, bool do_recalc)
 		return;
 
 	/* verify the index:
-	 *	1) cannot be greater than the number of available keyframes
-	 *	2) negative indices are for specifying a value from the end of the array
+	 * 1) cannot be greater than the number of available keyframes
+	 * 2) negative indices are for specifying a value from the end of the array
 	 */
 	if (abs(index) >= fcu->totvert)
 		return;
@@ -374,10 +366,10 @@ void smooth_fcurve(FCurve *fcu)
 		}
 
 		/* calculate the new smoothed F-Curve's with weighted averages:
-		 *	- this is done with two passes to avoid progressive corruption errors
-		 *	- uses 5 points for each operation (which stores in the relevant handles)
-		 *	-   previous: w/a ratio = 3:5:2:1:1
-		 *	-   next: w/a ratio = 1:1:2:5:3
+		 * - this is done with two passes to avoid progressive corruption errors
+		 * - uses 5 points for each operation (which stores in the relevant handles)
+		 * -   previous: w/a ratio = 3:5:2:1:1
+		 * -   next: w/a ratio = 1:1:2:5:3
 		 */
 
 		/* round 1: calculate smoothing deltas and new values */
@@ -467,7 +459,7 @@ void sample_fcurve(FCurve *fcu)
 
 				/* cache values then add keyframes using these values, as adding
 				 * keyframes while sampling will affect the outcome...
-				 *	- only start sampling+adding from index=1, so that we don't overwrite original keyframe
+				 * - only start sampling+adding from index=1, so that we don't overwrite original keyframe
 				 */
 				range = (int)(ceil(end->vec[1][0] - start->vec[1][0]));
 				sfra = (int)(floor(start->vec[1][0]));
@@ -515,7 +507,7 @@ void sample_fcurve(FCurve *fcu)
 /* - The copy/paste buffer currently stores a set of temporary F-Curves containing only the keyframes
  *   that were selected in each of the original F-Curves
  * - All pasted frames are offset by the same amount. This is calculated as the difference in the times of
- *	the current frame and the 'first keyframe' (i.e. the earliest one in all channels).
+ *   the current frame and the 'first keyframe' (i.e. the earliest one in all channels).
  * - The earliest frame is calculated per copy operation.
  */
 
@@ -588,8 +580,8 @@ short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
 		int i;
 
 		/* firstly, check if F-Curve has any selected keyframes
-		 *	- skip if no selected keyframes found (so no need to create unnecessary copy-buffer data)
-		 *	- this check should also eliminate any problems associated with using sample-data
+		 * - skip if no selected keyframes found (so no need to create unnecessary copy-buffer data)
+		 * - this check should also eliminate any problems associated with using sample-data
 		 */
 		if (ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, ANIM_editkeyframes_ok(BEZT_OK_SELECTED), NULL) == 0)
 			continue;
@@ -740,7 +732,7 @@ static tAnimCopybufItem *pastebuf_match_path_property(
 		/* check that paths exist */
 		if (aci->rna_path && fcu->rna_path) {
 			/* find the property of the fcurve and compare against the end of the tAnimCopybufItem
-			 * more involved since it needs to to path lookups.
+			 * more involved since it needs to do path lookups.
 			 * This is not 100% reliable since the user could be editing the curves on a path that wont
 			 * resolve, or a bone could be renamed after copying for eg. but in normal copy & paste
 			 * this should work out ok.
@@ -905,14 +897,16 @@ const EnumPropertyItem rna_enum_keyframe_paste_offset_items[] = {
 	{KEYFRAME_PASTE_OFFSET_CFRA_END, "END", 0, "Frame End", "Paste keys ending at current frame"},
 	{KEYFRAME_PASTE_OFFSET_CFRA_RELATIVE, "RELATIVE", 0, "Frame Relative", "Paste keys relative to the current frame when copying"},
 	{KEYFRAME_PASTE_OFFSET_NONE, "NONE", 0, "No Offset", "Paste keys from original time"},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 const EnumPropertyItem rna_enum_keyframe_paste_merge_items[] = {
 	{KEYFRAME_PASTE_MERGE_MIX, "MIX", 0, "Mix", "Overlay existing with new keys"},
 	{KEYFRAME_PASTE_MERGE_OVER, "OVER_ALL", 0, "Overwrite All", "Replace all keys"},
 	{KEYFRAME_PASTE_MERGE_OVER_RANGE, "OVER_RANGE", 0, "Overwrite Range", "Overwrite keys in pasted range"},
 	{KEYFRAME_PASTE_MERGE_OVER_RANGE_ALL, "OVER_RANGE_ALL", 0, "Overwrite Entire Range", "Overwrite keys in pasted range, using the range of all copied keys"},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 
 /**

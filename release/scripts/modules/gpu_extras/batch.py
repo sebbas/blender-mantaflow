@@ -17,7 +17,7 @@
 # ***** END GPL LICENSE BLOCK *****
 
 __all__ = (
-    "batch_for_shader"
+    "batch_for_shader",
 )
 
 
@@ -34,7 +34,6 @@ def batch_for_shader(shader, type, content, indices=None):
     :return: compatible batch
     :rtype: :class:`gpu.types.Batch`
     """
-    import gpu
     from gpu.types import (
         GPUBatch,
         GPUIndexBuf,

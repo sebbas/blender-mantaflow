@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2012 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/bmesh/bmesh_py_api.c
- *  \ingroup pybmesh
+/** \file
+ * \ingroup pybmesh
  *
  * This file defines the 'bmesh' module.
  */
@@ -101,13 +95,13 @@ static PyObject *bpy_bm_from_edit_mesh(PyObject *UNUSED(self), PyObject *value)
 		return NULL;
 	}
 
-	if (me->edit_btmesh == NULL) {
+	if (me->edit_mesh == NULL) {
 		PyErr_SetString(PyExc_ValueError,
 		                "The mesh must be in editmode");
 		return NULL;
 	}
 
-	bm = me->edit_btmesh->bm;
+	bm = me->edit_mesh->bm;
 
 	return BPy_BMesh_CreatePyObject(bm, BPY_BMFLAG_IS_WRAPPED);
 }
@@ -115,7 +109,7 @@ static PyObject *bpy_bm_from_edit_mesh(PyObject *UNUSED(self), PyObject *value)
 PyDoc_STRVAR(bpy_bm_update_edit_mesh_doc,
 ".. method:: update_edit_mesh(mesh, loop_triangles=True, destructive=True)\n"
 "\n"
-"   Update the mesh after changes to the BMesh in editmode, \n"
+"   Update the mesh after changes to the BMesh in editmode,\n"
 "   optionally recalculating n-gon tessellation.\n"
 "\n"
 "   :arg mesh: The editmode mesh.\n"
@@ -148,7 +142,7 @@ static PyObject *bpy_bm_update_edit_mesh(PyObject *UNUSED(self), PyObject *args,
 		return NULL;
 	}
 
-	if (me->edit_btmesh == NULL) {
+	if (me->edit_mesh == NULL) {
 		PyErr_SetString(PyExc_ValueError,
 		                "The mesh must be in editmode");
 		return NULL;
@@ -157,7 +151,7 @@ static PyObject *bpy_bm_update_edit_mesh(PyObject *UNUSED(self), PyObject *args,
 	{
 		extern void EDBM_update_generic(BMEditMesh *em, const bool do_tessface, const bool is_destructive);
 
-		EDBM_update_generic(me->edit_btmesh, do_loop_triangles, is_destructive);
+		EDBM_update_generic(me->edit_mesh, do_loop_triangles, is_destructive);
 	}
 
 	Py_RETURN_NONE;
@@ -167,7 +161,7 @@ static struct PyMethodDef BPy_BM_methods[] = {
 	{"new",            (PyCFunction)bpy_bm_new,            METH_VARARGS | METH_KEYWORDS,  bpy_bm_new_doc},
 	{"from_edit_mesh", (PyCFunction)bpy_bm_from_edit_mesh, METH_O,       bpy_bm_from_edit_mesh_doc},
 	{"update_edit_mesh", (PyCFunction)bpy_bm_update_edit_mesh, METH_VARARGS | METH_KEYWORDS, bpy_bm_update_edit_mesh_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 PyDoc_STRVAR(BPy_BM_doc,

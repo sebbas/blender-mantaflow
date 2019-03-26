@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,19 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_STROKE_SHADERS_H__
 #define __FREESTYLE_STROKE_SHADERS_H__
 
-/** \file blender/freestyle/intern/stroke/StrokeShader.h
- *  \ingroup freestyle
- *  \brief Class defining StrokeShader
- *  \author Stephane Grabli
- *  \author Emmanuel Turquin
- *  \date 01/07/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class defining StrokeShader
  */
 
 #include <iostream>
@@ -54,15 +47,15 @@ class Stroke;
  *  The basic way to achieve this operation consists in iterating over the StrokeVertices of the Stroke
  *  and to modify each one's StrokeAttribute.
  *  Here is a python code example of such an iteration:
- *  \code
+ * \code
  *  it = ioStroke.strokeVerticesBegin()
  *  while not it.isEnd():
  *      att = it.getObject().attribute()
  *      ## perform here any attribute modification
  *      it.increment()
- *  \endcode
+ * \endcode
  *  Here is a C++ code example of such an iteration:
- *  \code
+ * \code
  *  for (StrokeInternal::StrokeVertexIterator v = ioStroke.strokeVerticesBegin(), vend = ioStroke.strokeVerticesEnd();
  *      v != vend;
  *      ++v)
@@ -70,7 +63,7 @@ class Stroke;
  *  	StrokeAttribute& att = v->attribute();
  *  	// perform any attribute modification here...
  *  }
- *  \endcode
+ * \endcode
  */
 class StrokeShader
 {
@@ -93,7 +86,7 @@ public:
 	}
 
 	/*! The shading method. This method must be overloaded by inherited classes.
-	 *  \param ioStroke
+	 *  \param ioStroke:
 	 *    The stroke we wish to shade. this Stroke is modified by the Shader (which typically
 	 *    modifies the Stroke's attribute's values such as Color, Thickness, Geometry...)
 	 */

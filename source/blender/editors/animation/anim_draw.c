@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/anim_draw.c
- *  \ingroup edanimation
+/** \file
+ * \ingroup edanimation
  */
 
 #include "BLI_sys_types.h"
@@ -91,7 +84,7 @@ void ANIM_draw_cfra_number(const bContext *C, View2D *v2d, short flag)
 	GPU_matrix_scale_2f(1.0f / xscale, 1.0f);
 
 	/* get timecode string
-	 *	- padding on str-buf passed so that it doesn't sit on the frame indicator
+	 * - padding on str-buf passed so that it doesn't sit on the frame indicator
 	 */
 	if (show_time) {
 		BLI_timecode_string_from_time(&numstr[2], sizeof(numstr) - 2, 0, FRA2TIME(cfra), FPS, U.timecode_style);
@@ -175,7 +168,8 @@ void ANIM_draw_previewrange(const bContext *C, View2D *v2d, int end_frame_width)
 
 		immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 		immUniformThemeColorShadeAlpha(TH_ANIM_PREVIEW_RANGE, -25, -30);
-		//immUniformColor4f(0.8f, 0.44f, 0.1f, 0.2f); /* XXX: Fix this hardcoded color (anim_active) */
+		/* XXX: Fix this hardcoded color (anim_active) */
+		//immUniformColor4f(0.8f, 0.44f, 0.1f, 0.2f);
 
 		/* only draw two separate 'curtains' if there's no overlap between them */
 		if (PSFRA < PEFRA + end_frame_width) {
@@ -285,7 +279,8 @@ static short bezt_nlamapping_restore(KeyframeEditData *ked, BezTriple *bezt)
 	return 0;
 }
 
-/* helper function for ANIM_nla_mapping_apply_fcurve() -> "apply", i.e. mapping points to NLA-mapped global time */
+/* helper function for ANIM_nla_mapping_apply_fcurve() -> "apply",
+ * i.e. mapping points to NLA-mapped global time */
 static short bezt_nlamapping_apply(KeyframeEditData *ked, BezTriple *bezt)
 {
 	/* AnimData block providing scaling is stored in 'data', only_keys option is stored in i1 */
@@ -305,8 +300,8 @@ static short bezt_nlamapping_apply(KeyframeEditData *ked, BezTriple *bezt)
 
 
 /* Apply/Unapply NLA mapping to all keyframes in the nominated F-Curve
- *	- restore = whether to map points back to non-mapped time
- *  - only_keys = whether to only adjust the location of the center point of beztriples
+ * - restore = whether to map points back to non-mapped time
+ * - only_keys = whether to only adjust the location of the center point of beztriples
  */
 void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, bool only_keys)
 {
@@ -314,8 +309,8 @@ void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, boo
 	KeyframeEditFunc map_cb;
 
 	/* init edit data
-	 *	- AnimData is stored in 'data'
-	 *	- only_keys is stored in 'i1'
+	 * - AnimData is stored in 'data'
+	 * - only_keys is stored in 'i1'
 	 */
 	ked.data = (void *)adt;
 	ked.i1 = (int)only_keys;
@@ -336,8 +331,8 @@ void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, boo
 /* Get flags used for normalization in ANIM_unit_mapping_get_factor. */
 short ANIM_get_normalization_flags(bAnimContext *ac)
 {
-	if (ac->sl->spacetype == SPACE_IPO) {
-		SpaceIpo *sipo = (SpaceIpo *) ac->sl;
+	if (ac->sl->spacetype == SPACE_GRAPH) {
+		SpaceGraph *sipo = (SpaceGraph *) ac->sl;
 		bool use_normalization = (sipo->flag & SIPO_NORMALIZE) != 0;
 		bool freeze_normalization = (sipo->flag & SIPO_NORMALIZE_FREEZE) != 0;
 		return use_normalization
@@ -551,11 +546,11 @@ static bool find_prev_next_keyframes(struct bContext *C, int *nextfra, int *prev
 	}
 
 	/* populate tree with keyframe nodes */
-	scene_to_keylist(&ads, scene, &keys);
+	scene_to_keylist(&ads, scene, &keys, 0);
 	gpencil_to_keylist(&ads, scene->gpd, &keys, false);
 
 	if (ob) {
-		ob_to_keylist(&ads, ob, &keys);
+		ob_to_keylist(&ads, ob, &keys, 0);
 		gpencil_to_keylist(&ads, ob->data, &keys, false);
 	}
 

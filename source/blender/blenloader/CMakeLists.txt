@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -36,6 +31,7 @@ set(INC
 	../makesrna
 	../nodes
 	../render/extern/include
+	../windowmanager
 	../../../intern/guardedalloc
 
 	# for writefile.c: dna_type_offsets.h
@@ -58,11 +54,13 @@ set(SRC
 	intern/versioning_270.c
 	intern/versioning_280.c
 	intern/versioning_defaults.c
+	intern/versioning_dna.c
 	intern/versioning_legacy.c
 	intern/versioning_userdef.c
 	intern/writefile.c
 
 	BLO_blend_defs.h
+	BLO_blend_validate.h
 	BLO_readfile.h
 	BLO_undofile.h
 	BLO_writefile.h

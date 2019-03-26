@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,14 @@
  *
  * The Original Code is Copyright (C) 2011 by Bastien Montagne.
  * All rights reserved.
- *
- * Contributor(s): None yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_weightvgedit.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include "BLI_utildefines.h"
+
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_rand.h"
@@ -41,7 +35,6 @@
 
 #include "BKE_colortools.h"       /* CurveMapping. */
 #include "BKE_deform.h"
-#include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_modifier.h"
 #include "BKE_texture.h"          /* Texture masking. */
@@ -91,21 +84,19 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 	twmd->cmap_curve = curvemapping_copy(wmd->cmap_curve);
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	WeightVGEditModifierData *wmd = (WeightVGEditModifierData *) md;
-	CustomDataMask dataMask = 0;
 
 	/* We need vertex groups! */
-	dataMask |= CD_MASK_MDEFORMVERT;
+	r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 
 	/* Ask for UV coordinates if we need them. */
-	if (wmd->mask_tex_mapping == MOD_DISP_MAP_UV)
-		dataMask |= CD_MASK_MTFACE;
+	if (wmd->mask_tex_mapping == MOD_DISP_MAP_UV) {
+		r_cddata_masks->fmask |= CD_MASK_MTFACE;
+	}
 
 	/* No need to ask for CD_PREVIEW_MLOOPCOL... */
-
-	return dataMask;
 }
 
 static bool dependsOnTime(ModifierData *md)
@@ -142,9 +133,13 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
 	if (wmd->mask_tex_map_obj != NULL && wmd->mask_tex_mapping == MOD_DISP_MAP_OBJECT) {
 		DEG_add_object_relation(ctx->node, wmd->mask_tex_map_obj, DEG_OB_COMP_TRANSFORM, "WeightVGEdit Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "WeightVGEdit Modifier");
 	}
-	if (wmd->mask_tex_mapping == MOD_DISP_MAP_GLOBAL) {
-		DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "WeightVGEdit Modifier");
+	else if (wmd->mask_tex_mapping == MOD_DISP_MAP_GLOBAL) {
+		DEG_add_modifier_to_transform_relation(ctx->node, "WeightVGEdit Modifier");
+	}
+	if (wmd->mask_texture != NULL) {
+		DEG_add_generic_id_relation(ctx->node, &wmd->mask_texture->id, "WeightVGEdit Modifier");
 	}
 }
 
@@ -306,4 +301,5 @@ ModifierTypeInfo modifierType_WeightVGEdit = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    foreachTexLink,
+	/* freeRuntimeData */   NULL,
 };

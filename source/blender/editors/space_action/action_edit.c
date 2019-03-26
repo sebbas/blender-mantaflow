@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_action/action_edit.c
- *  \ingroup spaction
+/** \file
+ * \ingroup spaction
  */
 
 
@@ -54,14 +46,13 @@
 #include "RNA_enum_types.h"
 
 #include "BKE_action.h"
+#include "BKE_animsys.h"
+#include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil.h"
 #include "BKE_global.h"
 #include "BKE_key.h"
-#include "BKE_library.h"
-#include "BKE_main.h"
 #include "BKE_nla.h"
-#include "BKE_context.h"
 #include "BKE_report.h"
 
 #include "UI_view2d.h"
@@ -88,10 +79,10 @@
 /* *************************** Localise Markers ***************************** */
 
 /* ensure that there is:
- *  1) an active action editor
- *  2) that the mode will have an active action available
- *  3) that the set of markers being shown are the scene markers, not the list we're merging
- *	4) that there are some selected markers
+ * 1) an active action editor
+ * 2) that the mode will have an active action available
+ * 3) that the set of markers being shown are the scene markers, not the list we're merging
+ * 4) that there are some selected markers
  */
 static bool act_markers_make_local_poll(bContext *C)
 {
@@ -325,7 +316,8 @@ static bool actkeys_channels_get_selected_extents(bAnimContext *ac, float *min, 
 	bAnimListElem *ale;
 	int filter;
 
-	short found = 0; /* NOTE: not bool, since we want prioritise individual channels over expanders */
+	/* NOTE: not bool, since we want prioritise individual channels over expanders */
+	short found = 0;
 	float y;
 
 	/* get all items - we need to do it this way */
@@ -545,8 +537,9 @@ static short paste_action_keys(bAnimContext *ac,
 	 */
 	filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
 
-	if (ANIM_animdata_filter(ac, &anim_data, filter | ANIMFILTER_SEL, ac->data, ac->datatype) == 0)
+	if (ANIM_animdata_filter(ac, &anim_data, filter | ANIMFILTER_SEL, ac->data, ac->datatype) == 0) {
 		ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+	}
 
 	/* paste keyframes */
 	ok = paste_animedit_keys(ac, &anim_data, offset_mode, merge_mode, flip);
@@ -674,13 +667,14 @@ static const EnumPropertyItem prop_actkeys_insertkey_types[] = {
 	{1, "ALL", 0, "All Channels", ""},
 	{2, "SEL", 0, "Only Selected Channels", ""},
 	{3, "GROUP", 0, "In Active Group", ""},  /* XXX not in all cases */
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* this function is responsible for inserting new keyframes */
 static void insert_action_keys(bAnimContext *ac, short mode)
 {
 	ListBase anim_data = {NULL, NULL};
+	ListBase nla_cache = {NULL, NULL};
 	bAnimListElem *ale;
 	int filter;
 
@@ -692,8 +686,12 @@ static void insert_action_keys(bAnimContext *ac, short mode)
 
 	/* filter data */
 	filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
-	if (mode == 2) filter |= ANIMFILTER_SEL;
-	else if (mode == 3) filter |= ANIMFILTER_ACTGROUPED;
+	if (mode == 2) {
+		filter |= ANIMFILTER_SEL;
+	}
+	else if (mode == 3) {
+		filter |= ANIMFILTER_ACTGROUPED;
+	}
 
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
@@ -702,15 +700,8 @@ static void insert_action_keys(bAnimContext *ac, short mode)
 
 	/* insert keyframes */
 	for (ale = anim_data.first; ale; ale = ale->next) {
-		AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 		FCurve *fcu = (FCurve *)ale->key_data;
-		float cfra;
-
-		/* adjust current frame for NLA-scaling */
-		if (adt)
-			cfra = BKE_nla_tweakedit_remap(adt, (float)CFRA, NLATIME_CONVERT_UNMAP);
-		else
-			cfra = (float)CFRA;
+		float cfra = (float)CFRA;
 
 		/* read value from property the F-Curve represents, or from the curve only?
 		 * - ale->id != NULL:    Typically, this means that we have enough info to try resolving the path
@@ -720,15 +711,23 @@ static void insert_action_keys(bAnimContext *ac, short mode)
 		 */
 		if (ale->id && !ale->owner) {
 			insert_keyframe(ac->bmain, depsgraph, reports, ale->id, NULL, ((fcu->grp) ? (fcu->grp->name) : (NULL)),
-			                fcu->rna_path, fcu->array_index, cfra, ts->keyframe_type, flag);
+			                fcu->rna_path, fcu->array_index, cfra, ts->keyframe_type, &nla_cache, flag);
 		}
 		else {
+			AnimData *adt = ANIM_nla_mapping_get(ac, ale);
+
+			/* adjust current frame for NLA-scaling */
+			if (adt)
+				cfra = BKE_nla_tweakedit_remap(adt, (float)CFRA, NLATIME_CONVERT_UNMAP);
+
 			const float curval = evaluate_fcurve(fcu, cfra);
 			insert_vert_fcurve(fcu, cfra, curval, ts->keyframe_type, 0);
 		}
 
 		ale->update |= ANIM_UPDATE_DEFAULT;
 	}
+
+	BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
 	ANIM_animdata_update(ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
@@ -830,10 +829,12 @@ static void duplicate_action_keys(bAnimContext *ac)
 	int filter;
 
 	/* filter data */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
+	}
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
 	/* loop through filtered data and delete selected keys */
@@ -898,10 +899,12 @@ static bool delete_action_keys(bAnimContext *ac)
 	bool changed_final = false;
 
 	/* filter data */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
+	}
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
 	/* loop through filtered data and delete selected keys */
@@ -1128,7 +1131,7 @@ static const EnumPropertyItem prop_actkeys_expo_types[] = {
 
 	{MAKE_CYCLIC_EXPO, "MAKE_CYCLIC", 0, "Make Cyclic (F-Modifier)", "Add Cycles F-Modifier if one doesn't exist already"},
 	{CLEAR_CYCLIC_EXPO, "CLEAR_CYCLIC", 0, "Clear Cyclic (F-Modifier)", "Remove Cycles F-Modifier if not needed anymore"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* this function is responsible for setting extrapolation mode for keyframes */
@@ -1571,7 +1574,7 @@ static const EnumPropertyItem prop_actkeys_snap_types[] = {
 	 "Snap selected keyframes to the nearest second"},
 	{ACTKEYS_SNAP_NEAREST_MARKER, "NEAREST_MARKER", 0, "Nearest Marker",
 	 "Snap selected keyframes to the nearest marker"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* this function is responsible for snapping keyframes to frame-times */
@@ -1585,10 +1588,12 @@ static void snap_action_keys(bAnimContext *ac, short mode)
 	KeyframeEditFunc edit_cb;
 
 	/* filter data */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
+	}
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
 	/* get beztriple editing callbacks */
@@ -1678,7 +1683,7 @@ static const EnumPropertyItem prop_actkeys_mirror_types[] = {
 	 "Flip values of selected keyframes (i.e. negative values become positive, and vice versa)"},
 	{ACTKEYS_MIRROR_MARKER, "MARKER", 0, "By Times over First Selected Marker",
 	 "Flip times of selected keyframes using the first selected marker as the reference point"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* this function is responsible for mirroring keyframes */
@@ -1708,10 +1713,12 @@ static void mirror_action_keys(bAnimContext *ac, short mode)
 	}
 
 	/* filter data */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
+	}
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
 	/* mirror keyframes */

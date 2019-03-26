@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,29 +15,24 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ED_clip.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_CLIP_H__
 #define __ED_CLIP_H__
 
 struct ARegion;
-struct bContext;
-struct bScreen;
 struct ImBuf;
 struct Main;
 struct Mask;
 struct MovieClip;
-struct SpaceClip;
 struct Scene;
+struct SpaceClip;
+struct bContext;
+struct bScreen;
 
 /*  ** clip_editor.c ** */
 
@@ -67,6 +60,8 @@ bool ED_space_clip_color_sample(struct SpaceClip *sc, struct ARegion *ar, int mv
 
 void ED_clip_update_frame(const struct Main *mainp, int cfra);
 bool ED_clip_view_selection(const struct bContext *C, struct ARegion *ar, bool fit);
+
+void ED_clip_select_all(struct SpaceClip *sc, int action, bool *r_has_selection);
 
 void ED_clip_point_undistorted_pos(struct SpaceClip *sc, const float co[2], float r_co[2]);
 void ED_clip_point_stable_pos(struct SpaceClip *sc, struct ARegion *ar, float x, float y, float *xr, float *yr);

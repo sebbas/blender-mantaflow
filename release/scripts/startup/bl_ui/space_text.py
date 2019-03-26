@@ -91,10 +91,7 @@ class TEXT_MT_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context)
-
-    @staticmethod
-    def draw_menus(layout, context):
+        layout = self.layout
         st = context.space_data
         text = st.text
 
@@ -111,6 +108,7 @@ class TEXT_MT_editor_menus(Menu):
 class TEXT_PT_properties(Panel):
     bl_space_type = 'TEXT_EDITOR'
     bl_region_type = 'UI'
+    bl_category = "Text"
     bl_label = "Properties"
 
     def draw(self, context):
@@ -142,6 +140,7 @@ class TEXT_PT_properties(Panel):
 class TEXT_PT_find(Panel):
     bl_space_type = 'TEXT_EDITOR'
     bl_region_type = 'UI'
+    bl_category = "Text"
     bl_label = "Find"
 
     def draw(self, context):
@@ -201,20 +200,21 @@ class TEXT_MT_text(Menu):
         st = context.space_data
         text = st.text
 
-        layout.operator("text.new")
-        layout.operator("text.open")
+        layout.operator("text.new", text="New")
+        layout.operator("text.open", text="Open...", icon='FILE_FOLDER')
 
         if text:
+            layout.separator()
             layout.operator("text.reload")
 
-            layout.column()
-            layout.operator("text.save")
-            layout.operator("text.save_as")
+            layout.separator()
+            layout.operator("text.save", icon='FILE_TICK')
+            layout.operator("text.save_as", text="Save As...")
 
             if text.filepath:
                 layout.operator("text.make_internal")
 
-            layout.column()
+            layout.separator()
             layout.operator("text.run_script")
 
 
@@ -308,8 +308,8 @@ class TEXT_MT_edit(Menu):
         layout.separator()
 
         layout.operator("text.cut")
-        layout.operator("text.copy")
-        layout.operator("text.paste")
+        layout.operator("text.copy", icon='COPYDOWN')
+        layout.operator("text.paste", icon='PASTEDOWN')
         layout.operator("text.duplicate_line")
 
         layout.separator()

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_text/text_ops.c
- *  \ingroup sptext
+/** \file
+ * \ingroup sptext
  */
 
 
@@ -44,7 +36,6 @@
 #include "PIL_time.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -93,7 +84,7 @@ static bool text_edit_poll(bContext *C)
 		return 0;
 
 	if (ID_IS_LINKED(text)) {
-		// BKE_report(op->reports, RPT_ERROR, "Cannot edit external libdata");
+		// BKE_report(op->reports, RPT_ERROR, "Cannot edit external library data");
 		return 0;
 	}
 
@@ -109,7 +100,7 @@ bool text_space_edit_poll(bContext *C)
 		return 0;
 
 	if (ID_IS_LINKED(text)) {
-		// BKE_report(op->reports, RPT_ERROR, "Cannot edit external libdata");
+		// BKE_report(op->reports, RPT_ERROR, "Cannot edit external library data");
 		return 0;
 	}
 
@@ -129,7 +120,7 @@ static bool text_region_edit_poll(bContext *C)
 		return 0;
 
 	if (ID_IS_LINKED(text)) {
-		// BKE_report(op->reports, RPT_ERROR, "Cannot edit external libdata");
+		// BKE_report(op->reports, RPT_ERROR, "Cannot edit external library data");
 		return 0;
 	}
 
@@ -195,7 +186,7 @@ static int text_new_exec(bContext *C, wmOperator *UNUSED(op))
 void TEXT_OT_new(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Create Text Block";
+	ot->name = "New Text";
 	ot->idname = "TEXT_OT_new";
 	ot->description = "Create a new text data-block";
 
@@ -289,7 +280,7 @@ static int text_open_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e
 void TEXT_OT_open(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Open Text Block";
+	ot->name = "Open Text";
 	ot->idname = "TEXT_OT_open";
 	ot->description = "Open a new text data-block";
 
@@ -387,7 +378,7 @@ static int text_unlink_exec(bContext *C, wmOperator *UNUSED(op))
 		}
 	}
 
-	BKE_libblock_delete(bmain, text);
+	BKE_id_delete(bmain, text);
 
 	text_drawcache_tag_update(st, 1);
 	WM_event_add_notifier(C, NC_TEXT | NA_REMOVED, NULL);
@@ -623,7 +614,7 @@ static int text_run_script(bContext *C, ReportList *reports)
 			}
 		}
 
-		BKE_report(reports, RPT_ERROR, "Python script fail, look in the console for now...");
+		BKE_report(reports, RPT_ERROR, "Python script failed, check the message in the system console");
 
 		return OPERATOR_FINISHED;
 	}
@@ -674,7 +665,7 @@ static int text_refresh_pyconstraints_exec(bContext *UNUSED(C), wmOperator *UNUS
 	short update;
 
 	/* check all pyconstraints */
-	for (ob = CTX_data_main(C)->object.first; ob; ob = ob->id.next) {
+	for (ob = CTX_data_main(C)->objects.first; ob; ob = ob->id.next) {
 		update = 0;
 		if (ob->type == OB_ARMATURE && ob->pose) {
 			bPoseChannel *pchan;
@@ -698,7 +689,7 @@ static int text_refresh_pyconstraints_exec(bContext *UNUSED(C), wmOperator *UNUS
 		}
 
 		if (update) {
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		}
 	}
 #endif
@@ -1092,7 +1083,8 @@ enum { TO_SPACES, TO_TABS };
 static const EnumPropertyItem whitespace_type_items[] = {
 	{TO_SPACES, "SPACES", 0, "To Spaces", NULL},
 	{TO_TABS, "TABS", 0, "To Tabs", NULL},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 static int text_convert_whitespace_exec(bContext *C, wmOperator *op)
 {
@@ -1188,7 +1180,8 @@ static int text_convert_whitespace_exec(bContext *C, wmOperator *op)
 				if (tmp->format)
 					MEM_freeN(tmp->format);
 
-				/* Put new_line in the tmp->line spot still need to try and set the curc correctly. */
+				/* Put new_line in the tmp->line spot
+				 * still need to try and set the curc correctly. */
 				tmp->line = BLI_strdup(tmp_line);
 				tmp->len = strlen(tmp_line);
 				tmp->format = NULL;
@@ -1331,7 +1324,7 @@ void TEXT_OT_move_lines(wmOperatorType *ot)
 	static const EnumPropertyItem direction_items[] = {
 		{TXT_MOVE_LINE_UP, "UP", 0, "Up", ""},
 		{TXT_MOVE_LINE_DOWN, "DOWN", 0, "Down", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -1365,7 +1358,8 @@ static const EnumPropertyItem move_type_items[] = {
 	{NEXT_LINE, "NEXT_LINE", 0, "Next Line", ""},
 	{PREV_PAGE, "PREVIOUS_PAGE", 0, "Previous Page", ""},
 	{NEXT_PAGE, "NEXT_PAGE", 0, "Next Page", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 /* get cursor position in line by relative wrapped line and column positions */
 static int text_get_cursor_rel(SpaceText *st, ARegion *ar, TextLine *linein, int rell, int relc)
@@ -1949,7 +1943,7 @@ static int text_jump_exec(bContext *C, wmOperator *op)
 
 static int text_jump_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-	return WM_operator_props_dialog_popup(C, op, 10 * UI_UNIT_X, 5 * UI_UNIT_Y);
+	return WM_operator_props_dialog_popup(C, op, 200, 100);
 
 }
 
@@ -1979,7 +1973,8 @@ static const EnumPropertyItem delete_type_items[] = {
 	{DEL_PREV_CHAR, "PREVIOUS_CHARACTER", 0, "Previous Character", ""},
 	{DEL_NEXT_WORD, "NEXT_WORD", 0, "Next Word", ""},
 	{DEL_PREV_WORD, "PREVIOUS_WORD", 0, "Previous Word", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 static int text_delete_exec(bContext *C, wmOperator *op)
 {
@@ -2129,7 +2124,7 @@ static void txt_screen_skip(SpaceText *st, ARegion *ar, int lines)
 enum {
 	SCROLLHANDLE_BAR,
 	SCROLLHANDLE_MIN_OUTSIDE,
-	SCROLLHANDLE_MAX_OUTSIDE
+	SCROLLHANDLE_MAX_OUTSIDE,
 };
 
 typedef struct TextScroll {
@@ -2144,7 +2139,8 @@ typedef struct TextScroll {
 
 static bool text_scroll_poll(bContext *C)
 {
-	/* it should be possible to still scroll linked texts to read them, even if they can't be edited... */
+	/* it should be possible to still scroll linked texts to read them,
+	 * even if they can't be edited... */
 	return CTX_data_edit_text(C) != NULL;
 }
 
@@ -2307,7 +2303,6 @@ void TEXT_OT_scroll(wmOperatorType *ot)
 	 * scroll_bar. Both do basically the same thing (aside
 	 * from keymaps).*/
 	ot->idname = "TEXT_OT_scroll";
-	ot->description = "";
 
 	/* api callbacks */
 	ot->exec = text_scroll_exec;
@@ -2399,7 +2394,6 @@ void TEXT_OT_scroll_bar(wmOperatorType *ot)
 	 * scroll. Both do basically the same thing (aside
 	 * from keymaps).*/
 	ot->idname = "TEXT_OT_scroll_bar";
-	ot->description = "";
 
 	/* api callbacks */
 	ot->invoke = text_scroll_bar_invoke;
@@ -2472,7 +2466,8 @@ static TextLine *get_line_pos_wrapped(SpaceText *st, ARegion *ar, int *y)
 		lines = text_get_visible_lines(st, ar, linep->line);
 
 		if (i + lines > *y) {
-			/* We found the line matching given vertical 'coordinate', now set y relative to this line's start. */
+			/* We found the line matching given vertical 'coordinate',
+			 * now set y relative to this line's start. */
 			*y -= i;
 			break;
 		}
@@ -2532,7 +2527,8 @@ static void text_cursor_set_to_pos_wrapped(SpaceText *st, ARegion *ar, int x, in
 					end = MIN2(end, i);
 
 					if (found) {
-						/* exact cursor position was found, check if it's still on needed line (hasn't been wrapped) */
+						/* exact cursor position was found, check if it's still on needed line
+						 * (hasn't been wrapped) */
 						if (charp > endj && !chop && ch != '\0')
 							charp = endj;
 						break;
@@ -3045,7 +3041,7 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
 		if (text->id.next)
 			text = st->text = text->id.next;
 		else
-			text = st->text = bmain->text.first;
+			text = st->text = bmain->texts.first;
 		txt_move_toline(text, 0, 0);
 		text_update_cursor_moved(C);
 		WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
@@ -3164,7 +3160,7 @@ static const EnumPropertyItem resolution_items[] = {
 	{RESOLVE_RELOAD, "RELOAD", 0, "Reload", ""},
 	{RESOLVE_SAVE, "SAVE", 0, "Save", ""},
 	{RESOLVE_MAKE_INTERNAL, "MAKE_INTERNAL", 0, "Make Internal", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int text_resolve_conflict_exec(bContext *C, wmOperator *op)

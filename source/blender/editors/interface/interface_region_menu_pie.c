@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_region_menu_pie.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  *
  * Pie Menu Region
  */
@@ -81,8 +75,9 @@ static uiBlock *ui_block_func_PIE(bContext *UNUSED(C), uiPopupBlockHandle *handl
 
 	/* in some cases we create the block before the region,
 	 * so we set it delayed here if necessary */
-	if (BLI_findindex(&handle->region->uiblocks, block) == -1)
+	if (BLI_findindex(&handle->region->uiblocks, block) == -1) {
 		UI_block_region_set(block, handle->region);
+	}
 
 	UI_block_layout_resolve(block, &width, &height);
 
@@ -91,8 +86,8 @@ static uiBlock *ui_block_func_PIE(bContext *UNUSED(C), uiPopupBlockHandle *handl
 
 	block->minbounds = minwidth;
 	block->bounds = 1;
-	block->mx = 0;
-	block->my = 0;
+	block->bounds_offset[0] = 0;
+	block->bounds_offset[1] = 0;
 	block->bounds_type = UI_BLOCK_BOUNDS_PIE_CENTER;
 
 	block->pie_data.pie_center_spawned[0] = pie->mx;
@@ -105,7 +100,7 @@ static float ui_pie_menu_title_width(const char *name, int icon)
 {
 	const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
 	return (UI_fontstyle_string_width(fstyle, name) +
-	         (UI_UNIT_X * (1.50f + (icon ? 0.25f : 0.0f))));
+	        (UI_UNIT_X * (1.50f + (icon ? 0.25f : 0.0f))));
 }
 
 uiPieMenu *UI_pie_menu_begin(struct bContext *C, const char *title, int icon, const wmEvent *event)
@@ -126,7 +121,8 @@ uiPieMenu *UI_pie_menu_begin(struct bContext *C, const char *title, int icon, co
 	pie->block_radial->puphash = ui_popup_menu_hash(title);
 	pie->block_radial->flag |= UI_BLOCK_RADIAL;
 
-	/* if pie is spawned by a left click, release or click event, it is always assumed to be click style */
+	/* if pie is spawned by a left click, release or click event,
+	 * it is always assumed to be click style */
 	if (event->type == LEFTMOUSE || ELEM(event->val, KM_RELEASE, KM_CLICK)) {
 		pie->block_radial->pie_data.flags |= UI_PIE_CLICK_STYLE;
 		pie->block_radial->pie_data.event = EVENT_NONE;
@@ -139,8 +135,9 @@ uiPieMenu *UI_pie_menu_begin(struct bContext *C, const char *title, int icon, co
 				event_type = EVENT_NONE;
 				pie->block_radial->pie_data.flags |= UI_PIE_CLICK_STYLE;
 			}
-			else
+			else {
 				event_type = win->last_pie_event;
+			}
 		}
 		else {
 			event_type = event->type;
@@ -152,15 +149,9 @@ uiPieMenu *UI_pie_menu_begin(struct bContext *C, const char *title, int icon, co
 
 	pie->layout = UI_block_layout(pie->block_radial, UI_LAYOUT_VERTICAL, UI_LAYOUT_PIEMENU, 0, 0, 200, 0, 0, style);
 
-	/* Open from where we started dragging. */
-	if (event->val == KM_CLICK_DRAG) {
-		pie->mx = event->prevclickx;
-		pie->my = event->prevclicky;
-	}
-	else {
-		pie->mx = event->x;
-		pie->my = event->y;
-	}
+	/* Note event->x/y is where we started dragging in case of KM_CLICK_DRAG. */
+	pie->mx = event->x;
+	pie->my = event->y;
 
 	/* create title button */
 	if (title[0]) {

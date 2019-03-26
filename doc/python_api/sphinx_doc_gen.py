@@ -14,8 +14,6 @@
 #  along with this program; if not, write to the Free Software Foundation,
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-# Contributor(s): Campbell Barton
-#
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
@@ -224,6 +222,7 @@ else:
         "bmesh.geometry",
         "bpy.app",
         "bpy.app.handlers",
+        "bpy.app.timers",
         "bpy.app.translations",
         "bpy.context",
         "bpy.data",
@@ -238,6 +237,7 @@ else:
         "gpu.types",
         "gpu.matrix",
         "gpu.select",
+        "gpu_extras",
         "idprop.types",
         "mathutils",
         "mathutils.bvhtree",
@@ -340,11 +340,11 @@ RST_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "rst"))
 # stored in ./rst/info_*
 INFO_DOCS = (
     ("info_quickstart.rst",
-     "Blender/Python Quickstart: new to Blender/scripting and want to get your feet wet?"),
+     "Quickstart: new to Blender or scripting and want to get your feet wet?"),
     ("info_overview.rst",
-     "Blender/Python API Overview: a more complete explanation of Python integration"),
+     "API Overview: a more complete explanation of Python integration"),
     ("info_api_reference.rst",
-     "Blender/Python API Reference Usage: examples of how to use the API reference docs"),
+     "API Reference Usage: examples of how to use the API reference docs"),
     ("info_best_practice.rst",
      "Best Practice: Conventions to follow for writing good scripts"),
     ("info_tips_and_tricks.rst",
@@ -357,7 +357,7 @@ INFO_DOCS = (
 # only support for properties atm.
 RNA_BLACKLIST = {
     # XXX messes up PDF!, really a bug but for now just workaround.
-    "UserPreferencesSystem": {"language", }
+    "PreferencesSystem": {"language", }
 }
 
 MODULE_GROUPING = {
@@ -982,7 +982,6 @@ context_type_map = {
     # context_member: (RNA type, is_collection)
     "active_base": ("ObjectBase", False),
     "active_bone": ("EditBone", False),
-    "active_gpencil_brush": ("GPencilSculptBrush", False),
     "active_gpencil_frame": ("GreasePencilLayer", True),
     "active_gpencil_layer": ("GPencilLayer", True),
     "active_node": ("Node", False),
@@ -1010,11 +1009,12 @@ context_type_map = {
     "editable_gpencil_strokes": ("GPencilStroke", True),
     "editable_objects": ("Object", True),
     "fluid": ("FluidSimulationModifier", False),
-    "gpencil_data": ("GreasePencel", False),
+    "gpencil": ("GreasePencil", False),
+    "gpencil_data": ("GreasePencil", False),
     "gpencil_data_owner": ("ID", False),
     "image_paint_object": ("Object", False),
-    "light": ("Light", False),
     "lattice": ("Lattice", False),
+    "light": ("Light", False),
     "lightprobe": ("LightProbe", False),
     "line_style": ("FreestyleLineStyle", False),
     "material": ("Material", False),
@@ -1022,11 +1022,14 @@ context_type_map = {
     "mesh": ("Mesh", False),
     "meta_ball": ("MetaBall", False),
     "object": ("Object", False),
+    "objects_in_mode": ("Object", True),
+    "objects_in_mode_unique_data": ("Object", True),
     "particle_edit_object": ("Object", False),
     "particle_settings": ("ParticleSettings", False),
     "particle_system": ("ParticleSystem", False),
     "particle_system_editable": ("ParticleSystem", False),
     "pose_bone": ("PoseBone", False),
+    "pose_object": ("Object", False),
     "scene": ("Scene", False),
     "sculpt_object": ("Object", False),
     "selectable_bases": ("ObjectBase", True),
@@ -1035,7 +1038,7 @@ context_type_map = {
     "selected_bones": ("EditBone", True),
     "selected_editable_bases": ("ObjectBase", True),
     "selected_editable_bones": ("EditBone", True),
-    "selected_editable_fcurves": ("FCurce", True),
+    "selected_editable_fcurves": ("FCurve", True),
     "selected_editable_objects": ("Object", True),
     "selected_editable_sequences": ("Sequence", True),
     "selected_nodes": ("Node", True),
@@ -1053,6 +1056,7 @@ context_type_map = {
     "texture_user_property": ("Property", False),
     "uv_sculpt_object": ("Object", False),
     "vertex_paint_object": ("Object", False),
+    "view_layer": ("ViewLayer", False),
     "visible_bases": ("ObjectBase", True),
     "visible_bones": ("EditBone", True),
     "visible_gpencil_layers": ("GPencilLayer", True),
@@ -1060,7 +1064,6 @@ context_type_map = {
     "visible_pose_bones": ("PoseBone", True),
     "weight_paint_object": ("Object", False),
     "world": ("World", False),
-    "view_layer": ("ViewLayer", False),
 }
 
 
@@ -1620,6 +1623,7 @@ def write_sphinx_conf_py(basepath):
     fw("    'include__bmesh.rst',\n")
     fw("]\n\n")
 
+    fw("html_title = 'Blender %s Python API'\n" % BLENDER_VERSION_DOTS)
     fw("html_theme = 'sphinx_rtd_theme'\n")
     # not helpful since the source is generated, adds to upload size.
     fw("html_copy_source = False\n")
@@ -1671,21 +1675,21 @@ def write_rst_contents(basepath):
     file = open(filepath, "w", encoding="utf-8")
     fw = file.write
 
-    fw(title_string("Blender Documentation Contents", "%", double=True))
+    fw(title_string("Blender Python API Documentation", "%", double=True))
     fw("\n")
-    fw("Welcome, this document is an API reference for Blender %s, built %s.\n" %
+    fw("Welcome to the API reference for Blender %s, built %s.\n" %
        (BLENDER_VERSION_DOTS, BLENDER_DATE))
     fw("\n")
 
     # fw("`A PDF version of this document is also available <%s>`_\n" % BLENDER_PDF_FILENAME)
-    fw("This site can be downloaded for offline use `Download the full Documentation (zipped HTML files) <%s>`_\n" %
+    fw("This site can be downloaded for offline use: `Download the full Documentation (zipped HTML files) <%s>`_\n" %
        BLENDER_ZIP_FILENAME)
     fw("\n")
 
     if not EXCLUDE_INFO_DOCS:
         fw(".. toctree::\n")
         fw("   :maxdepth: 1\n")
-        fw("   :caption: Blender/Python Documentation\n\n")
+        fw("   :caption: Documentation\n\n")
         for info, info_desc in INFO_DOCS:
             fw("   %s <%s>\n" % (info_desc, info))
         fw("\n")
@@ -1721,7 +1725,7 @@ def write_rst_contents(basepath):
 
     standalone_modules = (
         # submodules are added in parent page
-        "mathutils", "freestyle", "bgl", "blf", "gpu",
+        "mathutils", "freestyle", "bgl", "blf", "gpu", "gpu_extras",
         "aud", "bpy_extras", "idprop.types", "bmesh",
     )
 
@@ -1823,6 +1827,7 @@ def write_rst_importable_modules(basepath):
         "bpy.path": "Path Utilities",
         "bpy.utils": "Utilities",
         "bpy_extras": "Extra Utilities",
+        "gpu_extras": "GPU Utilities",
 
         # C_modules
         "aud": "Audio System",
@@ -1840,6 +1845,7 @@ def write_rst_importable_modules(basepath):
         "bpy.app.handlers": "Application Handlers",
         "bpy.app.translations": "Application Translations",
         "bpy.app.icons": "Application Icons",
+        "bpy.app.timers": "Application Timers",
         "bpy.props": "Property Definitions",
         "idprop.types": "ID Property Access",
         "mathutils": "Math Types & Utilities",

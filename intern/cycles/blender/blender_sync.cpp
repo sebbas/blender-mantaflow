@@ -29,6 +29,7 @@
 
 #include "device/device.h"
 
+#include "blender/blender_device.h"
 #include "blender/blender_sync.h"
 #include "blender/blender_session.h"
 #include "blender/blender_util.h"
@@ -39,6 +40,8 @@
 #include "util/util_hash.h"
 
 CCL_NAMESPACE_BEGIN
+
+static const char *cryptomatte_prefix = "Crypto";
 
 /* Constructor */
 
@@ -109,21 +112,21 @@ void BlenderSync::sync_recalc(BL::Depsgraph& b_depsgraph)
 		BL::ID b_id(b_update->id());
 
 		/* Material */
-		if (b_id.is_a(&RNA_Material)) {
+		if(b_id.is_a(&RNA_Material)) {
 			BL::Material b_mat(b_id);
 			shader_map.set_recalc(b_mat);
 		}
 		/* Light */
-		else if (b_id.is_a(&RNA_Light)) {
+		else if(b_id.is_a(&RNA_Light)) {
 			BL::Light b_light(b_id);
 			shader_map.set_recalc(b_light);
 		}
 		/* Object */
-		else if (b_id.is_a(&RNA_Object)) {
+		else if(b_id.is_a(&RNA_Object)) {
 			BL::Object b_ob(b_id);
-			const bool updated_geometry = !b_update->is_dirty_geometry();
+			const bool updated_geometry = b_update->is_updated_geometry();
 
-			if (!b_update->is_dirty_transform()) {
+			if(b_update->is_updated_transform()) {
 				object_map.set_recalc(b_ob);
 				light_map.set_recalc(b_ob);
 			}
@@ -149,12 +152,12 @@ void BlenderSync::sync_recalc(BL::Depsgraph& b_depsgraph)
 			}
 		}
 		/* Mesh */
-		else if (b_id.is_a(&RNA_Mesh)) {
+		else if(b_id.is_a(&RNA_Mesh)) {
 			BL::Mesh b_mesh(b_id);
 			mesh_map.set_recalc(b_mesh);
 		}
 		/* World */
-		else if (b_id.is_a(&RNA_World)) {
+		else if(b_id.is_a(&RNA_World)) {
 			BL::World b_world(b_id);
 			if(world_map == b_world.ptr.data) {
 				world_recalc = true;
@@ -163,13 +166,13 @@ void BlenderSync::sync_recalc(BL::Depsgraph& b_depsgraph)
 	}
 
 	/* Updates shader with object dependency if objects changed. */
-	if (has_updated_objects) {
+	if(has_updated_objects) {
 		if(scene->default_background->has_object_dependency) {
 			world_recalc = true;
 		}
 
 		foreach(Shader *shader, scene->shaders) {
-			if (shader->has_object_dependency) {
+			if(shader->has_object_dependency) {
 				shader->need_sync_object = true;
 			}
 		}
@@ -370,6 +373,25 @@ void BlenderSync::sync_view_layer(BL::SpaceView3D& /*b_v3d*/, BL::ViewLayer& b_v
 	view_layer.use_background_ao = b_view_layer.use_ao();
 	view_layer.use_surfaces = b_view_layer.use_solid();
 	view_layer.use_hair = b_view_layer.use_strand();
+
+	/* Material override. */
+	view_layer.material_override = b_view_layer.material_override();
+
+	/* Sample override. */
+	PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
+	int use_layer_samples = get_enum(cscene, "use_layer_samples");
+
+	view_layer.bound_samples = (use_layer_samples == 1);
+	view_layer.samples = 0;
+
+	if(use_layer_samples != 2) {
+		int samples = b_view_layer.samples();
+		if(get_boolean(cscene, "use_square_samples"))
+			view_layer.samples = samples * samples;
+		else
+			view_layer.samples = samples;
+	}
+
 }
 
 /* Images */
@@ -449,6 +471,9 @@ PassType BlenderSync::get_pass_type(BL::RenderPass& b_pass)
 	MAP_PASS("Debug Ray Bounces", PASS_RAY_BOUNCES);
 #endif
 	MAP_PASS("Debug Render Time", PASS_RENDER_TIME);
+	if(string_startswith(name, cryptomatte_prefix)) {
+		return PASS_CRYPTOMATTE;
+	}
 #undef MAP_PASS
 
 	return PASS_NONE;
@@ -457,38 +482,32 @@ PassType BlenderSync::get_pass_type(BL::RenderPass& b_pass)
 int BlenderSync::get_denoising_pass(BL::RenderPass& b_pass)
 {
 	string name = b_pass.name();
+
+	if(name == "Noisy Image") return DENOISING_PASS_PREFILTERED_COLOR;
+
 	if(name.substr(0, 10) != "Denoising ") {
 		return -1;
 	}
 	name = name.substr(10);
 
 #define MAP_PASS(passname, offset) if(name == passname) return offset;
-	MAP_PASS("Normal", DENOISING_PASS_NORMAL);
-	MAP_PASS("Normal Variance", DENOISING_PASS_NORMAL_VAR);
-	MAP_PASS("Albedo", DENOISING_PASS_ALBEDO);
-	MAP_PASS("Albedo Variance", DENOISING_PASS_ALBEDO_VAR);
-	MAP_PASS("Depth", DENOISING_PASS_DEPTH);
-	MAP_PASS("Depth Variance", DENOISING_PASS_DEPTH_VAR);
-	MAP_PASS("Shadow A", DENOISING_PASS_SHADOW_A);
-	MAP_PASS("Shadow B", DENOISING_PASS_SHADOW_B);
-	MAP_PASS("Image", DENOISING_PASS_COLOR);
-	MAP_PASS("Image Variance", DENOISING_PASS_COLOR_VAR);
+	MAP_PASS("Normal", DENOISING_PASS_PREFILTERED_NORMAL);
+	MAP_PASS("Albedo", DENOISING_PASS_PREFILTERED_ALBEDO);
+	MAP_PASS("Depth", DENOISING_PASS_PREFILTERED_DEPTH);
+	MAP_PASS("Shadowing", DENOISING_PASS_PREFILTERED_SHADOWING);
+	MAP_PASS("Variance", DENOISING_PASS_PREFILTERED_VARIANCE);
+	MAP_PASS("Intensity", DENOISING_PASS_PREFILTERED_INTENSITY);
 	MAP_PASS("Clean", DENOISING_PASS_CLEAN);
 #undef MAP_PASS
 
 	return -1;
 }
 
-array<Pass> BlenderSync::sync_render_passes(BL::RenderLayer& b_rlay,
-                                            BL::ViewLayer& b_view_layer,
-                                            const SessionParams &session_params)
+vector<Pass> BlenderSync::sync_render_passes(BL::RenderLayer& b_rlay,
+                                             BL::ViewLayer& b_view_layer)
 {
-	array<Pass> passes;
+	vector<Pass> passes;
 	Pass::add(PASS_COMBINED, passes);
-
-	if(!session_params.device.advanced_shading) {
-		return passes;
-	}
 
 	/* loop over passes */
 	BL::RenderLayer::passes_iterator b_pass_iter;
@@ -503,22 +522,12 @@ array<Pass> BlenderSync::sync_render_passes(BL::RenderLayer& b_rlay,
 			Pass::add(pass_type, passes);
 	}
 
-	scene->film->denoising_flags = 0;
 	PointerRNA crp = RNA_pointer_get(&b_view_layer.ptr, "cycles");
-	if(get_boolean(crp, "denoising_store_passes") &&
-	   get_boolean(crp, "use_denoising"))
-	{
-		b_engine.add_pass("Denoising Normal",          3, "XYZ", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Normal Variance", 3, "XYZ", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Albedo",          3, "RGB", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Albedo Variance", 3, "RGB", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Depth",           1, "Z",   b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Depth Variance",  1, "Z",   b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Shadow A",        3, "XYV", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Shadow B",        3, "XYV", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Image",           3, "RGB", b_view_layer.name().c_str());
-		b_engine.add_pass("Denoising Image Variance",  3, "RGB", b_view_layer.name().c_str());
+	bool full_denoising = get_boolean(crp, "use_denoising");
+	bool write_denoising_passes = get_boolean(crp, "denoising_store_passes");
 
+	scene->film->denoising_flags = 0;
+	if(full_denoising || write_denoising_passes) {
 #define MAP_OPTION(name, flag) if(!get_boolean(crp, name)) scene->film->denoising_flags |= flag;
 		MAP_OPTION("denoising_diffuse_direct",        DENOISING_CLEAN_DIFFUSE_DIR);
 		MAP_OPTION("denoising_diffuse_indirect",      DENOISING_CLEAN_DIFFUSE_IND);
@@ -529,9 +538,19 @@ array<Pass> BlenderSync::sync_render_passes(BL::RenderLayer& b_rlay,
 		MAP_OPTION("denoising_subsurface_direct",     DENOISING_CLEAN_SUBSURFACE_DIR);
 		MAP_OPTION("denoising_subsurface_indirect",   DENOISING_CLEAN_SUBSURFACE_IND);
 #undef MAP_OPTION
+		b_engine.add_pass("Noisy Image", 4, "RGBA", b_view_layer.name().c_str());
+	}
+
+	if(write_denoising_passes) {
+		b_engine.add_pass("Denoising Normal",          3, "XYZ", b_view_layer.name().c_str());
+		b_engine.add_pass("Denoising Albedo",          3, "RGB", b_view_layer.name().c_str());
+		b_engine.add_pass("Denoising Depth",           1, "Z",   b_view_layer.name().c_str());
+		b_engine.add_pass("Denoising Shadowing",       1, "X",   b_view_layer.name().c_str());
+		b_engine.add_pass("Denoising Variance",        3, "RGB", b_view_layer.name().c_str());
+		b_engine.add_pass("Denoising Intensity",       1, "X",   b_view_layer.name().c_str());
 
 		if(scene->film->denoising_flags & DENOISING_CLEAN_ALL_PASSES) {
-			b_engine.add_pass("Denoising Clean", 3, "RGB", b_view_layer.name().c_str());
+			b_engine.add_pass("Denoising Clean",   3, "RGB", b_view_layer.name().c_str());
 		}
 	}
 #ifdef __KERNEL_DEBUG__
@@ -565,6 +584,39 @@ array<Pass> BlenderSync::sync_render_passes(BL::RenderLayer& b_rlay,
 		Pass::add(PASS_VOLUME_INDIRECT, passes);
 	}
 
+	/* Cryptomatte stores two ID/weight pairs per RGBA layer.
+	 * User facing paramter is the number of pairs. */
+	int crypto_depth = min(16, get_int(crp, "pass_crypto_depth")) / 2;
+	scene->film->cryptomatte_depth = crypto_depth;
+	scene->film->cryptomatte_passes = CRYPT_NONE;
+	if(get_boolean(crp, "use_pass_crypto_object")) {
+		for(int i = 0; i < crypto_depth; ++i) {
+			string passname = cryptomatte_prefix + string_printf("Object%02d", i);
+			b_engine.add_pass(passname.c_str(), 4, "RGBA", b_view_layer.name().c_str());
+			Pass::add(PASS_CRYPTOMATTE, passes, passname.c_str());
+		}
+		scene->film->cryptomatte_passes = (CryptomatteType)(scene->film->cryptomatte_passes | CRYPT_OBJECT);
+	}
+	if(get_boolean(crp, "use_pass_crypto_material")) {
+		for(int i = 0; i < crypto_depth; ++i) {
+			string passname = cryptomatte_prefix + string_printf("Material%02d", i);
+			b_engine.add_pass(passname.c_str(), 4, "RGBA", b_view_layer.name().c_str());
+			Pass::add(PASS_CRYPTOMATTE, passes, passname.c_str());
+		}
+		scene->film->cryptomatte_passes = (CryptomatteType)(scene->film->cryptomatte_passes | CRYPT_MATERIAL);
+	}
+	if(get_boolean(crp, "use_pass_crypto_asset")) {
+		for(int i = 0; i < crypto_depth; ++i) {
+			string passname = cryptomatte_prefix + string_printf("Asset%02d", i);
+			b_engine.add_pass(passname.c_str(), 4, "RGBA", b_view_layer.name().c_str());
+			Pass::add(PASS_CRYPTOMATTE, passes, passname.c_str());
+		}
+		scene->film->cryptomatte_passes = (CryptomatteType)(scene->film->cryptomatte_passes | CRYPT_ASSET);
+	}
+	if(get_boolean(crp, "pass_crypto_accurate") && scene->film->cryptomatte_passes != CRYPT_NONE) {
+		scene->film->cryptomatte_passes = (CryptomatteType)(scene->film->cryptomatte_passes | CRYPT_ACCURATE);
+	}
+
 	return passes;
 }
 
@@ -577,7 +629,7 @@ void BlenderSync::free_data_after_sync(BL::Depsgraph& b_depsgraph)
 	const bool is_interface_locked = b_engine.render() &&
 	                                 b_engine.render().use_lock_interface();
 	const bool can_free_caches = BlenderSession::headless || is_interface_locked;
-	if (!can_free_caches) {
+	if(!can_free_caches) {
 		return;
 	}
 	/* TODO(sergey): We can actually remove the whole dependency graph,
@@ -645,6 +697,9 @@ SceneParams BlenderSync::get_scene_params(BL::Scene& b_scene,
 		params.bvh_layout = DebugFlags().cpu.bvh_layout;
 	}
 
+#ifdef WITH_EMBREE
+	params.bvh_layout = RNA_boolean_get(&cscene, "use_bvh_embree") ? BVH_LAYOUT_EMBREE : params.bvh_layout;
+#endif
 	return params;
 }
 
@@ -657,7 +712,7 @@ bool BlenderSync::get_session_pause(BL::Scene& b_scene, bool background)
 }
 
 SessionParams BlenderSync::get_session_params(BL::RenderEngine& b_engine,
-                                              BL::UserPreferences& b_userpref,
+                                              BL::Preferences& b_preferences,
                                               BL::Scene& b_scene,
                                               bool background)
 {
@@ -667,87 +722,12 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine& b_engine,
 	/* feature set */
 	params.experimental = (get_enum(cscene, "feature_set") != 0);
 
-	/* threads */
-	BL::RenderSettings b_r = b_scene.render();
-	if(b_r.threads_mode() == BL::RenderSettings::threads_mode_FIXED)
-		params.threads = b_r.threads();
-	else
-		params.threads = 0;
-
 	/* Background */
 	params.background = background;
 
-	/* device type */
-	vector<DeviceInfo>& devices = Device::available_devices();
-
-	/* device default CPU */
-	foreach(DeviceInfo& device, devices) {
-		if(device.type == DEVICE_CPU) {
-			params.device = device;
-			break;
-		}
-	}
-
-	if(get_enum(cscene, "device") == 2) {
-		/* find network device */
-		foreach(DeviceInfo& info, devices)
-			if(info.type == DEVICE_NETWORK)
-				params.device = info;
-	}
-	else if(get_enum(cscene, "device") == 1) {
-		PointerRNA b_preferences;
-
-		BL::UserPreferences::addons_iterator b_addon_iter;
-		for(b_userpref.addons.begin(b_addon_iter); b_addon_iter != b_userpref.addons.end(); ++b_addon_iter) {
-			if(b_addon_iter->module() == "cycles") {
-				b_preferences = b_addon_iter->preferences().ptr;
-				break;
-			}
-		}
-
-		enum ComputeDevice {
-			COMPUTE_DEVICE_CPU = 0,
-			COMPUTE_DEVICE_CUDA = 1,
-			COMPUTE_DEVICE_OPENCL = 2,
-			COMPUTE_DEVICE_NUM = 3,
-		};
-
-		ComputeDevice compute_device = (ComputeDevice)get_enum(b_preferences,
-		                                                       "compute_device_type",
-		                                                       COMPUTE_DEVICE_NUM,
-		                                                       COMPUTE_DEVICE_CPU);
-
-		if(compute_device != COMPUTE_DEVICE_CPU) {
-			vector<DeviceInfo> used_devices;
-			RNA_BEGIN(&b_preferences, device, "devices") {
-				ComputeDevice device_type = (ComputeDevice)get_enum(device,
-				                                                    "type",
-				                                                    COMPUTE_DEVICE_NUM,
-				                                                    COMPUTE_DEVICE_CPU);
-
-				if(get_boolean(device, "use") &&
-				   (device_type == compute_device || device_type == COMPUTE_DEVICE_CPU)) {
-					string id = get_string(device, "id");
-					foreach(DeviceInfo& info, devices) {
-						if(info.id == id) {
-							used_devices.push_back(info);
-							break;
-						}
-					}
-				}
-			} RNA_END
-
-			if(used_devices.size() == 1) {
-				params.device = used_devices[0];
-			}
-			else if(used_devices.size() > 1) {
-				params.device = Device::get_multi_device(used_devices,
-				                                         params.threads,
-				                                         params.background);
-			}
-			/* Else keep using the CPU device that was set before. */
-		}
-	}
+	/* Device */
+	params.threads = blender_device_threads(b_scene);
+	params.device = blender_device_info(b_preferences, b_scene, params.background);
 
 	/* samples */
 	int samples = get_int(cscene, "samples");
@@ -784,8 +764,12 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine& b_engine,
 		}
 	}
 
+	/* Clamp samples. */
+	params.samples = min(params.samples, Integrator::MAX_SAMPLES);
+
 	/* tiles */
-	if(params.device.type != DEVICE_CPU && !background) {
+	const bool is_cpu = (params.device.type == DEVICE_CPU);
+	if(!is_cpu && !background) {
 		/* currently GPU could be much slower than CPU when using tiles,
 		 * still need to be investigated, but meanwhile make it possible
 		 * to work in viewport smoothly
@@ -818,6 +802,7 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine& b_engine,
 	params.text_timeout = (double)get_float(cscene, "debug_text_timeout");
 
 	/* progressive refine */
+	BL::RenderSettings b_r = b_scene.render();
 	params.progressive_refine = (b_engine.is_preview() ||
 	                             get_boolean(cscene, "use_progressive_refine")) &&
 	                            !b_r.use_save_buffers();
@@ -861,6 +846,9 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine& b_engine,
 		 */
 		params.progressive_update_timeout = 0.1;
 	}
+
+	params.use_profiling = params.device.has_profiling && !b_engine.is_preview() &&
+	                       background && BlenderSession::print_render_stats;
 
 	return params;
 }

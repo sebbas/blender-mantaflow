@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Brecht Van Lommel.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file GPU_buffers.h
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  */
 
 #ifndef __GPU_BUFFERS_H__
@@ -57,7 +49,8 @@ GPU_PBVH_Buffers *GPU_pbvh_mesh_buffers_build(
         const int  face_indices_len);
 
 GPU_PBVH_Buffers *GPU_pbvh_grid_buffers_build(
-        int *grid_indices, int totgrid, unsigned int **grid_hidden, int gridsize, const struct CCGKey *key);
+        int totgrid,
+        unsigned int **grid_hidden);
 
 GPU_PBVH_Buffers *GPU_pbvh_bmesh_buffers_build(bool smooth_shading);
 
@@ -88,7 +81,7 @@ void GPU_pbvh_grid_buffers_update(
         const int update_flags);
 
 /* draw */
-struct GPUBatch *GPU_pbvh_buffers_batch_get(GPU_PBVH_Buffers *buffers, bool fast);
+struct GPUBatch *GPU_pbvh_buffers_batch_get(GPU_PBVH_Buffers *buffers, bool fast, bool wires);
 
 bool GPU_pbvh_buffers_has_mask(GPU_PBVH_Buffers *buffers);
 

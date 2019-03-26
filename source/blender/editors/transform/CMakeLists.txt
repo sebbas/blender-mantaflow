@@ -13,9 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -45,9 +42,10 @@ set(SRC
 	transform_constraints.c
 	transform_conversions.c
 	transform_generics.c
-	transform_input.c
 	transform_gizmo_2d.c
 	transform_gizmo_3d.c
+	transform_gizmo_extrude_3d.c
+	transform_input.c
 	transform_ops.c
 	transform_orientations.c
 	transform_snap.c

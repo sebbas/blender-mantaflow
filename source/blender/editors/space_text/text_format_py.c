@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -13,12 +11,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_text/text_format_py.c
- *  \ingroup sptext
+/** \file
+ * \ingroup sptext
  */
 
 #include <string.h>
@@ -62,6 +58,8 @@ static int txtfmt_py_find_builtinfunc(const char *string)
 	if      (STR_LITERAL_STARTSWITH(string, "and",      len)) i = len;
 	else if (STR_LITERAL_STARTSWITH(string, "as",       len)) i = len;
 	else if (STR_LITERAL_STARTSWITH(string, "assert",   len)) i = len;
+	else if (STR_LITERAL_STARTSWITH(string, "async",    len)) i = len;
+	else if (STR_LITERAL_STARTSWITH(string, "await",    len)) i = len;
 	else if (STR_LITERAL_STARTSWITH(string, "break",    len)) i = len;
 	else if (STR_LITERAL_STARTSWITH(string, "continue", len)) i = len;
 	else if (STR_LITERAL_STARTSWITH(string, "del",      len)) i = len;
@@ -118,18 +116,22 @@ static int txtfmt_py_find_specialvar(const char *string)
 
 static int txtfmt_py_find_decorator(const char *string)
 {
-	if (string[0] == '@') {
-		int i = 1;
-		/* Whitespace is ok '@  foo' */
-		while (text_check_whitespace(string[i])) {
-			i++;
-		}
-		while (text_check_identifier(string[i])) {
-			i++;
-		}
-		return i;
+	if (string[0] != '@') {
+		return -1;
 	}
-	return -1;
+	if (!text_check_identifier(string[1])) {
+		return -1;
+	}
+	/* Interpret as matrix multiplication when followed by whitespace. */
+	if (text_check_whitespace(string[1])) {
+		return -1;
+	}
+
+	int i = 1;
+	while (text_check_identifier(string[i])) {
+		i++;
+	}
+	return i;
 }
 
 static int txtfmt_py_find_bool(const char *string)

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Joshua Leung
- * Contributor(s): Based on original depsgraph.c code - Blender Foundation (2005-2013)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/intern/builder/deg_builder_relations_view_layer.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Methods for constructing depsgraph
  */
@@ -57,15 +50,12 @@ extern "C" {
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_pchanmap.h"
 
-#include "intern/nodes/deg_node.h"
-#include "intern/nodes/deg_node_component.h"
-#include "intern/nodes/deg_node_id.h"
-#include "intern/nodes/deg_node_operation.h"
+#include "intern/node/deg_node.h"
+#include "intern/node/deg_node_component.h"
+#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node_operation.h"
 
-#include "intern/depsgraph_intern.h"
-#include "intern/depsgraph_types.h"
-
-#include "util/deg_util_foreach.h"
+#include "intern/depsgraph_type.h"
 
 namespace DEG {
 
@@ -79,7 +69,7 @@ void DepsgraphRelationBuilder::build_layer_collections(ListBase *lb)
 			continue;
 		}
 		if ((lc->flag & LAYER_COLLECTION_EXCLUDE) == 0) {
-			build_collection(NULL, lc->collection);
+			build_collection(lc, NULL, lc->collection);
 		}
 		build_layer_collections(&lc->layer_collections);
 	}
@@ -92,10 +82,11 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene, ViewLayer *view_la
 	/* Scene objects. */
 	/* NOTE: Nodes builder requires us to pass CoW base because it's being
 	 * passed to the evaluation functions. During relations builder we only
-	 * do NULL-pointer check of the base, so it's fine to pass original one.
-	 */
+	 * do NULL-pointer check of the base, so it's fine to pass original one. */
 	LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
-		build_object(base, base->object);
+		if (need_pull_base_into_graph(base)) {
+			build_object(base, base->object);
+		}
 	}
 
 	build_layer_collections(&view_layer->layer_collections);
@@ -120,20 +111,21 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene, ViewLayer *view_la
 		build_compositor(scene);
 	}
 	/* Masks. */
-	LISTBASE_FOREACH (Mask *, mask, &bmain_->mask) {
+	LISTBASE_FOREACH (Mask *, mask, &bmain_->masks) {
 		build_mask(mask);
 	}
 	/* Movie clips. */
-	LISTBASE_FOREACH (MovieClip *, clip, &bmain_->movieclip) {
+	LISTBASE_FOREACH (MovieClip *, clip, &bmain_->movieclips) {
 		build_movieclip(clip);
 	}
-	/* TODO(sergey): Do this flush on CoW object? */
-	foreach (OperationDepsNode *node, graph_->operations) {
-		IDDepsNode *id_node = node->owner->owner;
-		ID *id = id_node->id_orig;
-		if (GS(id->name) == ID_OB) {
-			Object *object = (Object *)id;
-			object->customdata_mask |= node->customdata_mask;
+	/* Material override. */
+	if (view_layer->mat_override != NULL) {
+		build_material(view_layer->mat_override);
+	}
+	/* Freestyle collections. */
+	LISTBASE_FOREACH (FreestyleLineSet *, fls, &view_layer->freestyle_config.linesets) {
+		if (fls->group != NULL) {
+			build_collection(NULL, NULL, fls->group);
 		}
 	}
 	/* Build all set scenes. */

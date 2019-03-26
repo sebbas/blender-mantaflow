@@ -1,5 +1,5 @@
-/** \file elbeem/intern/globals.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 
 // required globals

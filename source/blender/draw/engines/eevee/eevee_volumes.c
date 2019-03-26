@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_volumes.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Volumetric effects rendering using frostbite approach.
  */
@@ -34,10 +31,9 @@
 #include "DNA_smoke_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_global.h" /* for G.debug_value */
 #include "BKE_modifier.h"
 #include "BKE_mesh.h"
-#include "BKE_object.h"
+#include "BKE_smoke.h"
 
 #include "ED_screen.h"
 
@@ -50,11 +46,11 @@
 
 static struct {
 	char *volumetric_common_lib;
-	char *volumetric_common_lamps_lib;
+	char *volumetric_common_lights_lib;
 
 	struct GPUShader *volumetric_clear_sh;
 	struct GPUShader *volumetric_scatter_sh;
-	struct GPUShader *volumetric_scatter_with_lamps_sh;
+	struct GPUShader *volumetric_scatter_with_lights_sh;
 	struct GPUShader *volumetric_integration_sh;
 	struct GPUShader *volumetric_resolve_sh;
 
@@ -70,7 +66,7 @@ extern char datatoc_common_uniforms_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_octahedron_lib_glsl[];
 extern char datatoc_irradiance_lib_glsl[];
-extern char datatoc_lamps_lib_glsl[];
+extern char datatoc_lights_lib_glsl[];
 extern char datatoc_volumetric_frag_glsl[];
 extern char datatoc_volumetric_geom_glsl[];
 extern char datatoc_volumetric_vert_glsl[];
@@ -88,13 +84,13 @@ static void eevee_create_shader_volumes(void)
 	        datatoc_bsdf_common_lib_glsl,
 	        datatoc_volumetric_lib_glsl);
 
-	e_data.volumetric_common_lamps_lib = BLI_string_joinN(
+	e_data.volumetric_common_lights_lib = BLI_string_joinN(
 	        datatoc_common_view_lib_glsl,
 	        datatoc_common_uniforms_lib_glsl,
 	        datatoc_bsdf_common_lib_glsl,
 	        datatoc_octahedron_lib_glsl,
 	        datatoc_irradiance_lib_glsl,
-	        datatoc_lamps_lib_glsl,
+	        datatoc_lights_lib_glsl,
 	        datatoc_volumetric_lib_glsl);
 
 	e_data.volumetric_clear_sh = DRW_shader_create_with_lib(
@@ -108,15 +104,15 @@ static void eevee_create_shader_volumes(void)
 	        datatoc_volumetric_vert_glsl,
 	        datatoc_volumetric_geom_glsl,
 	        datatoc_volumetric_scatter_frag_glsl,
-	        e_data.volumetric_common_lamps_lib,
+	        e_data.volumetric_common_lights_lib,
 	        SHADER_DEFINES
 	        "#define VOLUMETRICS\n"
 	        "#define VOLUME_SHADOW\n");
-	e_data.volumetric_scatter_with_lamps_sh = DRW_shader_create_with_lib(
+	e_data.volumetric_scatter_with_lights_sh = DRW_shader_create_with_lib(
 	        datatoc_volumetric_vert_glsl,
 	        datatoc_volumetric_geom_glsl,
 	        datatoc_volumetric_scatter_frag_glsl,
-	        e_data.volumetric_common_lamps_lib,
+	        e_data.volumetric_common_lights_lib,
 	        SHADER_DEFINES
 	        "#define VOLUMETRICS\n"
 	        "#define VOLUME_LIGHTING\n"
@@ -140,7 +136,7 @@ void EEVEE_volumes_set_jitter(EEVEE_ViewLayerData *sldata, uint current_sample)
 	double ht_offset[3] = {0.0, 0.0};
 	uint ht_primes[3] = {3, 7, 2};
 
-	BLI_halton_3D(ht_primes, ht_offset, current_sample, ht_point);
+	BLI_halton_3d(ht_primes, ht_offset, current_sample, ht_point);
 
 	common_data->vol_jitter[0] = (float)ht_point[0];
 	common_data->vol_jitter[1] = (float)ht_point[1];
@@ -213,30 +209,30 @@ int EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		if (txl->volume_prop_scattering == NULL) {
 			/* Volume properties: We evaluate all volumetric objects
 			 * and store their final properties into each froxel */
-			txl->volume_prop_scattering = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_prop_scattering = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                                    GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
-			txl->volume_prop_extinction = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_prop_extinction = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                                    GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
-			txl->volume_prop_emission = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_prop_emission = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                                  GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
-			txl->volume_prop_phase = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_prop_phase = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                               GPU_RG16F, DRW_TEX_FILTER, NULL);
 
 			/* Volume scattering: We compute for each froxel the
 			 * Scattered light towards the view. We also resolve temporal
 			 * super sampling during this stage. */
-			txl->volume_scatter = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_scatter = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                            GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
-			txl->volume_transmittance = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_transmittance = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                                  GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
 
 			/* Final integration: We compute for each froxel the
 			 * amount of scattered light and extinction coef at this
 			 * given depth. We use theses textures as double buffer
 			 * for the volumetric history. */
-			txl->volume_scatter_history = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_scatter_history = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                                    GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
-			txl->volume_transmittance_history = DRW_texture_create_3D(tex_size[0], tex_size[1], tex_size[2],
+			txl->volume_transmittance_history = DRW_texture_create_3d(tex_size[0], tex_size[1], tex_size[2],
 			                                                          GPU_R11F_G11F_B10F, DRW_TEX_FILTER, NULL);
 		}
 
@@ -293,6 +289,12 @@ int EEVEE_volumes_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		if ((scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) == 0) {
 			common_data->vol_shadow_steps = 0;
 		}
+
+		/* Update view_vecs */
+		float invproj[4][4], winmat[4][4];
+		DRW_viewport_matrix_get(winmat, DRW_MAT_WIN);
+		DRW_viewport_matrix_get(invproj, DRW_MAT_WININV);
+		EEVEE_update_viewvecs(invproj, winmat, sldata->common_data.view_vecs);
 
 		if (DRW_viewport_is_persp_get()) {
 			float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
@@ -382,7 +384,7 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		 *   for "every" positions in the frustum. We only need to sample
 		 *   them and blend the scene color with those factors. This also
 		 *   work for alpha blended materials.
-		 **/
+		 */
 
 		/* World pass is not additive as it also clear the buffer. */
 		psl->volumetric_world_ps = DRW_pass_create("Volumetric World", DRW_STATE_WRITE_COLOR);
@@ -409,9 +411,10 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
 		if (grp == NULL) {
 			/* If no world or volume material is present just clear the buffer with this drawcall */
-			grp = DRW_shgroup_empty_tri_batch_create(e_data.volumetric_clear_sh,
-				                                     psl->volumetric_world_ps,
-				                                     common_data->vol_tex_size[2]);
+			grp = DRW_shgroup_empty_tri_batch_create(
+			        e_data.volumetric_clear_sh,
+			        psl->volumetric_world_ps,
+			        common_data->vol_tex_size[2]);
 
 			DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
 		}
@@ -420,7 +423,7 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		psl->volumetric_objects_ps = DRW_pass_create("Volumetric Properties", DRW_STATE_WRITE_COLOR |
 		                                                                      DRW_STATE_ADDITIVE);
 
-		struct GPUShader *scatter_sh = (common_data->vol_use_lights) ? e_data.volumetric_scatter_with_lamps_sh
+		struct GPUShader *scatter_sh = (common_data->vol_use_lights) ? e_data.volumetric_scatter_with_lights_sh
 		                                                      : e_data.volumetric_scatter_sh;
 		psl->volumetric_scatter_ps = DRW_pass_create("Volumetric Scattering", DRW_STATE_WRITE_COLOR);
 		grp = DRW_shgroup_empty_tri_batch_create(scatter_sh, psl->volumetric_scatter_ps,
@@ -457,6 +460,11 @@ void EEVEE_volumes_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 	}
 }
 
+typedef struct EEVEE_InstanceVolumeMatrix {
+	DrawData dd;
+	float volume_mat[4][4];
+} EEVEE_InstanceVolumeMatrix;
+
 void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, Scene *scene, Object *ob)
 {
 	const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -477,12 +485,27 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 		return;
 	}
 
-	DRWShadingGroup *grp = DRW_shgroup_material_empty_tri_batch_create(mat, vedata->psl->volumetric_objects_ps, sldata->common_data.vol_tex_size[2]);
+	DRWShadingGroup *grp = DRW_shgroup_material_empty_tri_batch_create(mat,
+	                                                                   vedata->psl->volumetric_objects_ps,
+	                                                                   sldata->common_data.vol_tex_size[2]);
 
 	/* Making sure it's updated. */
 	invert_m4_m4(ob->imat, ob->obmat);
 
 	BKE_mesh_texspace_get_reference((struct Mesh *)ob->data, NULL, &texcoloc, NULL, &texcosize);
+
+	float (*imat)[4] = ob->imat;
+
+	if ((ob->base_flag & BASE_FROM_DUPLI) != 0) {
+		/* TODO Remove from here and use a dedicated buffer. */
+		EEVEE_InstanceVolumeMatrix *ivm = (EEVEE_InstanceVolumeMatrix *)DRW_drawdata_ensure(
+		        &ob->id,
+		        (DrawEngineType *)EEVEE_volumes_cache_object_add,
+		        sizeof(EEVEE_InstanceVolumeMatrix),
+		        NULL, NULL);
+		copy_m4_m4(ivm->volume_mat, ob->imat);
+		imat = ivm->volume_mat;
+	}
 
 	/* TODO(fclem) remove those "unnecessary" UBOs */
 	DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
@@ -492,12 +515,12 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 	DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
 
 	DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-	DRW_shgroup_uniform_mat4(grp, "volumeObjectMatrix", ob->imat);
+	DRW_shgroup_uniform_mat4(grp, "volumeObjectMatrix", imat);
 	DRW_shgroup_uniform_vec3(grp, "volumeOrcoLoc", texcoloc, 1);
 	DRW_shgroup_uniform_vec3(grp, "volumeOrcoSize", texcosize, 1);
 
 	/* Smoke Simulation */
-	if (((ob->base_flag & BASE_FROMDUPLI) == 0) &&
+	if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
 	    (md = modifiers_findByType(ob, eModifierType_Smoke)) &&
 	    (modifier_isEnabled(scene, md, eModifierMode_Realtime)))
 	{
@@ -528,6 +551,13 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 		if (sds->tex_flame != NULL) {
 			DRW_shgroup_uniform_texture_ref(grp, "sampflame", &sds->tex_flame);
 		}
+
+		/* Constant Volume color. */
+		static float white[3] = {1.0f, 1.0f, 1.0f};
+		bool use_constant_color = ((sds->active_fields & SM_ACTIVE_COLORS) == 0 &&
+		                           (sds->active_fields & SM_ACTIVE_COLOR_SET) != 0);
+
+		DRW_shgroup_uniform_vec3(grp, "volumeColor", (use_constant_color) ? sds->active_color : white, 1);
 
 		/* Output is such that 0..1 maps to 0..1000K */
 		DRW_shgroup_uniform_vec2(grp, "unftemperature", &sds->flame_ignition, 1);
@@ -612,11 +642,11 @@ void EEVEE_volumes_free_smoke_textures(void)
 void EEVEE_volumes_free(void)
 {
 	MEM_SAFE_FREE(e_data.volumetric_common_lib);
-	MEM_SAFE_FREE(e_data.volumetric_common_lamps_lib);
+	MEM_SAFE_FREE(e_data.volumetric_common_lights_lib);
 
 	DRW_SHADER_FREE_SAFE(e_data.volumetric_clear_sh);
 	DRW_SHADER_FREE_SAFE(e_data.volumetric_scatter_sh);
-	DRW_SHADER_FREE_SAFE(e_data.volumetric_scatter_with_lamps_sh);
+	DRW_SHADER_FREE_SAFE(e_data.volumetric_scatter_with_lights_sh);
 	DRW_SHADER_FREE_SAFE(e_data.volumetric_integration_sh);
 	DRW_SHADER_FREE_SAFE(e_data.volumetric_resolve_sh);
 }

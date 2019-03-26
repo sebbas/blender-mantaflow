@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Nathan Letwory.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/ErrorHandler.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 #include "ErrorHandler.h"
 #include <iostream>
@@ -49,47 +43,67 @@ ErrorHandler::~ErrorHandler()
 //--------------------------------------------------------------------
 bool ErrorHandler::handleError(const COLLADASaxFWL::IError *error)
 {
-	/* This method must return true when Collada should continue.
+	/* This method must return false when Collada should continue.
 	 * See https://github.com/KhronosGroup/OpenCOLLADA/issues/442
 	 */
-	bool isWarning = false;
+	bool isError = true;
+	std::string error_context;
+	std::string error_message;
 
 	if (error->getErrorClass() == COLLADASaxFWL::IError::ERROR_SAXPARSER) {
+		error_context = "Schema validation";
+
 		COLLADASaxFWL::SaxParserError *saxParserError = (COLLADASaxFWL::SaxParserError *) error;
 		const GeneratedSaxParser::ParserError& parserError = saxParserError->getError();
+		error_message = parserError.getErrorMessage();
 
-		// Workaround to avoid wrong error
 		if (parserError.getErrorType() == GeneratedSaxParser::ParserError::ERROR_VALIDATION_MIN_OCCURS_UNMATCHED) {
 			if (STREQ(parserError.getElement(), "effect")) {
-				isWarning = true;
+				isError = false;
 			}
 		}
-		if (parserError.getErrorType() == GeneratedSaxParser::ParserError::ERROR_VALIDATION_SEQUENCE_PREVIOUS_SIBLING_NOT_PRESENT) {
+
+		else if (parserError.getErrorType() == GeneratedSaxParser::ParserError::ERROR_VALIDATION_SEQUENCE_PREVIOUS_SIBLING_NOT_PRESENT) {
 			if (!(STREQ(parserError.getElement(), "extra") &&
 			      STREQ(parserError.getAdditionalText().c_str(), "sibling: fx_profile_abstract")))
 			{
-				isWarning = true;
+				isError = false;
 			}
 		}
 
-		if (parserError.getErrorType() == GeneratedSaxParser::ParserError::ERROR_COULD_NOT_OPEN_FILE) {
-			std::cout << "Couldn't open file" << std::endl;
+		else if (parserError.getErrorType() == GeneratedSaxParser::ParserError::ERROR_COULD_NOT_OPEN_FILE) {
+			isError = true;
+			error_context = "File access";
 		}
 
-		std::cout << "Schema validation error: " << parserError.getErrorMessage() << std::endl;
+		else isError = (parserError.getSeverity() != GeneratedSaxParser::ParserError::Severity::SEVERITY_ERROR_NONCRITICAL);
+
 	}
 	else if (error->getErrorClass() == COLLADASaxFWL::IError::ERROR_SAXFWL) {
+		error_context = "Sax FWL";
 		COLLADASaxFWL::SaxFWLError *saxFWLError = (COLLADASaxFWL::SaxFWLError *) error;
+		error_message = saxFWLError->getErrorMessage();
+
 		/*
 		 * Accept non critical errors as warnings (i.e. texture not found)
 		 * This makes the importer more graceful, so it now imports what makes sense.
 		 */
-		isWarning = (saxFWLError->getSeverity() == COLLADASaxFWL::IError::SEVERITY_ERROR_NONCRITICAL);
-		std::cout << "Sax FWL Error: " << saxFWLError->getErrorMessage() << std::endl;
+
+		isError = (saxFWLError->getSeverity() != COLLADASaxFWL::IError::SEVERITY_ERROR_NONCRITICAL);
+
 	}
 	else {
-		std::cout << "opencollada error: " << error->getFullErrorMessage() << std::endl;
+		error_context = "OpenCollada";
+		error_message = error->getFullErrorMessage();
+		isError = true;
 	}
 
-	return isWarning;
+	std::string severity = (isError) ? "Error" : "Warning";
+	std::cout << error_context << " (" << severity << "): " << error_message << std::endl;
+	if (isError) {
+		std::cout << "The Collada import has been forced to stop." << std::endl;
+		std::cout << "Please fix the reported error and then try again.";
+		mError = true;
+	}
+	return isError;
 }

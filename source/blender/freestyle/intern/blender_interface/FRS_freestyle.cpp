@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/freestyle/intern/blender_interface/FRS_freestyle.cpp
- *  \ingroup freestyle
+/** \file
+ * \ingroup freestyle
  */
 
 #include <iostream>
@@ -46,13 +42,13 @@ extern "C" {
 #include "DNA_material_types.h"
 #include "DNA_text_types.h"
 
+#include "BKE_context.h"
 #include "BKE_freestyle.h"
 #include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_linestyle.h"
-#include "BKE_main.h"
+#include "BKE_scene.h"
 #include "BKE_text.h"
-#include "BKE_context.h"
 
 #include "BLT_translation.h"
 
@@ -62,6 +58,8 @@ extern "C" {
 #include "BLI_callbacks.h"
 
 #include "BPY_extern.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include "renderpipeline.h"
 
@@ -283,13 +281,13 @@ static bool test_edge_type_conditions(struct edge_type_condition *conditions,
 	return true;
 }
 
-static void prepare(Render *re, ViewLayer *view_layer)
+static void prepare(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph)
 {
 	// load mesh
 	re->i.infostr = IFACE_("Freestyle: Mesh loading");
 	re->stats_draw(re->sdh, &re->i);
 	re->i.infostr = NULL;
-	if (controller->LoadMesh(re, view_layer)) // returns if scene cannot be loaded or if empty
+	if (controller->LoadMesh(re, view_layer, depsgraph)) // returns if scene cannot be loaded or if empty
 		return;
 	if (re->test_break(re->tbh))
 		return;
@@ -344,7 +342,7 @@ static void prepare(Render *re, ViewLayer *view_layer)
 				{FREESTYLE_FE_MATERIAL_BOUNDARY, 0},
 				{FREESTYLE_FE_CONTOUR, 0},
 				{FREESTYLE_FE_EXTERNAL_CONTOUR, 0},
-				{FREESTYLE_FE_EDGE_MARK, 0}
+				{FREESTYLE_FE_EDGE_MARK, 0},
 			};
 			int num_edge_types = sizeof(conditions) / sizeof(struct edge_type_condition);
 			if (G.debug & G_DEBUG_FREESTYLE) {
@@ -448,7 +446,7 @@ static void prepare(Render *re, ViewLayer *view_layer)
 	RenderLayer *rl = RE_GetRenderLayer(re->result, view_layer->name);
 	bool diffuse = false, z = false;
 	for (RenderPass *rpass = (RenderPass *)rl->passes.first; rpass; rpass = rpass->next) {
-		if (STREQ(rpass->name, RE_PASSNAME_DIFFUSE)) {
+		if (STREQ(rpass->name, RE_PASSNAME_DIFFUSE_COLOR)) {
 			controller->setPassDiffuse(rpass->rect, rpass->rectx, rpass->recty);
 			diffuse = true;
 		}
@@ -607,12 +605,17 @@ Render *FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer, int render)
 		cout << "----------------------------------------------------------" << endl;
 	}
 
+	/* Create depsgraph and evaluate scene. */
+	ViewLayer *scene_view_layer = (ViewLayer*)BLI_findstring(&re->scene->view_layers, view_layer->name, offsetof(ViewLayer, name));
+	Depsgraph *depsgraph = DEG_graph_new(re->scene, scene_view_layer, DAG_EVAL_RENDER);
+	BKE_scene_graph_update_for_newframe(depsgraph, re->main);
+
 	// prepare Freestyle:
 	//   - load mesh
 	//   - add style modules
 	//   - set parameters
 	//   - compute view map
-	prepare(re, view_layer);
+	prepare(re, view_layer, depsgraph);
 
 	if (re->test_break(re->tbh)) {
 		controller->CloseFile();
@@ -627,7 +630,7 @@ Render *FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer, int render)
 			re->i.infostr = IFACE_("Freestyle: Stroke rendering");
 			re->stats_draw(re->sdh, &re->i);
 			re->i.infostr = NULL;
-			g_freestyle.scene = re->scene;
+			g_freestyle.scene = DEG_get_evaluated_scene(depsgraph);
 			int strokeCount = controller->DrawStrokes();
 			if (strokeCount > 0) {
 				freestyle_render = controller->RenderStrokes(re, true);
@@ -643,6 +646,8 @@ Render *FRS_do_stroke_rendering(Render *re, ViewLayer *view_layer, int render)
 			}
 		}
 	}
+
+	DEG_graph_free(depsgraph);
 
 	return freestyle_render;
 }

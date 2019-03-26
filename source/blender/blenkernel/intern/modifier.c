@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,23 +15,13 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Modifier stack implementation.
  *
  * BKE_modifier.h contains the function prototypes for this file.
- *
  */
 
-/** \file blender/blenkernel/intern/modifier.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdlib.h>
@@ -80,6 +68,9 @@
 
 #include "MOD_modifiertypes.h"
 
+#include "CLG_log.h"
+
+static CLG_LogRef LOG = {"bke.modifier"};
 static ModifierTypeInfo *modifier_types[NUM_MODIFIER_TYPES] = {NULL};
 static VirtualModifierData virtualModifierCommonData;
 
@@ -308,6 +299,9 @@ void modifier_copyData_generic(const ModifierData *md_src, ModifierData *md_dst,
 	char       *md_dst_data =       ((char *)md_dst) + data_size;
 	BLI_assert(data_size <= (size_t)mti->structSize);
 	memcpy(md_dst_data, md_src_data, (size_t)mti->structSize - data_size);
+
+	/* Runtime fields are never to be preserved. */
+	md_dst->runtime = NULL;
 }
 
 static void modifier_copy_data_id_us_cb(void *UNUSED(userData), Object *UNUSED(ob), ID **idpoin, int cb_flag)
@@ -392,6 +386,7 @@ void modifier_setError(ModifierData *md, const char *_format, ...)
 
 	md->error = BLI_strdup(buffer);
 
+	CLOG_STR_ERROR(&LOG, md->error);
 }
 
 /* used for buttons, to find out if the 'draw deformed in editmode' option is
@@ -471,7 +466,7 @@ bool modifiers_isParticleEnabled(Object *ob)
 /**
  * Check whether is enabled.
  *
- * \param scene Current scene, may be NULL, in which case isDisabled callback of the modifier is never called.
+ * \param scene: Current scene, may be NULL, in which case isDisabled callback of the modifier is never called.
  */
 bool modifier_isEnabled(const struct Scene *scene, ModifierData *md, int required_mode)
 {
@@ -486,8 +481,8 @@ bool modifier_isEnabled(const struct Scene *scene, ModifierData *md, int require
 }
 
 CDMaskLink *modifiers_calcDataMasks(struct Scene *scene, Object *ob, ModifierData *md,
-                                    CustomDataMask dataMask, int required_mode,
-                                    ModifierData *previewmd, CustomDataMask previewmask)
+                                    const CustomData_MeshMasks *dataMask, int required_mode,
+                                    ModifierData *previewmd, const CustomData_MeshMasks *previewmask)
 {
 	CDMaskLink *dataMasks = NULL;
 	CDMaskLink *curr, *prev;
@@ -500,10 +495,10 @@ CDMaskLink *modifiers_calcDataMasks(struct Scene *scene, Object *ob, ModifierDat
 
 		if (modifier_isEnabled(scene, md, required_mode)) {
 			if (mti->requiredDataMask)
-				curr->mask = mti->requiredDataMask(ob, md);
+				 mti->requiredDataMask(ob, md, &curr->mask);
 
-			if (previewmd == md) {
-				curr->mask |= previewmask;
+			if (previewmd == md && previewmask != NULL) {
+				CustomData_MeshMasks_update(&curr->mask, previewmask);
 			}
 		}
 
@@ -520,15 +515,10 @@ CDMaskLink *modifiers_calcDataMasks(struct Scene *scene, Object *ob, ModifierDat
 	 */
 	for (curr = dataMasks, prev = NULL; curr; prev = curr, curr = curr->next) {
 		if (prev) {
-			CustomDataMask prev_mask = prev->mask;
-			CustomDataMask curr_mask = curr->mask;
-
-			curr->mask = curr_mask | prev_mask;
+			CustomData_MeshMasks_update(&curr->mask, &prev->mask);
 		}
 		else {
-			CustomDataMask curr_mask = curr->mask;
-
-			curr->mask = curr_mask | dataMask;
+			CustomData_MeshMasks_update(&curr->mask, dataMask);
 		}
 	}
 
@@ -885,13 +875,13 @@ struct DerivedMesh *modifier_applyModifier_DM_deprecated(
 	Mesh *mesh = NULL;
 	if (dm != NULL) {
 		mesh = BKE_id_new_nomain(ID_ME, NULL);
-		DM_to_mesh(dm, mesh, ctx->object, CD_MASK_EVERYTHING, false);
+		DM_to_mesh(dm, mesh, ctx->object, &CD_MASK_EVERYTHING, false);
 	}
 
 	struct Mesh *new_mesh = mti->applyModifier(md, ctx, mesh);
 
 	/* Make a DM that doesn't reference new_mesh so we can free the latter. */
-	DerivedMesh *ndm = CDDM_from_mesh_ex(new_mesh, CD_DUPLICATE, CD_MASK_EVERYTHING);
+	DerivedMesh *ndm = CDDM_from_mesh_ex(new_mesh, CD_DUPLICATE, &CD_MASK_EVERYTHING);
 
 	if (new_mesh != mesh) {
 		BKE_id_free(NULL, new_mesh);
@@ -907,22 +897,25 @@ struct DerivedMesh *modifier_applyModifier_DM_deprecated(
 /**
  * Get evaluated mesh for other evaluated object, which is used as an operand for the modifier,
  * e.g. second operand for boolean modifier.
- * Note thqt modifiers in stack always get fully evaluated COW ID pointers, never original ones. Makes things simpler.
+ * Note that modifiers in stack always get fully evaluated COW ID pointers, never original ones. Makes things simpler.
+ *
+ * \param get_cage_mesh Return evaluated mesh with only deforming modifiers applied
+ *                      (i.e. mesh topology remains the same as original one, a.k.a. 'cage' mesh).
  */
-Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(Object *ob_eval, bool *r_free_mesh)
+Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(Object *ob_eval, const bool get_cage_mesh)
 {
-	Mesh *me;
+	Mesh *me = NULL;
 
 	if ((ob_eval->type == OB_MESH) && (ob_eval->mode & OB_MODE_EDIT)) {
-		/* Note: currently we have no equivalent to derived cagemesh or even final dm in BMEditMesh...
-		 * This is TODO in core depsgraph/modifier stack code still. */
+		/* In EditMode, evaluated mesh is stored in BMEditMesh, not the object... */
 		BMEditMesh *em = BKE_editmesh_from_object(ob_eval);
-		me = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, 0);
-		*r_free_mesh = true;
+		if (em != NULL) {  /* em might not exist yet in some cases, just after loading a .blend file, see T57878. */
+			me = (get_cage_mesh && em->mesh_eval_cage != NULL) ? em->mesh_eval_cage : em->mesh_eval_final;
+		}
 	}
-	else {
-		me = ob_eval->runtime.mesh_eval;
-		*r_free_mesh = false;
+	if (me == NULL) {
+		me = (get_cage_mesh && ob_eval->runtime.mesh_deform_eval != NULL) ? ob_eval->runtime.mesh_deform_eval :
+		                                                                    ob_eval->runtime.mesh_eval;
 	}
 
 	return me;

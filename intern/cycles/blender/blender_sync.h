@@ -67,9 +67,8 @@ public:
 	               int width, int height,
 	               void **python_thread_state);
 	void sync_view_layer(BL::SpaceView3D& b_v3d, BL::ViewLayer& b_view_layer);
-	array<Pass> sync_render_passes(BL::RenderLayer& b_render_layer,
-	                               BL::ViewLayer& b_view_layer,
-	                               const SessionParams &session_params);
+	vector<Pass> sync_render_passes(BL::RenderLayer& b_render_layer,
+	                                BL::ViewLayer& b_view_layer);
 	void sync_integrator();
 	void sync_camera(BL::RenderSettings& b_render,
 	                 BL::Object& b_override,
@@ -78,12 +77,14 @@ public:
 	void sync_view(BL::SpaceView3D& b_v3d,
 	               BL::RegionView3D& b_rv3d,
 	               int width, int height);
+	inline int get_layer_samples() { return view_layer.samples; }
+	inline int get_layer_bound_samples() { return view_layer.bound_samples; }
 
 	/* get parameters */
 	static SceneParams get_scene_params(BL::Scene& b_scene,
 	                                    bool background);
 	static SessionParams get_session_params(BL::RenderEngine& b_engine,
-	                                        BL::UserPreferences& b_userpref,
+	                                        BL::Preferences& b_userpref,
 	                                        BL::Scene& b_scene,
 	                                        bool background);
 	static bool get_session_pause(BL::Scene& b_scene, bool background);
@@ -117,7 +118,8 @@ private:
 	                BL::Object& b_ob,
 	                BL::Object& b_ob_instance,
 	                bool object_updated,
-	                bool hide_tris);
+	                bool show_self,
+	                bool show_particles);
 	void sync_curves(Mesh *mesh,
 	                 BL::Mesh& b_mesh,
 	                 BL::Object& b_ob,
@@ -127,7 +129,8 @@ private:
 	                    BL::ViewLayer& b_view_layer,
 	                    BL::DepsgraphObjectInstance& b_instance,
 	                    float motion_time,
-	                    bool hide_tris,
+	                    bool show_self,
+	                    bool show_particles,
 	                    BlenderObjectCulling& culling,
 	                    bool *use_portal);
 	void sync_light(BL::Object& b_parent,
@@ -189,18 +192,23 @@ private:
 
 	struct RenderLayerInfo {
 		RenderLayerInfo()
-		: use_background_shader(true),
+		: material_override(PointerRNA_NULL),
+		  use_background_shader(true),
 		  use_background_ao(true),
 		  use_surfaces(true),
-		  use_hair(true)
+		  use_hair(true),
+		  samples(0),
+		  bound_samples(false)
 		{}
 
 		string name;
-		uint view_layer;
+		BL::Material material_override;
 		bool use_background_shader;
 		bool use_background_ao;
 		bool use_surfaces;
 		bool use_hair;
+		int samples;
+		bool bound_samples;
 	} view_layer;
 
 	Progress &progress;
@@ -208,4 +216,4 @@ private:
 
 CCL_NAMESPACE_END
 
-#endif /* __BLENDER_SYNC_H__ */
+#endif  /* __BLENDER_SYNC_H__ */

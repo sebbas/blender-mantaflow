@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_SILHOUETTE_H__
 #define __FREESTYLE_SILHOUETTE_H__
 
-/** \file blender/freestyle/intern/view_map/Silhouette.h
- *  \ingroup freestyle
- *  \brief Classes to define a silhouette structure
- *  \author Stephane Grabli
- *  \date 25/03/2002
+/** \file
+ * \ingroup freestyle
+ * \brief Classes to define a silhouette structure
  */
 
 #include <float.h>
@@ -949,7 +943,7 @@ public:
 	/*! Returns an iterator over the FEdge points, pointing to the first point. The difference with verticesBegin()
 	 *  is that here we can iterate over points of the FEdge at a any given sampling.
 	 *  Indeed, for each iteration, a virtual point is created.
-	 *  \param t
+	 *  \param t:
 	 *    The sampling with which we want to iterate over points of this FEdge.
 	 */
 	virtual inline Interface0DIterator pointsBegin(float t = 0.0f);
@@ -957,7 +951,7 @@ public:
 	/*! Returns an iterator over the FEdge points, pointing after the last point. The difference with verticesEnd()
 	 * is that here we can iterate over points of the FEdge at a any given sampling.
 	 *  Indeed, for each iteration, a virtual point is created.
-	 *  \param t
+	 *  \param t:
 	 *    The sampling with which we want to iterate over points of this FEdge.
 	 */
 	virtual inline Interface0DIterator pointsEnd(float t = 0.0f);
@@ -1415,8 +1409,8 @@ private:
 	vector<SVertex*> _verticesList;  // list of all vertices
 	vector<FEdge*> _edgesList;       // list of all edges
 	Id _Id;
-	const char *_Name;
-	const char *_LibraryPath;
+	string _Name;
+	string _LibraryPath;
 	BBox<Vec3r> _BBox;
 	vector<FrsMaterial> _FrsMaterials;
 
@@ -1436,8 +1430,6 @@ public:
 		userdata = NULL;
 		_importance = 0.0f;
 		_ViewShape = NULL;
-		_Name = NULL;
-		_LibraryPath = NULL;
 	}
 
 	/*! Copy constructor */
@@ -1891,13 +1883,13 @@ public:
 	}
 
 	/*! Returns the name of the Shape. */
-	inline const char *getName() const
+	inline const string& getName() const
 	{
 		return _Name;
 	}
 
 	/*! Returns the library path of the Shape. */
-	inline const char *getLibraryPath() const
+	inline const string& getLibraryPath() const
 	{
 		return _LibraryPath;
 	}
@@ -1910,13 +1902,13 @@ public:
 	}
 
 	/*! Sets the name of the shape.*/
-	inline void setName(const char *name)
+	inline void setName(const string& name)
 	{
 		_Name = name;
 	}
 
 	/*! Sets the library path of the shape.*/
-	inline void setLibraryPath(const char *path)
+	inline void setLibraryPath(const string& path)
 	{
 		_LibraryPath = path;
 	}

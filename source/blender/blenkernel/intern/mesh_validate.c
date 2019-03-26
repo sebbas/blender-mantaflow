@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2011 Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/mesh_validate.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -30,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+
+#include "CLG_log.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -42,6 +40,7 @@
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
 
+#include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.h"
 
@@ -52,6 +51,7 @@
 /* loop v/e are unsigned, so using max uint_32 value as invalid marker... */
 #define INVALID_LOOP_EDGE_MARKER 4294967295u
 
+static CLG_LogRef LOG = {"bke.mesh"};
 
 /** \name Internal functions
  * \{ */
@@ -195,17 +195,15 @@ static int search_polyloop_cmp(const void *v1, const void *v2)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Validation
  * \{ */
 
-#define PRINT_MSG(...) (void) \
-	( \
-	 ((do_verbose) ? printf(__VA_ARGS__) : 0))
+#define PRINT_MSG(...) if(do_verbose) CLOG_INFO(&LOG, 1, __VA_ARGS__)
 
-#define PRINT_ERR(...) (void) \
-	(is_valid = false, \
-	 ((do_verbose) ? printf(__VA_ARGS__) : 0))
+#define PRINT_ERR(...) do { \
+		is_valid = false; \
+		if (do_verbose) { CLOG_ERROR(&LOG, __VA_ARGS__); } \
+	} while(0)
 
 /**
  * Validate the mesh, \a do_fixes requires \a mesh to be non-null.
@@ -223,11 +221,11 @@ bool BKE_mesh_validate_arrays(
         const bool do_verbose, const bool do_fixes,
         bool *r_changed)
 {
-#   define REMOVE_EDGE_TAG(_me) { _me->v2 = _me->v1; free_flag.edges = do_fixes; } (void)0
-#   define IS_REMOVED_EDGE(_me) (_me->v2 == _me->v1)
+#define REMOVE_EDGE_TAG(_me) { _me->v2 = _me->v1; free_flag.edges = do_fixes; } (void)0
+#define IS_REMOVED_EDGE(_me) (_me->v2 == _me->v1)
 
-#   define REMOVE_LOOP_TAG(_ml) { _ml->e = INVALID_LOOP_EDGE_MARKER; free_flag.polyloops = do_fixes; } (void)0
-#   define REMOVE_POLY_TAG(_mp) { _mp->totloop *= -1; free_flag.polyloops = do_fixes; } (void)0
+#define REMOVE_LOOP_TAG(_ml) { _ml->e = INVALID_LOOP_EDGE_MARKER; free_flag.polyloops = do_fixes; } (void)0
+#define REMOVE_POLY_TAG(_mp) { _mp->totloop *= -1; free_flag.polyloops = do_fixes; } (void)0
 
 	MVert *mv = mverts;
 	MEdge *me;
@@ -273,11 +271,11 @@ bool BKE_mesh_validate_arrays(
 	free_flag.as_flag = 0;
 	recalc_flag.as_flag = 0;
 
-	PRINT_MSG("%s: verts(%u), edges(%u), loops(%u), polygons(%u)\n",
-	          __func__, totvert, totedge, totloop, totpoly);
+	PRINT_MSG("verts(%u), edges(%u), loops(%u), polygons(%u)",
+	          totvert, totedge, totloop, totpoly);
 
 	if (totedge == 0 && totpoly != 0) {
-		PRINT_ERR("\tLogical error, %u polygons and 0 edges\n", totpoly);
+		PRINT_ERR("\tLogical error, %u polygons and 0 edges", totpoly);
 		recalc_flag.edges = do_fixes;
 	}
 
@@ -286,7 +284,7 @@ bool BKE_mesh_validate_arrays(
 
 		for (j = 0; j < 3; j++) {
 			if (!isfinite(mv->co[j])) {
-				PRINT_ERR("\tVertex %u: has invalid coordinate\n", i);
+				PRINT_ERR("\tVertex %u: has invalid coordinate", i);
 
 				if (do_fixes) {
 					zero_v3(mv->co);
@@ -300,7 +298,7 @@ bool BKE_mesh_validate_arrays(
 		}
 
 		if (fix_normal) {
-			PRINT_ERR("\tVertex %u: has zero normal, assuming Z-up normal\n", i);
+			PRINT_ERR("\tVertex %u: has zero normal, assuming Z-up normal", i);
 			if (do_fixes) {
 				mv->no[2] = SHRT_MAX;
 				fix_flag.verts = true;
@@ -312,20 +310,20 @@ bool BKE_mesh_validate_arrays(
 		bool remove = false;
 
 		if (me->v1 == me->v2) {
-			PRINT_ERR("\tEdge %u: has matching verts, both %u\n", i, me->v1);
+			PRINT_ERR("\tEdge %u: has matching verts, both %u", i, me->v1);
 			remove = do_fixes;
 		}
 		if (me->v1 >= totvert) {
-			PRINT_ERR("\tEdge %u: v1 index out of range, %u\n", i, me->v1);
+			PRINT_ERR("\tEdge %u: v1 index out of range, %u", i, me->v1);
 			remove = do_fixes;
 		}
 		if (me->v2 >= totvert) {
-			PRINT_ERR("\tEdge %u: v2 index out of range, %u\n", i, me->v2);
+			PRINT_ERR("\tEdge %u: v2 index out of range, %u", i, me->v2);
 			remove = do_fixes;
 		}
 
 		if ((me->v1 != me->v2) && BLI_edgehash_haskey(edge_hash, me->v1, me->v2)) {
-			PRINT_ERR("\tEdge %u: is a duplicate of %d\n", i,
+			PRINT_ERR("\tEdge %u: is a duplicate of %d", i,
 			          POINTER_AS_INT(BLI_edgehash_lookup(edge_hash, me->v1, me->v2)));
 			remove = do_fixes;
 		}
@@ -344,13 +342,13 @@ bool BKE_mesh_validate_arrays(
 #		define REMOVE_FACE_TAG(_mf) { _mf->v3 = 0; free_flag.faces = do_fixes; } (void)0
 #		define CHECK_FACE_VERT_INDEX(a, b) \
 					if (mf->a == mf->b) { \
-						PRINT_ERR("    face %u: verts invalid, " STRINGIFY(a) "/" STRINGIFY(b) " both %u\n", i, mf->a); \
+						PRINT_ERR("    face %u: verts invalid, " STRINGIFY(a) "/" STRINGIFY(b) " both %u", i, mf->a); \
 						remove = do_fixes; \
 					} (void)0
 #		define CHECK_FACE_EDGE(a, b) \
 					if (!BLI_edgehash_haskey(edge_hash, mf->a, mf->b)) { \
 						PRINT_ERR("    face %u: edge " STRINGIFY(a) "/" STRINGIFY(b) \
-						          " (%u,%u) is missing edge data\n", i, mf->a, mf->b); \
+						          " (%u,%u) is missing edge data", i, mf->a, mf->b); \
 						recalc_flag.edges = do_fixes; \
 					} (void)0
 
@@ -362,7 +360,7 @@ bool BKE_mesh_validate_arrays(
 		SortFace *sf_prev;
 		unsigned int totsortface = 0;
 
-		PRINT_ERR("No Polys, only tessellated Faces\n");
+		PRINT_ERR("No Polys, only tessellated Faces");
 
 		for (i = 0, mf = mfaces, sf = sort_faces; i < totface; i++, mf++) {
 			bool remove = false;
@@ -373,7 +371,7 @@ bool BKE_mesh_validate_arrays(
 			do {
 				fv[fidx] = *(&(mf->v1) + fidx);
 				if (fv[fidx] >= totvert) {
-					PRINT_ERR("\tFace %u: 'v%d' index out of range, %u\n", i, fidx + 1, fv[fidx]);
+					PRINT_ERR("\tFace %u: 'v%d' index out of range, %u", i, fidx + 1, fv[fidx]);
 					remove = do_fixes;
 				}
 			} while (fidx--);
@@ -450,12 +448,12 @@ bool BKE_mesh_validate_arrays(
 					mf_prev = mfaces + sf_prev->index;
 
 					if (mf->v4) {
-						PRINT_ERR("\tFace %u & %u: are duplicates (%u,%u,%u,%u) (%u,%u,%u,%u)\n",
+						PRINT_ERR("\tFace %u & %u: are duplicates (%u,%u,%u,%u) (%u,%u,%u,%u)",
 						          sf->index, sf_prev->index, mf->v1, mf->v2, mf->v3, mf->v4,
 						          mf_prev->v1, mf_prev->v2, mf_prev->v3, mf_prev->v4);
 					}
 					else {
-						PRINT_ERR("\tFace %u & %u: are duplicates (%u,%u,%u) (%u,%u,%u)\n",
+						PRINT_ERR("\tFace %u & %u: are duplicates (%u,%u,%u) (%u,%u,%u)",
 						          sf->index, sf_prev->index, mf->v1, mf->v2, mf->v3,
 						          mf_prev->v1, mf_prev->v2, mf_prev->v3);
 					}
@@ -503,13 +501,13 @@ bool BKE_mesh_validate_arrays(
 
 			if (mp->loopstart < 0 || mp->totloop < 3) {
 				/* Invalid loop data. */
-				PRINT_ERR("\tPoly %u is invalid (loopstart: %d, totloop: %d)\n",
+				PRINT_ERR("\tPoly %u is invalid (loopstart: %d, totloop: %d)",
 				          sp->index, mp->loopstart, mp->totloop);
 				sp->invalid = true;
 			}
 			else if (mp->loopstart + mp->totloop > totloop) {
 				/* Invalid loop data. */
-				PRINT_ERR("\tPoly %u uses loops out of range (loopstart: %d, loopend: %d, max nbr of loops: %u)\n",
+				PRINT_ERR("\tPoly %u uses loops out of range (loopstart: %d, loopend: %d, max nbr of loops: %u)",
 				          sp->index, mp->loopstart, mp->loopstart + mp->totloop - 1, totloop - 1);
 				sp->invalid = true;
 			}
@@ -533,11 +531,11 @@ bool BKE_mesh_validate_arrays(
 				for (j = 0, ml = &mloops[sp->loopstart]; j < mp->totloop; j++, ml++, v++) {
 					if (ml->v >= totvert) {
 						/* Invalid vert idx. */
-						PRINT_ERR("\tLoop %u has invalid vert reference (%u)\n", sp->loopstart + j, ml->v);
+						PRINT_ERR("\tLoop %u has invalid vert reference (%u)", sp->loopstart + j, ml->v);
 						sp->invalid = true;
 					}
 					else if (mverts[ml->v].flag & ME_VERT_TMP_TAG) {
-						PRINT_ERR("\tPoly %u has duplicated vert reference at corner (%u)\n", i, j);
+						PRINT_ERR("\tPoly %u has duplicated vert reference at corner (%u)", i, j);
 						sp->invalid = true;
 					}
 					else {
@@ -555,7 +553,7 @@ bool BKE_mesh_validate_arrays(
 					v2 = mloops[sp->loopstart + (j + 1) % mp->totloop].v;
 					if (!BLI_edgehash_haskey(edge_hash, v1, v2)) {
 						/* Edge not existing. */
-						PRINT_ERR("\tPoly %u needs missing edge (%d, %d)\n", sp->index, v1, v2);
+						PRINT_ERR("\tPoly %u needs missing edge (%d, %d)", sp->index, v1, v2);
 						if (do_fixes)
 							recalc_flag.edges = true;
 						else
@@ -568,11 +566,11 @@ bool BKE_mesh_validate_arrays(
 							int prev_e = ml->e;
 							ml->e = POINTER_AS_INT(BLI_edgehash_lookup(edge_hash, v1, v2));
 							fix_flag.loops_edge = true;
-							PRINT_ERR("\tLoop %u has invalid edge reference (%d), fixed using edge %u\n",
+							PRINT_ERR("\tLoop %u has invalid edge reference (%d), fixed using edge %u",
 							          sp->loopstart + j, prev_e, ml->e);
 						}
 						else {
-							PRINT_ERR("\tLoop %u has invalid edge reference (%u)\n", sp->loopstart + j, ml->e);
+							PRINT_ERR("\tLoop %u has invalid edge reference (%u)", sp->loopstart + j, ml->e);
 							sp->invalid = true;
 						}
 					}
@@ -585,11 +583,11 @@ bool BKE_mesh_validate_arrays(
 								int prev_e = ml->e;
 								ml->e = POINTER_AS_INT(BLI_edgehash_lookup(edge_hash, v1, v2));
 								fix_flag.loops_edge = true;
-								PRINT_ERR("\tPoly %u has invalid edge reference (%d, is_removed: %d), fixed using edge %u\n",
+								PRINT_ERR("\tPoly %u has invalid edge reference (%d, is_removed: %d), fixed using edge %u",
 								          sp->index, prev_e, IS_REMOVED_EDGE(me), ml->e);
 							}
 							else {
-								PRINT_ERR("\tPoly %u has invalid edge reference (%u)\n", sp->index, ml->e);
+								PRINT_ERR("\tPoly %u has invalid edge reference (%u)", sp->index, ml->e);
 								sp->invalid = true;
 							}
 						}
@@ -620,11 +618,12 @@ bool BKE_mesh_validate_arrays(
 			/* Test same polys. */
 			if ((p1_nv == p2_nv) && (memcmp(p1_v, p2_v, p1_nv * sizeof(*p1_v)) == 0)) {
 				if (do_verbose) {
+					// TODO: convert list to string
 					PRINT_ERR("\tPolys %u and %u use same vertices (%d",
 					          prev_sp->index, sp->index, *p1_v);
 					for (j = 1; j < p1_nv; j++)
 						PRINT_ERR(", %d", p1_v[j]);
-					PRINT_ERR("), considering poly %u as invalid.\n", sp->index);
+					PRINT_ERR("), considering poly %u as invalid.", sp->index);
 				}
 				else {
 					is_valid = false;
@@ -662,7 +661,7 @@ bool BKE_mesh_validate_arrays(
 				/* Unused loops. */
 				if (prev_end < sp->loopstart) {
 					for (j = prev_end, ml = &mloops[prev_end]; j < sp->loopstart; j++, ml++) {
-						PRINT_ERR("\tLoop %u is unused.\n", j);
+						PRINT_ERR("\tLoop %u is unused.", j);
 						if (do_fixes)
 							REMOVE_LOOP_TAG(ml);
 					}
@@ -671,7 +670,7 @@ bool BKE_mesh_validate_arrays(
 				}
 				/* Multi-used loops. */
 				else if (prev_end > sp->loopstart) {
-					PRINT_ERR("\tPolys %u and %u share loops from %d to %d, considering poly %u as invalid.\n",
+					PRINT_ERR("\tPolys %u and %u share loops from %d to %d, considering poly %u as invalid.",
 					          prev_sp->index, sp->index, sp->loopstart, prev_end, sp->index);
 					if (do_fixes) {
 						REMOVE_POLY_TAG((&mpolys[sp->index]));
@@ -690,7 +689,7 @@ bool BKE_mesh_validate_arrays(
 		/* We may have some remaining unused loops to get rid of! */
 		if (prev_end < totloop) {
 			for (j = prev_end, ml = &mloops[prev_end]; j < totloop; j++, ml++) {
-				PRINT_ERR("\tLoop %u is unused.\n", j);
+				PRINT_ERR("\tLoop %u is unused.", j);
 				if (do_fixes)
 					REMOVE_LOOP_TAG(ml);
 			}
@@ -710,14 +709,14 @@ bool BKE_mesh_validate_arrays(
 			for (j = 0, dw = dv->dw; j < dv->totweight; j++, dw++) {
 				/* note, greater than max defgroups is accounted for in our code, but not < 0 */
 				if (!isfinite(dw->weight)) {
-					PRINT_ERR("\tVertex deform %u, group %d has weight: %f\n", i, dw->def_nr, dw->weight);
+					PRINT_ERR("\tVertex deform %u, group %d has weight: %f", i, dw->def_nr, dw->weight);
 					if (do_fixes) {
 						dw->weight = 0.0f;
 						fix_flag.verts_weight = true;
 					}
 				}
 				else if (dw->weight < 0.0f || dw->weight > 1.0f) {
-					PRINT_ERR("\tVertex deform %u, group %d has weight: %f\n", i, dw->def_nr, dw->weight);
+					PRINT_ERR("\tVertex deform %u, group %d has weight: %f", i, dw->def_nr, dw->weight);
 					if (do_fixes) {
 						CLAMP(dw->weight, 0.0f, 1.0f);
 						fix_flag.verts_weight = true;
@@ -725,7 +724,7 @@ bool BKE_mesh_validate_arrays(
 				}
 
 				if (dw->def_nr < 0) {
-					PRINT_ERR("\tVertex deform %u, has invalid group %d\n", i, dw->def_nr);
+					PRINT_ERR("\tVertex deform %u, has invalid group %d", i, dw->def_nr);
 					if (do_fixes) {
 						defvert_remove_group(dv, dw);
 						fix_flag.verts_weight = true;
@@ -820,7 +819,7 @@ bool BKE_mesh_validate_arrays(
 }
 
 static bool mesh_validate_customdata(
-        CustomData *data, CustomDataMask mask,
+        CustomData *data, CustomDataMask mask, const uint totitems,
         const bool do_verbose, const bool do_fixes,
         bool *r_change)
 {
@@ -859,8 +858,13 @@ static bool mesh_validate_customdata(
 			}
 		}
 
-		if (ok)
+		if (ok) {
+			if (CustomData_layer_validate(layer, totitems, do_fixes)) {
+				PRINT_ERR("\tCustomDataLayer type %d has some invalid data\n", layer->type);
+				has_fixes = do_fixes;
+			}
 			i++;
+		}
 	}
 
 	PRINT_MSG("%s: Finished (is_valid=%d)\n\n", __func__, (int)!has_fixes);
@@ -874,8 +878,10 @@ static bool mesh_validate_customdata(
  * \returns is_valid.
  */
 bool BKE_mesh_validate_all_customdata(
-        CustomData *vdata, CustomData *edata,
-        CustomData *ldata, CustomData *pdata,
+        CustomData *vdata, const uint totvert,
+        CustomData *edata, const uint totedge,
+        CustomData *ldata, const uint totloop,
+        CustomData *pdata, const uint totpoly,
         const bool check_meshmask,
         const bool do_verbose, const bool do_fixes,
         bool *r_change)
@@ -883,12 +889,15 @@ bool BKE_mesh_validate_all_customdata(
 	bool is_valid = true;
 	bool is_change_v, is_change_e, is_change_l, is_change_p;
 	int tot_uvloop, tot_vcolloop;
-	CustomDataMask mask = check_meshmask ? CD_MASK_MESH : 0;
+	CustomData_MeshMasks mask = {0};
+	if (check_meshmask) {
+		mask = CD_MASK_MESH;
+	}
 
-	is_valid &= mesh_validate_customdata(vdata, mask, do_verbose, do_fixes, &is_change_v);
-	is_valid &= mesh_validate_customdata(edata, mask, do_verbose, do_fixes, &is_change_e);
-	is_valid &= mesh_validate_customdata(ldata, mask, do_verbose, do_fixes, &is_change_l);
-	is_valid &= mesh_validate_customdata(pdata, mask, do_verbose, do_fixes, &is_change_p);
+	is_valid &= mesh_validate_customdata(vdata, mask.vmask, totvert, do_verbose, do_fixes, &is_change_v);
+	is_valid &= mesh_validate_customdata(edata, mask.emask, totedge, do_verbose, do_fixes, &is_change_e);
+	is_valid &= mesh_validate_customdata(ldata, mask.lmask, totloop, do_verbose, do_fixes, &is_change_l);
+	is_valid &= mesh_validate_customdata(pdata, mask.pmask, totpoly, do_verbose, do_fixes, &is_change_p);
 
 	tot_uvloop = CustomData_number_of_layers(ldata, CD_MLOOPUV);
 	tot_vcolloop = CustomData_number_of_layers(ldata, CD_MLOOPCOL);
@@ -927,11 +936,14 @@ bool BKE_mesh_validate(Mesh *me, const bool do_verbose, const bool cddata_check_
 	bool changed;
 
 	if (do_verbose) {
-		printf("MESH: %s\n", me->id.name + 2);
+		CLOG_INFO(&LOG, 0, "MESH: %s", me->id.name + 2);
 	}
 
 	is_valid &= BKE_mesh_validate_all_customdata(
-	        &me->vdata, &me->edata, &me->ldata, &me->pdata,
+	        &me->vdata, me->totvert,
+	        &me->edata, me->totedge,
+	        &me->ldata, me->totloop,
+	        &me->pdata, me->totpoly,
 	        cddata_check_mask,
 	        do_verbose, true,
 	        &changed);
@@ -948,7 +960,7 @@ bool BKE_mesh_validate(Mesh *me, const bool do_verbose, const bool cddata_check_
 	        &changed);
 
 	if (changed) {
-		DEG_id_tag_update(&me->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
 		return true;
 	}
 	else {
@@ -972,7 +984,10 @@ bool BKE_mesh_is_valid(Mesh *me)
 	bool changed = true;
 
 	is_valid &= BKE_mesh_validate_all_customdata(
-	        &me->vdata, &me->edata, &me->ldata, &me->pdata,
+	        &me->vdata, me->totvert,
+	        &me->edata, me->totedge,
+	        &me->ldata, me->totloop,
+	        &me->pdata, me->totpoly,
 	        false,  /* setting mask here isn't useful, gives false positives */
 	        do_verbose, do_fixes, &changed);
 
@@ -1012,7 +1027,7 @@ bool BKE_mesh_validate_material_indices(Mesh *me)
 	}
 
 	if (!is_valid) {
-		DEG_id_tag_update(&me->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
 		return true;
 	}
 	else {
@@ -1024,7 +1039,6 @@ bool BKE_mesh_validate_material_indices(Mesh *me)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Stripping (removing invalid data)
  * \{ */
 
@@ -1163,7 +1177,6 @@ void BKE_mesh_strip_loose_edges(Mesh *me)
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Mesh Edge Calculation
  * \{ */
 
@@ -1350,8 +1363,8 @@ void BKE_mesh_calc_edges_legacy(Mesh *me, const bool use_old)
 /**
  * Calculate edges from polygons
  *
- * \param mesh  The mesh to add edges into
- * \param update  When true create new edges co-exist
+ * \param mesh: The mesh to add edges into
+ * \param update: When true create new edges co-exist
  */
 void BKE_mesh_calc_edges(Mesh *mesh, bool update, const bool select)
 {
@@ -1460,7 +1473,7 @@ void BKE_mesh_calc_edges_loose(Mesh *mesh)
 /**
  * Calculate/create edges from tessface data
  *
- * \param mesh  The mesh to add edges into
+ * \param mesh: The mesh to add edges into
  */
 
 void BKE_mesh_calc_edges_tessface(Mesh *mesh)

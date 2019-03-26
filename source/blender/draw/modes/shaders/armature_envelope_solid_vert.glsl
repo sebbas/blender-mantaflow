@@ -2,11 +2,15 @@
 uniform mat4 ViewMatrix;
 uniform mat4 ViewMatrixInverse;
 uniform mat4 ViewProjectionMatrix;
+#ifdef USE_WORLD_CLIP_PLANES
+uniform mat4 ModelMatrix;
+#endif
 
-/* ---- Instantiated Attribs ---- */
+
+/* ---- Instantiated Attrs ---- */
 in vec3 pos;
 
-/* ---- Per instance Attribs ---- */
+/* ---- Per instance Attrs ---- */
 /* Assumed to be in world coordinate already. */
 in vec4 headSphere;
 in vec4 tailSphere;
@@ -48,8 +52,12 @@ void main()
 
 	normalView = mat3(ViewMatrix) * nor;
 
-	gl_Position = ViewProjectionMatrix * vec4(sp, 1.0);
-
 	finalStateColor = stateColor;
 	finalBoneColor = boneColor;
+
+	vec4 pos_4d = vec4(sp, 1.0);
+	gl_Position = ViewProjectionMatrix * pos_4d;
+#ifdef USE_WORLD_CLIP_PLANES
+	world_clip_planes_calc_clip_distance((ModelMatrix * pos_4d).xyz);
+#endif
 }

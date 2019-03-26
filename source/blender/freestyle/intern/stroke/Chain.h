@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __FREESTYLE_CHAIN_H__
 #define __FREESTYLE_CHAIN_H__
 
-/** \file blender/freestyle/intern/stroke/Chain.h
- *  \ingroup freestyle
- *  \brief Class to define a chain of viewedges.
- *  \author Stephane Grabli
- *  \date 09/01/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class to define a chain of viewedges.
  */
 
 #include "Curve.h"
@@ -82,17 +76,17 @@ public:
 	}
 
 	/*! Adds a ViewEdge at the end of the chain
-	 *  \param iViewEdge
+	 *  \param iViewEdge:
 	 *    The ViewEdge that must be added.
-	 *  \param orientation
+	 *  \param orientation:
 	 *    The orientation with which this ViewEdge must be processed.
 	 */
 	void push_viewedge_back(ViewEdge *iViewEdge, bool orientation);
 
 	/*! Adds a ViewEdge at the beginning of the chain
-	 *  \param iViewEdge
+	 *  \param iViewEdge:
 	 *    The ViewEdge that must be added.
-	 *  \param orientation
+	 *  \param orientation:
 	 *    The orientation with which this ViewEdge must be processed.
 	 */
 	void push_viewedge_front(ViewEdge *iViewEdge, bool orientation);

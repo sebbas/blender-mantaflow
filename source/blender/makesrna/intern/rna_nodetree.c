@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,21 +12,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008), Nathan Letwory, Robin Allen, Bob Holcomb
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_nodetree.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 
-#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
@@ -43,7 +36,6 @@
 #include "DNA_texture_types.h"
 
 #include "BKE_animsys.h"
-#include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_image.h"
 #include "BKE_texture.h"
@@ -63,8 +55,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "RE_render_ext.h"
-
-#include "NOD_composite.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -92,14 +82,14 @@ static const EnumPropertyItem node_socket_type_items[] = {
 	{SOCK_STRING,  "STRING",    0,    "String",    ""},
 	{SOCK_RGBA,    "RGBA",      0,    "RGBA",      ""},
 	{SOCK_SHADER,  "SHADER",    0,    "Shader",    ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_quality_items[] = {
 	{NTREE_QUALITY_HIGH,   "HIGH",     0,    "High",     "High quality"},
 	{NTREE_QUALITY_MEDIUM, "MEDIUM",   0,    "Medium",   "Medium quality"},
 	{NTREE_QUALITY_LOW,    "LOW",      0,    "Low",      "Low quality"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_chunksize_items[] = {
@@ -109,7 +99,7 @@ static const EnumPropertyItem node_chunksize_items[] = {
 	{NTREE_CHUNCKSIZE_256,  "256",    0,    "256x256",   "Chunksize of 256x256"},
 	{NTREE_CHUNCKSIZE_512,  "512",    0,    "512x512",   "Chunksize of 512x512"},
 	{NTREE_CHUNCKSIZE_1024, "1024",   0,    "1024x1024", "Chunksize of 1024x1024"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 #endif
 
@@ -118,27 +108,31 @@ const EnumPropertyItem rna_enum_node_math_items[] = {
 	{NODE_MATH_SUB,     "SUBTRACT",     0, "Subtract",     ""},
 	{NODE_MATH_MUL,     "MULTIPLY",     0, "Multiply",     ""},
 	{NODE_MATH_DIVIDE,  "DIVIDE",       0, "Divide",       ""},
+	{0, "", ICON_NONE, NULL, NULL},
+	{NODE_MATH_POW,     "POWER",        0, "Power",        ""},
+	{NODE_MATH_LOG,     "LOGARITHM",    0, "Logarithm",    ""},
+	{NODE_MATH_SQRT,    "SQRT",         0, "Square Root",  ""},
+	{NODE_MATH_ABS,     "ABSOLUTE",     0, "Absolute",     ""},
+	{0, "", ICON_NONE, NULL, NULL},
+	{NODE_MATH_MIN,     "MINIMUM",      0, "Minimum",      ""},
+	{NODE_MATH_MAX,     "MAXIMUM",      0, "Maximum",      ""},
+	{NODE_MATH_LESS,    "LESS_THAN",    0, "Less Than",    ""},
+	{NODE_MATH_GREATER, "GREATER_THAN", 0, "Greater Than", ""},
+	{0, "", ICON_NONE, NULL, NULL},
+	{NODE_MATH_ROUND,   "ROUND",        0, "Round",        ""},
+	{NODE_MATH_FLOOR,   "FLOOR",        0, "Floor",        ""},
+	{NODE_MATH_CEIL,    "CEIL",         0, "Ceil",         ""},
+	{NODE_MATH_FRACT,   "FRACT",        0, "Fract",        ""},
+	{NODE_MATH_MOD,     "MODULO",       0, "Modulo",       ""},
+	{0, "", ICON_NONE, NULL, NULL},
 	{NODE_MATH_SIN,     "SINE",         0, "Sine",         ""},
 	{NODE_MATH_COS,     "COSINE",       0, "Cosine",       ""},
 	{NODE_MATH_TAN,     "TANGENT",      0, "Tangent",      ""},
 	{NODE_MATH_ASIN,    "ARCSINE",      0, "Arcsine",      ""},
 	{NODE_MATH_ACOS,    "ARCCOSINE",    0, "Arccosine",    ""},
 	{NODE_MATH_ATAN,    "ARCTANGENT",   0, "Arctangent",   ""},
-	{NODE_MATH_POW,     "POWER",        0, "Power",        ""},
-	{NODE_MATH_LOG,     "LOGARITHM",    0, "Logarithm",    ""},
-	{NODE_MATH_MIN,     "MINIMUM",      0, "Minimum",      ""},
-	{NODE_MATH_MAX,     "MAXIMUM",      0, "Maximum",      ""},
-	{NODE_MATH_ROUND,   "ROUND",        0, "Round",        ""},
-	{NODE_MATH_LESS,    "LESS_THAN",    0, "Less Than",    ""},
-	{NODE_MATH_GREATER, "GREATER_THAN", 0, "Greater Than", ""},
-	{NODE_MATH_MOD,     "MODULO",       0, "Modulo",       ""},
-	{NODE_MATH_ABS,     "ABSOLUTE",     0, "Absolute",     ""},
 	{NODE_MATH_ATAN2,   "ARCTAN2",      0, "Arctan2",      ""},
-	{NODE_MATH_FLOOR,   "FLOOR",        0, "Floor",        ""},
-	{NODE_MATH_CEIL,    "CEIL",         0, "Ceil",         ""},
-	{NODE_MATH_FRACT,   "FRACT",        0, "Fract",        ""},
-	{NODE_MATH_SQRT,    "SQRT",         0, "Square Root",  ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 const EnumPropertyItem rna_enum_node_vec_math_items[] = {
@@ -148,7 +142,7 @@ const EnumPropertyItem rna_enum_node_vec_math_items[] = {
 	{3, "DOT_PRODUCT",   0, "Dot Product",   ""},
 	{4, "CROSS_PRODUCT", 0, "Cross Product", ""},
 	{5, "NORMALIZE",     0, "Normalize",     ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 const EnumPropertyItem rna_enum_node_filter_items[] = {
@@ -159,7 +153,7 @@ const EnumPropertyItem rna_enum_node_filter_items[] = {
 	{4, "PREWITT", 0, "Prewitt", ""},
 	{5, "KIRSCH",  0, "Kirsch",  ""},
 	{6, "SHADOW",  0, "Shadow",  ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #ifndef RNA_RUNTIME
@@ -167,7 +161,7 @@ static const EnumPropertyItem node_sampler_type_items[] = {
 	{0, "NEAREST",   0, "Nearest",   ""},
 	{1, "BILINEAR",   0, "Bilinear",   ""},
 	{2, "BICUBIC", 0, "Bicubic", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 
@@ -175,7 +169,7 @@ static const EnumPropertyItem prop_shader_output_target_items[] = {
 	{SHD_OUTPUT_ALL, "ALL", 0, "All", "Use shaders for all renderers and viewports, unless there exists a more specific output"},
 	{SHD_OUTPUT_EEVEE, "EEVEE", 0, "Eevee", "Use shaders for Eevee renderer"},
 	{SHD_OUTPUT_CYCLES, "CYCLES", 0, "Cycles", "Use shaders for Cycles renderer"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 #endif
 
@@ -186,7 +180,6 @@ static const EnumPropertyItem prop_shader_output_target_items[] = {
 
 #include "BKE_context.h"
 #include "BKE_idprop.h"
-#include "BKE_library.h"
 
 #include "BKE_global.h"
 
@@ -197,6 +190,8 @@ static const EnumPropertyItem prop_shader_output_target_items[] = {
 
 #include "NOD_common.h"
 #include "NOD_socket.h"
+#include "NOD_shader.h"
+#include "NOD_composite.h"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -290,26 +285,26 @@ const EnumPropertyItem *rna_node_tree_type_itemf(void *data, bool (*poll)(void *
 int rna_node_type_to_enum(bNodeType *typeinfo)
 {
 	int i = 0, result = -1;
-	NODE_TYPES_BEGIN(ntype)
+	NODE_TYPES_BEGIN(ntype) {
 		if (ntype == typeinfo) {
 			result = i;
 			break;
 		}
 		++i;
-	NODE_TYPES_END
+	} NODE_TYPES_END;
 	return result;
 }
 
 int rna_node_idname_to_enum(const char *idname)
 {
 	int i = 0, result = -1;
-	NODE_TYPES_BEGIN(ntype)
+	NODE_TYPES_BEGIN(ntype) {
 		if (STREQ(ntype->idname, idname)) {
 			result = i;
 			break;
 		}
 		++i;
-	NODE_TYPES_END
+	} NODE_TYPES_END;
 	return result;
 }
 
@@ -317,13 +312,13 @@ bNodeType *rna_node_type_from_enum(int value)
 {
 	int i = 0;
 	bNodeType *result = NULL;
-	NODE_TYPES_BEGIN(ntype)
+	NODE_TYPES_BEGIN(ntype) {
 		if (i == value) {
 			result = ntype;
 			break;
 		}
 		++i;
-	NODE_TYPES_END
+	} NODE_TYPES_END;
 	return result;
 }
 
@@ -333,7 +328,7 @@ const EnumPropertyItem *rna_node_type_itemf(void *data, bool (*poll)(void *data,
 	EnumPropertyItem tmp = {0};
 	int totitem = 0, i = 0;
 
-	NODE_TYPES_BEGIN(ntype)
+	NODE_TYPES_BEGIN(ntype) {
 		if (poll && !poll(data, ntype)) {
 			++i;
 			continue;
@@ -348,7 +343,7 @@ const EnumPropertyItem *rna_node_type_itemf(void *data, bool (*poll)(void *data,
 		RNA_enum_item_add(&item, &totitem, &tmp);
 
 		++i;
-	NODE_TYPES_END
+	} NODE_TYPES_END;
 
 	if (totitem == 0) {
 		*r_free = false;
@@ -364,26 +359,26 @@ const EnumPropertyItem *rna_node_type_itemf(void *data, bool (*poll)(void *data,
 int rna_node_socket_type_to_enum(bNodeSocketType *typeinfo)
 {
 	int i = 0, result = -1;
-	NODE_SOCKET_TYPES_BEGIN(stype)
+	NODE_SOCKET_TYPES_BEGIN(stype) {
 		if (stype == typeinfo) {
 			result = i;
 			break;
 		}
 		++i;
-	NODE_SOCKET_TYPES_END
+	} NODE_SOCKET_TYPES_END;
 	return result;
 }
 
 int rna_node_socket_idname_to_enum(const char *idname)
 {
 	int i = 0, result = -1;
-	NODE_SOCKET_TYPES_BEGIN(stype)
+	NODE_SOCKET_TYPES_BEGIN(stype) {
 		if (STREQ(stype->idname, idname)) {
 			result = i;
 			break;
 		}
 		++i;
-	NODE_SOCKET_TYPES_END
+	} NODE_SOCKET_TYPES_END;
 	return result;
 }
 
@@ -391,13 +386,13 @@ bNodeSocketType *rna_node_socket_type_from_enum(int value)
 {
 	int i = 0;
 	bNodeSocketType *result = NULL;
-	NODE_SOCKET_TYPES_BEGIN(stype)
+	NODE_SOCKET_TYPES_BEGIN(stype) {
 		if (i == value) {
 			result = stype;
 			break;
 		}
 		++i;
-	NODE_SOCKET_TYPES_END
+	} NODE_SOCKET_TYPES_END;
 	return result;
 }
 
@@ -409,7 +404,7 @@ const EnumPropertyItem *rna_node_socket_type_itemf(
 	int totitem = 0, i = 0;
 	StructRNA *srna;
 
-	NODE_SOCKET_TYPES_BEGIN(stype)
+	NODE_SOCKET_TYPES_BEGIN(stype) {
 		if (poll && !poll(data, stype)) {
 			++i;
 			continue;
@@ -425,7 +420,8 @@ const EnumPropertyItem *rna_node_socket_type_itemf(
 		RNA_enum_item_add(&item, &totitem, &tmp);
 
 		++i;
-	NODE_SOCKET_TYPES_END
+	}
+	NODE_SOCKET_TYPES_END;
 
 	if (totitem == 0) {
 		*r_free = false;
@@ -452,6 +448,13 @@ static const EnumPropertyItem *rna_node_static_type_itemf(bContext *UNUSED(C), P
 	tmp.identifier = "CUSTOM";
 	tmp.name = "Custom";
 	tmp.description = "Custom Node";
+	tmp.icon = ICON_NONE;
+	RNA_enum_item_add(&item, &totitem, &tmp);
+
+	tmp.value = NODE_CUSTOM_GROUP;
+	tmp.identifier = "CUSTOM GROUP";
+	tmp.name = "CustomGroup";
+	tmp.description = "Custom Group Node";
 	tmp.icon = ICON_NONE;
 	RNA_enum_item_add(&item, &totitem, &tmp);
 
@@ -745,8 +748,8 @@ static void rna_NodeTree_node_remove(bNodeTree *ntree, Main *bmain, ReportList *
 		return;
 	}
 
-	id_us_min(node->id);
-	nodeFreeNode(ntree, node);
+	nodeRemoveNode(bmain, ntree, node, true);
+
 	RNA_POINTER_INVALIDATE(node_ptr);
 
 	ntreeUpdateTree(bmain, ntree); /* update group node socket links */
@@ -763,10 +766,7 @@ static void rna_NodeTree_node_clear(bNodeTree *ntree, Main *bmain, ReportList *r
 	while (node) {
 		bNode *next_node = node->next;
 
-		if (node->id)
-			id_us_min(node->id);
-
-		nodeFreeNode(ntree, node);
+		nodeRemoveNode(bmain, ntree, node, true);
 
 		node = next_node;
 	}
@@ -1619,6 +1619,11 @@ static void rna_Node_name_set(PointerRNA *ptr, const char *value)
 
 static bNodeSocket *rna_Node_inputs_new(ID *id, bNode *node, Main *bmain, ReportList *reports, const char *type, const char *name, const char *identifier)
 {
+	/* Adding an input to a group node is not working, simpler to add it to its underlying nodetree. */
+	if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id != NULL) {
+		return rna_NodeTree_inputs_new((bNodeTree *)node->id, bmain, reports, type, name);
+	}
+
 	bNodeTree *ntree = (bNodeTree *)id;
 	bNodeSocket *sock;
 
@@ -1637,6 +1642,11 @@ static bNodeSocket *rna_Node_inputs_new(ID *id, bNode *node, Main *bmain, Report
 
 static bNodeSocket *rna_Node_outputs_new(ID *id, bNode *node, Main *bmain, ReportList *reports, const char *type, const char *name, const char *identifier)
 {
+	/* Adding an output to a group node is not working, simpler to add it to its underlying nodetree. */
+	if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id != NULL) {
+		return rna_NodeTree_outputs_new((bNodeTree *)node->id, bmain, reports, type, name);
+	}
+
 	bNodeTree *ntree = (bNodeTree *)id;
 	bNodeSocket *sock;
 
@@ -2467,6 +2477,50 @@ static StructRNA *rna_NodeCustomGroup_register(
 	return nt->ext.srna;
 }
 
+static StructRNA *rna_ShaderNodeCustomGroup_register(
+        Main *bmain, ReportList *reports,
+        void *data, const char *identifier,
+        StructValidateFunc validate, StructCallbackFunc call, StructFreeFunc free)
+{
+	bNodeType * nt = rna_Node_register_base(bmain, reports, &RNA_ShaderNodeCustomGroup, data, identifier, validate, call, free);
+
+	if (!nt)
+		return NULL;
+
+	nt->verifyfunc = node_group_verify;
+	nt->type = NODE_CUSTOM_GROUP;
+
+	register_node_type_sh_custom_group(nt);
+
+	nodeRegisterType(nt);
+
+	WM_main_add_notifier(NC_NODE | NA_EDITED, NULL);
+
+	return nt->ext.srna;
+}
+
+static StructRNA *rna_CompositorNodeCustomGroup_register(
+        Main *bmain, ReportList *reports,
+        void *data, const char *identifier,
+        StructValidateFunc validate, StructCallbackFunc call, StructFreeFunc free)
+{
+	bNodeType *nt = rna_Node_register_base(bmain, reports, &RNA_CompositorNodeCustomGroup, data, identifier, validate, call, free);
+	if (!nt)
+		return NULL;
+
+	nt->verifyfunc = node_group_verify;
+	nt->type = NODE_CUSTOM_GROUP;
+
+	register_node_type_cmp_custom_group(nt);
+
+	nodeRegisterType(nt);
+
+	WM_main_add_notifier(NC_NODE | NA_EDITED, NULL);
+
+	return nt->ext.srna;
+}
+
+
 static void rna_CompositorNode_tag_need_exec(bNode *node)
 {
 	node->need_exec = true;
@@ -2654,8 +2708,9 @@ static const EnumPropertyItem *renderresult_layers_add_enum(RenderLayer *rl)
 	return item;
 }
 
-static const EnumPropertyItem *rna_Node_image_layer_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                    PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Node_image_layer_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	bNode *node = (bNode *)ptr->data;
 	Image *ima = (Image *)node->id;
@@ -2721,8 +2776,9 @@ static const EnumPropertyItem *renderresult_views_add_enum(RenderView *rv)
 	return item;
 }
 
-static const EnumPropertyItem *rna_Node_image_view_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                   PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Node_image_view_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	bNode *node = (bNode *)ptr->data;
 	Image *ima = (Image *)node->id;
@@ -2742,8 +2798,9 @@ static const EnumPropertyItem *rna_Node_image_view_itemf(bContext *UNUSED(C), Po
 	return item;
 }
 
-static const EnumPropertyItem *rna_Node_view_layer_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                    PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Node_view_layer_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	bNode *node = (bNode *)ptr->data;
 	Scene *sce = (Scene *)node->id;
@@ -2771,8 +2828,9 @@ static void rna_Node_view_layer_update(Main *bmain, Scene *scene, PointerRNA *pt
 	}
 }
 
-static const EnumPropertyItem *rna_Node_channel_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Node_channel_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	bNode *node = (bNode *)ptr->data;
 	EnumPropertyItem *item = NULL;
@@ -3251,38 +3309,38 @@ void rna_ShaderNodePointDensity_density_minmax(bNode *self,
 
 static const EnumPropertyItem prop_image_layer_items[] = {
 	{ 0, "PLACEHOLDER",          0, "Placeholder",          ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem prop_image_view_items[] = {
 	{ 0, "ALL", 0, "All", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem prop_view_layer_items[] = {
 	{ 0, "PLACEHOLDER",          0, "Placeholder",          ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem prop_tri_channel_items[] = {
 	{ 1, "R", 0, "R", ""},
 	{ 2, "G", 0, "G", ""},
 	{ 3, "B", 0, "B", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_flip_items[] = {
 	{0, "X",  0, "Flip X",     ""},
 	{1, "Y",  0, "Flip Y",     ""},
 	{2, "XY", 0, "Flip X & Y", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_ycc_items[] = {
 	{ 0, "ITUBT601", 0, "ITU 601",  ""},
 	{ 1, "ITUBT709", 0, "ITU 709",  ""},
 	{ 2, "JFIF",     0, "Jpeg",     ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_glossy_items[] = {
@@ -3291,7 +3349,7 @@ static const EnumPropertyItem node_glossy_items[] = {
 	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
 	{SHD_GLOSSY_ASHIKHMIN_SHIRLEY, "ASHIKHMIN_SHIRLEY", 0, "Ashikhmin-Shirley", ""},
 	{SHD_GLOSSY_MULTI_GGX,         "MULTI_GGX",         0, "Multiscatter GGX", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_anisotropic_items[] = {
@@ -3299,7 +3357,7 @@ static const EnumPropertyItem node_anisotropic_items[] = {
 	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
 	{SHD_GLOSSY_MULTI_GGX,         "MULTI_GGX",         0, "Multiscatter GGX", ""},
 	{SHD_GLOSSY_ASHIKHMIN_SHIRLEY, "ASHIKHMIN_SHIRLEY", 0, "Ashikhmin-Shirley", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_glass_items[] = {
@@ -3307,51 +3365,55 @@ static const EnumPropertyItem node_glass_items[] = {
 	{SHD_GLOSSY_BECKMANN,          "BECKMANN",          0, "Beckmann", ""},
 	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
 	{SHD_GLOSSY_MULTI_GGX,         "MULTI_GGX",         0, "Multiscatter GGX", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_refraction_items[] = {
 	{SHD_GLOSSY_SHARP,             "SHARP",             0, "Sharp",    ""},
 	{SHD_GLOSSY_BECKMANN,          "BECKMANN",          0, "Beckmann", ""},
 	{SHD_GLOSSY_GGX,               "GGX",               0, "GGX",      ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_toon_items[] = {
 	{SHD_TOON_DIFFUSE,    "DIFFUSE",  0, "Diffuse", ""},
 	{SHD_TOON_GLOSSY,     "GLOSSY",   0, "Glossy",  ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_hair_items[] = {
 	{SHD_HAIR_REFLECTION,     "Reflection",    0,   "Reflection", ""},
 	{SHD_HAIR_TRANSMISSION,   "Transmission",    0,  "Transmission", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_principled_hair_items[] = {
-	{SHD_PRINCIPLED_HAIR_DIRECT_ABSORPTION,     "ABSORPTION", 0, "Absorption coefficient",   "Directly set the absorption coefficient sigma_a. This is not the most intuitive way to color hair."},
-	{SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION, "MELANIN",    0, "Melanin concentration",    "Define the melanin concentrations below to get the most realistic-looking hair. You can get the concentrations for different types of hair online."},
-	{SHD_PRINCIPLED_HAIR_REFLECTANCE,           "COLOR",      0, "Direct coloring",          "Choose the color of your preference, and the shader will approximate the absorption coefficient to render lookalike hair."},
-	{0, NULL, 0, NULL, NULL}
+	{SHD_PRINCIPLED_HAIR_DIRECT_ABSORPTION,     "ABSORPTION", 0, "Absorption coefficient",
+	 "Directly set the absorption coefficient sigma_a (this is not the most intuitive way to color hair)"},
+	{SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION, "MELANIN",    0, "Melanin concentration",
+	 "Define the melanin concentrations below to get the most realistic-looking hair"
+	 "(you can get the concentrations for different types of hair online)"},
+	{SHD_PRINCIPLED_HAIR_REFLECTANCE,           "COLOR",      0, "Direct coloring",
+	 "Choose the color of your preference, and the shader will approximate the absorption coefficient to render lookalike hair"},
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_script_mode_items[] = {
 	{NODE_SCRIPT_INTERNAL, "INTERNAL", 0, "Internal", "Use internal text data-block"},
 	{NODE_SCRIPT_EXTERNAL, "EXTERNAL", 0, "External", "Use external .osl or .oso file"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static EnumPropertyItem node_ies_mode_items[] = {
 	{NODE_IES_INTERNAL, "INTERNAL", 0, "Internal", "Use internal text datablock"},
 	{NODE_IES_EXTERNAL, "EXTERNAL", 0, "External", "Use external .ies file"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_principled_distribution_items[] = {
 	{SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
 	{SHD_GLOSSY_MULTI_GGX, "MULTI_GGX", 0, "Multiscatter GGX", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem node_subsurface_method_items[] = {
@@ -3409,15 +3471,17 @@ static void def_group(StructRNA *srna)
 	RNA_def_property_ui_text(prop, "Interface", "Interface socket data");
 }
 
-static void def_custom_group(BlenderRNA *brna)
+static void def_custom_group(
+        BlenderRNA *brna, const char *struct_name, const char *base_name,
+        const char *ui_name, const char *ui_desc, const char *reg_func)
 {
 	StructRNA *srna;
 
-	srna = RNA_def_struct(brna, "NodeCustomGroup", "Node");
-	RNA_def_struct_ui_text(srna, "Custom Group", "Base node type for custom registered node group types");
+	srna = RNA_def_struct(brna, struct_name, base_name);
+	RNA_def_struct_ui_text(srna, ui_name, ui_desc);
 	RNA_def_struct_sdna(srna, "bNode");
 
-	RNA_def_struct_register_funcs(srna, "rna_NodeCustomGroup_register", "rna_Node_unregister", NULL);
+	RNA_def_struct_register_funcs(srna, reg_func, "rna_Node_unregister", NULL);
 
 	def_group(srna);
 }
@@ -3599,7 +3663,7 @@ static void def_sh_mapping(StructRNA *srna)
 		{TEXMAP_TYPE_POINT,   "POINT",   0, "Point",   "Transform a point"},
 		{TEXMAP_TYPE_VECTOR,  "VECTOR",  0, "Vector",  "Transform a direction vector"},
 		{TEXMAP_TYPE_NORMAL,  "NORMAL",  0, "Normal",  "Transform a normal vector with unit length"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static float default_1[3] = {1.f, 1.f, 1.f};
@@ -3686,7 +3750,7 @@ static void def_sh_tex_sky(StructRNA *srna)
 	static const EnumPropertyItem prop_sky_type[] = {
 		{SHD_SKY_OLD, "PREETHAM", 0, "Preetham", ""},
 		{SHD_SKY_NEW, "HOSEK_WILKIE", 0, "Hosek / Wilkie", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	static float default_dir[3] = {0.0f, 0.0f, 1.0f};
 
@@ -3725,7 +3789,7 @@ static const EnumPropertyItem sh_tex_prop_color_space_items[] = {
 	{SHD_COLORSPACE_NONE, "NONE", 0, "Non-Color Data",
 	                      "Image contains non-color data, for example a displacement or normal map, "
 	                      "and will not be converted"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem sh_tex_prop_interpolation_items[] = {
@@ -3737,7 +3801,7 @@ static const EnumPropertyItem sh_tex_prop_interpolation_items[] = {
 	                     "Cubic interpolation"},
 	{SHD_INTERP_SMART,   "Smart", 0, "Smart",
 	                     "Bicubic when magnifying, else bilinear (OSL only)"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static void def_sh_tex_environment(StructRNA *srna)
@@ -3747,7 +3811,7 @@ static void def_sh_tex_environment(StructRNA *srna)
 		                           "Equirectangular or latitude-longitude projection"},
 		{SHD_PROJ_MIRROR_BALL, "MIRROR_BALL", 0, "Mirror Ball",
 		                       "Projection from an orthographic photo of a mirror ball"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -3797,14 +3861,14 @@ static void def_sh_tex_image(StructRNA *srna)
 		                  "Image is projected spherically using the Z axis as central"},
 		{SHD_PROJ_TUBE,   "TUBE", 0, "Tube",
 		                  "Image is projected from the tube using the Z axis as central"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_image_extension[] = {
 		{SHD_IMAGE_EXTENSION_REPEAT, "REPEAT", 0, "Repeat", "Cause the image to repeat horizontally and vertically"},
 		{SHD_IMAGE_EXTENSION_EXTEND, "EXTEND", 0, "Extend", "Extend by repeating edge pixels of the image"},
 		{SHD_IMAGE_EXTENSION_CLIP, "CLIP", 0, "Clip", "Clip to image size and set exterior pixels as transparent"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -3863,7 +3927,7 @@ static void def_sh_tex_gradient(StructRNA *srna)
 		{SHD_BLEND_QUADRATIC_SPHERE, "QUADRATIC_SPHERE", 0, "Quadratic sphere",
 		                             "Create a quadratic progression in the shape of a sphere"},
 		{SHD_BLEND_RADIAL, "RADIAL", 0, "Radial", "Create a radial progression"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -3948,7 +4012,7 @@ static void def_sh_tex_musgrave(StructRNA *srna)
 		{SHD_MUSGRAVE_HYBRID_MULTIFRACTAL, "HYBRID_MULTIFRACTAL", 0, "Hybrid Multifractal", ""},
 		{SHD_MUSGRAVE_FBM, "FBM", 0, "fBM", ""},
 		{SHD_MUSGRAVE_HETERO_TERRAIN, "HETERO_TERRAIN", 0, "Hetero Terrain", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -3968,7 +4032,7 @@ static void def_sh_tex_voronoi(StructRNA *srna)
 	static const EnumPropertyItem prop_coloring_items[] = {
 		{SHD_VORONOI_INTENSITY, "INTENSITY", 0, "Intensity", "Only calculate intensity"},
 		{SHD_VORONOI_CELLS, "CELLS", 0, "Cells", "Color cells by position"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static EnumPropertyItem prop_distance_items[] = {
@@ -4017,13 +4081,13 @@ static void def_sh_tex_wave(StructRNA *srna)
 	static const EnumPropertyItem prop_wave_type_items[] = {
 		{SHD_WAVE_BANDS, "BANDS", 0, "Bands", "Use standard wave texture in bands"},
 		{SHD_WAVE_RINGS, "RINGS", 0, "Rings", "Use wave texture in rings"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_wave_profile_items[] = {
 		{SHD_WAVE_PROFILE_SIN, "SIN", 0, "Sine", "Use a standard sine profile"},
 		{SHD_WAVE_PROFILE_SAW, "SAW", 0, "Saw", "Use a sawtooth profile"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4055,9 +4119,9 @@ static void def_sh_tex_coord(StructRNA *srna)
 	RNA_def_property_ui_text(prop, "Object", "Use coordinates from this object (for object texture coordinates output)");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
-	prop = RNA_def_property(srna, "from_dupli", PROP_BOOLEAN, PROP_NONE);
+	prop = RNA_def_property(srna, "from_instancer", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "custom1", 1);
-	RNA_def_property_ui_text(prop, "From Dupli", "Use the parent of the dupli object if possible");
+	RNA_def_property_ui_text(prop, "From Instancer", "Use the parent of the dupli object if possible");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -4067,14 +4131,14 @@ static void def_sh_vect_transform(StructRNA *srna)
 		{SHD_VECT_TRANSFORM_TYPE_POINT,  "POINT",   0, "Point",    "Transform a point"},
 		{SHD_VECT_TRANSFORM_TYPE_VECTOR, "VECTOR",  0, "Vector",   "Transform a direction vector"},
 		{SHD_VECT_TRANSFORM_TYPE_NORMAL, "NORMAL",  0, "Normal",   "Transform a normal vector with unit length"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_vect_space_items[] = {
 		{SHD_VECT_TRANSFORM_SPACE_WORLD,  "WORLD",   0, "World",    ""},
 		{SHD_VECT_TRANSFORM_SPACE_OBJECT, "OBJECT",  0, "Object",   ""},
 		{SHD_VECT_TRANSFORM_SPACE_CAMERA, "CAMERA",  0, "Camera",   ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4120,7 +4184,7 @@ static void def_sh_tex_pointdensity(StructRNA *srna)
 		 "Generate point density from a particle system"},
 		{SHD_POINTDENSITY_SOURCE_OBJECT, "OBJECT", 0, "Object Vertices",
 		 "Generate point density from an object's vertices"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_interpolation_items[] = {
@@ -4130,31 +4194,31 @@ static void def_sh_tex_pointdensity(StructRNA *srna)
 		                     "Linear interpolation"},
 		{SHD_INTERP_CUBIC,   "Cubic", 0, "Cubic",
 		                     "Cubic interpolation"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem space_items[] = {
 		{SHD_POINTDENSITY_SPACE_OBJECT, "OBJECT", 0, "Object Space", ""},
 		{SHD_POINTDENSITY_SPACE_WORLD,   "WORLD", 0, "World Space", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem particle_color_source_items[] = {
 		{SHD_POINTDENSITY_COLOR_PARTAGE, "PARTICLE_AGE", 0, "Particle Age",
-		                                 "Lifetime mapped as 0.0 - 1.0 intensity"},
+		 "Lifetime mapped as 0.0 - 1.0 intensity"},
 		{SHD_POINTDENSITY_COLOR_PARTSPEED, "PARTICLE_SPEED", 0, "Particle Speed",
-		                                   "Particle speed (absolute magnitude of velocity) mapped as 0.0-1.0 intensity"},
+		 "Particle speed (absolute magnitude of velocity) mapped as 0.0-1.0 intensity"},
 		{SHD_POINTDENSITY_COLOR_PARTVEL, "PARTICLE_VELOCITY", 0, "Particle Velocity",
-		                                 "XYZ velocity mapped to RGB colors"},
-		{0, NULL, 0, NULL, NULL}
+		 "XYZ velocity mapped to RGB colors"},
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem vertex_color_source_items[] = {
-	    {SHD_POINTDENSITY_COLOR_VERTCOL, "VERTEX_COLOR", 0, "Vertex Color", "Vertex color layer"},
-	    {SHD_POINTDENSITY_COLOR_VERTWEIGHT, "VERTEX_WEIGHT", 0, "Vertex Weight", "Vertex group weight"},
-	    {SHD_POINTDENSITY_COLOR_VERTNOR, "VERTEX_NORMAL", 0, "Vertex Normal",
-	                                     "XYZ normal vector mapped to RGB colors"},
-		{0, NULL, 0, NULL, NULL}
+		{SHD_POINTDENSITY_COLOR_VERTCOL, "VERTEX_COLOR", 0, "Vertex Color", "Vertex color layer"},
+		{SHD_POINTDENSITY_COLOR_VERTWEIGHT, "VERTEX_WEIGHT", 0, "Vertex Weight", "Vertex group weight"},
+		{SHD_POINTDENSITY_COLOR_VERTNOR, "VERTEX_NORMAL", 0, "Vertex Normal",
+		 "XYZ normal vector mapped to RGB colors"},
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
@@ -4353,9 +4417,9 @@ static void def_sh_uvmap(StructRNA *srna)
 {
 	PropertyRNA *prop;
 
-	prop = RNA_def_property(srna, "from_dupli", PROP_BOOLEAN, PROP_NONE);
+	prop = RNA_def_property(srna, "from_instancer", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "custom1", 1);
-	RNA_def_property_ui_text(prop, "From Dupli", "Use the parent of the dupli object if possible");
+	RNA_def_property_ui_text(prop, "From Instancer", "Use the parent of the dupli object if possible");
 	RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
 	RNA_def_struct_sdna_from(srna, "NodeShaderUVMap", "storage");
@@ -4385,7 +4449,7 @@ static void def_sh_normal_map(StructRNA *srna)
 		{SHD_SPACE_WORLD, "WORLD", 0, "World Space", "World space normal mapping"},
 		{SHD_SPACE_BLENDER_OBJECT, "BLENDER_OBJECT", 0, "Blender Object Space", "Object space normal mapping, compatible with Blender render baking"},
 		{SHD_SPACE_BLENDER_WORLD, "BLENDER_WORLD", 0, "Blender World Space", "World space normal mapping, compatible with Blender render baking"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4409,7 +4473,7 @@ static void def_sh_displacement(StructRNA *srna)
 	static const EnumPropertyItem prop_space_items[] = {
 		{SHD_SPACE_OBJECT, "OBJECT", 0, "Object Space", "Displacement is in object space, affected by object scale"},
 		{SHD_SPACE_WORLD, "WORLD", 0, "World Space", "Displacement is in world space, not affected by object scale"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4426,10 +4490,10 @@ static void def_sh_displacement(StructRNA *srna)
 static void def_sh_vector_displacement(StructRNA *srna)
 {
 	static const EnumPropertyItem prop_space_items[] = {
-		{SHD_SPACE_TANGENT, "TANGENT", 0, "Tangent Space", "Tagent space vector displacement mapping"},
+		{SHD_SPACE_TANGENT, "TANGENT", 0, "Tangent Space", "Tangent space vector displacement mapping"},
 		{SHD_SPACE_OBJECT, "OBJECT", 0, "Object Space", "Object space vector displacement mapping"},
 		{SHD_SPACE_WORLD, "WORLD", 0, "World Space", "World space vector displacement mapping"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4448,14 +4512,14 @@ static void def_sh_tangent(StructRNA *srna)
 	static const EnumPropertyItem prop_direction_type_items[] = {
 		{SHD_TANGENT_RADIAL, "RADIAL", 0, "Radial", "Radial tangent around the X, Y or Z axis"},
 		{SHD_TANGENT_UVMAP, "UV_MAP", 0, "UV Map", "Tangent from UV map"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_axis_items[] = {
 		{SHD_TANGENT_AXIS_X, "X", 0, "X", "X axis"},
 		{SHD_TANGENT_AXIS_Y, "Y", 0, "Y", "Y axis"},
 		{SHD_TANGENT_AXIS_Z, "Z", 0, "Z", "Z axis"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4518,7 +4582,7 @@ static void def_sh_subsurface(StructRNA *srna)
 		{SHD_SUBSURFACE_GAUSSIAN, "GAUSSIAN", 0, "Gaussian", "Normal distribution, multiple can be combined to fit more complex profiles"},
 		{SHD_SUBSURFACE_BURLEY, "BURLEY", 0, "Christensen-Burley", "Approximation to physically based volume scattering"},
 		{SHD_SUBSURFACE_RANDOM_WALK, "RANDOM_WALK", 0, "Random Walk", "Volumetric approximation to physically based volume scattering"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -4661,14 +4725,14 @@ static void def_cmp_blur(StructRNA *srna)
 		{R_FILTER_FAST_GAUSS, "FAST_GAUSS", 0, "Fast Gaussian", ""},
 		{R_FILTER_CATROM,     "CATROM",     0, "Catrom",        ""},
 		{R_FILTER_MITCH,      "MITCH",      0, "Mitch",         ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem aspect_correction_type_items[] = {
 		{CMP_NODE_BLUR_ASPECT_NONE, "NONE", 0,  "None", ""},
 		{CMP_NODE_BLUR_ASPECT_Y,    "Y",    0,  "Y",    ""},
 		{CMP_NODE_BLUR_ASPECT_X,    "X",    0,  "X",    ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* duplicated in def_cmp_bokehblur */
@@ -4857,7 +4921,7 @@ static void def_cmp_levels(StructRNA *srna)
 		{3, "GREEN", 0, "G", "Green Channel"},
 		{4, "BLUE", 0, "B", "Blue Channel"},
 		{5, "LUMINANCE", 0, "L", "Luminance Channel"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "channel", PROP_ENUM, PROP_NONE);
@@ -4940,7 +5004,7 @@ static void def_cmp_image(StructRNA *srna)
 		{IMA_SRC_MOVIE,     "MOVIE",     "Movie",     ""},
 		{IMA_SRC_SEQUENCE,  "SEQUENCE",  "Sequence",  ""},
 		{IMA_SRC_GENERATED, "GENERATED", "Generated", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 #endif
 
@@ -5114,7 +5178,7 @@ static void def_cmp_dilate_erode(StructRNA *srna)
 	    {CMP_NODE_DILATEERODE_DISTANCE_THRESH,  "THRESHOLD", 0, "Threshold", ""},
 	    {CMP_NODE_DILATEERODE_DISTANCE,         "DISTANCE",  0, "Distance",  ""},
 	    {CMP_NODE_DILATEERODE_DISTANCE_FEATHER, "FEATHER",   0, "Feather",  ""},
-	    {0, NULL, 0, NULL, NULL}
+	    {0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
@@ -5194,7 +5258,7 @@ static void def_cmp_scale(StructRNA *srna)
 		{CMP_SCALE_ABSOLUTE, "ABSOLUTE",   0, "Absolute",   ""},
 		{CMP_SCALE_SCENEPERCENT, "SCENE_SIZE", 0, "Scene Size", ""},
 		{CMP_SCALE_RENDERPERCENT, "RENDER_SIZE", 0, "Render Size", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* matching bgpic_camera_frame_items[] */
@@ -5202,7 +5266,7 @@ static void def_cmp_scale(StructRNA *srna)
 		{0, "STRETCH", 0, "Stretch", ""},
 		{CMP_SCALE_RENDERSIZE_FRAME_ASPECT, "FIT", 0, "Fit", ""},
 		{CMP_SCALE_RENDERSIZE_FRAME_ASPECT | CMP_SCALE_RENDERSIZE_FRAME_CROP, "CROP", 0, "Crop", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "space", PROP_ENUM, PROP_NONE);
@@ -5293,7 +5357,7 @@ static void def_cmp_distance_matte(StructRNA *srna)
 	static const EnumPropertyItem color_space_items[] = {
 		{1, "RGB", 0, "RGB", "RGB color space"},
 		{2, "YCC", 0, "YCC", "YCbCr Suppression"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	RNA_def_struct_sdna_from(srna, "NodeChroma", "storage");
@@ -5328,20 +5392,20 @@ static void def_cmp_color_spill(StructRNA *srna)
 		{1, "R", 0, "R", "Red Spill Suppression"},
 		{2, "G", 0, "G", "Green Spill Suppression"},
 		{3, "B", 0, "B", "Blue Spill Suppression"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem limit_channel_items[] = {
 		{0, "R", 0, "R", "Limit by Red"},
 		{1, "G", 0, "G", "Limit by Green"},
 		{2, "B", 0, "B", "Limit by Blue"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem algorithm_items[] = {
 		{0, "SIMPLE", 0, "Simple", "Simple Limit Algorithm"},
 		{1, "AVERAGE", 0, "Average", "Average Limit Algorithm"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "channel", PROP_ENUM, PROP_NONE);
@@ -5473,13 +5537,13 @@ static void def_cmp_channel_matte(StructRNA *srna)
 		{CMP_NODE_CHANNEL_MATTE_CS_HSV, "HSV", 0, "HSV",   "HSV Color Space"},
 		{CMP_NODE_CHANNEL_MATTE_CS_YUV, "YUV", 0, "YUV",   "YUV Color Space"},
 		{CMP_NODE_CHANNEL_MATTE_CS_YCC, "YCC", 0, "YCbCr", "YCbCr Color Space"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem algorithm_items[] = {
 		{0, "SINGLE", 0, "Single", "Limit by single channel"},
 		{1, "MAX", 0, "Max", "Limit by max of other channels "},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "color_space", PROP_ENUM, PROP_NONE);
@@ -5576,14 +5640,14 @@ static void def_cmp_double_edge_mask(StructRNA *srna)
 	static const EnumPropertyItem BufEdgeMode_items[] = {
 		{0, "BLEED_OUT",  0, "Bleed Out",     "Allow mask pixels to bleed along edges"},
 		{1, "KEEP_IN",  0, "Keep In",     "Restrict mask pixels from touching edges"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem InnerEdgeMode_items[] = {
 		{0, "ALL", 0, "All", "All pixels on inner mask edge are considered during mask calculation"},
 		{1, "ADJACENT_ONLY", 0, "Adjacent Only",
 		 "Only inner mask pixels adjacent to outer mask pixels are considered during mask calculation"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "inner_mode", PROP_ENUM, PROP_NONE);
@@ -5622,7 +5686,7 @@ static void def_cmp_defocus(StructRNA *srna)
 		{4, "SQUARE",   0, "Square",     "4 sides"},
 		{3, "TRIANGLE", 0, "Triangular", "3 sides"},
 		{0, "CIRCLE",   0, "Circular",   ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "scene", PROP_POINTER, PROP_NONE);
@@ -5861,7 +5925,7 @@ static void def_cmp_premul_key(StructRNA *srna)
 	static const EnumPropertyItem type_items[] = {
 		{0, "STRAIGHT_TO_PREMUL", 0, "Straight to Premul", ""},
 		{1, "PREMUL_TO_STRAIGHT", 0, "Premul to Straight", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
@@ -5881,14 +5945,14 @@ static void def_cmp_glare(StructRNA *srna)
 		{2, "STREAKS",     0, "Streaks",     ""},
 		{1, "FOG_GLOW",    0, "Fog Glow",    ""},
 		{0, "SIMPLE_STAR", 0, "Simple Star", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem quality_items[] = {
 		{0, "HIGH",   0, "High",   ""},
 		{1, "MEDIUM", 0, "Medium", ""},
 		{2, "LOW",    0, "Low",    ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	RNA_def_struct_sdna_from(srna, "NodeGlare", "storage");
@@ -5975,7 +6039,7 @@ static void def_cmp_tonemap(StructRNA *srna)
 	static const EnumPropertyItem type_items[] = {
 		{1, "RD_PHOTORECEPTOR", 0, "R/D Photoreceptor", ""},
 		{0, "RH_SIMPLE",        0, "Rh Simple",         ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	RNA_def_struct_sdna_from(srna, "NodeTonemap", "storage");
@@ -6062,7 +6126,7 @@ static void def_cmp_colorbalance(StructRNA *srna)
 	static const EnumPropertyItem type_items[] = {
 		{0, "LIFT_GAMMA_GAIN", 0, "Lift/Gamma/Gain", ""},
 		{1, "OFFSET_POWER_SLOPE", 0, "Offset/Power/Slope (ASC-CDL)", "ASC-CDL standard color correction"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "correction_method", PROP_ENUM, PROP_NONE);
@@ -6211,7 +6275,7 @@ static void def_cmp_moviedistortion(StructRNA *srna)
 	static const EnumPropertyItem distortion_type_items[] = {
 		{0, "UNDISTORT",   0, "Undistort",   ""},
 		{1, "DISTORT", 0, "Distort", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "clip", PROP_POINTER, PROP_NONE);
@@ -6236,7 +6300,7 @@ static void def_cmp_mask(StructRNA *srna)
 		{0, "SCENE",   0, "Scene Size",   ""},
 		{CMP_NODEFLAG_MASK_FIXED, "FIXED",   0, "Fixed",   "Use pixel size for the buffer"},
 		{CMP_NODEFLAG_MASK_FIXED_SCENE, "FIXED_SCENE",   0, "Fixed/Scene", "Pixel size scaled by scene percentage"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "mask", PROP_POINTER, PROP_NONE);
@@ -6306,7 +6370,7 @@ static const EnumPropertyItem node_masktype_items[] = {
 	{1, "SUBTRACT",      0, "Subtract",      ""},
 	{2, "MULTIPLY",      0, "Multiply",      ""},
 	{3, "NOT",           0, "Not",           ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static void def_cmp_boxmask(StructRNA *srna)
@@ -6682,7 +6746,7 @@ static void def_cmp_viewer(StructRNA *srna)
 		{1, "RANDOM",         0, "Random",         "Random tiles"},
 		{2, "BOTTOMUP",       0, "Bottom up",      "Expand from bottom"},
 		{3, "RULE_OF_THIRDS", 0, "Rule of thirds", "Expand from 9 places"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "tile_order", PROP_ENUM, PROP_NONE);
@@ -6833,7 +6897,7 @@ static void def_cmp_trackpos(StructRNA *srna)
 		 "Relative Frame",  "Output position of a marker relative to marker at given frame number"},
 		{CMP_TRACKPOS_ABSOLUTE_FRAME, "ABSOLUTE_FRAME", 0,
 		 "Absolute Frame",  "Output absolute position of a marker at given frame number"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "clip", PROP_POINTER, PROP_NONE);
@@ -6874,7 +6938,7 @@ static void def_cmp_translate(StructRNA *srna)
 		{CMP_NODE_WRAP_X,    "XAXIS", 0, "X Axis",     "Wrap all pixels on the X axis"},
 		{CMP_NODE_WRAP_Y,    "YAXIS", 0, "Y Axis",     "Wrap all pixels on the Y axis"},
 		{CMP_NODE_WRAP_XY,   "BOTH",  0, "Both Axes",  "Wrap all pixels on both axes"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	PropertyRNA *prop;
@@ -7094,7 +7158,7 @@ static void rna_def_node_socket(BlenderRNA *brna)
 	RNA_def_struct_ui_text(srna, "Node Socket", "Input or output socket of a node");
 	RNA_def_struct_sdna(srna, "bNodeSocket");
 	RNA_def_struct_refine_func(srna, "rna_NodeSocket_refine");
-	RNA_def_struct_ui_icon(srna, ICON_PLUG);
+	RNA_def_struct_ui_icon(srna, ICON_PLUGIN);
 	RNA_def_struct_path_func(srna, "rna_NodeSocket_path");
 	RNA_def_struct_register_funcs(srna, "rna_NodeSocket_register", "rna_NodeSocket_unregister", NULL);
 	RNA_def_struct_idprops_func(srna, "rna_NodeSocket_idprops");
@@ -7853,7 +7917,8 @@ static void rna_def_node(BlenderRNA *brna)
 
 	static const EnumPropertyItem dummy_static_type_items[] = {
 		{NODE_CUSTOM, "CUSTOM", 0, "Custom", "Custom Node"},
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	srna = RNA_def_struct(brna, "Node", NULL);
 	RNA_def_struct_ui_text(srna, "Node", "Node in a node tree");
@@ -8305,7 +8370,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
 		{NTREE_SHADER,      "SHADER",       ICON_MATERIAL,      "Shader",       "Shader nodes"},
 		{NTREE_TEXTURE,     "TEXTURE",      ICON_TEXTURE,       "Texture",      "Texture nodes"},
 		{NTREE_COMPOSIT,    "COMPOSITING",  ICON_RENDERLAYERS,  "Compositing",  "Compositing nodes"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "NodeTree", "ID");
@@ -8614,7 +8679,9 @@ void RNA_def_nodetree(BlenderRNA *brna)
 	define_specific_node(brna, "ShaderNodeGroup", "ShaderNode", "Group", "", def_group);
 	define_specific_node(brna, "CompositorNodeGroup", "CompositorNode", "Group", "", def_group);
 	define_specific_node(brna, "TextureNodeGroup", "TextureNode", "Group", "", def_group);
-	def_custom_group(brna);
+	def_custom_group(brna, "ShaderNodeCustomGroup", "ShaderNode", "Shader Custom Group", "Custom Shader Group Node for Python nodes", "rna_ShaderNodeCustomGroup_register");
+	def_custom_group(brna, "CompositorNodeCustomGroup", "CompositorNode", "Compositor Custom Group", "Custom Compositor Group Node for Python nodes", "rna_CompositorNodeCustomGroup_register");
+	def_custom_group(brna, "NodeCustomGroup", "Node", "Custom Group", "Base node type for custom registered node group types", "rna_NodeCustomGroup_register");
 
 	/* special socket types */
 	rna_def_cmp_output_file_slot_file(brna);

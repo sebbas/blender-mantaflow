@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,16 +12,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s):
- *
  * Partial Copyright (c) 2006 Peter Schlaile
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/writeffmpeg.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef WITH_FFMPEG
@@ -54,6 +47,7 @@
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 #include "BKE_sound.h"
@@ -542,6 +536,9 @@ static AVStream *alloc_video_stream(FFMpegContext *context, RenderData *rd, int 
 	/* Set up the codec context */
 
 	c = st->codec;
+	c->thread_count = 0;
+	c->thread_type = FF_THREAD_FRAME;
+
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_VIDEO;
 
@@ -702,6 +699,9 @@ static AVStream *alloc_audio_stream(FFMpegContext *context, RenderData *rd, int 
 	st->id = 1;
 
 	c = st->codec;
+	c->thread_count = 0;
+	c->thread_type = FF_THREAD_FRAME;
+
 	c->codec_id = codec_id;
 	c->codec_type = AVMEDIA_TYPE_AUDIO;
 

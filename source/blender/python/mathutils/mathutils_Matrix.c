@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Michel Selten & Joseph Gilbert
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/mathutils/mathutils_Matrix.c
- *  \ingroup pymathutils
+/** \file
+ * \ingroup pymathutils
  */
 
 
@@ -158,7 +152,7 @@ Mathutils_Callback mathutils_matrix_row_cb = {
 	mathutils_matrix_row_get,
 	mathutils_matrix_row_set,
 	mathutils_matrix_row_get_index,
-	mathutils_matrix_row_set_index
+	mathutils_matrix_row_set_index,
 };
 
 
@@ -250,7 +244,7 @@ Mathutils_Callback mathutils_matrix_col_cb = {
 	mathutils_matrix_col_get,
 	mathutils_matrix_col_set,
 	mathutils_matrix_col_get_index,
-	mathutils_matrix_col_set_index
+	mathutils_matrix_col_set_index,
 };
 
 
@@ -327,7 +321,7 @@ Mathutils_Callback mathutils_matrix_translation_cb = {
 	mathutils_matrix_translation_get,
 	mathutils_matrix_translation_set,
 	mathutils_matrix_translation_get_index,
-	mathutils_matrix_translation_set_index
+	mathutils_matrix_translation_set_index,
 };
 
 
@@ -354,7 +348,7 @@ static PyObject *Matrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 			/* Input is now as a sequence of rows so length of sequence
 			 * is the number of rows */
-			/* -1 is an error, size checks will accunt for this */
+			/* -1 is an error, size checks will account for this */
 			const unsigned short num_row = PySequence_Size(arg);
 
 			if (num_row >= 2 && num_row <= 4) {
@@ -471,10 +465,12 @@ static PyObject *C_Matrix_Rotation(PyObject *cls, PyObject *args)
 	const char *axis = NULL;
 	int matSize;
 	double angle; /* use double because of precision problems at high values */
-	float mat[16] = {0.0f, 0.0f, 0.0f, 0.0f,
-		             0.0f, 0.0f, 0.0f, 0.0f,
-		             0.0f, 0.0f, 0.0f, 0.0f,
-		             0.0f, 0.0f, 0.0f, 1.0f};
+	float mat[16] = {
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+	};
 
 	if (!PyArg_ParseTuple(args, "di|O:Matrix.Rotation", &angle, &matSize, &vec)) {
 		return NULL;
@@ -586,10 +582,12 @@ static PyObject *C_Matrix_Scale(PyObject *cls, PyObject *args)
 	float tvec[3];
 	float factor;
 	int matSize;
-	float mat[16] = {0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 1.0f};
+	float mat[16] = {
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+	};
 
 	if (!PyArg_ParseTuple(args, "fi|O:Matrix.Scale", &factor, &matSize, &vec)) {
 		return NULL;
@@ -677,10 +675,12 @@ static PyObject *C_Matrix_OrthoProjection(PyObject *cls, PyObject *args)
 
 	int matSize, x;
 	float norm = 0.0f;
-	float mat[16] = {0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 1.0f};
+	float mat[16] = {
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+	};
 
 	if (!PyArg_ParseTuple(args, "Oi:Matrix.OrthoProjection", &axis, &matSize)) {
 		return NULL;
@@ -798,10 +798,12 @@ static PyObject *C_Matrix_Shear(PyObject *cls, PyObject *args)
 	int matSize;
 	const char *plane;
 	PyObject *fac;
-	float mat[16] = {0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 0.0f,
-	                 0.0f, 0.0f, 0.0f, 1.0f};
+	float mat[16] = {
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+	};
 
 	if (!PyArg_ParseTuple(args, "siO:Matrix.Shear", &plane, &matSize, &fac)) {
 		return NULL;
@@ -969,7 +971,7 @@ static void matrix_invert_with_det_n_internal(float *mat_dst, const float *mat_s
 }
 
 /**
- * \param r_mat can be from ``self->matrix`` or not.
+ * \param r_mat: can be from ``self->matrix`` or not.
  */
 static bool matrix_invert_internal(const MatrixObject *self, float *r_mat)
 {
@@ -988,7 +990,7 @@ static bool matrix_invert_internal(const MatrixObject *self, float *r_mat)
 
 /**
  * Similar to ``matrix_invert_internal`` but should never error.
- * \param r_mat can be from ``self->matrix`` or not.
+ * \param r_mat: can be from ``self->matrix`` or not.
  */
 static void matrix_invert_safe_internal(const MatrixObject *self, float *r_mat)
 {
@@ -2550,7 +2552,7 @@ static PyObject *Matrix_imatmul(PyObject *m1, PyObject *m2)
 		}
 
 		/* copy matrix back */
-		memcpy(mat1->matrix, mat, mat1->num_row * mat1->num_col);
+		memcpy(mat1->matrix, mat, (mat1->num_row * mat1->num_col) * sizeof(float));
 	}
 	else {
 		PyErr_Format(PyExc_TypeError,
@@ -2652,7 +2654,7 @@ static int Matrix_ass_subscript(MatrixObject *self, PyObject *item, PyObject *va
 static PyMappingMethods Matrix_AsMapping = {
 	(lenfunc)Matrix_len,
 	(binaryfunc)Matrix_subscript,
-	(objobjargproc)Matrix_ass_subscript
+	(objobjargproc)Matrix_ass_subscript,
 };
 
 
@@ -2912,7 +2914,7 @@ static struct PyMethodDef Matrix_methods[] = {
 	{"Shear", (PyCFunction) C_Matrix_Shear, METH_VARARGS | METH_CLASS, C_Matrix_Shear_doc},
 	{"Translation", (PyCFunction) C_Matrix_Translation, METH_O | METH_CLASS, C_Matrix_Translation_doc},
 	{"OrthoProjection", (PyCFunction) C_Matrix_OrthoProjection,  METH_VARARGS | METH_CLASS, C_Matrix_OrthoProjection_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 /*------------------PY_OBECT DEFINITION--------------------------*/
@@ -3314,7 +3316,7 @@ static PyObject *MatrixAccess_iter(MatrixAccessObject *self)
 static PyMappingMethods MatrixAccess_AsMapping = {
 	(lenfunc)MatrixAccess_len,
 	(binaryfunc)MatrixAccess_subscript,
-	(objobjargproc) MatrixAccess_ass_subscript
+	(objobjargproc) MatrixAccess_ass_subscript,
 };
 
 PyTypeObject matrix_access_Type = {

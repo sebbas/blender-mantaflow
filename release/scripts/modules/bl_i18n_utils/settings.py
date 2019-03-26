@@ -44,7 +44,7 @@ LANGUAGES_CATEGORIES = (
 )
 LANGUAGES = (
     # ID, UI english label, ISO code.
-    (0, "Default (Default)", "DEFAULT"),
+    (0, "Automatic (Automatic)", "DEFAULT"),
     (1, "English (English)", "en_US"),
     (2, "Japanese (日本語)", "ja_JP"),
     (3, "Dutch (Nederlandse taal)", "nl_NL"),
@@ -91,6 +91,9 @@ LANGUAGES = (
     (41, "Vietnamese (tiếng Việt)", "vi_VN"),
     (42, "Basque (Euskara)", "eu_EU"),
     (43, "Hausa (Hausa)", "ha"),
+    (44, "Kazakh (қазақша)", "kk_KZ"),
+    (45, "Abkhaz (Аԥсуа бызшәа)", "ab"),
+    (46, "Thai (ภาษาไทย)", "th_TH"),
 )
 
 # Default context, in py!
@@ -104,7 +107,7 @@ IMPORT_MIN_LEVEL = 0.0
 
 # Languages in /branches we do not want to import in /trunk currently...
 IMPORT_LANGUAGES_SKIP = {
-    'am_ET', 'bg_BG', 'fi_FI', 'el_GR', 'et_EE', 'ne_NP', 'ro_RO', 'uz_UZ', 'uz_UZ@cyrillic',
+    'am_ET', 'bg_BG', 'fi_FI', 'el_GR', 'et_EE', 'ne_NP', 'ro_RO', 'uz_UZ', 'uz_UZ@cyrillic', 'kk_KZ',
 }
 
 # Languages that need RTL pre-processing.
@@ -296,6 +299,11 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "fps: %i",
     "gimbal",
     "global",
+    "glTF 2.0 (.glb/.gltf)",
+    "glTF Binary (.glb)",
+    "glTF Embedded (.gltf)",
+    "glTF Separate (.gltf + .bin + textures)",
+    "invoke() needs to be called before execute()",
     "iScale",
     "iso-8859-15",
     "iTaSC",
@@ -325,26 +333,35 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "vBVH",
     "view",
     "wav",
+    "wmOwnerID '%s' not in workspace '%s'",
     "y",
     # Sub-strings.
     "available with",
     "brown fox",
     "can't save image while rendering",
     "constructive modifier",
+    "cursor",
+    "custom",
+    "custom matrix",
+    "custom orientation",
     "edge data",
     "expected a timeline/animation area to be active",
     "expected a view3d region",
     "expected a view3d region & editcurve",
     "expected a view3d region & editmesh",
     "face data",
+    "gimbal",
+    "global",
     "image file not found",
     "image format is read-only",
     "image path can't be written to",
     "in memory to enable editing!",
     "jumps over",
     "left",
+    "local",
     "multi-res modifier",
     "non-triangle face",
+    "normal",
     "right",
     "the lazy dog",
     "unable to load movie clip",
@@ -359,6 +376,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "unsupported movie clip format",
     "vertex data",
     "verts only",
+    "view",
     "virtual parents",
 }
 WARN_MSGID_NOT_CAPITALIZED_ALLOWED |= set(lng[2] for lng in LANGUAGES)
@@ -371,6 +389,7 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Pad.",
     "    RNA Path: bpy.types.",
     "Temp. Diff.",
+    "Temperature Diff.",
 }
 
 PARSER_CACHE_HASH = 'sha1'
@@ -552,6 +571,8 @@ class I18nSettings:
             self.__dict__ = {uid: data for uid, data in globals().items() if not uid.startswith("_")}
         if isinstance(fname, str):
             if not os.path.isfile(fname):
+                # Assume it is already real JSon string...
+                self.from_json(fname)
                 return
             with open(fname) as f:
                 self.from_json(f.read())

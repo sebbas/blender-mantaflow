@@ -1,17 +1,23 @@
-#ifdef V3D_SHADING_TEXTURE_COLOR
-uniform sampler2D image;
-uniform float ImageTransparencyCutoff = 0.1;
 
-#endif
+uniform float ImageTransparencyCutoff = 0.1;
+uniform sampler2D image;
+uniform bool imageSrgb;
+uniform bool imageNearest;
+
 uniform mat4 ProjectionMatrix;
-uniform mat3 normalWorldMatrix;
+uniform mat4 ViewMatrixInverse;
 uniform float alpha = 0.5;
 uniform vec2 invertedViewportSize;
 uniform vec4 viewvecs[3];
 
-uniform vec4 materialDiffuseColor;
-uniform vec4 materialSpecularColor;
+uniform vec3 materialDiffuseColor;
+uniform vec3 materialSpecularColor;
 uniform float materialRoughness;
+
+uniform float shadowMultiplier = 0.5;
+uniform float lightMultiplier = 1.0;
+uniform float shadowShift = 0.1;
+uniform float shadowFocus = 1.0;
 
 #ifdef NORMAL_VIEWPORT_PASS_ENABLED
 in vec3 normal_viewport;
@@ -33,15 +39,14 @@ layout(location=1) out float revealageAccum; /* revealage actually stored in tra
 void main()
 {
 	vec4 diffuse_color;
-	vec3 diffuse_light = vec3(1.0);
 
 #ifdef V3D_SHADING_TEXTURE_COLOR
-	diffuse_color = texture(image, uv_interp);
+	diffuse_color = workbench_sample_texture(image, uv_interp, imageSrgb, imageNearest);
 	if (diffuse_color.a < ImageTransparencyCutoff) {
 		discard;
 	}
 #else
-	diffuse_color = materialDiffuseColor;
+	diffuse_color = vec4(materialDiffuseColor, 1.0);
 #endif /* V3D_SHADING_TEXTURE_COLOR */
 
 	vec2 uv_viewport = gl_FragCoord.xy * invertedViewportSize;
@@ -51,29 +56,27 @@ void main()
 	vec3 nor = normalize(normal_viewport);
 #endif
 
-#ifdef V3D_LIGHTING_MATCAP
+	/* -------- SHADING --------- */
+#ifdef V3D_LIGHTING_FLAT
+	vec3 shaded_color = diffuse_color.rgb;
+
+#elif defined(V3D_LIGHTING_MATCAP)
 	bool flipped = world_data.matcap_orientation != 0;
 	vec2 matcap_uv = matcap_uv_compute(I_vs, nor, flipped);
-	diffuse_light = texture(matcapImage, matcap_uv).rgb;
+	vec3 matcap = textureLod(matcapImage, matcap_uv, 0.0).rgb;
+	vec3 shaded_color = matcap * diffuse_color.rgb;
+
+#elif defined(V3D_LIGHTING_STUDIO)
+	vec3 shaded_color = get_world_lighting(world_data,
+	                                       diffuse_color.rgb, materialSpecularColor, materialRoughness,
+	                                       nor, I_vs);
 #endif
 
-#ifdef V3D_SHADING_SPECULAR_HIGHLIGHT
-	vec3 specular_color = get_world_specular_lights(world_data, vec4(materialSpecularColor.rgb, materialRoughness), nor, I_vs);
-#else
-	vec3 specular_color = vec3(0.0);
+#ifdef V3D_SHADING_SHADOW
+	float light_factor = -dot(nor, world_data.shadow_direction_vs.xyz);
+	float shadow_mix = smoothstep(shadowFocus, shadowShift, light_factor);
+	shaded_color *= mix(lightMultiplier, shadowMultiplier, shadow_mix);
 #endif
-
-#ifdef V3D_LIGHTING_STUDIO
-#  ifdef STUDIOLIGHT_ORIENTATION_CAMERA
-	diffuse_light = get_camera_diffuse_light(world_data, nor);
-#  endif
-#  ifdef STUDIOLIGHT_ORIENTATION_WORLD
-	vec3 normal_world = normalWorldMatrix * nor;
-	diffuse_light = get_world_diffuse_light(world_data, normal_world);
-#  endif
-#endif
-
-	vec3 shaded_color = diffuse_light * diffuse_color.rgb + specular_color;
 
 	/* Based on :
 	 * McGuire and Bavoil, Weighted Blended Order-Independent Transparency, Journal of

@@ -131,7 +131,7 @@ class ShaderWrapper():
         if self._node_texcoords is None and not self.is_readonly:
             tree = self.material.node_tree
             nodes = tree.nodes
-            links = tree.links
+            # links = tree.links
 
             node_texcoords = nodes.new(type='ShaderNodeTexCoord')
             node_texcoords.label = "Texture Coords"
@@ -252,6 +252,7 @@ class PrincipledBSDFWrapper(ShaderWrapper):
             self._grid_to_location(-1, -2, dst_node=node_normalmap, ref_node=node_principled)
             # Link
             links.new(node_normalmap.outputs["Normal"], node_principled.inputs["Normal"])
+            self._node_normalmap = node_normalmap
         return self._node_normalmap
 
     node_normalmap = property(node_normalmap_get)
@@ -267,9 +268,10 @@ class PrincipledBSDFWrapper(ShaderWrapper):
 
     @_set_check
     def base_color_set(self, color):
+        color = rgb_to_rgba(color)
         self.material.diffuse_color = color
         if self.use_nodes and self.node_principled_bsdf is not None:
-            self.node_principled_bsdf.inputs["Base Color"].default_value = rgb_to_rgba(color)
+            self.node_principled_bsdf.inputs["Base Color"].default_value = color
 
     base_color = property(base_color_get, base_color_set)
 
@@ -306,12 +308,12 @@ class PrincipledBSDFWrapper(ShaderWrapper):
     def specular_tint_get(self):
         if not self.use_nodes or self.node_principled_bsdf is None:
             return 0.0
-        return rgba_to_rgb(self.node_principled_bsdf.inputs["Specular Tint"].default_value)
+        return self.node_principled_bsdf.inputs["Specular Tint"].default_value
 
     @_set_check
     def specular_tint_set(self, value):
         if self.use_nodes and self.node_principled_bsdf is not None:
-            self.node_principled_bsdf.inputs["Specular Tint"].default_value = rgb_to_rgba(value)
+            self.node_principled_bsdf.inputs["Specular Tint"].default_value = value
 
     specular_tint = property(specular_tint_get, specular_tint_set)
 
@@ -475,8 +477,6 @@ class PrincipledBSDFWrapper(ShaderWrapper):
 
     normalmap_texture = property(normalmap_texture_get)
 
-
-
 class ShaderImageTextureWrapper():
     """
     Generic 'image texture'-like wrapper, handling image node, some mapping (texture coordinates transformations),
@@ -521,8 +521,8 @@ class ShaderImageTextureWrapper():
         self._node_mapping = ...
 
         tree = node_dst.id_data
-        nodes = tree.nodes
-        links = tree.links
+        # nodes = tree.nodes
+        # links = tree.links
 
         if socket_dst.is_linked:
             from_node = socket_dst.links[0].from_node

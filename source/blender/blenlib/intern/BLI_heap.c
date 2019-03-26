@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Brecht Van Lommel
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenlib/intern/BLI_heap.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * A min-heap / priority queue ADT.
  */
@@ -38,9 +32,9 @@
 /***/
 
 struct HeapNode {
-	void *ptr;
 	float value;
 	uint  index;
+	void *ptr;
 };
 
 struct HeapNode_Chunk {
@@ -87,8 +81,14 @@ struct Heap {
 
 BLI_INLINE void heap_swap(Heap *heap, const uint i, const uint j)
 {
-
-#if 0
+#if 1
+	HeapNode **tree = heap->tree;
+	HeapNode *pi = tree[i], *pj = tree[j];
+	pi->index = j;
+	tree[j] = pi;
+	pj->index = i;
+	tree[i] = pj;
+#elif 0
 	SWAP(uint,  heap->tree[i]->index, heap->tree[j]->index);
 	SWAP(HeapNode *,    heap->tree[i],        heap->tree[j]);
 #else
@@ -105,6 +105,7 @@ BLI_INLINE void heap_swap(Heap *heap, const uint i, const uint j)
 static void heap_down(Heap *heap, uint i)
 {
 	/* size won't change in the loop */
+	HeapNode **const tree = heap->tree;
 	const uint size = heap->size;
 
 	while (1) {
@@ -112,14 +113,14 @@ static void heap_down(Heap *heap, uint i)
 		const uint r = HEAP_RIGHT(i);
 		uint smallest = i;
 
-		if ((l < size) && HEAP_COMPARE(heap->tree[l], heap->tree[smallest])) {
+		if (LIKELY(l < size) && HEAP_COMPARE(tree[l], tree[smallest])) {
 			smallest = l;
 		}
-		if ((r < size) && HEAP_COMPARE(heap->tree[r], heap->tree[smallest])) {
+		if (LIKELY(r < size) && HEAP_COMPARE(tree[r], tree[smallest])) {
 			smallest = r;
 		}
 
-		if (smallest == i) {
+		if (UNLIKELY(smallest == i)) {
 			break;
 		}
 
@@ -130,10 +131,12 @@ static void heap_down(Heap *heap, uint i)
 
 static void heap_up(Heap *heap, uint i)
 {
-	while (i > 0) {
+	HeapNode **const tree = heap->tree;
+
+	while (LIKELY(i > 0)) {
 		const uint p = HEAP_PARENT(i);
 
-		if (HEAP_COMPARE(heap->tree[p], heap->tree[i])) {
+		if (HEAP_COMPARE(tree[p], tree[i])) {
 			break;
 		}
 		heap_swap(heap, p, i);
@@ -318,6 +321,17 @@ HeapNode *BLI_heap_top(const Heap *heap)
 }
 
 /**
+ * Return the value of top node of the heap.
+ * This is the node with the lowest value.
+ */
+float BLI_heap_top_value(const Heap *heap)
+{
+	BLI_assert(heap->size != 0);
+
+	return heap->tree[0]->value;
+}
+
+/**
  * Pop the top node off the heap and return it's pointer.
  */
 void *BLI_heap_pop_min(Heap *heap)
@@ -394,6 +408,9 @@ void *BLI_heap_node_ptr(const HeapNode *node)
 static bool heap_is_minheap(const Heap *heap, uint root)
 {
 	if (root < heap->size) {
+		if (heap->tree[root]->index != root) {
+			return false;
+		}
 		const uint l = HEAP_LEFT(root);
 		if (l < heap->size) {
 			if (HEAP_COMPARE(heap->tree[l], heap->tree[root]) || !heap_is_minheap(heap, l)) {
