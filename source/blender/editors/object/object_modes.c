@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation, 2002-2008 full recode
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/object/object_modes.c
- *  \ingroup edobj
+/** \file
+ * \ingroup edobj
  *
  * General utils to handle mode switching,
  * actual mode switching logic is per-object type.
@@ -35,9 +29,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_layer.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -72,13 +68,13 @@ static const char *object_mode_op_string(eObjectMode mode)
 		return "PARTICLE_OT_particle_edit_toggle";
 	if (mode == OB_MODE_POSE)
 		return "OBJECT_OT_posemode_toggle";
-	if (mode == OB_MODE_GPENCIL_EDIT)
+	if (mode == OB_MODE_EDIT_GPENCIL)
 		return "GPENCIL_OT_editmode_toggle";
-	if (mode == OB_MODE_GPENCIL_PAINT)
+	if (mode == OB_MODE_PAINT_GPENCIL)
 		return "GPENCIL_OT_paintmode_toggle";
-	if (mode == OB_MODE_GPENCIL_SCULPT)
+	if (mode == OB_MODE_SCULPT_GPENCIL)
 		return "GPENCIL_OT_sculptmode_toggle";
-	if (mode == OB_MODE_GPENCIL_WEIGHT)
+	if (mode == OB_MODE_WEIGHT_GPENCIL)
 		return "GPENCIL_OT_weightmode_toggle";
 	return NULL;
 }
@@ -117,8 +113,8 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
 					return true;
 				break;
 			case OB_GPENCIL:
-				if (mode & (OB_MODE_EDIT | OB_MODE_GPENCIL_EDIT | OB_MODE_GPENCIL_PAINT |
-				            OB_MODE_GPENCIL_SCULPT | OB_MODE_GPENCIL_WEIGHT))
+				if (mode & (OB_MODE_EDIT | OB_MODE_EDIT_GPENCIL | OB_MODE_PAINT_GPENCIL |
+				            OB_MODE_SCULPT_GPENCIL | OB_MODE_WEIGHT_GPENCIL))
 				{
 					return true;
 				}
@@ -160,7 +156,16 @@ void ED_object_mode_toggle(bContext *C, eObjectMode mode)
 		const char *opstring = object_mode_op_string(mode);
 
 		if (opstring) {
-			WM_operator_name_call(C, opstring, WM_OP_EXEC_REGION_WIN, NULL);
+			wmOperatorType *ot = WM_operatortype_find(opstring, false);
+			if (ot->flag & OPTYPE_USE_EVAL_DATA) {
+				/* We need to force refresh of depsgraph after undo step,
+				 * redoing the operator *may* rely on some valid evaluated data. */
+				struct Main *bmain = CTX_data_main(C);
+				Scene *scene = CTX_data_scene(C);
+				ViewLayer *view_layer = CTX_data_view_layer(C);
+				BKE_scene_view_layer_graph_evaluated_ensure(bmain, scene, view_layer);
+			}
+			WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_REGION_WIN, NULL);
 		}
 	}
 }
@@ -176,6 +181,21 @@ void ED_object_mode_set(bContext *C, eObjectMode mode)
 	wm->op_undo_depth--;
 }
 
+void ED_object_mode_exit(bContext *C)
+{
+	Depsgraph *depsgraph = CTX_data_depsgraph(C);
+	struct Main *bmain = CTX_data_main(C);
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	FOREACH_OBJECT_BEGIN(view_layer, ob)
+	{
+		if (ob->mode & OB_MODE_ALL_MODE_DATA) {
+			ED_object_mode_generic_exit(bmain, depsgraph, scene, ob);
+		}
+	}
+	FOREACH_OBJECT_END;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -189,7 +209,8 @@ void ED_object_mode_set(bContext *C, eObjectMode mode)
 bool ED_object_mode_generic_enter(
         struct bContext *C, eObjectMode object_mode)
 {
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	if (ob == NULL) {
 		return (object_mode == OB_MODE_OBJECT);
 	}

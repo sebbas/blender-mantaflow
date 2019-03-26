@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,18 +15,12 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BLI_PATH_UTIL_H__
 #define __BLI_PATH_UTIL_H__
 
-/** \file BLI_path_util.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -100,7 +92,7 @@ bool BLI_path_abs(char *path, const char *basepath)  ATTR_NONNULL();
 bool BLI_path_frame(char *path, int frame, int digits) ATTR_NONNULL();
 bool BLI_path_frame_range(char *path, int sta, int end, int digits) ATTR_NONNULL();
 bool BLI_path_frame_get(char *path, int *r_frame, int *numdigits) ATTR_NONNULL();
-void BLI_path_frame_strip(char *path, bool set_frame_char, char *ext) ATTR_NONNULL();
+void BLI_path_frame_strip(char *path, char *ext) ATTR_NONNULL();
 bool BLI_path_frame_check_chars(const char *path) ATTR_NONNULL();
 bool BLI_path_cwd(char *path, const size_t maxlen) ATTR_NONNULL();
 void BLI_path_rel(char *file, const char *relfile) ATTR_NONNULL();

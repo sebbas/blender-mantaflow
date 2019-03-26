@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,28 +15,23 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_graph/graph_intern.h
- *  \ingroup spgraph
+/** \file
+ * \ingroup spgraph
  */
 
 #ifndef __GRAPH_INTERN_H__
 #define __GRAPH_INTERN_H__
 
-struct bContext;
-struct bAnimContext;
-struct bAnimListElem;
-struct SpaceIpo;
-struct ScrArea;
 struct ARegion;
 struct ARegionType;
+struct ScrArea;
+struct SpaceGraph;
 struct View2DGrid;
+struct bAnimContext;
+struct bAnimListElem;
+struct bContext;
 
 /* internal exports only */
 
@@ -50,8 +43,8 @@ struct ARegion *graph_has_buttons_region(struct ScrArea *sa);
 /* graph_draw.c */
 void graph_draw_channel_names(struct bContext *C, struct bAnimContext *ac, struct ARegion *ar);
 
-void graph_draw_curves(struct bAnimContext *ac, struct SpaceIpo *sipo, struct ARegion *ar, struct View2DGrid *grid, short sel);
-void graph_draw_ghost_curves(struct bAnimContext *ac, struct SpaceIpo *sipo, struct ARegion *ar);
+void graph_draw_curves(struct bAnimContext *ac, struct SpaceGraph *sipo, struct ARegion *ar, struct View2DGrid *grid, short sel);
+void graph_draw_ghost_curves(struct bAnimContext *ac, struct SpaceGraph *sipo, struct ARegion *ar);
 
 /* ***************************************** */
 /* graph_select.c */
@@ -73,7 +66,7 @@ void GRAPH_OT_clickselect(struct wmOperatorType *ot);
 enum eGraphKeys_LeftRightSelect_Mode {
 	GRAPHKEYS_LRSEL_TEST    = 0,
 	GRAPHKEYS_LRSEL_LEFT,
-	GRAPHKEYS_LRSEL_RIGHT
+	GRAPHKEYS_LRSEL_RIGHT,
 };
 
 /* defines for column-select mode */

@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,26 +13,23 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/intern/draw_manager_text.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_listbase.h"
-#include "BLI_string.h"
+#include "BLI_memiter.h"
 #include "BLI_math.h"
-
-#include "BIF_gl.h"
 
 #include "GPU_matrix.h"
 
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
-#include "UI_resources.h"
 #include "UI_interface.h"
 
 #include "WM_api.h"
@@ -43,7 +38,6 @@
 #include "draw_manager_text.h"
 
 typedef struct ViewCachedString {
-	struct ViewCachedString *next, *prev;
 	float vec[3];
 	union {
 		uchar ub[4];
@@ -59,18 +53,19 @@ typedef struct ViewCachedString {
 } ViewCachedString;
 
 typedef struct DRWTextStore {
-	ListBase list;
+	BLI_memiter *cache_strings;
 } DRWTextStore;
 
 DRWTextStore *DRW_text_cache_create(void)
 {
 	DRWTextStore *dt = MEM_callocN(sizeof(*dt), __func__);
+	dt->cache_strings = BLI_memiter_create(1 << 14);  /* 16kb */
 	return dt;
 }
 
 void DRW_text_cache_destroy(struct DRWTextStore *dt)
 {
-	BLI_freelistN(&dt->list);
+	BLI_memiter_destroy(dt->cache_strings);
 	MEM_freeN(dt);
 }
 
@@ -92,9 +87,7 @@ void DRW_text_cache_add(
 		alloc_len = str_len + 1;
 	}
 
-	vos = MEM_mallocN(sizeof(ViewCachedString) + alloc_len, __func__);
-
-	BLI_addtail(&dt->list, vos);
+	vos = BLI_memiter_alloc(dt->cache_strings, sizeof(ViewCachedString) + alloc_len);
 
 	copy_v3_v3(vos->vec, co);
 	copy_v4_v4_uchar(vos->col.ub, col);
@@ -119,7 +112,9 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *ar)
 	int tot = 0;
 
 	/* project first and test */
-	for (vos = dt->list.first; vos; vos = vos->next) {
+	BLI_memiter_handle it;
+	BLI_memiter_iter_init(dt->cache_strings, &it);
+	while ((vos = BLI_memiter_iter_step(&it))) {
 		if (ED_view3d_project_short_ex(
 		        ar,
 		        (vos->flag & DRW_TEXT_CACHE_GLOBALSPACE) ? rv3d->persmat : rv3d->persmatob,
@@ -154,7 +149,8 @@ void DRW_text_cache_draw(DRWTextStore *dt, ARegion *ar)
 
 		BLF_size(font_id, style->widget.points * U.pixelsize, U.dpi);
 
-		for (vos = dt->list.first; vos; vos = vos->next) {
+		BLI_memiter_iter_init(dt->cache_strings, &it);
+		while ((vos = BLI_memiter_iter_step(&it))) {
 			if (vos->sco[0] != IS_CLIPPED) {
 				if (col_pack_prev != vos->col.pack) {
 					BLF_color4ubv(font_id, vos->col.ub);

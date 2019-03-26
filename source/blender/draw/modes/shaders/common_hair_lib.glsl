@@ -3,13 +3,13 @@
  * This is less bandwidth intensive than fetching the vertex attributes
  * but does more ALU work per vertex. This also reduce the number
  * of data the CPU has to precompute and transfert for each update.
- **/
+ */
 
 /**
  * hairStrandsRes: Number of points per hair strand.
  * 2 - no subdivision
  * 3+ - 1 or more interpolated points per hair.
- **/
+ */
 uniform int hairStrandsRes = 8;
 
 /**
@@ -17,7 +17,7 @@ uniform int hairStrandsRes = 8;
  * 1 - Wire Hair: Only one pixel thick, independent of view distance.
  * 2 - Polystrip Hair: Correct width, flat if camera is parallel.
  * 3+ - Cylinder Hair: Massive calculation but potentially perfect. Still need proper support.
- **/
+ */
 uniform int hairThicknessRes = 1;
 
 /* Hair thickness shape. */
@@ -25,6 +25,8 @@ uniform float hairRadRoot = 0.01;
 uniform float hairRadTip = 0.0;
 uniform float hairRadShape = 0.5;
 uniform bool hairCloseTip = true;
+
+uniform mat4 hairDupliMatrix;
 
 /* -- Per control points -- */
 uniform samplerBuffer hairPointBuffer; /* RGBA32F */
@@ -44,8 +46,8 @@ void unpack_strand_data(uint data, out int strand_offset, out int strand_segment
 	// strand_offset = (data & 0x1FFFFFFFu);
 	// strand_segments = 1u << (data >> 29u); /* We only need 3 bits to store subdivision level. */
 #else
-	strand_offset = int(data & 0x00FFFFFFu);
-	strand_segments = int(data >> 24u);
+	strand_offset = int(data & 0x003FFFFFu);
+	strand_segments = int(data >> 22u) + 1;
 #endif
 }
 
@@ -56,7 +58,7 @@ void unpack_strand_data(uint data, out int strand_offset, out int strand_segment
  * children particle modifiers being evaluated at this stage.
  *
  * If no more subdivision is needed, we can skip this step.
- **/
+ */
 
 #ifdef HAIR_PHASE_SUBDIV
 int hair_get_base_id(float local_time, int strand_segments, out float interp_time)
@@ -69,7 +71,7 @@ int hair_get_base_id(float local_time, int strand_segments, out float interp_tim
 	return int(ratio);
 }
 
-void hair_get_interp_attribs(out vec4 data0, out vec4 data1, out vec4 data2, out vec4 data3, out float interp_time)
+void hair_get_interp_attrs(out vec4 data0, out vec4 data1, out vec4 data2, out vec4 data3, out float interp_time)
 {
 	float local_time = float(gl_VertexID % hairStrandsRes) / float(hairStrandsRes - 1);
 
@@ -102,7 +104,7 @@ void hair_get_interp_attribs(out vec4 data0, out vec4 data1, out vec4 data2, out
 /* -- Drawing stage -- */
 /**
  * For final drawing, the vertex index and the number of vertex per segment
- **/
+ */
 
 #ifndef HAIR_PHASE_SUBDIV
 int hair_get_strand_id(void)
@@ -134,14 +136,25 @@ float hair_shaperadius(float shape, float root, float tip, float time)
 	return (radius * (root - tip)) + tip;
 }
 
+#ifdef OS_MAC
+in float dummy;
+#endif
+
 void hair_get_pos_tan_binor_time(
-        bool is_persp, vec3 camera_pos, vec3 camera_z,
+        bool is_persp, mat4 invmodel_mat, vec3 camera_pos, vec3 camera_z,
         out vec3 wpos, out vec3 wtan, out vec3 wbinor, out float time, out float thickness, out float thick_time)
 {
 	int id = hair_get_base_id();
 	vec4 data = texelFetch(hairPointBuffer, id);
 	wpos = data.point_position;
 	time = data.point_time;
+
+#ifdef OS_MAC
+	/* Generate a dummy read to avoid the driver bug with shaders having no
+	 * vertex reads on macOS (T60171) */
+	wpos.y += dummy * 0.0;
+#endif
+
 	if (time == 0.0) {
 		/* Hair root */
 		wtan = texelFetch(hairPointBuffer, id + 1).point_position - wpos;
@@ -149,6 +162,9 @@ void hair_get_pos_tan_binor_time(
 	else {
 		wtan = wpos - texelFetch(hairPointBuffer, id - 1).point_position;
 	}
+
+	wpos = (hairDupliMatrix * vec4(wpos, 1.0)).xyz;
+	wtan = mat3(hairDupliMatrix) * wtan;
 
 	vec3 camera_vec = (is_persp) ? wpos - camera_pos : -camera_z;
 	wbinor = normalize(cross(camera_vec, wtan));
@@ -159,7 +175,11 @@ void hair_get_pos_tan_binor_time(
 		thick_time = float(gl_VertexID % hairThicknessRes) / float(hairThicknessRes - 1);
 		thick_time = thickness * (thick_time * 2.0 - 1.0);
 
-		wpos += wbinor * thick_time;
+		/* Take object scale into account.
+		 * NOTE: This only works fine with uniform scaling. */
+		float scale = 1.0 / length(mat3(invmodel_mat) * wbinor);
+
+		wpos += wbinor * thick_time * scale;
 	}
 }
 

@@ -1,5 +1,5 @@
-/** \file elbeem/intern/solver_class.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

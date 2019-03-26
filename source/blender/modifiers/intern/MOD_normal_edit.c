@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,33 +12,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Bastien Montagne
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_normal_edit.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_utildefines.h"
+
+#include "BLI_bitmap.h"
+#include "BLI_math.h"
+
 #include "DNA_object_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_mesh_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
-#include "BLI_bitmap.h"
 
 #include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_mesh.h"
 #include "BKE_deform.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include "MOD_util.h"
 
@@ -66,8 +62,11 @@ static void generate_vert_coordinates(
 	/* Get size (i.e. deformation of the spheroid generating normals), either from target object, or own geometry. */
 	if (r_size != NULL) {
 		if (ob_center != NULL) {
+			/* Using 'scale' as 'size' here. The input object is typically an empty
+			 * who's scale is used to define an ellipsoid instead of a simple sphere. */
+
 			/* Not we are not interested in signs here - they are even troublesome actually, due to security clamping! */
-			abs_v3_v3(r_size, ob_center->size);
+			abs_v3_v3(r_size, ob_center->scale);
 		}
 		else {
 			/* Set size. */
@@ -193,13 +192,16 @@ static bool polygons_check_flip(
 }
 
 static void normalEditModifier_do_radial(
-        NormalEditModifierData *enmd, Object *ob, Mesh *mesh,
+        NormalEditModifierData *enmd, const ModifierEvalContext *ctx,
+        Object *ob, Mesh *mesh,
         short (*clnors)[2], float (*loopnors)[3], float (*polynors)[3],
         const short mix_mode, const float mix_factor, const float mix_limit,
         MDeformVert *dvert, const int defgrp_index, const bool use_invert_vgroup,
         MVert *mvert, const int num_verts, MEdge *medge, const int num_edges,
         MLoop *mloop, const int num_loops, MPoly *mpoly, const int num_polys)
 {
+	Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, enmd->target);
+
 	const bool do_polynors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
 	int i;
 
@@ -209,7 +211,7 @@ static void normalEditModifier_do_radial(
 
 	BLI_bitmap *done_verts = BLI_BITMAP_NEW((size_t)num_verts, __func__);
 
-	generate_vert_coordinates(mesh, ob, enmd->target, enmd->offset, num_verts, cos, size);
+	generate_vert_coordinates(mesh, ob, ob_target, enmd->offset, num_verts, cos, size);
 
 	/**
 	 * size gives us our spheroid coefficients ``(A, B, C)``.
@@ -294,13 +296,16 @@ static void normalEditModifier_do_radial(
 }
 
 static void normalEditModifier_do_directional(
-        NormalEditModifierData *enmd, Object *ob, Mesh *mesh,
+        NormalEditModifierData *enmd, const ModifierEvalContext *ctx,
+        Object *ob, Mesh *mesh,
         short (*clnors)[2], float (*loopnors)[3], float (*polynors)[3],
         const short mix_mode, const float mix_factor, const float mix_limit,
         MDeformVert *dvert, const int defgrp_index, const bool use_invert_vgroup,
         MVert *mvert, const int num_verts, MEdge *medge, const int num_edges,
         MLoop *mloop, const int num_loops, MPoly *mpoly, const int num_polys)
 {
+	Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, enmd->target);
+
 	const bool do_polynors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
 	const bool use_parallel_normals = (enmd->flag & MOD_NORMALEDIT_USE_DIRECTION_PARALLEL) != 0;
 
@@ -313,7 +318,7 @@ static void normalEditModifier_do_directional(
 	float mat[4][4];
 
 	invert_m4_m4(mat, ob->obmat);
-	mul_m4_m4m4(mat, mat, enmd->target->obmat);
+	mul_m4_m4m4(mat, mat, ob_target->obmat);
 	copy_v3_v3(target_co, mat[3]);
 
 	if (use_parallel_normals) {
@@ -328,7 +333,7 @@ static void normalEditModifier_do_directional(
 	}
 	else {
 		float (*cos)[3] = MEM_malloc_arrayN((size_t)num_verts, sizeof(*cos), __func__);
-		generate_vert_coordinates(mesh, ob, enmd->target, NULL, num_verts, cos, NULL);
+		generate_vert_coordinates(mesh, ob, ob_target, NULL, num_verts, cos, NULL);
 
 		BLI_bitmap *done_verts = BLI_BITMAP_NEW((size_t)num_verts, __func__);
 		MLoop *ml;
@@ -380,7 +385,8 @@ static bool is_valid_target(NormalEditModifierData *enmd)
 	return false;
 }
 
-static Mesh *normalEditModifier_do(NormalEditModifierData *enmd, Object *ob, Mesh *mesh)
+static Mesh *normalEditModifier_do(
+        NormalEditModifierData *enmd, const ModifierEvalContext *ctx, Object *ob, Mesh *mesh)
 {
 	const bool use_invert_vgroup = ((enmd->flag & MOD_NORMALEDIT_INVERT_VGROUP) != 0);
 	const bool use_current_clnors = !((enmd->mix_mode == MOD_NORMALEDIT_MIX_COPY) &&
@@ -409,13 +415,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd, Object *ob, Mes
 	if (mesh->medge == ((Mesh *)ob->data)->medge) {
 		/* We need to duplicate data here, otherwise setting custom normals (which may also affect sharp edges) could
 		 * modify org mesh, see T43671. */
-		BKE_id_copy_ex(
-		        NULL, &mesh->id, (ID **)&result,
-		        LIB_ID_CREATE_NO_MAIN |
-		        LIB_ID_CREATE_NO_USER_REFCOUNT |
-		        LIB_ID_CREATE_NO_DEG_TAG |
-		        LIB_ID_COPY_NO_PREVIEW,
-		        false);
+		BKE_id_copy_ex(NULL, &mesh->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
 	}
 	else {
 		result = mesh;
@@ -474,13 +474,13 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd, Object *ob, Mes
 
 	if (enmd->mode == MOD_NORMALEDIT_MODE_RADIAL) {
 		normalEditModifier_do_radial(
-		            enmd, ob, result, clnors, loopnors, polynors,
+		            enmd, ctx, ob, result, clnors, loopnors, polynors,
 		            enmd->mix_mode, enmd->mix_factor, enmd->mix_limit, dvert, defgrp_index, use_invert_vgroup,
 		            mvert, num_verts, medge, num_edges, mloop, num_loops, mpoly, num_polys);
 	}
 	else if (enmd->mode == MOD_NORMALEDIT_MODE_DIRECTIONAL) {
 		normalEditModifier_do_directional(
-		            enmd, ob, result, clnors, loopnors, polynors,
+		            enmd, ctx, ob, result, clnors, loopnors, polynors,
 		            enmd->mix_mode, enmd->mix_factor, enmd->mix_limit, dvert, defgrp_index, use_invert_vgroup,
 		            mvert, num_verts, medge, num_edges, mloop, num_loops, mpoly, num_polys);
 	}
@@ -499,17 +499,16 @@ static void initData(ModifierData *md)
 	enmd->mix_limit = M_PI;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	NormalEditModifierData *enmd = (NormalEditModifierData *)md;
-	CustomDataMask dataMask = CD_MASK_CUSTOMLOOPNORMAL;
+
+	r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
 
 	/* Ask for vertexgroups if we need them. */
-	if (enmd->defgrp_name[0]) {
-		dataMask |= (CD_MASK_MDEFORMVERT);
+	if (enmd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 	}
-
-	return dataMask;
 }
 
 static bool dependsOnNormals(ModifierData *UNUSED(md))
@@ -536,12 +535,13 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	NormalEditModifierData *enmd = (NormalEditModifierData *) md;
 	if (enmd->target) {
 		DEG_add_object_relation(ctx->node, enmd->target, DEG_OB_COMP_TRANSFORM, "NormalEdit Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "NormalEdit Modifier");
 	}
 }
 
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-	return normalEditModifier_do((NormalEditModifierData *)md, ctx->object, mesh);
+	return normalEditModifier_do((NormalEditModifierData *)md, ctx, ctx->object, mesh);
 }
 
 ModifierTypeInfo modifierType_NormalEdit = {
@@ -578,4 +578,5 @@ ModifierTypeInfo modifierType_NormalEdit = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

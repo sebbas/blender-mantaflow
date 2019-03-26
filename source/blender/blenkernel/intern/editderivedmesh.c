@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/editderivedmesh.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * basic design:
  *
@@ -529,12 +521,12 @@ static void cage_mapped_verts_callback(
 
 float (*BKE_editmesh_vertexCos_get(struct Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, int *r_numVerts))[3]
 {
-	Mesh *cage, *final;
+	Mesh *cage;
 	BLI_bitmap *visit_bitmap;
 	struct CageUserData data;
 	float (*cos_cage)[3];
 
-	cage = editbmesh_get_eval_cage_and_final(depsgraph, scene, em->ob, em, CD_MASK_BAREMESH, &final);
+	cage = editbmesh_get_eval_cage(depsgraph, scene, em->ob, em, &CD_MASK_BAREMESH);
 	cos_cage = MEM_callocN(sizeof(*cos_cage) * em->bm->totvert, "bmbvh cos_cage");
 
 	/* when initializing cage verts, we only want the first cage coordinate for each vertex,

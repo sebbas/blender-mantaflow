@@ -1,5 +1,5 @@
-/** \file elbeem/intern/ntl_matrices.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 
 /******************************************************************************

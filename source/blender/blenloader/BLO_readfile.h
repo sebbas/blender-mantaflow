@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,39 +15,33 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BLO_READFILE_H__
 #define __BLO_READFILE_H__
 
-/** \file BLO_readfile.h
- *  \ingroup blenloader
- *  \brief external readfile function prototypes.
+/** \file
+ * \ingroup blenloader
+ * \brief external readfile function prototypes.
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+struct BHead;
 struct BlendThumbnail;
-struct bScreen;
+struct FileData;
 struct LinkNode;
 struct ListBase;
 struct Main;
 struct MemFile;
 struct ReportList;
 struct Scene;
-struct ViewLayer;
 struct UserDef;
 struct View3D;
+struct ViewLayer;
 struct bContext;
-struct BHead;
-struct FileData;
+struct bScreen;
 struct wmWindowManager;
 
 typedef struct BlendHandle BlendHandle;
@@ -57,7 +49,7 @@ typedef struct BlendHandle BlendHandle;
 typedef enum eBlenFileType {
 	BLENFILETYPE_BLEND = 1,
 	BLENFILETYPE_PUB = 2,
-	BLENFILETYPE_RUNTIME = 3
+	BLENFILETYPE_RUNTIME = 3,
 } eBlenFileType;
 
 typedef struct BlendFileData {
@@ -81,6 +73,10 @@ typedef struct WorkspaceConfigFileData {
 	struct ListBase workspaces;
 } WorkspaceConfigFileData;
 
+struct BlendFileReadParams {
+	uint skip_flags : 2;  /* eBLOReadSkip */
+	uint is_startup : 1;
+};
 
 /* skip reading some data-block types (may want to skip screen data too). */
 typedef enum eBLOReadSkip {
@@ -93,13 +89,16 @@ typedef enum eBLOReadSkip {
 
 BlendFileData *BLO_read_from_file(
         const char *filepath,
-        struct ReportList *reports, eBLOReadSkip skip_flag);
+        eBLOReadSkip skip_flags,
+        struct ReportList *reports);
 BlendFileData *BLO_read_from_memory(
         const void *mem, int memsize,
-        struct ReportList *reports, eBLOReadSkip skip_flag);
+        eBLOReadSkip skip_flags,
+        struct ReportList *reports);
 BlendFileData *BLO_read_from_memfile(
         struct Main *oldmain, const char *filename, struct MemFile *memfile,
-        struct ReportList *reports, eBLOReadSkip skip_flag);
+        eBLOReadSkip skip_flags,
+        struct ReportList *reports);
 
 void BLO_blendfiledata_free(BlendFileData *bfd);
 
@@ -134,19 +133,18 @@ struct Main *BLO_library_link_begin(struct Main *mainvar, BlendHandle **bh, cons
 struct ID *BLO_library_link_named_part(struct Main *mainl, BlendHandle **bh, const short idcode, const char *name);
 struct ID *BLO_library_link_named_part_ex(
         struct Main *mainl, BlendHandle **bh,
-        const short idcode, const char *name, const int flag,
-        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer);
+        const short idcode, const char *name, const int flag);
 void BLO_library_link_end(
         struct Main *mainl, BlendHandle **bh, int flag,
-        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer);
+        struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, const struct View3D *v3d);
 
-void BLO_library_link_copypaste(struct Main *mainl, BlendHandle *bh);
+int BLO_library_link_copypaste(struct Main *mainl, BlendHandle *bh, const unsigned int id_types_mask);
 
 void *BLO_library_read_struct(struct FileData *fd, struct BHead *bh, const char *blockname);
 
 /* internal function but we need to expose it */
 void blo_lib_link_restore(
-        struct Main *newmain, struct wmWindowManager *curwm,
+        struct Main *oldmain, struct Main *newmain, struct wmWindowManager *curwm,
         struct Scene *curscene, struct ViewLayer *cur_render_layer);
 
 typedef void (*BLOExpandDoitCallback) (void *fdhandle, struct Main *mainvar, void *idv);
@@ -162,8 +160,6 @@ void BLO_update_defaults_startup_blend(struct Main *mainvar, const char *app_tem
 void BLO_version_defaults_userpref_blend(struct Main *mainvar, struct UserDef *userdef);
 
 struct BlendThumbnail *BLO_thumbnail_from_file(const char *filepath);
-
-struct Main *BLO_main_from_memfile(struct MemFile *memfile, struct Main *bmain, struct Scene **r_scene);
 
 /* datafiles (generated theme) */
 extern const struct bTheme U_theme_default;

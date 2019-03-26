@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/TransformWriter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -33,7 +26,7 @@
 
 #include "TransformWriter.h"
 
-void TransformWriter::add_node_transform(COLLADASW::Node& node, float mat[4][4], float parent_mat[4][4])
+void TransformWriter::add_node_transform(COLLADASW::Node& node, float mat[4][4], float parent_mat[4][4], bool limit_precision)
 {
 	float loc[3], rot[3], scale[3];
 	float local[4][4];
@@ -63,8 +56,11 @@ void TransformWriter::add_node_transform(COLLADASW::Node& node, float mat[4][4],
 	}
 }
 
-void TransformWriter::add_node_transform_ob(COLLADASW::Node& node, Object *ob,
-                                            BC_export_transformation_type transformation_type)
+void TransformWriter::add_node_transform_ob(
+	COLLADASW::Node& node,
+	Object *ob,
+	BC_export_transformation_type transformation_type,
+	bool limit_precision)
 {
 #if 0
 	float rot[3], loc[3], scale[3];
@@ -74,11 +70,11 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node& node, Object *ob,
 
 		// factor out scale from obmat
 
-		copy_v3_v3(scale, ob->size);
+		copy_v3_v3(scale, ob->scale);
 
-		ob->size[0] = ob->size[1] = ob->size[2] = 1.0f;
+		ob->scale[0] = ob->scale[1] = ob->scale[2] = 1.0f;
 		BKE_object_to_mat4(ob, C);
-		copy_v3_v3(ob->size, scale);
+		copy_v3_v3(ob->scale, scale);
 
 		mul_m4_series(tmat, ob->parent->obmat, ob->parentinv, C);
 
@@ -95,23 +91,24 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node& node, Object *ob,
 	else {
 		copy_v3_v3(loc, ob->loc);
 		copy_v3_v3(rot, ob->rot);
-		copy_v3_v3(scale, ob->size);
+		copy_v3_v3(scale, ob->scale);
 	}
 
 	add_transform(node, loc, rot, scale);
 #endif
 
-	UnitConverter converter;
-	double d_obmat[4][4];
-	float  f_obmat[4][4];
-
 	/* Export the local Matrix (relative to the object parent, be it an object, bone or vertex(-tices)) */
+	float  f_obmat[4][4];
 	BKE_object_matrix_local_get(ob, f_obmat);
-	converter.mat4_to_dae_double(d_obmat, f_obmat);
 
 	switch (transformation_type) {
 		case BC_TRANSFORMATION_TYPE_MATRIX:
 		{
+			UnitConverter converter;
+			double d_obmat[4][4];
+			converter.mat4_to_dae_double(d_obmat, f_obmat);
+			if (limit_precision)
+				bc_sanitize_mat(d_obmat, LIMITTED_PRECISION);
 			node.addMatrix("transform",d_obmat);
 			break;
 		}
@@ -119,6 +116,11 @@ void TransformWriter::add_node_transform_ob(COLLADASW::Node& node, Object *ob,
 		{
 			float loc[3], rot[3], scale[3];
 			bc_decompose(f_obmat, loc, rot, NULL, scale);
+			if (limit_precision) {
+				bc_sanitize_v3(loc, LIMITTED_PRECISION);
+				bc_sanitize_v3(rot, LIMITTED_PRECISION);
+				bc_sanitize_v3(scale, LIMITTED_PRECISION);
+			}
 			add_transform(node, loc, rot, scale);
 			break;
 		}

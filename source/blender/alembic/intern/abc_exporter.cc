@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Esteban Tovagliari, Cedric Paille, Kevin Dietrich
- *
- * ***** END GPL LICENSE BLOCK *****
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_exporter.h"
@@ -140,8 +138,8 @@ static bool object_type_is_exportable(Scene *scene, Object *ob)
 /**
  * Returns whether this object should be exported into the Alembic file.
  *
- * \param settings export settings, used for options like 'selected only'.
- * \param ob the object's base in question.
+ * \param settings: export settings, used for options like 'selected only'.
+ * \param ob: the object's base in question.
  * \param is_duplicated: Normally false; true when the object is instanced
  * into the scene by a dupli-object (e.g. part of a dupligroup).
  * This ignores selection and layer visibility,
@@ -598,7 +596,14 @@ void AbcExporter::createShapeWriter(Object *ob, Object *dupliObParent)
 				return;
 			}
 
-			m_shapes.push_back(new AbcNurbsWriter(ob, xform, m_shape_sampling_index, m_settings));
+			AbcObjectWriter *writer;
+			if (m_settings.curves_as_mesh) {
+				writer = new AbcCurveMeshWriter(ob, xform, m_shape_sampling_index, m_settings);
+			}
+			else {
+				writer = new AbcNurbsWriter(ob, xform, m_shape_sampling_index, m_settings);
+			}
+			m_shapes.push_back(writer);
 			break;
 		}
 		case OB_CURVE:
@@ -609,7 +614,14 @@ void AbcExporter::createShapeWriter(Object *ob, Object *dupliObParent)
 				return;
 			}
 
-			m_shapes.push_back(new AbcCurveWriter(ob, xform, m_shape_sampling_index, m_settings));
+			AbcObjectWriter *writer;
+			if (m_settings.curves_as_mesh) {
+				writer = new AbcCurveMeshWriter(ob, xform, m_shape_sampling_index, m_settings);
+			}
+			else {
+				writer = new AbcCurveWriter(ob, xform, m_shape_sampling_index, m_settings);
+			}
+			m_shapes.push_back(writer);
 			break;
 		}
 		case OB_CAMERA:

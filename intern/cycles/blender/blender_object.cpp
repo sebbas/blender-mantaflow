@@ -145,11 +145,12 @@ void BlenderSync::sync_light(BL::Object& b_parent,
 			light->spot_smooth = b_spot_light.spot_blend();
 			break;
 		}
-		case BL::Light::type_HEMI: {
-			light->type = LIGHT_DISTANT;
-			light->size = 0.0f;
-			break;
-		}
+		/* Hemi were removed from 2.8 */
+		// case BL::Light::type_HEMI: {
+		// 	light->type = LIGHT_DISTANT;
+		// 	light->size = 0.0f;
+		// 	break;
+		// }
 		case BL::Light::type_SUN: {
 			BL::SunLight b_sun_light(b_light);
 			light->size = b_sun_light.shadow_soft_size();
@@ -294,7 +295,8 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
                                  BL::ViewLayer& b_view_layer,
                                  BL::DepsgraphObjectInstance& b_instance,
                                  float motion_time,
-                                 bool hide_tris,
+                                 bool show_self,
+                                 bool show_particles,
                                  BlenderObjectCulling& culling,
                                  bool *use_portal)
 {
@@ -347,7 +349,7 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 	/* Visibility flags for both parent and child. */
 	PointerRNA cobject = RNA_pointer_get(&b_ob.ptr, "cycles");
 	bool use_holdout = get_boolean(cobject, "is_holdout") ||
-	                   b_parent.holdout_get(b_view_layer);
+	                   b_parent.holdout_get(PointerRNA_NULL, b_view_layer);
 	uint visibility = object_ray_visibility(b_ob) & PATH_RAY_ALL_VISIBILITY;
 
 	if(b_parent.ptr.data != b_ob.ptr.data) {
@@ -362,7 +364,7 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 #endif
 
 	/* Clear camera visibility for indirect only objects. */
-	bool use_indirect_only = b_parent.indirect_only_get(b_view_layer);
+	bool use_indirect_only = b_parent.indirect_only_get(PointerRNA_NULL, b_view_layer);
 	if(use_indirect_only) {
 		visibility &= ~PATH_RAY_CAMERA;
 	}
@@ -402,7 +404,7 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 		object_updated = true;
 
 	/* mesh sync */
-	object->mesh = sync_mesh(b_depsgraph, b_ob, b_ob_instance, object_updated, hide_tris);
+	object->mesh = sync_mesh(b_depsgraph, b_ob, b_ob_instance, object_updated, show_self, show_particles);
 
 	/* special case not tracked by object update flags */
 
@@ -424,6 +426,23 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 		object_updated = true;
 	}
 
+	/* sync the asset name for Cryptomatte */
+	BL::Object parent = b_ob.parent();
+	ustring parent_name;
+	if(parent) {
+		while(parent.parent()) {
+			parent = parent.parent();
+		}
+		parent_name = parent.name();
+	}
+	else {
+		parent_name = b_ob.name();
+	}
+	if(object->asset_name != parent_name) {
+		object->asset_name = parent_name;
+		object_updated = true;
+	}
+
 	/* object sync
 	 * transform comparison should not be needed, but duplis don't work perfect
 	 * in the depsgraph and may not signal changes, so this is a workaround */
@@ -442,7 +461,7 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 
 			uint motion_steps;
 
-			if(scene->need_motion() == Scene::MOTION_BLUR) {
+			if(need_motion == Scene::MOTION_BLUR) {
 				motion_steps = object_motion_steps(b_parent, b_ob);
 				mesh->motion_steps = motion_steps;
 				if(motion_steps && object_use_deform_motion(b_parent, b_ob)) {
@@ -471,9 +490,6 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 			object->dupli_generated = 0.5f*get_float3(b_instance.orco()) - make_float3(0.5f, 0.5f, 0.5f);
 			object->dupli_uv = get_float2(b_instance.uv());
 			object->random_id = b_instance.random_id();
-
-			/* Sync possible particle data. */
-			sync_dupli_particle(b_ob, b_instance, object);
 		}
 		else {
 			object->dupli_generated = make_float3(0.0f, 0.0f, 0.0f);
@@ -484,83 +500,12 @@ Object *BlenderSync::sync_object(BL::Depsgraph& b_depsgraph,
 		object->tag_update(scene);
 	}
 
+	if(is_instance) {
+		/* Sync possible particle data. */
+		sync_dupli_particle(b_parent, b_instance, object);
+	}
+
 	return object;
-}
-
-static bool object_render_hide_original(BL::Object::type_enum ob_type,
-                                        BL::Object::dupli_type_enum dupli_type)
-{
-	/* metaball exception, they duplicate self */
-	if(ob_type == BL::Object::type_META)
-		return false;
-
-	return (dupli_type == BL::Object::dupli_type_VERTS ||
-	        dupli_type == BL::Object::dupli_type_FACES ||
-	        dupli_type == BL::Object::dupli_type_FRAMES);
-}
-
-static bool object_render_hide(BL::Object& b_ob,
-                               bool top_level,
-                               bool parent_hide,
-                               bool& hide_triangles,
-                               BL::Depsgraph::mode_enum depsgraph_mode)
-{
-	/* check if we should render or hide particle emitter */
-	BL::Object::particle_systems_iterator b_psys;
-
-	bool hair_present = false;
-	bool has_particles = false;
-	bool show_emitter = false;
-	bool hide_emitter = false;
-	bool hide_as_dupli_parent = false;
-	bool hide_as_dupli_child_original = false;
-
-	for(b_ob.particle_systems.begin(b_psys); b_psys != b_ob.particle_systems.end(); ++b_psys) {
-		if((b_psys->settings().render_type() == BL::ParticleSettings::render_type_PATH) &&
-		   (b_psys->settings().type()==BL::ParticleSettings::type_HAIR))
-			hair_present = true;
-		has_particles = true;
-	}
-
-	/* Both mode_PREVIEW and mode_VIEWPORT are treated the same here.*/
-	const bool show_duplicator = depsgraph_mode == BL::Depsgraph::mode_RENDER
-	                             ? b_ob.show_duplicator_for_render()
-	                             : b_ob.show_duplicator_for_viewport();
-
-	if(has_particles) {
-		show_emitter = show_duplicator;
-		hide_emitter = !show_emitter;
-	} else if(b_ob.is_duplicator()) {
-		if(top_level || show_duplicator) {
-			hide_as_dupli_parent = true;
-		}
-	}
-
-	/* hide original object for duplis */
-	BL::Object parent = b_ob.parent();
-	while(parent) {
-		if(object_render_hide_original(b_ob.type(),
-		                               parent.dupli_type()))
-		{
-			if(parent_hide) {
-				hide_as_dupli_child_original = true;
-				break;
-			}
-		}
-		parent = parent.parent();
-	}
-
-	hide_triangles = hide_emitter;
-
-	if(show_emitter) {
-		return false;
-	}
-	else if(hair_present) {
-		return hide_as_dupli_child_original;
-	}
-	else {
-		return (hide_as_dupli_parent || hide_as_dupli_child_original);
-	}
 }
 
 /* Object Loop */
@@ -590,7 +535,6 @@ void BlenderSync::sync_objects(BL::Depsgraph& b_depsgraph, float motion_time)
 	bool use_portal = false;
 
 	BL::ViewLayer b_view_layer = b_depsgraph.view_layer_eval();
-	BL::Depsgraph::mode_enum depsgraph_mode = b_depsgraph.mode();
 
 	BL::Depsgraph::object_instances_iterator b_instance_iter;
 	for(b_depsgraph.object_instances.begin(b_instance_iter);
@@ -606,15 +550,17 @@ void BlenderSync::sync_objects(BL::Depsgraph& b_depsgraph, float motion_time)
 		culling.init_object(scene, b_ob);
 
 		/* test if object needs to be hidden */
-		bool hide_tris;
+		const bool show_self = b_instance.show_self();
+		const bool show_particles = b_instance.show_particles();
 
-		 if(!object_render_hide(b_ob, true, true, hide_tris, depsgraph_mode)) {
+		 if(show_self || show_particles) {
 			/* object itself */
 			sync_object(b_depsgraph,
 			            b_view_layer,
 			            b_instance,
 			            motion_time,
-			            hide_tris,
+			            show_self,
+			            show_particles,
 			            culling,
 			            &use_portal);
 		 }

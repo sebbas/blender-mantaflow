@@ -1,5 +1,5 @@
-/** \file elbeem/intern/controlparticles.cpp
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 // --------------------------------------------------------------------------
 //

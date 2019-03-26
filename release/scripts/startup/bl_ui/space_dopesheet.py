@@ -109,55 +109,60 @@ class DopesheetFilterPopoverBase:
     def draw_standard_filters(cls, context, layout):
         dopesheet = context.space_data.dopesheet
 
+        # datablock filters
+        layout.label(text="Filter by Type:")
+        flow = layout.grid_flow(row_major=True, columns=2, even_rows=False, align=False)
+
+        flow.prop(dopesheet, "show_scenes", text="Scenes")
+        flow.prop(dopesheet, "show_nodes", text="Node Trees")
+
+        # object types
+        if bpy.data.armatures:
+            flow.prop(dopesheet, "show_armatures", text="Armatures")
+        if bpy.data.cameras:
+            flow.prop(dopesheet, "show_cameras", text="Cameras")
+        if bpy.data.grease_pencils:
+            flow.prop(dopesheet, "show_gpencil", text="Grease Pencil Objects")
+        if bpy.data.lights:
+            flow.prop(dopesheet, "show_lights", text="Lights")
+        if bpy.data.meshes:
+            flow.prop(dopesheet, "show_meshes", text="Meshes")
+        if bpy.data.curves:
+            flow.prop(dopesheet, "show_curves", text="Curves")
+        if bpy.data.lattices:
+            flow.prop(dopesheet, "show_lattices", text="Lattices")
+        if bpy.data.metaballs:
+            flow.prop(dopesheet, "show_metaballs", text="Metaballs")
+
+        # data types
+        flow.prop(dopesheet, "show_worlds", text="Worlds")
+        if bpy.data.particles:
+            flow.prop(dopesheet, "show_particles", text="Particles")
+        if bpy.data.linestyles:
+            flow.prop(dopesheet, "show_linestyles", text="Line Styles")
+        if bpy.data.speakers:
+            flow.prop(dopesheet, "show_speakers", text="Speakers")
+        if bpy.data.materials:
+            flow.prop(dopesheet, "show_materials", text="Materials")
+        if bpy.data.textures:
+            flow.prop(dopesheet, "show_textures", text="Textures")
+        if bpy.data.shape_keys:
+            flow.prop(dopesheet, "show_shapekeys", text="Shape Keys")
+        if bpy.data.cache_files:
+            flow.prop(dopesheet, "show_cache_files", text="Cache Files")
+
+        layout.separator()
+
         # Object Data Filters
-        layout.label(text="Include Sub-Object Data:")
-        split = layout.split()
 
         # TODO: Add per-channel/axis convenience toggles?
+        split = layout.split()
+
         col = split.column()
         col.prop(dopesheet, "show_transforms", text="Transforms")
 
         col = split.column()
         col.prop(dopesheet, "show_modifiers", text="Modifiers")
-
-        layout.separator()
-
-        # datablock filters
-        layout.label(text="Include From Types:")
-        flow = layout.grid_flow(row_major=True, columns=2, even_rows=False, align=False)
-
-        flow.prop(dopesheet, "show_scenes", text="Scenes")
-        flow.prop(dopesheet, "show_worlds", text="Worlds")
-        flow.prop(dopesheet, "show_nodes", text="Node Trees")
-
-        if bpy.data.armatures:
-            flow.prop(dopesheet, "show_armatures", text="Armatures")
-        if bpy.data.cameras:
-            flow.prop(dopesheet, "show_cameras", text="Cameras")
-        if bpy.data.grease_pencil:
-            flow.prop(dopesheet, "show_gpencil", text="Grease Pencil Objects")
-        if bpy.data.lights:
-            flow.prop(dopesheet, "show_lights", text="Lights")
-        if bpy.data.materials:
-            flow.prop(dopesheet, "show_materials", text="Materials")
-        if bpy.data.textures:
-            flow.prop(dopesheet, "show_textures", text="Textures")
-        if bpy.data.meshes:
-            flow.prop(dopesheet, "show_meshes", text="Meshes")
-        if bpy.data.shape_keys:
-            flow.prop(dopesheet, "show_shapekeys", text="Shape Keys")
-        if bpy.data.curves:
-            flow.prop(dopesheet, "show_curves", text="Curves")
-        if bpy.data.particles:
-            flow.prop(dopesheet, "show_particles", text="Particles")
-        if bpy.data.lattices:
-            flow.prop(dopesheet, "show_lattices", text="Lattices")
-        if bpy.data.linestyles:
-            flow.prop(dopesheet, "show_linestyles", text="Line Styles")
-        if bpy.data.metaballs:
-            flow.prop(dopesheet, "show_metaballs", text="Metas")
-        if bpy.data.speakers:
-            flow.prop(dopesheet, "show_speakers", text="Speakers")
 
         layout.separator()
 
@@ -231,13 +236,13 @@ class DOPESHEET_HT_editor_buttons(Header):
     def draw(self, context):
         pass
 
-    @staticmethod
     def draw_header(context, layout):
         st = context.space_data
-        toolsettings = context.tool_settings
+        tool_settings = context.tool_settings
 
         if st.mode in {'ACTION', 'SHAPEKEY'}:
-            # TODO: These buttons need some tidying up - Probably by using a popover, and bypassing the template_id() here
+            # TODO: These buttons need some tidying up -
+            # Probably by using a popover, and bypassing the template_id() here
             row = layout.row(align=True)
             row.operator("action.layer_prev", text="", icon='TRIA_DOWN')
             row.operator("action.layer_next", text="", icon='TRIA_UP')
@@ -281,10 +286,10 @@ class DOPESHEET_HT_editor_buttons(Header):
             layout.prop(st, "auto_snap", text="")
 
         row = layout.row(align=True)
-        row.prop(toolsettings, "use_proportional_action", text="", icon_only=True)
+        row.prop(tool_settings, "use_proportional_action", text="", icon_only=True)
         sub = row.row(align=True)
-        sub.active = toolsettings.use_proportional_action
-        sub.prop(toolsettings, "proportional_edit_falloff", text="", icon_only=True)
+        sub.active = tool_settings.use_proportional_action
+        sub.prop(tool_settings, "proportional_edit_falloff", text="", icon_only=True)
 
 
 class DOPESHEET_MT_editor_menus(Menu):
@@ -292,10 +297,7 @@ class DOPESHEET_MT_editor_menus(Menu):
     bl_label = ""
 
     def draw(self, context):
-        self.draw_menus(self.layout, context)
-
-    @staticmethod
-    def draw_menus(layout, context):
+        layout = self.layout
         st = context.space_data
 
         layout.menu("DOPESHEET_MT_view")
@@ -332,8 +334,10 @@ class DOPESHEET_MT_view(Menu):
         layout.prop(st, "show_frame_indicator")
         layout.prop(st, "show_sliders")
         layout.prop(st, "show_group_colors")
+        layout.prop(st, "show_interpolation")
+        layout.prop(st, "show_extremes")
+        layout.prop(st, "show_marker_lines")
         layout.prop(st, "use_auto_merge_keyframes")
-        layout.prop(st, "use_marker_sync")
 
         layout.prop(st, "show_seconds")
         layout.prop(st, "show_locked_time")
@@ -347,6 +351,12 @@ class DOPESHEET_MT_view(Menu):
         layout.operator("action.view_all")
         layout.operator("action.view_selected")
         layout.operator("action.view_frame")
+
+        # Add this to show key-binding (reverse action in dope-sheet).
+        layout.separator()
+        props = layout.operator("wm.context_set_enum", text="Toggle Graph Editor", icon='GRAPH')
+        props.data_path = "area.type"
+        props.value = 'GRAPH_EDITOR'
 
         layout.separator()
         layout.menu("INFO_MT_area")
@@ -400,7 +410,7 @@ class DOPESHEET_MT_marker(Menu):
         layout = self.layout
 
         from .space_time import marker_menu_generic
-        marker_menu_generic(layout)
+        marker_menu_generic(layout, context)
 
         st = context.space_data
 
@@ -411,9 +421,11 @@ class DOPESHEET_MT_marker(Menu):
             if st.show_pose_markers is False:
                 layout.operator("action.markers_make_local")
 
+        layout.prop(st, "use_marker_sync")
 
 #######################################
 # Keyframe Editing
+
 
 class DOPESHEET_MT_channel(Menu):
     bl_label = "Channel"
@@ -562,7 +574,7 @@ class DOPESHEET_MT_delete(Menu):
         layout.operator("action.clean", text="Clean Channels").channels = True
 
 
-class DOPESHEET_MT_specials(Menu):
+class DOPESHEET_MT_context_menu(Menu):
     bl_label = "Dope Sheet Context Menu"
 
     def draw(self, context):
@@ -590,7 +602,7 @@ class DOPESHEET_MT_specials(Menu):
         layout.operator_menu_enum("action.snap", "type", text="Snap")
 
 
-class DOPESHEET_MT_channel_specials(Menu):
+class DOPESHEET_MT_channel_context_menu(Menu):
     bl_label = "Dope Sheet Channel Context Menu"
 
     def draw(self, context):
@@ -648,8 +660,8 @@ classes = (
     DOPESHEET_MT_gpencil_channel,
     DOPESHEET_MT_gpencil_frame,
     DOPESHEET_MT_delete,
-    DOPESHEET_MT_specials,
-    DOPESHEET_MT_channel_specials,
+    DOPESHEET_MT_context_menu,
+    DOPESHEET_MT_channel_context_menu,
     DOPESHEET_MT_snap_pie,
     DOPESHEET_PT_filters,
 )

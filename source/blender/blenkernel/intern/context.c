@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/context.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <string.h>
@@ -62,9 +56,13 @@
 
 #include "RNA_access.h"
 
+#include "CLG_log.h"
+
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
+
+static CLG_LogRef LOG = {"bke.context"};
 
 /* struct */
 
@@ -255,10 +253,10 @@ static void *ctx_wm_python_context_get(
 				return result.ptr.data;
 			}
 			else {
-				printf("PyContext '%s' is a '%s', expected a '%s'\n",
-				       member,
-				       RNA_struct_identifier(result.ptr.type),
-				       RNA_struct_identifier(member_type));
+				CLOG_WARN(&LOG, "PyContext '%s' is a '%s', expected a '%s'",
+				          member,
+				          RNA_struct_identifier(result.ptr.type),
+				          RNA_struct_identifier(member_type));
 			}
 		}
 	}
@@ -413,8 +411,8 @@ PointerRNA CTX_data_pointer_get_type(const bContext *C, const char *member, Stru
 			return ptr;
 		}
 		else {
-			printf("%s: warning, member '%s' is '%s', not '%s'\n",
-			       __func__, member, RNA_struct_identifier(ptr.type), RNA_struct_identifier(type));
+			CLOG_WARN(&LOG, "member '%s' is '%s', not '%s'",
+			          member, RNA_struct_identifier(ptr.type), RNA_struct_identifier(type));
 		}
 	}
 
@@ -471,10 +469,10 @@ static void data_dir_add(ListBase *lb, const char *member, const bool use_all)
 }
 
 /**
- * \param C Context
- * \param use_store Use 'C->wm.store'
- * \param use_rna Use Include the properties from 'RNA_Context'
- * \param use_all Don't skip values (currently only "scene")
+ * \param C: Context
+ * \param use_store: Use 'C->wm.store'
+ * \param use_rna: Use Include the properties from 'RNA_Context'
+ * \param use_all: Don't skip values (currently only "scene")
  */
 ListBase CTX_data_dir_get_ex(const bContext *C, const bool use_store, const bool use_rna, const bool use_all)
 {
@@ -729,10 +727,10 @@ struct SpaceImage *CTX_wm_space_image(const bContext *C)
 	return NULL;
 }
 
-struct SpaceButs *CTX_wm_space_buts(const bContext *C)
+struct SpaceProperties *CTX_wm_space_properties(const bContext *C)
 {
 	ScrArea *sa = CTX_wm_area(C);
-	if (sa && sa->spacetype == SPACE_BUTS)
+	if (sa && sa->spacetype == SPACE_PROPERTIES)
 		return sa->spacedata.first;
 	return NULL;
 }
@@ -753,7 +751,7 @@ struct SpaceSeq *CTX_wm_space_seq(const bContext *C)
 	return NULL;
 }
 
-struct SpaceOops *CTX_wm_space_outliner(const bContext *C)
+struct SpaceOutliner *CTX_wm_space_outliner(const bContext *C)
 {
 	ScrArea *sa = CTX_wm_area(C);
 	if (sa && sa->spacetype == SPACE_OUTLINER)
@@ -777,10 +775,10 @@ struct SpaceNode *CTX_wm_space_node(const bContext *C)
 	return NULL;
 }
 
-struct SpaceIpo *CTX_wm_space_graph(const bContext *C)
+struct SpaceGraph *CTX_wm_space_graph(const bContext *C)
 {
 	ScrArea *sa = CTX_wm_area(C);
-	if (sa && sa->spacetype == SPACE_IPO)
+	if (sa && sa->spacetype == SPACE_GRAPH)
 		return sa->spacedata.first;
 	return NULL;
 }
@@ -977,7 +975,7 @@ Collection *CTX_data_collection(const bContext *C)
 	return BKE_collection_master(scene);
 }
 
-int CTX_data_mode_enum_ex(const Object *obedit, const Object *ob, const eObjectMode object_mode)
+enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit, const Object *ob, const eObjectMode object_mode)
 {
 	// Object *obedit = CTX_data_edit_object(C);
 	if (obedit) {
@@ -1007,17 +1005,17 @@ int CTX_data_mode_enum_ex(const Object *obedit, const Object *ob, const eObjectM
 			else if (object_mode & OB_MODE_VERTEX_PAINT) return CTX_MODE_PAINT_VERTEX;
 			else if (object_mode & OB_MODE_TEXTURE_PAINT) return CTX_MODE_PAINT_TEXTURE;
 			else if (object_mode & OB_MODE_PARTICLE_EDIT) return CTX_MODE_PARTICLE;
-			else if (object_mode & OB_MODE_GPENCIL_PAINT) return CTX_MODE_GPENCIL_PAINT;
-			else if (object_mode & OB_MODE_GPENCIL_EDIT) return CTX_MODE_GPENCIL_EDIT;
-			else if (object_mode & OB_MODE_GPENCIL_SCULPT) return CTX_MODE_GPENCIL_SCULPT;
-			else if (object_mode & OB_MODE_GPENCIL_WEIGHT) return CTX_MODE_GPENCIL_WEIGHT;
+			else if (object_mode & OB_MODE_PAINT_GPENCIL) return CTX_MODE_PAINT_GPENCIL;
+			else if (object_mode & OB_MODE_EDIT_GPENCIL) return CTX_MODE_EDIT_GPENCIL;
+			else if (object_mode & OB_MODE_SCULPT_GPENCIL) return CTX_MODE_SCULPT_GPENCIL;
+			else if (object_mode & OB_MODE_WEIGHT_GPENCIL) return CTX_MODE_WEIGHT_GPENCIL;
 		}
 	}
 
 	return CTX_MODE_OBJECT;
 }
 
-int CTX_data_mode_enum(const bContext *C)
+enum eContextObjectMode CTX_data_mode_enum(const bContext *C)
 {
 	Object *obedit = CTX_data_edit_object(C);
 	Object *obact = obedit ? NULL : CTX_data_active_object(C);
@@ -1045,7 +1043,7 @@ static const char *data_mode_strings[] = {
 	"greasepencil_edit",
 	"greasepencil_sculpt",
 	"greasepencil_weight",
-	NULL
+	NULL,
 };
 BLI_STATIC_ASSERT(ARRAY_SIZE(data_mode_strings) == CTX_MODE_NUM + 1, "Must have a string for each context mode")
 const char *CTX_data_mode_string(const bContext *C)
@@ -1216,11 +1214,6 @@ bGPdata *CTX_data_gpencil_data(const bContext *C)
 bGPDlayer *CTX_data_active_gpencil_layer(const bContext *C)
 {
 	return ctx_data_pointer_get(C, "active_gpencil_layer");
-}
-
-Brush *CTX_data_active_gpencil_brush(const bContext *C)
-{
-	return ctx_data_pointer_get(C, "active_gpencil_brush");
 }
 
 bGPDframe *CTX_data_active_gpencil_frame(const bContext *C)

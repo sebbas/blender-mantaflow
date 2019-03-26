@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/text.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdlib.h> /* abort */
@@ -56,7 +48,6 @@
 #include "DNA_node_types.h"
 #include "DNA_material_types.h"
 
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_text.h"
@@ -115,7 +106,6 @@
  * of the data to allow undo and redo
  * to simply check the code at the current
  * undo position
- *
  */
 
 
@@ -215,7 +205,7 @@ void BKE_text_init(Text *ta)
 {
 	TextLine *tmp;
 
-	BLI_assert(MEMCMP_STRUCT_OFS_IS_ZERO(ta, id));
+	BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(ta, id));
 
 	ta->name = NULL;
 
@@ -469,11 +459,11 @@ Text *BKE_text_load(Main *bmain, const char *file, const char *relpath)
 
 /**
  * Only copy internal data of Text ID from source to already allocated/initialized destination.
- * You probably nerver want to use that directly, use id_copy or BKE_id_copy_ex for typical needs.
+ * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
  */
 void BKE_text_copy_data(Main *UNUSED(bmain), Text *ta_dst, const Text *ta_src, const int UNUSED(flag))
 {
@@ -506,7 +496,7 @@ void BKE_text_copy_data(Main *UNUSED(bmain), Text *ta_dst, const Text *ta_src, c
 Text *BKE_text_copy(Main *bmain, const Text *ta)
 {
 	Text *ta_copy;
-	BKE_id_copy_ex(bmain, &ta->id, (ID **)&ta_copy, 0, false);
+	BKE_id_copy(bmain, &ta->id, (ID **)&ta_copy);
 	return ta_copy;
 }
 
@@ -2965,9 +2955,9 @@ int txt_setcurr_tab_spaces(Text *text, int space)
 	}
 	if (strstr(text->curl->line, word)) {
 		/* if we find a ':' on this line, then add a tab but not if it is:
-		 *  1) in a comment
-		 *  2) within an identifier
-		 *	3) after the cursor (text->curc), i.e. when creating space before a function def [#25414]
+		 * 1) in a comment
+		 * 2) within an identifier
+		 * 3) after the cursor (text->curc), i.e. when creating space before a function def [#25414]
 		 */
 		int a;
 		bool is_indent = false;

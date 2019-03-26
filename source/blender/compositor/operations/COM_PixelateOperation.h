@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #ifndef __COM_PIXELATEOPERATION_H__
@@ -41,7 +37,7 @@ private:
 public:
 	/**
 	 * \brief PixelateOperation
-	 * \param dataType the datatype to create this operator for (saves datatype conversions)
+	 * \param dataType: the datatype to create this operator for (saves datatype conversions)
 	 */
 	PixelateOperation(DataType dataType);
 
@@ -57,10 +53,10 @@ public:
 
 	/**
 	 * \brief executePixel
-	 * \param output result
-	 * \param x x-coordinate
-	 * \param y y-coordinate
-	 * \param sampler sampler
+	 * \param output: result
+	 * \param x: x-coordinate
+	 * \param y: y-coordinate
+	 * \param sampler: sampler
 	 */
 	void executePixelSampled(float output[4], float x, float y, PixelSampler sampler);
 };

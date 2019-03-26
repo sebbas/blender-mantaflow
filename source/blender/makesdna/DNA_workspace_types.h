@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_workspace_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  *
  * Use API in BKE_workspace.h!
  * Struct members marked with DNA_PRIVATE_WORKSPACE will throw a
@@ -64,7 +60,7 @@ typedef struct bToolRef_Runtime {
 	char data_block[64];
 
 	/** Use to infer primary operator to use when setting accelerator keys. */
-	char operator[64];
+	char op[64];
 
 	/** Index when a tool is a member of a group. */
 	int index;
@@ -112,26 +108,32 @@ typedef struct WorkSpaceLayout {
 	struct WorkSpaceLayout *next, *prev;
 
 	struct bScreen *screen;
-	/* The name of this layout, we override the RNA name of the screen with this (but not ID name itself) */
-	char name[64] DNA_PRIVATE_WORKSPACE; /* MAX_NAME */
+	/* The name of this layout, we override the RNA name of the screen with this
+	 * (but not ID name itself) */
+	/** MAX_NAME. */
+	char name[64] DNA_PRIVATE_WORKSPACE;
 } WorkSpaceLayout;
 
 /** Optional tags, which features to use, aligned with #bAddon names by convention. */
 typedef struct wmOwnerID {
 	struct wmOwnerID *next, *prev;
-	char name[64] DNA_PRIVATE_WORKSPACE; /* MAX_NAME */
+	/** MAX_NAME. */
+	char name[64] DNA_PRIVATE_WORKSPACE;
 } wmOwnerID;
 
 typedef struct WorkSpace {
 	ID id;
 
-	ListBase layouts DNA_PRIVATE_WORKSPACE; /* WorkSpaceLayout */
+	/** WorkSpaceLayout. */
+	ListBase layouts DNA_PRIVATE_WORKSPACE;
 	/* Store for each hook (so for each window) which layout has
 	 * been activated the last time this workspace was visible. */
-	ListBase hook_layout_relations DNA_PRIVATE_WORKSPACE_READ_WRITE; /* WorkSpaceDataRelation */
+	/** WorkSpaceDataRelation. */
+	ListBase hook_layout_relations DNA_PRIVATE_WORKSPACE_READ_WRITE;
 
 	/* Feature tagging (use for addons) */
-	ListBase owner_ids DNA_PRIVATE_WORKSPACE_READ_WRITE; /* wmOwnerID */
+	/** #wmOwnerID. */
+	ListBase owner_ids;
 
 	/* should be: '#ifdef USE_WORKSPACE_TOOL'. */
 
@@ -140,7 +142,7 @@ typedef struct WorkSpace {
 
 	/**
 	 * BAD DESIGN WARNING:
-	 * This is a workaround for the topbar not knowing which tools spac */
+	 * This is a workaround for the topbar not knowing which tools spec. */
 	char tools_space_type;
 	/** Type is different for each space-type. */
 	char tools_mode;
@@ -148,7 +150,8 @@ typedef struct WorkSpace {
 
 	int object_mode;
 
-	int flags DNA_PRIVATE_WORKSPACE; /* enum eWorkSpaceFlags */
+	/** Enum eWorkSpaceFlags. */
+	int flags;
 
 	/* Number for workspace tab reordering in the UI. */
 	int order;
@@ -186,7 +189,8 @@ typedef struct WorkSpace {
 typedef struct WorkSpaceDataRelation {
 	struct WorkSpaceDataRelation *next, *prev;
 
-	/* the data used to identify the relation (e.g. to find screen-layout (= value) from/for a hook) */
+	/* the data used to identify the relation
+	 * (e.g. to find screen-layout (= value) from/for a hook) */
 	void *parent;
 	/* The value for this parent-data/workspace relation */
 	void *value;
@@ -202,7 +206,8 @@ typedef struct WorkSpaceInstanceHook {
 	WorkSpace *active DNA_PRIVATE_WORKSPACE;
 	struct WorkSpaceLayout *act_layout DNA_PRIVATE_WORKSPACE;
 
-	/* Needed because we can't change workspaces/layouts in running handler loop, it would break context. */
+	/* Needed because we can't change workspaces/layouts in running handler loop,
+	 * it would break context. */
 	WorkSpace *temp_workspace_store;
 	struct WorkSpaceLayout *temp_layout_store;
 } WorkSpaceInstanceHook;

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_buttons/buttons_texture.c
- *  \ingroup spbuttons
+/** \file
+ * \ingroup spbuttons
  */
 
 
@@ -162,11 +156,12 @@ static void buttons_texture_modifier_gpencil_foreach(void *userData, Object *ob,
 	RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md, &ptr);
 	prop = RNA_struct_find_property(&ptr, propname);
 
-	buttons_texture_user_property_add(users, &ob->id, ptr, prop,
-		N_("Grease Pencil Modifiers"), RNA_struct_ui_icon(ptr.type), md->name);
+	buttons_texture_user_property_add(
+	        users, &ob->id, ptr, prop,
+	        N_("Grease Pencil Modifiers"), RNA_struct_ui_icon(ptr.type), md->name);
 }
 
-static void buttons_texture_users_from_context(ListBase *users, const bContext *C, SpaceButs *sbuts)
+static void buttons_texture_users_from_context(ListBase *users, const bContext *C, SpaceProperties *sbuts)
 {
 	Scene *scene = NULL;
 	Object *ob = NULL;
@@ -177,14 +172,18 @@ static void buttons_texture_users_from_context(ListBase *users, const bContext *
 
 	/* get data from context */
 	if (pinid) {
-		if (GS(pinid->name) == ID_SCE)
+		if (GS(pinid->name) == ID_SCE) {
 			scene = (Scene *)pinid;
-		else if (GS(pinid->name) == ID_OB)
+		}
+		else if (GS(pinid->name) == ID_OB) {
 			ob = (Object *)pinid;
-		else if (GS(pinid->name) == ID_BR)
+		}
+		else if (GS(pinid->name) == ID_BR) {
 			brush = (Brush *)pinid;
-		else if (GS(pinid->name) == ID_LS)
+		}
+		else if (GS(pinid->name) == ID_LS) {
 			linestyle = (FreestyleLineStyle *)pinid;
+		}
 	}
 
 	if (!scene) {
@@ -206,8 +205,9 @@ static void buttons_texture_users_from_context(ListBase *users, const bContext *
 	/* fill users */
 	BLI_listbase_clear(users);
 
-	if (linestyle && !limited_mode)
+	if (linestyle && !limited_mode) {
 		buttons_texture_users_find_nodetree(users, &linestyle->id, linestyle->nodetree, N_("Line Style"));
+	}
 
 	if (ob) {
 		ParticleSystem *psys = psys_get_current(ob);
@@ -272,7 +272,7 @@ static void buttons_texture_users_from_context(ListBase *users, const bContext *
 	}
 }
 
-void buttons_texture_context_compute(const bContext *C, SpaceButs *sbuts)
+void buttons_texture_context_compute(const bContext *C, SpaceProperties *sbuts)
 {
 	/* gather available texture users in context. runs on every draw of
 	 * properties editor, before the buttons are created. */
@@ -295,8 +295,9 @@ void buttons_texture_context_compute(const bContext *C, SpaceButs *sbuts)
 	}
 	else {
 		/* set one user as active based on active index */
-		if (ct->index >= BLI_listbase_count_at_most(&ct->users, ct->index + 1))
+		if (ct->index >= BLI_listbase_count_at_most(&ct->users, ct->index + 1)) {
 			ct->index = 0;
+		}
 
 		ct->user = BLI_findlink(&ct->users, ct->index);
 		ct->texture = NULL;
@@ -334,14 +335,15 @@ void buttons_texture_context_compute(const bContext *C, SpaceButs *sbuts)
 static void template_texture_select(bContext *C, void *user_p, void *UNUSED(arg))
 {
 	/* callback when selecting a texture user in the menu */
-	SpaceButs *sbuts = CTX_wm_space_buts(C);
+	SpaceProperties *sbuts = CTX_wm_space_properties(C);
 	ButsContextTexture *ct = (sbuts) ? sbuts->texuser : NULL;
 	ButsTextureUser *user = (ButsTextureUser *)user_p;
 	PointerRNA texptr;
 	Tex *tex;
 
-	if (!ct)
+	if (!ct) {
 		return;
+	}
 
 	/* set user as active */
 	if (user->node) {
@@ -360,13 +362,16 @@ static void template_texture_select(bContext *C, void *user_p, void *UNUSED(arg)
 			ParticleSettings *part = user->ptr.id.data;
 			int a;
 
-			for (a = 0; a < MAX_MTEX; a++)
-				if (user->ptr.data == part->mtex[a])
+			for (a = 0; a < MAX_MTEX; a++) {
+				if (user->ptr.data == part->mtex[a]) {
 					part->texact = a;
+				}
+			}
 		}
 
-		if (sbuts && tex)
+		if (sbuts && tex) {
 			sbuts->preview = 1;
+		}
 	}
 
 	ct->user = user;
@@ -376,7 +381,7 @@ static void template_texture_select(bContext *C, void *user_p, void *UNUSED(arg)
 static void template_texture_user_menu(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
 	/* callback when opening texture user selection menu, to create buttons. */
-	SpaceButs *sbuts = CTX_wm_space_buts(C);
+	SpaceProperties *sbuts = CTX_wm_space_properties(C);
 	ButsContextTexture *ct = sbuts->texuser;
 	ButsTextureUser *user;
 	uiBlock *block = uiLayoutGetBlock(layout);
@@ -398,13 +403,16 @@ static void template_texture_user_menu(bContext *C, uiLayout *layout, void *UNUS
 			PointerRNA texptr = RNA_property_pointer_get(&user->ptr, user->prop);
 			Tex *tex = texptr.data;
 
-			if (tex)
+			if (tex) {
 				BLI_snprintf(name, UI_MAX_NAME_STR, "  %s - %s", user->name, tex->id.name + 2);
-			else
+			}
+			else {
 				BLI_snprintf(name, UI_MAX_NAME_STR, "  %s", user->name);
+			}
 		}
-		else
+		else {
 			BLI_snprintf(name, UI_MAX_NAME_STR, "  %s", user->name);
+		}
 
 		but = uiDefIconTextBut(block, UI_BTYPE_BUT, 0, user->icon, name, 0, 0, UI_UNIT_X * 4, UI_UNIT_Y,
 		                       NULL, 0.0, 0.0, 0.0, 0.0, "");
@@ -421,15 +429,16 @@ void uiTemplateTextureUser(uiLayout *layout, bContext *C)
 	/* texture user selection dropdown menu. the available users have been
 	 * gathered before drawing in ButsContextTexture, we merely need to
 	 * display the current item. */
-	SpaceButs *sbuts = CTX_wm_space_buts(C);
+	SpaceProperties *sbuts = CTX_wm_space_properties(C);
 	ButsContextTexture *ct = (sbuts) ? sbuts->texuser : NULL;
 	uiBlock *block = uiLayoutGetBlock(layout);
 	uiBut *but;
 	ButsTextureUser *user;
 	char name[UI_MAX_NAME_STR];
 
-	if (!ct)
+	if (!ct) {
 		return;
+	}
 
 	/* get current user */
 	user = ct->user;
@@ -461,16 +470,19 @@ void uiTemplateTextureUser(uiLayout *layout, bContext *C)
 
 static void template_texture_show(bContext *C, void *data_p, void *prop_p)
 {
-	SpaceButs *sbuts = CTX_wm_space_buts(C);
+	SpaceProperties *sbuts = CTX_wm_space_properties(C);
 	ButsContextTexture *ct = (sbuts) ? sbuts->texuser : NULL;
 	ButsTextureUser *user;
 
-	if (!ct)
+	if (!ct) {
 		return;
+	}
 
-	for (user = ct->users.first; user; user = user->next)
-		if (user->ptr.data == data_p && user->prop == prop_p)
+	for (user = ct->users.first; user; user = user->next) {
+		if (user->ptr.data == data_p && user->prop == prop_p) {
 			break;
+		}
+	}
 
 	if (user) {
 		/* select texture */
@@ -489,18 +501,21 @@ static void template_texture_show(bContext *C, void *data_p, void *prop_p)
 void uiTemplateTextureShow(uiLayout *layout, bContext *C, PointerRNA *ptr, PropertyRNA *prop)
 {
 	/* button to quickly show texture in texture tab */
-	SpaceButs *sbuts = CTX_wm_space_buts(C);
+	SpaceProperties *sbuts = CTX_wm_space_properties(C);
 	ButsContextTexture *ct = (sbuts) ? sbuts->texuser : NULL;
 	ButsTextureUser *user;
 
 	/* only show button in other tabs in properties editor */
-	if (!ct || sbuts->mainb == BCONTEXT_TEXTURE)
+	if (!ct || sbuts->mainb == BCONTEXT_TEXTURE) {
 		return;
+	}
 
 	/* find corresponding texture user */
-	for (user = ct->users.first; user; user = user->next)
-		if (user->ptr.data == ptr->data && user->prop == prop)
+	for (user = ct->users.first; user; user = user->next) {
+		if (user->ptr.data == ptr->data && user->prop == prop) {
 			break;
+		}
+	}
 
 	/* draw button */
 	if (user) {

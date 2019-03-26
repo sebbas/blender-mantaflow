@@ -1,8 +1,7 @@
 /***************************************************************************** 
- *  \author 
  *  	Erwin Aertbelien, Div. PMA, Dep. of Mech. Eng., K.U.Leuven
  *
- *  \version 
+ * \version 
  *		ORO_Geometry V0.2
  *
  *	\par History
@@ -10,11 +9,11 @@
  *
  *	\par Release
  *		$Name:  $ 
- *  \file
+ * \file
  *    Included by most lrl-files to provide some general
  *    functions and macro definitions.
  *  
- *  \par history
+ * \par history
  *   - changed layout of the comments to accomodate doxygen
  */
 

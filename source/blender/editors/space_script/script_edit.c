@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_script/script_edit.c
- *  \ingroup spscript
+/** \file
+ * \ingroup spscript
  */
 
 
@@ -33,10 +26,10 @@
 #include <stdio.h>
 
 #include "BLI_utildefines.h"
+#include "BLI_listbase.h"
 
 #include "BKE_context.h"
 #include "BKE_report.h"
-#include "BKE_global.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -96,13 +89,14 @@ static bool script_test_modal_operators(bContext *C)
 	wm = CTX_wm_manager(C);
 
 	for (win = wm->windows.first; win; win = win->next) {
-		wmEventHandler *handler;
-
-		for (handler = win->modalhandlers.first; handler; handler = handler->next) {
-			if (handler->op) {
-				wmOperatorType *ot = handler->op->type;
-				if (ot->ext.srna) {
-					return true;
+		LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
+			if (handler_base->type == WM_HANDLER_TYPE_OP) {
+				wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
+				if (handler->op != NULL) {
+					wmOperatorType *ot = handler->op->type;
+					if (ot->ext.srna) {
+						return true;
+					}
 				}
 			}
 		}
@@ -125,7 +119,7 @@ static int script_reload_exec(bContext *C, wmOperator *op)
 	/* TODO, this crashes on netrender and keying sets, need to look into why
 	 * disable for now unless running in debug mode */
 	WM_cursor_wait(1);
-	BPY_execute_string(C, "__import__('bpy').utils.load_scripts(reload_scripts=True)");
+	BPY_execute_string(C, (const char *[]){"bpy", NULL}, "bpy.utils.load_scripts(reload_scripts=True)");
 	WM_cursor_wait(0);
 	WM_event_add_notifier(C, NC_WINDOW, NULL);
 	return OPERATOR_FINISHED;
@@ -144,24 +138,4 @@ void SCRIPT_OT_reload(wmOperatorType *ot)
 
 	/* api callbacks */
 	ot->exec = script_reload_exec;
-}
-
-static int script_autoexec_warn_clear_exec(bContext *UNUSED(C), wmOperator *UNUSED(op))
-{
-	G.f |= G_SCRIPT_AUTOEXEC_FAIL_QUIET;
-	return OPERATOR_FINISHED;
-}
-
-void SCRIPT_OT_autoexec_warn_clear(wmOperatorType *ot)
-{
-	/* identifiers */
-	ot->name = "Continue Untrusted";
-	ot->description = "Ignore autoexec warning";
-	ot->idname = "SCRIPT_OT_autoexec_warn_clear";
-
-	/* flags */
-	ot->flag = OPTYPE_INTERNAL;
-
-	/* api callbacks */
-	ot->exec = script_autoexec_warn_clear_exec;
 }

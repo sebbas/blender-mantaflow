@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2018 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/subdiv_converter.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "subdiv_converter.h"
@@ -38,6 +32,21 @@ void BKE_subdiv_converter_free(struct OpenSubdiv_Converter *converter)
 	if (converter->freeUserData) {
 		converter->freeUserData(converter);
 	}
+}
+
+int BKE_subdiv_converter_vtx_boundary_interpolation_from_settings(
+        const SubdivSettings *settings)
+{
+	switch (settings->vtx_boundary_interpolation) {
+		case SUBDIV_VTX_BOUNDARY_NONE:
+			return OSD_VTX_BOUNDARY_NONE;
+		case SUBDIV_VTX_BOUNDARY_EDGE_ONLY:
+			return OSD_VTX_BOUNDARY_EDGE_ONLY;
+		case SUBDIV_VTX_BOUNDARY_EDGE_AND_CORNER:
+			return OSD_VTX_BOUNDARY_EDGE_AND_CORNER;
+	}
+	BLI_assert(!"Unknown vtx boundary interpolation");
+	return OSD_VTX_BOUNDARY_EDGE_ONLY;
 }
 
 /*OpenSubdiv_FVarLinearInterpolation*/ int

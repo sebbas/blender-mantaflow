@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,8 +12,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_TASK_H__
@@ -26,8 +22,8 @@
 struct Link;
 struct ListBase;
 
-/** \file BLI_task.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -52,7 +48,7 @@ typedef struct TaskScheduler TaskScheduler;
 
 enum {
 	TASK_SCHEDULER_AUTO_THREADS = 0,
-	TASK_SCHEDULER_SINGLE_THREAD = 1
+	TASK_SCHEDULER_SINGLE_THREAD = 1,
 };
 
 TaskScheduler *BLI_task_scheduler_create(int num_threads);
@@ -98,6 +94,8 @@ void BLI_task_pool_push_from_thread(TaskPool *pool, TaskRunFunction run,
 
 /* work and wait until all tasks are done */
 void BLI_task_pool_work_and_wait(TaskPool *pool);
+/* work and wait until all tasks are done, then reset to the initial suspended state */
+void BLI_task_pool_work_wait_and_reset(TaskPool *pool);
 /* cancel all tasks, keep worker threads running */
 void BLI_task_pool_cancel(TaskPool *pool);
 

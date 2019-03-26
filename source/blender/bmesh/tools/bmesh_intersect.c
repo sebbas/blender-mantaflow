@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/tools/bmesh_intersect.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Cut meshes along intersections.
  *
@@ -46,7 +42,6 @@
 #include "BLI_linklist_stack.h"
 #include "BLI_utildefines_stack.h"
 #ifndef NDEBUG
-#  include "BLI_array_utils.h"
 #endif
 
 #include "BLI_kdopbvh.h"
@@ -971,8 +966,8 @@ static int isect_bvhtree_point_v3(
  * Intersect tessellated faces
  * leaving the resulting edges tagged.
  *
- * \param test_fn Return value: -1: skip, 0: tree_a, 1: tree_b (use_self == false)
- * \param boolean_mode -1: no-boolean, 0: intersection... see #BMESH_ISECT_BOOLEAN_ISECT.
+ * \param test_fn: Return value: -1: skip, 0: tree_a, 1: tree_b (use_self == false)
+ * \param boolean_mode: -1: no-boolean, 0: intersection... see #BMESH_ISECT_BOOLEAN_ISECT.
  * \return true if the mesh is changed (intersections cut or faces removed from boolean).
  */
 bool BM_mesh_intersect(
@@ -1578,7 +1573,7 @@ bool BM_mesh_intersect(
 				BLI_assert(ELEM(side, 0, 1));
 				side = !side;
 
-				// BM_face_calc_center_mean(f, co);
+				// BM_face_calc_center_median(f, co);
 				BM_face_calc_point_in_face(f, co);
 
 				hits = isect_bvhtree_point_v3(tree_pair[side], looptri_coords, co);

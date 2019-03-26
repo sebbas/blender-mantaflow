@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Jörg Müller.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_speaker.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -64,12 +58,6 @@ static void rna_def_speaker(BlenderRNA *brna)
 	RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
 	/* RNA_def_property_update(prop, 0, "rna_Speaker_update"); */
 
-	prop = RNA_def_property(srna, "relative", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "flag", SPK_RELATIVE);
-	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Relative", "Whether the source is relative to the camera or not");
-	/* RNA_def_property_update(prop, 0, "rna_Speaker_update"); */
-
 	prop = RNA_def_property(srna, "sound", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Sound");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -78,14 +66,14 @@ static void rna_def_speaker(BlenderRNA *brna)
 	/* RNA_def_property_float_funcs(prop, NULL, "rna_Speaker_sound_set", NULL); */
 	/* RNA_def_property_update(prop, 0, "rna_Speaker_update"); */
 
-	prop = RNA_def_property(srna, "volume_max", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "volume_max", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_text(prop, "Maximum Volume", "Maximum volume, no matter how near the object is");
 	/* RNA_def_property_float_funcs(prop, NULL, "rna_Speaker_volume_max_set", NULL); */
 	/* RNA_def_property_update(prop, 0, "rna_Speaker_update"); */
 
-	prop = RNA_def_property(srna, "volume_min", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "volume_min", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_text(prop, "Minimum Volume", "Minimum volume, no matter how far away the object is");
@@ -131,14 +119,14 @@ static void rna_def_speaker(BlenderRNA *brna)
 	/* RNA_def_property_float_funcs(prop, NULL, "rna_Speaker_cone_angle_inner_set", NULL); */
 	/* RNA_def_property_update(prop, 0, "rna_Speaker_update"); */
 
-	prop = RNA_def_property(srna, "cone_volume_outer", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "cone_volume_outer", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_text(prop, "Outer Cone Volume", "Volume outside the outer cone");
 	/* RNA_def_property_float_funcs(prop, NULL, "rna_Speaker_cone_volume_outer_set", NULL); */
 	/* RNA_def_property_update(prop, 0, "rna_Speaker_update"); */
 
-	prop = RNA_def_property(srna, "volume", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "volume", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_range(prop, 0.0f, 1.0f);
 	RNA_def_property_ui_text(prop, "Volume", "How loud the sound is");
 	RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);

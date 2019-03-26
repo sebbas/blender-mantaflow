@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Campbell Barton, Alfredo de Greef, David Millan Escriva,
  * Juho Vepsäläinen
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/composite/nodes/node_composite_common.c
- *  \ingroup cmpnodes
+/** \file
+ * \ingroup cmpnodes
  */
 
 #include "DNA_node_types.h"
@@ -63,4 +55,18 @@ void register_node_type_cmp_group(void)
 	node_type_update(&ntype, NULL, node_group_verify);
 
 	nodeRegisterType(&ntype);
+}
+
+void register_node_type_cmp_custom_group(bNodeType *ntype)
+{
+	/* These methods can be overriden but need a default implementation otherwise. */
+	if (ntype->poll == NULL) {
+		ntype->poll = cmp_node_poll_default;
+	}
+	if (ntype->insert_link == NULL) {
+		ntype->insert_link = node_insert_link_default;
+	}
+	if (ntype->update_internal_links == NULL) {
+		ntype->update_internal_links = node_update_internal_links_default;
+	}
 }

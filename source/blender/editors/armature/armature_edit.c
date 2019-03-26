@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Armature EditMode tools - transforms, chain based editing, and other settings
  */
 
-/** \file blender/editors/armature/armature_edit.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include <assert.h>
@@ -87,7 +80,7 @@ void ED_armature_transform_apply(Main *bmain, Object *ob, float mat[4][4], const
 void ED_armature_transform_bones(struct bArmature *arm, float mat[4][4], const bool do_props)
 {
 	EditBone *ebone;
-	float scale = mat4_to_scale(mat);   /* store the scale of the matrix here to use on envelopes */
+	float scale = mat4_to_scale(mat);  /* store the scale of the matrix here to use on envelopes */
 	float mat3[3][3];
 
 	copy_m3_m4(mat3, mat);
@@ -141,7 +134,7 @@ void ED_armature_transform(Main *bmain, bArmature *arm, float mat[4][4], const b
 
 /* exported for use in editors/object/ */
 /* 0 == do center, 1 == center new, 2 == center cursor */
-void ED_armature_origin_set(Main *bmain, Object *ob, float cursor[3], int centermode, int around)
+void ED_armature_origin_set(Main *bmain, Object *ob, const float cursor[3], int centermode, int around)
 {
 	const bool is_editmode = BKE_object_is_in_editmode(ob);
 	EditBone *ebone;
@@ -160,7 +153,7 @@ void ED_armature_origin_set(Main *bmain, Object *ob, float cursor[3], int center
 		mul_m4_v3(ob->imat, cent);
 	}
 	else {
-		if (around == V3D_AROUND_CENTER_MEAN) {
+		if (around == V3D_AROUND_CENTER_MEDIAN) {
 			int total = 0;
 			zero_v3(cent);
 			for (ebone = arm->edbo->first; ebone; ebone = ebone->next) {
@@ -289,7 +282,7 @@ static const EnumPropertyItem prop_calc_roll_types[] = {
 	{CALC_ROLL_ACTIVE, "ACTIVE", 0, "Active Bone", ""},
 	{CALC_ROLL_VIEW, "VIEW", 0, "View Axis", ""},
 	{CALC_ROLL_CURSOR, "CURSOR", 0, "Cursor", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 
@@ -306,7 +299,7 @@ static int armature_calc_roll_exec(bContext *C, wmOperator *op)
 	                  (type >= CALC_ROLL_TAN_NEG_X) ? true : false);
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
@@ -325,9 +318,8 @@ static int armature_calc_roll_exec(bContext *C, wmOperator *op)
 
 		if (type == CALC_ROLL_CURSOR) { /* Cursor */
 			Scene *scene = CTX_data_scene(C);
-			View3D *v3d = CTX_wm_view3d(C); /* can be NULL */
 			float cursor_local[3];
-			const View3DCursor *cursor = ED_view3d_cursor3d_get(scene, v3d);
+			const View3DCursor *cursor = &scene->cursor;
 
 			invert_m4_m4(ob->imat, ob->obmat);
 			copy_v3_v3(cursor_local, cursor->location);
@@ -490,7 +482,7 @@ static int armature_roll_clear_exec(bContext *C, wmOperator *op)
 	const float roll = RNA_float_get(op->ptr, "roll");
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
@@ -710,7 +702,7 @@ static int armature_fill_bones_exec(bContext *C, wmOperator *op)
 	Object *obedit = NULL;
 	{
 		ViewLayer *view_layer = CTX_data_view_layer(C);
-		FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, OB_MODE_EDIT, ob_iter) {
+		FOREACH_OBJECT_IN_EDIT_MODE_BEGIN (view_layer, v3d, ob_iter) {
 			if (ob_iter->data == arm) {
 				obedit = ob_iter;
 			}
@@ -728,7 +720,7 @@ static int armature_fill_bones_exec(bContext *C, wmOperator *op)
 
 		/* Get points - cursor (tail) */
 		invert_m4_m4(obedit->imat, obedit->obmat);
-		mul_v3_m4v3(curs, obedit->imat, ED_view3d_cursor3d_get(scene, v3d)->location);
+		mul_v3_m4v3(curs, obedit->imat, scene->cursor.location);
 
 		/* Create a bone */
 		newbone = add_points_bone(obedit, ebp->vec, curs);
@@ -766,7 +758,7 @@ static int armature_fill_bones_exec(bContext *C, wmOperator *op)
 
 				/* get cursor location */
 				invert_m4_m4(obedit->imat, obedit->obmat);
-				mul_v3_m4v3(curs, obedit->imat, ED_view3d_cursor3d_get(scene, v3d)->location);
+				mul_v3_m4v3(curs, obedit->imat, scene->cursor.location);
 
 				/* get distances */
 				dist_sq_a = len_squared_v3v3(ebp_a->vec, curs);
@@ -876,9 +868,9 @@ static void bones_merge(Object *obedit, EditBone *start, EditBone *end, EditBone
 	}
 
 	/* step 1: add a new bone
-	 *	- head = head/tail of start (default head)
-	 *	- tail = head/tail of end (default tail)
-	 *	- parent = parent of start
+	 * - head = head/tail of start (default head)
+	 * - tail = head/tail of end (default tail)
+	 * - parent = parent of start
 	 */
 	if ((start->flag & BONE_TIPSEL) && (start->flag & BONE_SELECTED) == 0) {
 		copy_v3_v3(head, start->tail);
@@ -900,7 +892,7 @@ static void bones_merge(Object *obedit, EditBone *start, EditBone *end, EditBone
 	                               BONE_NO_CYCLICOFFSET | BONE_NO_LOCAL_LOCATION | BONE_DONE);
 
 	/* step 2a: reparent any side chains which may be parented to any bone in the chain of bones to merge
-	 *	- potentially several tips for side chains leading to some tree exist...
+	 * - potentially several tips for side chains leading to some tree exist...
 	 */
 	for (chain = chains->first; chain; chain = chain->next) {
 		/* traverse down chain until we hit the bottom or if we run into the tip of the chain of bones we're
@@ -948,7 +940,7 @@ static int armature_merge_exec(bContext *C, wmOperator *op)
 	const short type = RNA_enum_get(op->ptr, "type");
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
@@ -1030,7 +1022,7 @@ void ARMATURE_OT_merge(wmOperatorType *ot)
 {
 	static const EnumPropertyItem merge_types[] = {
 		{1, "WITHIN_CHAIN", 0, "Within Chains", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -1072,7 +1064,7 @@ static int armature_switch_direction_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
@@ -1103,8 +1095,8 @@ static int armature_switch_direction_exec(bContext *C, wmOperator *UNUSED(op))
 			/* loop over bones in chain */
 			for (ebo = chain->data; ebo; ebo = parent) {
 				/* parent is this bone's original parent
-				 *	- we store this, as the next bone that is checked is this one
-				 *	  but the value of ebo->parent may change here...
+				 * - we store this, as the next bone that is checked is this one
+				 *   but the value of ebo->parent may change here...
 				 */
 				parent = ebo->parent;
 
@@ -1116,8 +1108,8 @@ static int armature_switch_direction_exec(bContext *C, wmOperator *UNUSED(op))
 						swap_v3_v3(ebo->head, ebo->tail);
 
 						/* do parent swapping:
-						 *	- use 'child' as new parent
-						 *	- connected flag is only set if points are coincidental
+						 * - use 'child' as new parent
+						 * - connected flag is only set if points are coincidental
 						 */
 						ebo->parent = child;
 						if ((child) && equals_v3v3(ebo->head, child->tail))
@@ -1126,7 +1118,7 @@ static int armature_switch_direction_exec(bContext *C, wmOperator *UNUSED(op))
 							ebo->flag &= ~BONE_CONNECTED;
 
 						/* get next bones
-						 *	- child will become the new parent of next bone
+						 * - child will become the new parent of next bone
 						 */
 						child = ebo;
 					}
@@ -1140,8 +1132,8 @@ static int armature_switch_direction_exec(bContext *C, wmOperator *UNUSED(op))
 						}
 
 						/* get next bones
-						 *	- child will become new parent of next bone (not swapping occurred,
-						 *	  so set to NULL to prevent infinite-loop)
+						 * - child will become new parent of next bone (not swapping occurred,
+						 *   so set to NULL to prevent infinite-loop)
 						 */
 						child = NULL;
 					}
@@ -1326,7 +1318,7 @@ static int armature_split_exec(bContext *C, wmOperator *UNUSED(op))
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
@@ -1387,7 +1379,7 @@ static int armature_delete_selected_exec(bContext *C, wmOperator *UNUSED(op))
 
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
 		bArmature *arm = obedit->data;
@@ -1458,7 +1450,7 @@ static int armature_dissolve_selected_exec(bContext *C, wmOperator *UNUSED(op))
 	bool changed_multi = false;
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
 		bArmature *arm = obedit->data;
@@ -1626,7 +1618,7 @@ static int armature_hide_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
 		bArmature *arm = obedit->data;
@@ -1657,7 +1649,7 @@ static int armature_hide_exec(bContext *C, wmOperator *op)
 void ARMATURE_OT_hide(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Hide Selected Bones";
+	ot->name = "Hide Selected";
 	ot->idname = "ARMATURE_OT_hide";
 	ot->description = "Tag selected bones to not be visible in Edit Mode";
 
@@ -1677,7 +1669,7 @@ static int armature_reveal_exec(bContext *C, wmOperator *op)
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	const bool select = RNA_boolean_get(op->ptr, "select");
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *obedit = objects[ob_index];
 		bArmature *arm = obedit->data;
@@ -1709,7 +1701,7 @@ static int armature_reveal_exec(bContext *C, wmOperator *op)
 void ARMATURE_OT_reveal(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Reveal Bones";
+	ot->name = "Reveal Hidden";
 	ot->idname = "ARMATURE_OT_reveal";
 	ot->description = "Reveal all bones hidden in Edit Mode";
 

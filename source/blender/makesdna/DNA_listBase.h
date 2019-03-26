@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,20 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
- *
  */
 
-/** \file DNA_listBase.h
- *  \ingroup DNA
- *  \brief These structs are the foundation for all linked lists in the
- *         library system.
+/** \file
+ * \ingroup DNA
+ * \brief These structs are the foundation for all linked lists in the library system.
  *
  * Doubly-linked lists start from a ListBase and contain elements beginning
  * with Link.
@@ -43,19 +32,19 @@
 extern "C" {
 #endif
 
-/* generic - all structs which are put into linked lists begin with this */
+/** Generic - all structs which are put into linked lists begin with this. */
 typedef struct Link {
 	struct Link *next, *prev;
 } Link;
 
 
-/* simple subclass of Link--use this when it is not worth defining a custom one... */
+/** Simple subclass of Link. Use this when it is not worth defining a custom one. */
 typedef struct LinkData {
 	struct LinkData *next, *prev;
 	void *data;
 } LinkData;
 
-/* never change the size of this! genfile.c detects pointerlen with it */
+/** Never change the size of this! dna_genfile.c detects pointer_size with it. */
 typedef struct ListBase  {
 	void *first, *last;
 } ListBase;

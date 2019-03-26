@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 #-----------------------------------------------------------------------------
@@ -46,6 +41,13 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 cmake_minimum_required(VERSION 3.5)
+
+# Prever LEGACY OpenGL to eb compatible with all the existing releases and
+# platforms which don't hare GLVND yet. Only do it if preference was not set
+# externally.
+if(NOT DEFINED OpenGL_GL_PREFERENCE)
+	set(OpenGL_GL_PREFERENCE "LEGACY")
+endif()
 
 if(NOT EXECUTABLE_OUTPUT_PATH)
 	set(FIRST_RUN TRUE)
@@ -157,7 +159,6 @@ option_defaults_init(
 	_init_BUILDINFO
 	_init_CODEC_FFMPEG
 	_init_CYCLES_OSL
-	_init_CYCLES_OPENSUBDIV
 	_init_IMAGE_OPENEXR
 	_init_INPUT_NDOF
 	_init_JACK
@@ -174,7 +175,6 @@ if(UNIX AND NOT APPLE)
 	# disable less important dependencies by default
 	set(_init_CODEC_FFMPEG                   OFF)
 	set(_init_CYCLES_OSL                     OFF)
-	set(_init_CYCLES_OPENSUBDIV              OFF)
 	set(_init_IMAGE_OPENEXR                  OFF)
 	set(_init_JACK                           OFF)
 	set(_init_OPENCOLLADA                    OFF)
@@ -186,7 +186,6 @@ elseif(WIN32)
 	set(_init_JACK                           OFF)
 elseif(APPLE)
 	set(_init_JACK                           OFF)
-	set(_init_OPENSUBDIV                     OFF)
 endif()
 
 
@@ -239,10 +238,7 @@ option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ${_init_OPENCOLO
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
 
-option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" _init_OPENSUBDIV)
-
-option(WITH_OPENSUBDIV_MODIFIER    "Use OpenSubdiv for CPU side of Subsurf/Multires modifiers" OFF)
-mark_as_advanced(WITH_OPENSUBDIV_MODIFIER)
+option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" ${_init_OPENSUBDIV})
 
 option(WITH_OPENVDB       "Enable features relying on OpenVDB" OFF)
 option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" OFF)
@@ -405,12 +401,12 @@ option(WITH_CYCLES					"Enable Cycles Render Engine" ON)
 option(WITH_CYCLES_STANDALONE		"Build Cycles standalone application" OFF)
 option(WITH_CYCLES_STANDALONE_GUI	"Build Cycles standalone with GUI" OFF)
 option(WITH_CYCLES_OSL				"Build Cycles with OSL support" ${_init_CYCLES_OSL})
-option(WITH_CYCLES_OPENSUBDIV		"Build Cycles with OpenSubdiv support" ${_init_CYCLES_OPENSUBDIV})
+option(WITH_CYCLES_EMBREE			"Build Cycles with Embree support" OFF)
 option(WITH_CYCLES_CUDA_BINARIES	"Build Cycles CUDA binaries" OFF)
 option(WITH_CYCLES_CUBIN_COMPILER	"Build cubins with nvrtc based compiler instead of nvcc" OFF)
 option(WITH_CYCLES_CUDA_BUILD_SERIAL "Build cubins one after another (useful on machines with limited RAM)" OFF)
 mark_as_advanced(WITH_CYCLES_CUDA_BUILD_SERIAL)
-set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 CACHE STRING "CUDA architectures to build binaries for")
+set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 sm_70 sm_75 CACHE STRING "CUDA architectures to build binaries for")
 mark_as_advanced(CYCLES_CUDA_BINARIES_ARCH)
 unset(PLATFORM_DEFAULT)
 option(WITH_CYCLES_LOGGING	"Build Cycles with logging support" ON)
@@ -762,8 +758,8 @@ if(WITH_PYTHON)
 	# Do this before main 'platform_*' checks,
 	# because UNIX will search for the old Python paths which may not exist.
 	# giving errors about missing paths before this case is met.
-	if(DEFINED PYTHON_VERSION AND "${PYTHON_VERSION}" VERSION_LESS "3.6")
-		message(FATAL_ERROR "At least Python 3.6 is required to build")
+	if(DEFINED PYTHON_VERSION AND "${PYTHON_VERSION}" VERSION_LESS "3.7")
+		message(FATAL_ERROR "At least Python 3.7 is required to build")
 	endif()
 
 	if(NOT EXISTS "${CMAKE_SOURCE_DIR}/release/scripts/addons/modules")
@@ -1056,8 +1052,11 @@ if(WITH_GL_PROFILE_ES20)
 	endif()
 
 else()
-	list(APPEND BLENDER_GL_LIBRARIES "${OPENGL_gl_LIBRARY}")
-
+	if(OpenGL_GL_PREFERENCE STREQUAL "LEGACY" AND OPENGL_gl_LIBRARY)
+		list(APPEND BLENDER_GL_LIBRARIES ${OPENGL_gl_LIBRARY})
+	else()
+		list(APPEND BLENDER_GL_LIBRARIES ${OPENGL_opengl_LIBRARY} ${OPENGL_glx_LIBRARY})
+	endif()
 endif()
 
 if(WITH_GL_EGL)
@@ -1118,7 +1117,10 @@ endif()
 #-----------------------------------------------------------------------------
 # Configure OpenMP.
 if(WITH_OPENMP)
-	find_package(OpenMP)
+	if(NOT OPENMP_CUSTOM)
+		find_package(OpenMP)
+	endif()
+
 	if(OPENMP_FOUND)
 		if(NOT WITH_OPENMP_STATIC)
 			set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -1444,6 +1446,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
 		# warning level:
 		"/W3"
 		"/w34062"  # switch statement contains 'default' but no 'case' labels
+		"/w34115"  # 'type' : named type definition in parentheses
 		"/w34189"  # local variable is initialized but not referenced
 		# disable:
 		"/wd4018"  # signed/unsigned mismatch
@@ -1463,6 +1466,11 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
 		"/we4133"  # incompatible pointer types
 		"/we4431"  # missing type specifier - int assumed
 	)
+
+	if(MSVC_VERSION GREATER_EQUAL 1911)
+		# see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017
+		set(_WARNINGS "${_WARNINGS} /w35038") #order of initialisation in c++ constructors
+	endif()
 
 	string(REPLACE ";" " " _WARNINGS "${_WARNINGS}")
 	set(C_WARNINGS "${_WARNINGS}")

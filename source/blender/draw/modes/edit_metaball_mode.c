@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,35 +13,26 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/modes/edit_metaball_mode.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
-#include "DRW_engine.h"
 #include "DRW_render.h"
 
 #include "DNA_meta_types.h"
 
 #include "BKE_object.h"
-#include "BKE_mball.h"
+
+#include "ED_mball.h"
 
 /* If builtin shaders are needed */
 #include "GPU_shader.h"
-#include "GPU_select.h"
 
 #include "draw_common.h"
-
 #include "draw_mode_engines.h"
-
-/* If needed, contains all global/Theme colors
- * Add needed theme colors / values to DRW_globals_update() and update UBO
- * Not needed for constant color. */
-extern struct GPUUniformBuffer *globals_ubo; /* draw_common.c */
-extern struct GlobalsUboStorage ts; /* draw_common.c */
 
 /* *********** LISTS *********** */
 /* All lists are per viewport specific datas.
@@ -102,12 +91,22 @@ typedef struct EDIT_METABALL_PrivateData {
 
 /* *********** FUNCTIONS *********** */
 
+static void EDIT_METABALL_engine_init(void *UNUSED(vedata))
+{
+	const DRWContextState *draw_ctx = DRW_context_state_get();
+	if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
+		DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
+	}
+}
+
 /* Here init all passes and shading groups
  * Assume that all Passes are NULL */
 static void EDIT_METABALL_cache_init(void *vedata)
 {
 	EDIT_METABALL_PassList *psl = ((EDIT_METABALL_Data *)vedata)->psl;
 	EDIT_METABALL_StorageList *stl = ((EDIT_METABALL_Data *)vedata)->stl;
+	const DRWContextState *draw_ctx = DRW_context_state_get();
+
 
 	if (!stl->g_data) {
 		/* Alloc transient pointers */
@@ -122,7 +121,7 @@ static void EDIT_METABALL_cache_init(void *vedata)
 		psl->pass = DRW_pass_create("My Pass", state);
 
 		/* Create a shadingGroup using a function in draw_common.c or custom one */
-		stl->g_data->group = shgroup_instance_mball_handles(psl->pass);
+		stl->g_data->group = shgroup_instance_mball_handles(psl->pass, draw_ctx->sh_cfg);
 	}
 }
 
@@ -147,8 +146,6 @@ static void EDIT_METABALL_cache_populate(void *vedata, Object *ob)
 
 			const bool is_select = DRW_state_is_select();
 
-			int selection_id = 0;
-
 			float draw_scale_xform[3][4]; /* Matrix of Scale and Translation */
 			{
 				float scamat[3][3];
@@ -165,7 +162,8 @@ static void EDIT_METABALL_cache_populate(void *vedata, Object *ob)
 				copy_v3_v3(draw_scale_xform[2], scamat[2]);
 			}
 
-			for (MetaElem *ml = mb->editelems->first; ml != NULL; ml = ml->next) {
+			int select_id = ob->select_id;
+			for (MetaElem *ml = mb->editelems->first; ml != NULL; ml = ml->next, select_id += 0x10000) {
 				float world_pos[3];
 				mul_v3_m4v3(world_pos, ob->obmat, &ml->x);
 				draw_scale_xform[0][3] = world_pos[0];
@@ -178,8 +176,7 @@ static void EDIT_METABALL_cache_populate(void *vedata, Object *ob)
 				else color = col_radius;
 
 				if (is_select) {
-					ml->selcol1 = ++selection_id;
-					DRW_select_load_id(selection_id);
+					DRW_select_load_id(select_id | MBALLSEL_RADIUS);
 				}
 
 				DRW_shgroup_call_dynamic_add(group, draw_scale_xform, &ml->rad, color);
@@ -188,8 +185,7 @@ static void EDIT_METABALL_cache_populate(void *vedata, Object *ob)
 				else color = col_stiffness;
 
 				if (is_select) {
-					ml->selcol2 = ++selection_id;
-					DRW_select_load_id(selection_id);
+					DRW_select_load_id(select_id | MBALLSEL_STIFF);
 				}
 
 				DRW_shgroup_call_dynamic_add(group, draw_scale_xform, &draw_stiffness_radius, color);
@@ -207,6 +203,8 @@ static void EDIT_METABALL_draw_scene(void *vedata)
 
 	/* If you changed framebuffer, double check you rebind
 	 * the default one with its textures attached before finishing */
+
+	DRW_state_clip_planes_reset();
 }
 
 /* Cleanup when destroying the engine.
@@ -223,7 +221,7 @@ DrawEngineType draw_engine_edit_metaball_type = {
 	NULL, NULL,
 	N_("EditMetaballMode"),
 	&EDIT_METABALL_data_size,
-	NULL,
+	&EDIT_METABALL_engine_init,
 	&EDIT_METABALL_engine_free,
 	&EDIT_METABALL_cache_init,
 	&EDIT_METABALL_cache_populate,

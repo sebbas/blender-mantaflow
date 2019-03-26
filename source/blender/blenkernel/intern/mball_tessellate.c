@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Jiri Hnidek <jiri.hnidek@vslib.cz>.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/mball_tessellate.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include <stdio.h>
@@ -49,7 +43,6 @@
 #include "BKE_global.h"
 
 #include "BKE_displist.h"
-#include "BKE_main.h"
 #include "BKE_mball_tessellate.h"  /* own include */
 #include "BKE_scene.h"
 
@@ -449,35 +442,35 @@ static void freepolygonize(PROCESS *process)
 
 /**** Cubical Polygonization (optional) ****/
 
-#define LB  0  /* left bottom edge	*/
-#define LT  1  /* left top edge	*/
-#define LN  2  /* left near edge	*/
-#define LF  3  /* left far edge	*/
+#define LB  0  /* left bottom edge */
+#define LT  1  /* left top edge */
+#define LN  2  /* left near edge */
+#define LF  3  /* left far edge */
 #define RB  4  /* right bottom edge */
-#define RT  5  /* right top edge	*/
-#define RN  6  /* right near edge	*/
-#define RF  7  /* right far edge	*/
-#define BN  8  /* bottom near edge	*/
-#define BF  9  /* bottom far edge	*/
-#define TN  10 /* top near edge	*/
-#define TF  11 /* top far edge	*/
+#define RT  5  /* right top edge */
+#define RN  6  /* right near edge */
+#define RF  7  /* right far edge */
+#define BN  8  /* bottom near edge */
+#define BF  9  /* bottom far edge */
+#define TN  10 /* top near edge */
+#define TF  11 /* top far edge */
 
 static INTLISTS *cubetable[256];
 static char faces[256];
 
 /* edge: LB, LT, LN, LF, RB, RT, RN, RF, BN, BF, TN, TF */
 static int corner1[12] = {
-	LBN, LTN, LBN, LBF, RBN, RTN, RBN, RBF, LBN, LBF, LTN, LTF
+	LBN, LTN, LBN, LBF, RBN, RTN, RBN, RBF, LBN, LBF, LTN, LTF,
 };
 static int corner2[12] = {
-	LBF, LTF, LTN, LTF, RBF, RTF, RTN, RTF, RBN, RBF, RTN, RTF
+	LBF, LTF, LTN, LTF, RBF, RTF, RTN, RTF, RBN, RBF, RTN, RTF,
 };
 static int leftface[12] = {
-	B, L, L, F, R, T, N, R, N, B, T, F
+	B, L, L, F, R, T, N, R, N, B, T, F,
 };
 /* face on left when going corner1 to corner2 */
 static int rightface[12] = {
-	L, T, N, L, B, R, R, F, B, F, N, T
+	L, T, N, L, B, R, R, F, B, F, N, T,
 };
 /* face on right when going corner1 to corner2 */
 
@@ -1256,9 +1249,9 @@ void BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob, ListBa
 
 		/* don't polygonize metaballs with too high resolution (base mball to small)
 		 * note: Eps was 0.0001f but this was giving problems for blood animation for durian, using 0.00001f */
-		if (ob->size[0] > 0.00001f * (process.allbb.max[0] - process.allbb.min[0]) ||
-		    ob->size[1] > 0.00001f * (process.allbb.max[1] - process.allbb.min[1]) ||
-		    ob->size[2] > 0.00001f * (process.allbb.max[2] - process.allbb.min[2]))
+		if (ob->scale[0] > 0.00001f * (process.allbb.max[0] - process.allbb.min[0]) ||
+		    ob->scale[1] > 0.00001f * (process.allbb.max[1] - process.allbb.min[1]) ||
+		    ob->scale[2] > 0.00001f * (process.allbb.max[2] - process.allbb.min[2]))
 		{
 			polygonize(&process);
 

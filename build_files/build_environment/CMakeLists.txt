@@ -97,6 +97,10 @@ if(WITH_WEBP)
 	include(cmake/webp.cmake)
 endif()
 
+if(WITH_EMBREE)
+	include(cmake/embree.cmake)
+endif()
+
 if(WIN32)
 	# HMD branch deps
 	include(cmake/hidapi.cmake)
@@ -110,7 +114,7 @@ endif()
 
 if(NOT WIN32 OR ENABLE_MINGW64)
 	include(cmake/openjpeg.cmake)
-	if(BUILD_MODE STREQUAL Release)
+	if(NOT WIN32 OR BUILD_MODE STREQUAL Release)
 		if(WIN32)
 			include(cmake/zlib_mingw.cmake)
 		endif()

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar, Geoffrey Bantle, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/intern/bmesh_query.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * This file contains functions for answering common
  * Topological and geometric queries about a mesh, such
@@ -382,6 +376,13 @@ BMFace *BM_vert_pair_share_face_by_angle(
 BMLoop *BM_vert_find_first_loop(BMVert *v)
 {
 	return v->e ? bmesh_disk_faceloop_find_first(v->e, v) : NULL;
+}
+/**
+ * A version of #BM_vert_find_first_loop that ignores hidden loops.
+ */
+BMLoop *BM_vert_find_first_loop_visible(BMVert *v)
+{
+	return v->e ? bmesh_disk_faceloop_find_first_visible(v->e, v) : NULL;
 }
 
 /**
@@ -792,7 +793,7 @@ bool BM_vert_edge_pair(BMVert *v, BMEdge **r_e_a, BMEdge **r_e_b)
 }
 
 /**
- *	Returns the number of edges around this vertex.
+ * Returns the number of edges around this vertex.
  */
 int BM_vert_edge_count(const BMVert *v)
 {
@@ -817,7 +818,7 @@ int BM_vert_edge_count_nonwire(const BMVert *v)
 	return count;
 }
 /**
- *	Returns the number of faces around this edge
+ * Returns the number of faces around this edge
  */
 int BM_edge_face_count(const BMEdge *e)
 {
@@ -1311,7 +1312,7 @@ bool BM_edge_share_face_check(BMEdge *e1, BMEdge *e2)
 }
 
 /**
- *	Test if e1 shares any quad faces with e2
+ * Test if e1 shares any quad faces with e2
  */
 bool BM_edge_share_quad_check(BMEdge *e1, BMEdge *e2)
 {
@@ -1334,7 +1335,7 @@ bool BM_edge_share_quad_check(BMEdge *e1, BMEdge *e2)
 }
 
 /**
- *	Tests to see if e1 shares a vertex with e2
+ * Tests to see if e1 shares a vertex with e2
  */
 bool BM_edge_share_vert_check(BMEdge *e1, BMEdge *e2)
 {
@@ -1345,7 +1346,7 @@ bool BM_edge_share_vert_check(BMEdge *e1, BMEdge *e2)
 }
 
 /**
- *	Return the shared vertex between the two edges or NULL
+ * Return the shared vertex between the two edges or NULL
  */
 BMVert *BM_edge_share_vert(BMEdge *e1, BMEdge *e2)
 {
@@ -1573,8 +1574,8 @@ float BM_loop_calc_face_normal_safe(const BMLoop *l, float r_normal[3])
  *
  * Calculate the normal at this loop corner or fallback to the face normal on straight lines.
  *
- * \param l The loop to calculate the normal at
- * \param r_normal Resulting normal
+ * \param l: The loop to calculate the normal at
+ * \param r_normal: Resulting normal
  * \return The length of the cross product (double the area).
  */
 float BM_loop_calc_face_normal(const BMLoop *l, float r_normal[3])
@@ -1596,8 +1597,8 @@ float BM_loop_calc_face_normal(const BMLoop *l, float r_normal[3])
  *
  * Calculate the direction a loop is pointing.
  *
- * \param l The loop to calculate the direction at
- * \param r_dir Resulting direction
+ * \param l: The loop to calculate the direction at
+ * \param r_dir: Resulting direction
  */
 void BM_loop_calc_face_direction(const BMLoop *l, float r_dir[3])
 {
@@ -1620,8 +1621,8 @@ void BM_loop_calc_face_direction(const BMLoop *l, float r_dir[3])
  * Calculate the tangent at this loop corner or fallback to the face normal on straight lines.
  * This vector always points inward into the face.
  *
- * \param l The loop to calculate the tangent at
- * \param r_tangent Resulting tangent
+ * \param l: The loop to calculate the tangent at
+ * \param r_tangent: Resulting tangent
  */
 void BM_loop_calc_face_tangent(const BMLoop *l, float r_tangent[3])
 {
@@ -1680,6 +1681,40 @@ float BM_edge_calc_face_angle(const BMEdge *e)
 /**
  * \brief BMESH EDGE/FACE ANGLE
  *
+ * Calculates the angle between two faces in world space.
+ * Assumes the face normals are correct.
+ *
+ * \return angle in radians
+ */
+float BM_edge_calc_face_angle_with_imat3_ex(const BMEdge *e, const float imat3[3][3], const float fallback)
+{
+	if (BM_edge_is_manifold(e)) {
+		const BMLoop *l1 = e->l;
+		const BMLoop *l2 = e->l->radial_next;
+		float no1[3], no2[3];
+		copy_v3_v3(no1, l1->f->no);
+		copy_v3_v3(no2, l2->f->no);
+
+		mul_transposed_m3_v3(imat3, no1);
+		mul_transposed_m3_v3(imat3, no2);
+
+		normalize_v3(no1);
+		normalize_v3(no2);
+
+		return angle_normalized_v3v3(no1, no2);
+	}
+	else {
+		return fallback;
+	}
+}
+float BM_edge_calc_face_angle_with_imat3(const BMEdge *e, const float imat3[3][3])
+{
+	return BM_edge_calc_face_angle_with_imat3_ex(e, imat3, DEG2RADF(90.0f));
+}
+
+/**
+ * \brief BMESH EDGE/FACE ANGLE
+ *
  * Calculates the angle between two faces.
  * Assumes the face normals are correct.
  *
@@ -1709,10 +1744,10 @@ float BM_edge_calc_face_angle_signed(const BMEdge *e)
  * This vector always points inward into the face.
  *
  * \brief BM_edge_calc_face_tangent
- * \param e
- * \param e_loop The loop to calculate the tangent at,
+ * \param e:
+ * \param e_loop: The loop to calculate the tangent at,
  * used to get the face and winding direction.
- * \param r_tangent The loop corner tangent to set
+ * \param r_tangent: The loop corner tangent to set
  */
 
 void BM_edge_calc_face_tangent(const BMEdge *e, const BMLoop *e_loop, float r_tangent[3])
@@ -1826,7 +1861,7 @@ float BM_vert_calc_shell_factor_ex(const BMVert *v, const float no[3], const cha
  * \note quite an obscure function.
  * used in bmesh operators that have a relative scale options,
  */
-float BM_vert_calc_mean_tagged_edge_length(const BMVert *v)
+float BM_vert_calc_median_tagged_edge_length(const BMVert *v)
 {
 	BMIter iter;
 	BMEdge *e;
@@ -1972,6 +2007,24 @@ BMEdge *BM_edge_find_double(BMEdge *e)
 }
 
 /**
+ * Only #BMEdge.l access us needed, however when we want the first visible loop,
+ * a utility function is needed.
+ */
+BMLoop *BM_edge_find_first_loop_visible(BMEdge *e)
+{
+	if (e->l != NULL) {
+		BMLoop *l_iter, *l_first;
+		l_iter = l_first = e->l;
+		do {
+			if (!BM_elem_flag_test(l_iter->f, BM_ELEM_HIDDEN)) {
+				return l_iter;
+			}
+		} while ((l_iter = l_iter->radial_next) != l_first);
+	}
+	return NULL;
+}
+
+/**
  * Given a set of vertices (varr), find out if
  * there is a face with exactly those vertices
  * (and only those vertices).
@@ -2029,6 +2082,40 @@ BMFace *BM_face_exists(BMVert **varr, int len)
 	return NULL;
 }
 
+/**
+ * Check if the face has an exact duplicate (both winding directions).
+ */
+BMFace *BM_face_find_double(BMFace *f)
+{
+	BMLoop *l_first = BM_FACE_FIRST_LOOP(f);
+	for (BMLoop *l_iter = l_first->radial_next; l_first != l_iter; l_iter = l_iter->radial_next) {
+		if (l_iter->f->len == l_first->f->len) {
+			if (l_iter->v == l_first->v) {
+				BMLoop *l_a = l_first, *l_b = l_iter, *l_b_init = l_iter;
+				do {
+					if (l_a->e != l_b->e) {
+						break;
+					}
+				} while (((void)(l_a = l_a->next), (l_b = l_b->next)) != l_b_init);
+				if (l_b == l_b_init) {
+					return l_iter->f;
+				}
+			}
+			else {
+				BMLoop *l_a = l_first, *l_b = l_iter, *l_b_init = l_iter;
+				do {
+					if (l_a->e != l_b->e) {
+						break;
+					}
+				} while (((void)(l_a = l_a->prev), (l_b = l_b->next)) != l_b_init);
+				if (l_b == l_b_init) {
+					return l_iter->f;
+				}
+			}
+		}
+	}
+	return NULL;
+}
 
 /**
  * Given a set of vertices and edges (\a varr, \a earr), find out if
@@ -2178,8 +2265,8 @@ bool BM_face_exists_multi_edge(BMEdge **earr, int len)
  * \note Its possible there are more than one overlapping faces,
  * in this case the first one found will be returned.
  *
- * \param varr  Array of unordered verts.
- * \param len  \a varr array length.
+ * \param varr: Array of unordered verts.
+ * \param len: \a varr array length.
  * \return The face or NULL.
  */
 
@@ -2226,8 +2313,8 @@ BMFace *BM_face_exists_overlap(BMVert **varr, const int len)
  * there is a face that uses vertices only from this list
  * (that the face is a subset or made from the vertices given).
  *
- * \param varr  Array of unordered verts.
- * \param len  varr array length.
+ * \param varr: Array of unordered verts.
+ * \param len: varr array length.
  */
 bool BM_face_exists_overlap_subset(BMVert **varr, const int len)
 {
@@ -2436,16 +2523,16 @@ float BM_mesh_calc_volume(BMesh *bm, bool is_signed)
 /**
  * Calculate isolated groups of faces with optional filtering.
  *
- * \param bm  the BMesh.
- * \param r_groups_array  Array of ints to fill in, length of bm->totface
+ * \param bm: the BMesh.
+ * \param r_groups_array: Array of ints to fill in, length of bm->totface
  *        (or when hflag_test is set, the number of flagged faces).
- * \param r_group_index  index, length pairs into \a r_groups_array, size of return value
+ * \param r_group_index: index, length pairs into \a r_groups_array, size of return value
  *        int pairs: (array_start, array_length).
- * \param filter_fn  Filter the edge-loops or vert-loops we step over (depends on \a htype_step).
- * \param user_data  Optional user data for \a filter_fn, can be NULL.
- * \param hflag_test  Optional flag to test faces,
+ * \param filter_fn: Filter the edge-loops or vert-loops we step over (depends on \a htype_step).
+ * \param user_data: Optional user data for \a filter_fn, can be NULL.
+ * \param hflag_test: Optional flag to test faces,
  *        use to exclude faces from the calculation, 0 for all faces.
- * \param htype_step  BM_VERT to walk over face-verts, BM_EDGE to walk over faces edges
+ * \param htype_step: BM_VERT to walk over face-verts, BM_EDGE to walk over faces edges
  *        (having both set is supported too).
  * \return The number of groups found.
  */
@@ -2592,15 +2679,15 @@ int BM_mesh_calc_face_groups(
 /**
  * Calculate isolated groups of edges with optional filtering.
  *
- * \param bm  the BMesh.
- * \param r_groups_array  Array of ints to fill in, length of bm->totedge
+ * \param bm: the BMesh.
+ * \param r_groups_array: Array of ints to fill in, length of bm->totedge
  *        (or when hflag_test is set, the number of flagged edges).
- * \param r_group_index  index, length pairs into \a r_groups_array, size of return value
+ * \param r_group_index: index, length pairs into \a r_groups_array, size of return value
  *        int pairs: (array_start, array_length).
- * \param filter_fn  Filter the edges or verts we step over (depends on \a htype_step)
+ * \param filter_fn: Filter the edges or verts we step over (depends on \a htype_step)
  *        as to which types we deal with.
- * \param user_data  Optional user data for \a filter_fn, can be NULL.
- * \param hflag_test  Optional flag to test edges,
+ * \param user_data: Optional user data for \a filter_fn, can be NULL.
+ * \param hflag_test: Optional flag to test edges,
  *        use to exclude edges from the calculation, 0 for all edges.
  * \return The number of groups found.
  *

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_rna.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -42,13 +36,13 @@
 
 /* Reuse for dynamic types  */
 const EnumPropertyItem DummyRNA_NULL_items[] = {
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* Reuse for dynamic types with default value */
 const EnumPropertyItem DummyRNA_DEFAULT_items[] = {
 	{0, "DEFAULT", 0, "Default", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /** \} */
@@ -66,7 +60,7 @@ const EnumPropertyItem rna_enum_property_type_items[] = {
 	{PROP_ENUM, "ENUM", 0, "Enumeration", ""},
 	{PROP_POINTER, "POINTER", 0, "Pointer", ""},
 	{PROP_COLLECTION, "COLLECTION", 0, "Collection", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* XXX Keep in sync with bpy_props.c's property_subtype_xxx_items ???
@@ -109,7 +103,7 @@ const EnumPropertyItem rna_enum_property_subtype_items[] = {
 	/* booleans */
 	{PROP_LAYER, "LAYER", 0, "Layer", ""},
 	{PROP_LAYER_MEMBER, "LAYER_MEMBER", 0, "Layer Member", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 const EnumPropertyItem rna_enum_property_unit_items[] = {
@@ -123,7 +117,8 @@ const EnumPropertyItem rna_enum_property_unit_items[] = {
 	{PROP_UNIT_ACCELERATION, "ACCELERATION", 0, "Acceleration", ""},
 	{PROP_UNIT_MASS, "MASS", 0, "Mass", ""},
 	{PROP_UNIT_CAMERA, "CAMERA", 0, "Camera", ""},
-	{0, NULL, 0, NULL, NULL}
+	{PROP_UNIT_POWER, "POWER", 0, "Power", ""},
+	{0, NULL, 0, NULL, NULL},
 };
 
 /** \} */
@@ -751,46 +746,27 @@ static bool rna_NumberProperty_is_array_get(PointerRNA *ptr)
 static void rna_IntProperty_default_array_get(PointerRNA *ptr, int *values)
 {
 	PropertyRNA *prop = (PropertyRNA *)ptr->data;
-	IntPropertyRNA *nprop = (IntPropertyRNA *)prop;
 	rna_idproperty_check(&prop, ptr);
-
-	if (nprop->defaultarray) {
-		memcpy(values, nprop->defaultarray, prop->totarraylength * sizeof(int));
-	}
-	else {
-		int i;
-		for (i = 0; i < prop->totarraylength; i++)
-			values[i] = nprop->defaultvalue;
+	if (prop->totarraylength > 0) {
+		RNA_property_int_get_default_array(ptr, prop, values);
 	}
 }
+
 static void rna_BoolProperty_default_array_get(PointerRNA *ptr, bool *values)
 {
 	PropertyRNA *prop = (PropertyRNA *)ptr->data;
-	BoolPropertyRNA *nprop = (BoolPropertyRNA *)prop;
 	rna_idproperty_check(&prop, ptr);
-
-	if (nprop->defaultarray) {
-		memcpy(values, nprop->defaultarray, prop->totarraylength * sizeof(bool));
-	}
-	else {
-		int i;
-		for (i = 0; i < prop->totarraylength; i++)
-			values[i] = nprop->defaultvalue;
+	if (prop->totarraylength > 0) {
+		RNA_property_boolean_get_default_array(ptr, prop, values);
 	}
 }
+
 static void rna_FloatProperty_default_array_get(PointerRNA *ptr, float *values)
 {
 	PropertyRNA *prop = (PropertyRNA *)ptr->data;
-	FloatPropertyRNA *nprop = (FloatPropertyRNA *)prop;
 	rna_idproperty_check(&prop, ptr);
-
-	if (nprop->defaultarray) {
-		memcpy(values, nprop->defaultarray, prop->totarraylength * sizeof(float));
-	}
-	else {
-		int i;
-		for (i = 0; i < prop->totarraylength; i++)
-			values[i] = nprop->defaultvalue;
+	if (prop->totarraylength > 0) {
+		RNA_property_float_get_default_array(ptr, prop, values);
 	}
 }
 
@@ -897,8 +873,9 @@ static int rna_StringProperty_max_length_get(PointerRNA *ptr)
 	return ((StringPropertyRNA *)prop)->maxlength;
 }
 
-static const EnumPropertyItem *rna_EnumProperty_default_itemf(bContext *C, PointerRNA *ptr,
-                                                        PropertyRNA *prop_parent, bool *r_free)
+static const EnumPropertyItem *rna_EnumProperty_default_itemf(
+        bContext *C, PointerRNA *ptr,
+        PropertyRNA *prop_parent, bool *r_free)
 {
 	PropertyRNA *prop = (PropertyRNA *)ptr->data;
 	EnumPropertyRNA *eprop;
@@ -2346,10 +2323,10 @@ static void rna_def_property(BlenderRNA *brna)
 		{PROP_COORDS, "COORDINATES", 0, "Vector Coordinates", ""},
 		{PROP_LAYER, "LAYER", 0, "Layer", ""},
 		{PROP_LAYER_MEMBER, "LAYER_MEMBERSHIP", 0, "Layer Membership", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	EnumPropertyItem dummy_prop_tags[] = {
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "Property", NULL);
@@ -2665,7 +2642,7 @@ static void rna_def_enum_property(BlenderRNA *brna, StructRNA *srna)
 	/* the itemf func is used instead, keep blender happy */
 	static const EnumPropertyItem default_dummy_items[] = {
 		{PROP_NONE, "DUMMY", 0, "Dummy", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "default", PROP_ENUM, PROP_NONE);

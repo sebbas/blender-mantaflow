@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,37 +12,32 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_MODIFIER_H__
 #define __BKE_MODIFIER_H__
 
-/** \file BKE_modifier.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "DNA_modifier_types.h"     /* needed for all enum typdefs */
 #include "BLI_compiler_attrs.h"
 #include "BKE_customdata.h"
 
-struct ID;
+struct BMEditMesh;
+struct CustomData_MeshMasks;
+struct DepsNodeHandle;
 struct Depsgraph;
 struct DerivedMesh;
+struct ID;
+struct ListBase;
+struct Main;
 struct Mesh;
+struct ModifierData;
 struct Object;
 struct Scene;
 struct ViewLayer;
-struct ListBase;
 struct bArmature;
-struct Main;
-struct ModifierData;
-struct BMEditMesh;
-struct DepsNodeHandle;
 
 typedef enum {
 	/* Should not be used, only for None modifier type */
@@ -157,7 +150,7 @@ typedef struct ModifierTypeInfo {
 	/* Copy instance data for this modifier type. Should copy all user
 	 * level settings to the target modifier.
 	 *
-	 * \param flag  Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
+	 * \param flag: Copying options (see BKE_library.h's LIB_ID_COPY_... flags for more).
 	 */
 	void (*copyData)(const struct ModifierData *md, struct ModifierData *target, const int flag);
 
@@ -222,26 +215,25 @@ typedef struct ModifierTypeInfo {
 	 */
 	void (*initData)(struct ModifierData *md);
 
-	/* Should return a CustomDataMask indicating what data this
+	/* Should add to passed \a r_cddata_masks the data types that this
 	 * modifier needs. If (mask & (1 << (layer type))) != 0, this modifier
-	 * needs that custom data layer. This function's return value can change
+	 * needs that custom data layer. It can change required layers
 	 * depending on the modifier's settings.
 	 *
 	 * Note that this means extra data (e.g. vertex groups) - it is assumed
 	 * that all modifiers need mesh data and deform modifiers need vertex
 	 * coordinates.
 	 *
-	 * Note that this limits the number of custom data layer types to 32.
-	 *
-	 * If this function is not present or it returns 0, it is assumed that
-	 * no extra data is needed.
+	 * If this function is not present, it is assumed that no extra data is needed.
 	 *
 	 * This function is optional.
 	 */
-	CustomDataMask (*requiredDataMask)(struct Object *ob, struct ModifierData *md);
+	void (*requiredDataMask)(struct Object *ob, struct ModifierData *md, struct CustomData_MeshMasks *r_cddata_masks);
 
 	/* Free internal modifier data variables, this function should
 	 * not free the md variable itself.
+	 *
+	 * This function is responsible for freeing the runtime data as well.
 	 *
 	 * This function is optional.
 	 */
@@ -273,7 +265,7 @@ typedef struct ModifierTypeInfo {
 
 
 	/* True when a deform modifier uses normals, the requiredDataMask
-	 * cant be used here because that refers to a normal layer where as
+	 * cant be used here because that refers to a normal layer whereas
 	 * in this case we need to know if the deform modifier uses normals.
 	 *
 	 * this is needed because applying 2 deform modifiers will give the
@@ -311,6 +303,18 @@ typedef struct ModifierTypeInfo {
 	 */
 	void (*foreachTexLink)(struct ModifierData *md, struct Object *ob,
 	                       TexWalkFunc walk, void *userData);
+
+	/* Free given runtime data.
+	 *
+	 * This data is coming from a modifier of the corresponding type, but actual
+	 * modifier data is not known here.
+	 *
+	 * Notes:
+	 *  - The data itself is to be de-allocated as well.
+	 *  - This calback is allowed to receive NULL pointer as a data, so it's
+	 *    more like "ensure the data is freed".
+	 */
+	void (*freeRuntimeData)(void *runtime_data);
 } ModifierTypeInfo;
 
 /* Initialize modifier's global data (type info and some common global storages). */
@@ -373,10 +377,10 @@ bool          modifiers_isPreview(struct Object *ob);
 
 typedef struct CDMaskLink {
 	struct CDMaskLink *next;
-	CustomDataMask mask;
+	struct CustomData_MeshMasks mask;
 } CDMaskLink;
 
-/* Calculates and returns a linked list of CustomDataMasks indicating the
+/* Calculates and returns a linked list of CustomData_MeshMasks indicating the
  * data required by each modifier in the stack pointed to by md for correct
  * evaluation, assuming the data indicated by dataMask is required at the
  * end of the stack.
@@ -384,9 +388,10 @@ typedef struct CDMaskLink {
 struct CDMaskLink *modifiers_calcDataMasks(struct Scene *scene,
                                            struct Object *ob,
                                            struct ModifierData *md,
-                                           CustomDataMask dataMask,
+                                           const struct CustomData_MeshMasks *dataMask,
                                            int required_mode,
-                                           ModifierData *previewmd, CustomDataMask previewmask);
+                                           ModifierData *previewmd,
+                                           const struct CustomData_MeshMasks *previewmask);
 struct ModifierData *modifiers_getLastPreview(struct Scene *scene,
                                               struct ModifierData *md,
                                               int required_mode);
@@ -426,16 +431,6 @@ void modwrap_deformVertsEM(
         struct BMEditMesh *em, struct Mesh *me,
         float (*vertexCos)[3], int numVerts);
 
-#define applyModifier_DM_wrapper(NEW_FUNC_NAME, OLD_FUNC_NAME) \
-	static Mesh *NEW_FUNC_NAME(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh) \
-	{ \
-		DerivedMesh *dm = CDDM_from_mesh_ex(mesh, CD_REFERENCE, CD_MASK_EVERYTHING); \
-		DerivedMesh *ndm = OLD_FUNC_NAME(md, ctx, dm); \
-		if (ndm != dm) dm->release(dm); \
-		DM_to_mesh(ndm, mesh, ctx->object, CD_MASK_EVERYTHING, true); \
-		return mesh; \
-	}
-
 /* wrappers for modifier callbacks that accept Mesh and select the proper implementation
  * depending on if the modifier has been ported to Mesh or is still using DerivedMesh
  */
@@ -445,6 +440,6 @@ struct DerivedMesh *modifier_applyModifier_DM_deprecated(
         struct DerivedMesh *dm);
 
 struct Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(
-        struct Object *ob_eval, bool *r_free_mesh);
+        struct Object *ob_eval, const bool get_cage_mesh);
 
 #endif

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_polybuild.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  *
  * Tools to implement polygon building tool,
  * an experimental tool for quickly constructing/manipulating faces.
@@ -71,17 +67,17 @@ static void edbm_selectmode_ensure(Scene *scene, BMEditMesh *em, short selectmod
 }
 
 /* Could make public, for now just keep here. */
-static void edbm_flag_disable_all_multi(ViewLayer *view_layer, const char hflag)
+static void edbm_flag_disable_all_multi(ViewLayer *view_layer, View3D *v3d, const char hflag)
 {
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, v3d, &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob_iter = objects[ob_index];
 		BMEditMesh *em_iter = BKE_editmesh_from_object(ob_iter);
 		BMesh *bm_iter = em_iter->bm;
 		if (bm_iter->totvertsel) {
 			EDBM_flag_disable_all(em_iter, hflag);
-			DEG_id_tag_update(ob_iter->data, DEG_TAG_SELECT_UPDATE);
+			DEG_id_tag_update(ob_iter->data, ID_RECALC_SELECT);
 		}
 	}
 	MEM_freeN(objects);
@@ -90,51 +86,23 @@ static void edbm_flag_disable_all_multi(ViewLayer *view_layer, const char hflag)
 /* When accessed as a tool, get the active edge from the preselection gizmo. */
 static bool edbm_preselect_or_active(
         bContext *C,
+        const View3D *v3d,
         Base **r_base,
         BMElem **r_ele)
 {
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 	ARegion *ar = CTX_wm_region(C);
-	wmGizmoMap *gzmap = ar->gizmo_map;
+	const bool show_gizmo = !(
+	        (v3d->flag2 & V3D_HIDE_OVERLAYS) ||
+	        (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_TOOL)));
+
+	wmGizmoMap *gzmap = show_gizmo ? ar->gizmo_map : NULL;
 	wmGizmoGroup *gzgroup = gzmap ? WM_gizmomap_group_find(gzmap, "VIEW3D_GGT_mesh_preselect_elem") : NULL;
 	if (gzgroup != NULL) {
 		wmGizmo *gz = gzgroup->gizmos.first;
-		const int object_index = RNA_int_get(gz->ptr, "object_index");
-
-		/* weak, allocate an array just to access the index. */
-		Base *base = NULL;
-		Object *obedit = NULL;
-		{
-			uint bases_len;
-			Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(view_layer, &bases_len);
-			if (object_index < bases_len) {
-				base = bases[object_index];
-				obedit = base->object;
-			}
-			MEM_freeN(bases);
-		}
-
-		*r_base = base;
-		*r_ele = NULL;
-
-		if (obedit) {
-			BMEditMesh *em = BKE_editmesh_from_object(obedit);
-			BMesh *bm = em->bm;
-			const int vert_index = RNA_int_get(gz->ptr, "vert_index");
-			const int edge_index = RNA_int_get(gz->ptr, "edge_index");
-			const int face_index = RNA_int_get(gz->ptr, "face_index");
-			if (vert_index != -1) {
-				*r_ele = (BMElem *)BM_vert_at_index_find(bm, vert_index);
-			}
-			else if (edge_index != -1) {
-				*r_ele = (BMElem *)BM_edge_at_index_find(bm, edge_index);
-			}
-			else if (face_index != -1) {
-				*r_ele = (BMElem *)BM_face_at_index_find(bm, face_index);
-			}
-		}
+		ED_view3d_gizmo_mesh_preselect_get_active(C, gz, r_base, r_ele);
 	}
 	else {
+		ViewLayer *view_layer = CTX_data_view_layer(C);
 		Base *base = view_layer->basact;
 		Object *obedit = base->object;
 		BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -152,7 +120,7 @@ static bool edbm_preselect_or_active_init_viewcontext(
         BMElem **r_ele)
 {
 	em_setup_viewcontext(C, vc);
-	bool ok = edbm_preselect_or_active(C, r_base, r_ele);
+	bool ok = edbm_preselect_or_active(C, vc->v3d, r_base, r_ele);
 	if (ok) {
 		ED_view3d_viewcontext_init_object(vc, (*r_base)->object);
 	}
@@ -185,13 +153,13 @@ static int edbm_polybuild_face_at_cursor_invoke(
 
 	if (ele_act == NULL || ele_act->head.htype == BM_FACE) {
 		/* Just add vert */
-		copy_v3_v3(center, ED_view3d_cursor3d_get(vc.scene, vc.v3d)->location);
+		copy_v3_v3(center, vc.scene->cursor.location);
 		mul_v3_m4v3(center, vc.obedit->obmat, center);
 		ED_view3d_win_to_3d_int(vc.v3d, vc.ar, center, event->mval, center);
 		mul_m4_v3(vc.obedit->imat, center);
 
 		BMVert *v_new = BM_vert_create(bm, center, NULL, BM_CREATE_NOP);
-		edbm_flag_disable_all_multi(vc.view_layer, BM_ELEM_SELECT);
+		edbm_flag_disable_all_multi(vc.view_layer, vc.v3d, BM_ELEM_SELECT);
 		BM_vert_select_set(bm, v_new, true);
 		BM_select_history_store(bm, v_new);
 		changed = true;
@@ -215,7 +183,7 @@ static int edbm_polybuild_face_at_cursor_invoke(
 		// BMFace *f_new =
 		BM_face_create_verts(bm, v_tri, 3, f_reference, BM_CREATE_NOP, true);
 
-		edbm_flag_disable_all_multi(vc.view_layer, BM_ELEM_SELECT);
+		edbm_flag_disable_all_multi(vc.view_layer, vc.v3d, BM_ELEM_SELECT);
 		BM_vert_select_set(bm, v_tri[2], true);
 		BM_select_history_store(bm, v_tri[2]);
 		changed = true;
@@ -267,7 +235,7 @@ static int edbm_polybuild_face_at_cursor_invoke(
 			// BMFace *f_new =
 			BM_face_create_verts(bm, v_quad, 4, f_reference, BM_CREATE_NOP, true);
 
-			edbm_flag_disable_all_multi(vc.view_layer, BM_ELEM_SELECT);
+			edbm_flag_disable_all_multi(vc.view_layer, vc.v3d, BM_ELEM_SELECT);
 			BM_vert_select_set(bm, v_quad[2], true);
 			BM_select_history_store(bm, v_quad[2]);
 			changed = true;
@@ -312,7 +280,6 @@ void MESH_OT_polybuild_face_at_cursor(wmOperatorType *ot)
 	/* identifiers */
 	ot->name = "Poly Build Face at Cursor";
 	ot->idname = "MESH_OT_polybuild_face_at_cursor";
-	ot->description = "";
 
 	/* api callbacks */
 	ot->invoke = edbm_polybuild_face_at_cursor_invoke;
@@ -363,7 +330,7 @@ static int edbm_polybuild_split_at_cursor_invoke(
 		BMVert *v_new = BM_edge_split(bm, e_act, e_act->v1, NULL, CLAMPIS(fac, 0.0f, 1.0f));
 		copy_v3_v3(v_new->co, center);
 
-		edbm_flag_disable_all_multi(vc.view_layer, BM_ELEM_SELECT);
+		edbm_flag_disable_all_multi(vc.view_layer, vc.v3d, BM_ELEM_SELECT);
 		BM_vert_select_set(bm, v_new, true);
 		BM_select_history_store(bm, v_new);
 		changed = true;
@@ -395,7 +362,6 @@ void MESH_OT_polybuild_split_at_cursor(wmOperatorType *ot)
 	/* identifiers */
 	ot->name = "Poly Build Split at Cursor";
 	ot->idname = "MESH_OT_polybuild_split_at_cursor";
-	ot->description = "";
 
 	/* api callbacks */
 	ot->invoke = edbm_polybuild_split_at_cursor_invoke;
@@ -428,7 +394,10 @@ static int edbm_polybuild_dissolve_at_cursor_invoke(
 	BMEditMesh *em = vc.em;
 	BMesh *bm = em->bm;
 
-	if (ele_act->head.htype == BM_EDGE) {
+	if (ele_act == NULL) {
+		/* pass */
+	}
+	else if (ele_act->head.htype == BM_EDGE) {
 		BMEdge *e_act = (BMEdge *)ele_act;
 		BMLoop *l_a, *l_b;
 		if (BM_edge_loop_pair(e_act, &l_a, &l_b)) {
@@ -463,7 +432,7 @@ static int edbm_polybuild_dissolve_at_cursor_invoke(
 	}
 
 	if (changed) {
-		edbm_flag_disable_all_multi(vc.view_layer, BM_ELEM_SELECT);
+		edbm_flag_disable_all_multi(vc.view_layer, vc.v3d, BM_ELEM_SELECT);
 
 		EDBM_mesh_normals_update(em);
 		EDBM_update_generic(em, true, true);
@@ -486,7 +455,6 @@ void MESH_OT_polybuild_dissolve_at_cursor(wmOperatorType *ot)
 	/* identifiers */
 	ot->name = "Poly Build Dissolve at Cursor";
 	ot->idname = "MESH_OT_polybuild_dissolve_at_cursor";
-	ot->description = "";
 
 	/* api callbacks */
 	ot->invoke = edbm_polybuild_dissolve_at_cursor_invoke;

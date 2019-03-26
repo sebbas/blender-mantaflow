@@ -1,5 +1,5 @@
-/** \file smoke/intern/VEC3.h
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 /******************************************************************************
  * Copyright 2007 Nils Thuerey

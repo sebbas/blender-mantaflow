@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/armature/armature_utils.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "DNA_armature_types.h"
@@ -181,8 +175,8 @@ bool ED_armature_ebone_is_child_recursive(EditBone *ebone_parent, EditBone *ebon
 /**
  * Finds the first parent shared by \a ebone_child
  *
- * \param ebone_child  Children bones to search
- * \param ebone_child_tot  Size of the ebone_child array
+ * \param ebone_child: Children bones to search
+ * \param ebone_child_tot: Size of the ebone_child array
  * \return The shared parent or NULL.
  */
 EditBone *ED_armature_ebone_find_shared_parent(EditBone *ebone_child[], const unsigned int ebone_child_tot)
@@ -672,7 +666,9 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
 		if (eBone == arm->act_edbone) {
 			/* don't change active selection, this messes up separate which uses
 			 * editmode toggle and can separate active bone which is de-selected originally */
-			/* newBone->flag |= BONE_SELECTED; */ /* important, editbones can be active with only 1 point selected */
+
+			/* important, editbones can be active with only 1 point selected */
+			/* newBone->flag |= BONE_SELECTED; */
 			arm->act_bone = newBone;
 		}
 		newBone->roll = 0.0f;
@@ -707,8 +703,9 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
 	}
 
 	/* Fix parenting in a separate pass to ensure ebone->bone connections are valid at this point.
-	 * Do not set bone->head/tail here anymore, using EditBone data for that is not OK since our later fiddling
-	 * with parent's arm_mat (for roll conversion) may have some small but visible impact on locations (T46010). */
+	 * Do not set bone->head/tail here anymore,
+	 * using EditBone data for that is not OK since our later fiddling with parent's arm_mat
+	 * (for roll conversion) may have some small but visible impact on locations (T46010). */
 	for (eBone = arm->edbo->first; eBone; eBone = eBone->next) {
 		newBone = eBone->temp.bone;
 		if (eBone->parent) {
@@ -733,7 +730,7 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
 	armature_finalize_restpose(&arm->bonebase, arm->edbo);
 
 	/* so all users of this armature should get rebuilt */
-	for (obt = bmain->object.first; obt; obt = obt->id.next) {
+	for (obt = bmain->objects.first; obt; obt = obt->id.next) {
 		if (obt->data == arm) {
 			BKE_pose_rebuild(bmain, obt, arm, true);
 		}
@@ -815,6 +812,12 @@ void ED_armature_ebone_listbase_copy(ListBase *lb_dst, ListBase *lb_src)
 	for (ebone_dst = lb_dst->first; ebone_dst; ebone_dst = ebone_dst->next) {
 		if (ebone_dst->parent) {
 			ebone_dst->parent = ebone_dst->parent->temp.ebone;
+		}
+		if (ebone_dst->bbone_next) {
+			ebone_dst->bbone_next = ebone_dst->bbone_next->temp.ebone;
+		}
+		if (ebone_dst->bbone_prev) {
+			ebone_dst->bbone_prev = ebone_dst->bbone_prev->temp.ebone;
 		}
 	}
 }

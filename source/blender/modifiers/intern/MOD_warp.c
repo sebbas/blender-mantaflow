@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,27 +12,23 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software  Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_warp.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_editmesh.h"
 #include "BKE_library.h"
@@ -75,19 +69,19 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 	twmd->curfalloff = curvemapping_copy(wmd->curfalloff);
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	WarpModifierData *wmd = (WarpModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (wmd->defgrp_name[0]) dataMask |= (CD_MASK_MDEFORMVERT);
-	dataMask |= (CD_MASK_MDEFORMVERT);
+	if (wmd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 
 	/* ask for UV coordinates if we need them */
-	if (wmd->texmapping == MOD_DISP_MAP_UV) dataMask |= (1 << CD_MTFACE);
-
-	return dataMask;
+	if (wmd->texmapping == MOD_DISP_MAP_UV) {
+		r_cddata_masks->fmask |= CD_MASK_MTFACE;
+	}
 }
 
 static bool dependsOnTime(ModifierData *md)
@@ -143,11 +137,15 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 {
 	WarpModifierData *wmd = (WarpModifierData *) md;
 	if (wmd->object_from != NULL && wmd->object_to != NULL) {
+		DEG_add_modifier_to_transform_relation(ctx->node, "Warplace Modifier");
 		DEG_add_object_relation(ctx->node, wmd->object_from, DEG_OB_COMP_TRANSFORM, "Warp Modifier from");
 		DEG_add_object_relation(ctx->node, wmd->object_to, DEG_OB_COMP_TRANSFORM, "Warp Modifier to");
 	}
 	if ((wmd->texmapping == MOD_DISP_MAP_OBJECT) && wmd->map_object != NULL) {
 		DEG_add_object_relation(ctx->node, wmd->map_object, DEG_OB_COMP_TRANSFORM, "Warp Modifier map");
+	}
+	if (wmd->texture != NULL) {
+		DEG_add_generic_id_relation(ctx->node, &wmd->texture->id, "Warp Modifier");
 	}
 }
 
@@ -156,7 +154,6 @@ static void warpModifier_do(
         Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
 	Object *ob = ctx->object;
-	Depsgraph *depsgraph = ctx->depsgraph;
 	float obinv[4][4];
 	float mat_from[4][4];
 	float mat_from_inv[4][4];
@@ -192,8 +189,8 @@ static void warpModifier_do(
 
 	invert_m4_m4(obinv, ob->obmat);
 
-	mul_m4_m4m4(mat_from, obinv, wmd->object_from->obmat);
-	mul_m4_m4m4(mat_to, obinv, wmd->object_to->obmat);
+	mul_m4_m4m4(mat_from, obinv, DEG_get_evaluated_object(ctx->depsgraph, wmd->object_from)->obmat);
+	mul_m4_m4m4(mat_to, obinv, DEG_get_evaluated_object(ctx->depsgraph, wmd->object_to)->obmat);
 
 	invert_m4_m4(tmat, mat_from); // swap?
 	mul_m4_m4m4(mat_final, tmat, mat_to);
@@ -214,11 +211,12 @@ static void warpModifier_do(
 	}
 	weight = strength;
 
-	if (wmd->texture) {
+	Tex *tex_target = (Tex *)DEG_get_evaluated_id(ctx->depsgraph, &wmd->texture->id);
+	if (mesh != NULL && tex_target != NULL) {
 		tex_co = MEM_malloc_arrayN(numVerts, sizeof(*tex_co), "warpModifier_do tex_co");
-		MOD_get_texture_coords((MappingInfoModifierData *)wmd, ob, mesh, vertexCos, tex_co);
+		MOD_get_texture_coords((MappingInfoModifierData *)wmd, ctx, ob, mesh, vertexCos, tex_co);
 
-		MOD_init_texture(depsgraph, wmd->texture);
+		MOD_init_texture((MappingInfoModifierData *)wmd, ctx);
 	}
 
 	for (i = 0; i < numVerts; i++) {
@@ -275,7 +273,7 @@ static void warpModifier_do(
 				struct Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
 				TexResult texres;
 				texres.nor = NULL;
-				BKE_texture_get_value(scene, wmd->texture, tex_co[i], &texres, false);
+				BKE_texture_get_value(scene, tex_target, tex_co[i], &texres, false);
 				fac *= texres.tin;
 			}
 
@@ -314,32 +312,36 @@ static void deformVerts(
         ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh,
         float (*vertexCos)[3], int numVerts)
 {
-	Mesh *mesh_src = mesh;
+	WarpModifierData *wmd = (WarpModifierData *)md;
+	Mesh *mesh_src = NULL;
 
-	if (mesh_src == NULL) {
-		mesh_src = ctx->object->data;
+	if (wmd->defgrp_name[0] != '\0' || wmd->texture != NULL) {
+		/* mesh_src is only needed for vgroups and textures. */
+		mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, mesh, NULL, numVerts, false, false);
 	}
 
-	BLI_assert(mesh_src->totvert == numVerts);
+	warpModifier_do(wmd, ctx, mesh_src, vertexCos, numVerts);
 
-	warpModifier_do((WarpModifierData *)md, ctx, mesh_src, vertexCos, numVerts);
+	if (!ELEM(mesh_src, NULL, mesh)) {
+		BKE_id_free(NULL, mesh_src);
+	}
 }
 
 static void deformVertsEM(
         ModifierData *md, const ModifierEvalContext *ctx, struct BMEditMesh *em,
         Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
-	Mesh *mesh_src = mesh;
+	WarpModifierData *wmd = (WarpModifierData *)md;
+	Mesh *mesh_src = NULL;
 
-	if (mesh_src == NULL) {
-		mesh_src = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, 0);
+	if (wmd->defgrp_name[0] != '\0' || wmd->texture != NULL) {
+		/* mesh_src is only needed for vgroups and textures. */
+		mesh_src = MOD_deform_mesh_eval_get(ctx->object, em, mesh, NULL, numVerts, false, false);
 	}
 
-	BLI_assert(mesh_src->totvert == numVerts);
+	warpModifier_do(wmd, ctx, mesh_src, vertexCos, numVerts);
 
-	warpModifier_do((WarpModifierData *)md, ctx, mesh_src, vertexCos, numVerts);
-
-	if (!mesh) {
+	if (!ELEM(mesh_src, NULL, mesh)) {
 		BKE_id_free(NULL, mesh_src);
 	}
 }
@@ -377,4 +379,5 @@ ModifierTypeInfo modifierType_Warp = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     foreachIDLink,
 	/* foreachTexLink */    foreachTexLink,
+	/* freeRuntimeData */   NULL,
 };

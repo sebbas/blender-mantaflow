@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_file/file_draw.c
- *  \ingroup spfile
+/** \file
+ * \ingroup spfile
  */
 
 
@@ -35,7 +28,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_fileops_types.h"
 #include "BLI_math.h"
 
 #ifdef WIN32
@@ -45,7 +37,6 @@
 #include "BIF_glutil.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_main.h"
 
 #include "BLO_readfile.h"
@@ -291,8 +282,9 @@ static void file_draw_icon(uiBlock *block, const char *path, int sx, int sy, int
 }
 
 
-static void file_draw_string(int sx, int sy, const char *string, float width, int height, short align,
-                             const unsigned char col[4])
+static void file_draw_string(
+        int sx, int sy, const char *string, float width, int height, eFontStyle_Align align,
+        const uchar col[4])
 {
 	uiStyle *style;
 	uiFontStyle fs;
@@ -306,18 +298,19 @@ static void file_draw_string(int sx, int sy, const char *string, float width, in
 	style = UI_style_get();
 	fs = style->widgetlabel;
 
-	fs.align = align;
-
 	BLI_strncpy(fname, string, FILE_MAXFILE);
 	UI_text_clip_middle_ex(&fs, fname, width, UI_DPI_ICON_SIZE, sizeof(fname), '\0');
 
-	/* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict (for buttons it works) */
+	/* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict
+	 * (for buttons it works) */
 	rect.xmin = sx;
 	rect.xmax = (int)(sx + ceil(width + 5.0f / UI_DPI_FAC));
 	rect.ymin = sy - height;
 	rect.ymax = sy;
 
-	UI_fontstyle_draw(&fs, &rect, fname, col);
+	UI_fontstyle_draw(
+	        &fs, &rect, fname, col,
+	        &(struct uiFontStyleDraw_Params) { .align = align, });
 }
 
 void file_calc_previews(const bContext *C, ARegion *ar)
@@ -378,8 +371,6 @@ static void file_draw_preview(
 	xco = sx + (int)dx;
 	yco = sy - layout->prv_h + (int)dy;
 
-	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-
 	/* shadow */
 	if (use_dropshadow) {
 		UI_draw_box_shadow(220, (float)xco, (float)yco, (float)(xco + ex), (float)(yco + ey));
@@ -392,9 +383,16 @@ static void file_draw_preview(
 		UI_GetThemeColor4fv(TH_TEXT, col);
 	}
 
+	if (!is_icon && typeflags & FILE_TYPE_BLENDERLIB) {
+		/* Datablock preview images use premultiplied alpha. */
+		GPU_blend_set_func_separate(GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+	}
+
 	IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_COLOR);
 	immDrawPixelsTexScaled(&state, (float)xco, (float)yco, imb->x, imb->y, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST, imb->rect,
 	                       scale, scale, 1.0f, 1.0f, col);
+
+	GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
 	if (icon) {
 		UI_icon_draw_aspect((float)xco, (float)yco, icon, icon_aspect, 1.0f, NULL);
@@ -436,7 +434,7 @@ static void renamebutton_cb(bContext *C, void *UNUSED(arg1), char *oldname)
 
 	const char *blendfile_path = BKE_main_blendfile_path(bmain);
 	BLI_make_file_string(blendfile_path, orgname, sfile->params->dir, oldname);
-	BLI_strncpy(filename, sfile->params->renameedit, sizeof(filename));
+	BLI_strncpy(filename, sfile->params->renamefile, sizeof(filename));
 	BLI_filename_make_safe(filename);
 	BLI_make_file_string(blendfile_path, newname, sfile->params->dir, filename);
 
@@ -450,6 +448,17 @@ static void renamebutton_cb(bContext *C, void *UNUSED(arg1), char *oldname)
 				           "Could not rename: %s",
 				           errno ? strerror(errno) : "unknown error");
 				WM_report_banner_show();
+			}
+			else {
+				/* If rename is sucessfull, scroll to newly renamed entry. */
+				BLI_strncpy(sfile->params->renamefile, filename, sizeof(sfile->params->renamefile));
+				sfile->params->rename_flag = FILE_PARAMS_RENAME_POSTSCROLL_PENDING;
+
+				if (sfile->smoothscroll_timer != NULL) {
+					WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), sfile->smoothscroll_timer);
+				}
+				sfile->smoothscroll_timer = WM_event_add_timer(wm, CTX_wm_window(C), TIMER1, 1.0 / 1000.0);
+				sfile->scroll_offset = 0;
 			}
 
 			/* to make sure we show what is on disk */
@@ -550,7 +559,7 @@ void file_draw_list(const bContext *C, ARegion *ar)
 	int textwidth, textheight;
 	int i;
 	bool is_icon;
-	short align;
+	eFontStyle_Align align;
 	bool do_drag;
 	int column_space = 0.6f * UI_UNIT_X;
 	unsigned char text_col[4];
@@ -679,8 +688,8 @@ void file_draw_list(const bContext *C, ARegion *ar)
 			}
 
 			but = uiDefBut(block, UI_BTYPE_TEXT, 1, "", sx, sy - layout->tile_h - 0.15f * UI_UNIT_X,
-			               width, textheight, sfile->params->renameedit, 1.0f,
-			               (float)sizeof(sfile->params->renameedit), 0, 0, "");
+			               width, textheight, sfile->params->renamefile, 1.0f,
+			               (float)sizeof(sfile->params->renamefile), 0, 0, "");
 			UI_but_func_rename_set(but, renamebutton_cb, file);
 			UI_but_flag_enable(but, UI_BUT_NO_UTF8); /* allow non utf8 names */
 			UI_but_flag_disable(but, UI_BUT_UNDO);

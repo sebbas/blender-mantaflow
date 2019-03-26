@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) Blender Foundation, 2002-2009
  * All rights reserved.
- *
- * Contributor(s): Antony Riakiotakis
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * UV Sculpt tools
- *
  */
 
-/** \file blender/editors/sculpt_paint/sculpt_uv.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 
@@ -86,7 +78,8 @@ typedef struct UvAdjacencyElement {
 typedef struct UvEdge {
 	unsigned int uv1;
 	unsigned int uv2;
-	/* general use flag (Used to check if edge is boundary here, and propagates to adjacency elements) */
+	/* general use flag
+	 * (Used to check if edge is boundary here, and propagates to adjacency elements) */
 	char flag;
 } UvEdge;
 
@@ -236,16 +229,13 @@ void ED_space_image_uv_sculpt_update(Main *bmain, wmWindowManager *wm, Scene *sc
 {
 	ToolSettings *settings = scene->toolsettings;
 	if (settings->use_uv_sculpt) {
-		if (!settings->uvsculpt) {
-			settings->uvsculpt = MEM_callocN(sizeof(*settings->uvsculpt), "UV Smooth paint");
+		if (settings->uvsculpt == NULL) {
 			settings->uv_sculpt_tool = UV_SCULPT_TOOL_GRAB;
 			settings->uv_sculpt_settings = UV_SCULPT_LOCK_BORDERS | UV_SCULPT_ALL_ISLANDS;
 			settings->uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN;
-			/* Uv sculpting does not include explicit brush view control yet, always enable */
-			settings->uvsculpt->paint.flags |= PAINT_SHOW_BRUSH;
 		}
-
-		BKE_paint_init(bmain, scene, ePaintSculptUV, PAINT_CURSOR_SCULPT);
+		BKE_paint_ensure(settings, (Paint **)&settings->uvsculpt);
+		BKE_paint_init(bmain, scene, PAINT_MODE_SCULPT_UV, PAINT_CURSOR_SCULPT);
 
 		settings->uvsculpt->paint.paint_cursor = WM_paint_cursor_activate(
 		        wm,
@@ -748,7 +738,8 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
 					edges[counter].uv1 = offset2;
 					edges[counter].uv2 = offset1;
 				}
-				/* Hack! Set the value of the key to its flag. Now we can set the flag when an edge exists twice :) */
+				/* Hack! Set the value of the key to its flag.
+				 * Now we can set the flag when an edge exists twice :) */
 				flag = BLI_ghash_lookup(edgeHash, &edges[counter]);
 				if (flag) {
 					*flag = 1;
@@ -911,10 +902,10 @@ static int uv_sculpt_stroke_modal(bContext *C, wmOperator *op, const wmEvent *ev
 void SCULPT_OT_uv_sculpt_stroke(wmOperatorType *ot)
 {
 	static const EnumPropertyItem stroke_mode_items[] = {
-		{BRUSH_STROKE_NORMAL, "NORMAL", 0, "Normal", "Apply brush normally"},
+		{BRUSH_STROKE_NORMAL, "NORMAL", 0, "Regular", "Apply brush normally"},
 		{BRUSH_STROKE_INVERT, "INVERT", 0, "Invert", "Invert action of brush for duration of stroke"},
 		{BRUSH_STROKE_SMOOTH, "RELAX", 0, "Relax", "Switch brush to relax mode for duration of stroke"},
-		{0}
+		{0},
 	};
 
 	/* identifiers */

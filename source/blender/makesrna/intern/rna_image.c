@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,28 +12,24 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Brecht Van Lommel
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_image.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
 
 #include "DNA_image_types.h"
+#include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_math_base.h"
 
-#include "BKE_context.h"
 #include "BKE_image.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -50,7 +44,7 @@ const EnumPropertyItem rna_enum_image_generated_type_items[] = {
 	{IMA_GENTYPE_BLANK, "BLANK", 0, "Blank", "Generate a blank image"},
 	{IMA_GENTYPE_GRID, "UV_GRID", 0, "UV Grid", "Generated grid to test UV mappings"},
 	{IMA_GENTYPE_GRID_COLOR, "COLOR_GRID", 0, "Color Grid", "Generated improved UV grid to test UV mappings"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem image_source_items[] = {
@@ -59,10 +53,12 @@ static const EnumPropertyItem image_source_items[] = {
 	{IMA_SRC_MOVIE, "MOVIE", 0, "Movie", "Movie file"},
 	{IMA_SRC_GENERATED, "GENERATED", 0, "Generated", "Generated image"},
 	{IMA_SRC_VIEWER, "VIEWER", 0, "Viewer", "Compositing node viewer"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #ifdef RNA_RUNTIME
+
+#include "BLI_math_base.h"
 
 #include "BKE_global.h"
 
@@ -71,6 +67,8 @@ static const EnumPropertyItem image_source_items[] = {
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
+
+#include "ED_node.h"
 
 static bool rna_Image_is_stereo_3d_get(PointerRNA *ptr)
 {
@@ -93,9 +91,11 @@ static void rna_Image_source_set(PointerRNA *ptr, int value)
 
 	if (value != ima->source) {
 		ima->source = value;
-		BLI_assert(BKE_id_is_in_gobal_main(&ima->id));
+		BLI_assert(BKE_id_is_in_global_main(&ima->id));
 		BKE_image_signal(G_MAIN, ima, NULL, IMA_SIGNAL_SRC_CHANGE);
 		DEG_id_tag_update(&ima->id, 0);
+		DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+		DEG_relations_tag_update(G_MAIN);
 	}
 }
 
@@ -105,6 +105,7 @@ static void rna_Image_reload_update(Main *bmain, Scene *UNUSED(scene), PointerRN
 	BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_RELOAD);
 	WM_main_add_notifier(NC_IMAGE | NA_EDITED, &ima->id);
 	DEG_id_tag_update(&ima->id, 0);
+	DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
 }
 
 static void rna_Image_generated_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -118,6 +119,7 @@ static void rna_Image_colormanage_update(Main *bmain, Scene *UNUSED(scene), Poin
 	Image *ima = ptr->id.data;
 	BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_COLORMANAGE);
 	DEG_id_tag_update(&ima->id, 0);
+	DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
 	WM_main_add_notifier(NC_IMAGE | ND_DISPLAY, &ima->id);
 	WM_main_add_notifier(NC_IMAGE | NA_EDITED, &ima->id);
 }
@@ -139,18 +141,31 @@ static void rna_Image_views_format_update(Main *bmain, Scene *scene, PointerRNA 
 	BKE_image_release_ibuf(ima, ibuf, lock);
 }
 
-static void rna_ImageUser_update(Main *UNUSED(bmain), Scene *scene, PointerRNA *ptr)
+static void rna_ImageUser_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	ImageUser *iuser = ptr->data;
+	ID *id = ptr->id.data;
 
 	BKE_image_user_frame_calc(iuser, scene->r.cfra);
 
-	if (ptr->id.data) {
-		/* Update material or texture for render preview. */
-		DEG_id_tag_update(ptr->id.data, 0);
+	if (id) {
+		if (GS(id->name) == ID_NT) {
+			/* Special update for nodetrees to find parent datablock. */
+			ED_node_tag_update_nodetree(bmain, (bNodeTree *)id, NULL);
+		}
+		else {
+			/* Update material or texture for render preview. */
+			DEG_id_tag_update(id, 0);
+			DEG_id_tag_update(id, ID_RECALC_EDITORS);
+		}
 	}
 }
 
+static void rna_ImageUser_relations_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+	rna_ImageUser_update(bmain, scene, ptr);
+	DEG_relations_tag_update(bmain);
+}
 
 static char *rna_ImageUser_path(PointerRNA *ptr)
 {
@@ -175,8 +190,9 @@ static char *rna_ImageUser_path(PointerRNA *ptr)
 	return BLI_strdup("");
 }
 
-static const EnumPropertyItem *rna_Image_source_itemf(bContext *UNUSED(C), PointerRNA *ptr,
-                                                PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Image_source_itemf(
+        bContext *UNUSED(C), PointerRNA *ptr,
+        PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	Image *ima = (Image *)ptr->data;
 	EnumPropertyItem *item = NULL;
@@ -506,7 +522,7 @@ static void rna_def_imageuser(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "use_auto_refresh", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", IMA_ANIM_ALWAYS);
 	RNA_def_property_ui_text(prop, "Auto Refresh", "Always refresh image on frame changes");
-	RNA_def_property_update(prop, 0, "rna_ImageUser_update");
+	RNA_def_property_update(prop, 0, "rna_ImageUser_relations_update");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
 	prop = RNA_def_property(srna, "frame_current", PROP_INT, PROP_TIME);
@@ -642,12 +658,12 @@ static void rna_def_image(BlenderRNA *brna)
 		{IMA_TYPE_UV_TEST, "UV_TEST", 0, "UV Test", ""},
 		{IMA_TYPE_R_RESULT, "RENDER_RESULT", 0, "Render Result", ""},
 		{IMA_TYPE_COMPOSITE, "COMPOSITING", 0, "Compositing", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 	static const EnumPropertyItem alpha_mode_items[] = {
 		{IMA_ALPHA_STRAIGHT, "STRAIGHT", 0, "Straight", "Transparent RGB and alpha pixels are unmodified"},
 		{IMA_ALPHA_PREMUL, "PREMUL", 0, "Premultiplied", "Transparent RGB pixels are multiplied by the alpha channel"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "Image", "ID");

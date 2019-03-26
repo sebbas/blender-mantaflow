@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2012 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mask/mask_shapekey.c
- *  \ingroup edmask
+/** \file
+ * \ingroup edmask
  */
 
 #include <stdlib.h>
@@ -89,7 +81,6 @@ void MASK_OT_shape_key_insert(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Insert Shape Key";
-	ot->description = "";
 	ot->idname = "MASK_OT_shape_key_insert";
 
 	/* api callbacks */
@@ -125,7 +116,7 @@ static int mask_shape_key_clear_exec(bContext *C, wmOperator *UNUSED(op))
 
 	if (changed) {
 		WM_event_add_notifier(C, NC_MASK | ND_DATA, mask);
-		DEG_id_tag_update(&mask->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&mask->id, ID_RECALC_GEOMETRY);
 
 		return OPERATOR_FINISHED;
 	}
@@ -138,7 +129,6 @@ void MASK_OT_shape_key_clear(wmOperatorType *ot)
 {
 	/* identifiers */
 	ot->name = "Clear Shape Key";
-	ot->description = "";
 	ot->idname = "MASK_OT_shape_key_clear";
 
 	/* api callbacks */

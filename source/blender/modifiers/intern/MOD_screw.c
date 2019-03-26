@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,38 +15,30 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_screw.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 /* Screw modifier: revolves the edges about an axis */
 #include <limits.h>
 
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
+#include "BLI_alloca.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
-#include "BLI_alloca.h"
-#include "BLI_utildefines.h"
-
-#include "BKE_library.h"
 #include "BKE_library_query.h"
 #include "BKE_mesh.h"
 
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #include "MOD_modifiertypes.h"
 #include "MEM_guardedalloc.h"
@@ -230,7 +220,8 @@ static Mesh *applyModifier(
 	float axis_vec[3] = {0.0f, 0.0f, 0.0f};
 	float tmp_vec1[3], tmp_vec2[3];
 	float mat3[3][3];
-	float mtx_tx[4][4]; /* transform the coords by an object relative to this objects transformation */
+	/* transform the coords by an object relative to this objects transformation */
+	float mtx_tx[4][4];
 	float mtx_tx_inv[4][4]; /* inverted */
 	float mtx_tmp_a[4][4];
 
@@ -244,6 +235,8 @@ static Mesh *applyModifier(
 	MLoop *mloop_orig, *mloop_new, *ml_new;
 	MEdge *medge_orig, *med_orig, *med_new, *med_new_firstloop, *medge_new;
 	MVert *mvert_new, *mvert_orig, *mv_orig, *mv_new, *mv_new_base;
+
+	Object *ob_axis = DEG_get_evaluated_object(ctx->depsgraph, ltmd->ob_axis);
 
 	ScrewVertConnect *vc, *vc_tmp, *vert_connect = NULL;
 
@@ -270,10 +263,10 @@ static Mesh *applyModifier(
 
 	axis_vec[ltmd->axis] = 1.0f;
 
-	if (ltmd->ob_axis) {
+	if (ob_axis != NULL) {
 		/* calc the matrix relative to the axis object */
 		invert_m4_m4(mtx_tmp_a, ctx->object->obmat);
-		copy_m4_m4(mtx_tx_inv, ltmd->ob_axis->obmat);
+		copy_m4_m4(mtx_tx_inv, ob_axis->obmat);
 		mul_m4_m4m4(mtx_tx, mtx_tmp_a, mtx_tx_inv);
 
 		/* calc the axis vec */
@@ -508,7 +501,7 @@ static Mesh *applyModifier(
 			med_new = medge_new;
 			mv_new = mvert_new;
 
-			if (ltmd->ob_axis) {
+			if (ob_axis != NULL) {
 				/*mtx_tx is initialized early on */
 				for (i = 0; i < totvert; i++, mv_new++, mv_orig++, vc++) {
 					vc->co[0] = mv_new->co[0] = mv_orig->co[0];
@@ -839,7 +832,7 @@ static Mesh *applyModifier(
 		/* Rotation Matrix */
 		step_angle = (angle / (float)(step_tot - (!close))) * (float)step;
 
-		if (ltmd->ob_axis) {
+		if (ob_axis != NULL) {
 			axis_angle_normalized_to_mat3(mat3, axis_vec, step_angle);
 		}
 		else {
@@ -871,7 +864,7 @@ static Mesh *applyModifier(
 			/* only need to set these if using non cleared memory */
 			/*mv_new->mat_nr = mv_new->flag = 0;*/
 
-			if (ltmd->ob_axis) {
+			if (ob_axis != NULL) {
 				sub_v3_v3(mv_new->co, mtx_tx[3]);
 
 				mul_m4_v3(mat, mv_new->co);
@@ -1098,7 +1091,7 @@ static Mesh *applyModifier(
 		Mesh *result_prev = result;
 		result = mesh_remove_doubles_on_axis(
 		        result, mvert_new, totvert, step_tot,
-		        axis_vec, ltmd->ob_axis ? mtx_tx[3] : NULL, ltmd->merge_dist);
+		        axis_vec, ob_axis != NULL ? mtx_tx[3] : NULL, ltmd->merge_dist);
 		if (result != result_prev) {
 			result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 		}
@@ -1116,6 +1109,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 	ScrewModifierData *ltmd = (ScrewModifierData *)md;
 	if (ltmd->ob_axis != NULL) {
 		DEG_add_object_relation(ctx->node, ltmd->ob_axis, DEG_OB_COMP_TRANSFORM, "Screw Modifier");
+		DEG_add_modifier_to_transform_relation(ctx->node, "Screw Modifier");
 	}
 }
 
@@ -1163,4 +1157,5 @@ ModifierTypeInfo modifierType_Screw = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

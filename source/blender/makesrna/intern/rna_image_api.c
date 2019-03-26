@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Arystanbek Dyussenov
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_image_api.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -132,7 +125,7 @@ static void rna_Image_save(Image *image, Main *bmain, bContext *C, ReportList *r
 			if (image->source == IMA_SRC_GENERATED)
 				image->source = IMA_SRC_FILE;
 
-			IMB_colormanagment_colorspace_from_ibuf_ftype(&image->colorspace_settings, ibuf);
+			IMB_colormanagement_colorspace_from_ibuf_ftype(&image->colorspace_settings, ibuf);
 
 			ibuf->userflags &= ~IB_BITMAPDIRTY;
 		}
@@ -194,6 +187,7 @@ static void rna_Image_unpack(Image *image, Main *bmain, ReportList *reports, int
 static void rna_Image_reload(Image *image, Main *bmain)
 {
 	BKE_image_signal(bmain, image, NULL, IMA_SIGNAL_RELOAD);
+	WM_main_add_notifier(NC_IMAGE | NA_EDITED, image);
 }
 
 static void rna_Image_update(Image *image, ReportList *reports)

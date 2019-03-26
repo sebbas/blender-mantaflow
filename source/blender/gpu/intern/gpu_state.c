@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,21 +12,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Ray Molenkamp
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpu/intern/gpu_state.c
- *  \ingroup gpu
- *
+/** \file
+ * \ingroup gpu
  */
+
+#include "DNA_userdef_types.h"
+
+#include "BKE_global.h"
 
 #include "GPU_glew.h"
 #include "GPU_state.h"
+#include "GPU_extensions.h"
 
-static GLenum gpu_get_gl_blendfunction(GPUBlendFunction blend)
+static GLenum gpu_get_gl_blendfunction(eGPUBlendFunction blend)
 {
 	switch (blend) {
 		case GPU_ONE:
@@ -57,20 +55,26 @@ void GPU_blend(bool enable)
 	}
 }
 
-void GPU_blend_set_func(GPUBlendFunction sfactor, GPUBlendFunction dfactor)
+void GPU_blend_set_func(eGPUBlendFunction sfactor, eGPUBlendFunction dfactor)
 {
 	glBlendFunc(gpu_get_gl_blendfunction(sfactor), gpu_get_gl_blendfunction(dfactor));
 }
 
 void GPU_blend_set_func_separate(
-	GPUBlendFunction src_rgb, GPUBlendFunction dst_rgb,
-	GPUBlendFunction src_alpha, GPUBlendFunction dst_alpha)
+	eGPUBlendFunction src_rgb, eGPUBlendFunction dst_rgb,
+	eGPUBlendFunction src_alpha, eGPUBlendFunction dst_alpha)
 {
 	glBlendFuncSeparate(
 	        gpu_get_gl_blendfunction(src_rgb),
 	        gpu_get_gl_blendfunction(dst_rgb),
 	        gpu_get_gl_blendfunction(src_alpha),
 	        gpu_get_gl_blendfunction(dst_alpha));
+}
+
+void GPU_depth_range(float near, float far)
+{
+	/* glDepthRangef is only for OpenGL 4.1 or higher */
+	glDepthRange(near, far);
 }
 
 void GPU_depth_test(bool enable)
@@ -90,7 +94,7 @@ bool GPU_depth_test_enabled()
 
 void GPU_line_smooth(bool enable)
 {
-	if (enable) {
+	if (enable && ((G.debug & G_DEBUG_GPU) == 0)) {
 		glEnable(GL_LINE_SMOOTH);
 	}
 	else {
@@ -98,29 +102,23 @@ void GPU_line_smooth(bool enable)
 	}
 }
 
-void GPU_line_stipple(bool enable)
-{
-	if (enable) {
-		glEnable(GL_LINE_STIPPLE);
-	}
-	else {
-		glDisable(GL_LINE_STIPPLE);
-	}
-}
-
 void GPU_line_width(float width)
 {
-	glLineWidth(width);
+	float max_size = GPU_max_line_width();
+	float final_size = width * U.pixelsize;
+	/* Fix opengl errors on certain platform / drivers. */
+	CLAMP(final_size, 1.0f, max_size);
+	glLineWidth(final_size);
 }
 
 void GPU_point_size(float size)
 {
-	glPointSize(size);
+	glPointSize(size * U.pixelsize);
 }
 
 void GPU_polygon_smooth(bool enable)
 {
-	if (enable) {
+	if (enable && ((G.debug & G_DEBUG_GPU) == 0)) {
 		glEnable(GL_POLYGON_SMOOTH);
 	}
 	else {
@@ -151,4 +149,14 @@ void GPU_viewport_size_get_f(float coords[4])
 void GPU_viewport_size_get_i(int coords[4])
 {
 	glGetIntegerv(GL_VIEWPORT, coords);
+}
+
+void GPU_flush(void)
+{
+	glFlush();
+}
+
+void GPU_finish(void)
+{
+	glFinish();
 }
