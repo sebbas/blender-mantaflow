@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ED_object.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_OBJECT_H__
@@ -35,40 +28,51 @@
 extern "C" {
 #endif
 
-struct bFaceMap;
 struct Base;
+struct Depsgraph;
+struct EnumPropertyItem;
 struct EnumPropertyItem;
 struct ID;
 struct Main;
 struct Menu;
 struct ModifierData;
-struct ShaderFxData;
 struct Object;
+struct PointerRNA;
+struct PropertyRNA;
 struct ReportList;
 struct Scene;
+struct ShaderFxData;
+struct View3D;
 struct ViewLayer;
 struct bConstraint;
 struct bContext;
+struct bFaceMap;
 struct bPoseChannel;
+struct uiLayout;
 struct wmKeyConfig;
 struct wmKeyMap;
 struct wmOperator;
 struct wmOperatorType;
 struct wmWindow;
 struct wmWindowManager;
-struct PointerRNA;
-struct PropertyRNA;
-struct EnumPropertyItem;
-struct Depsgraph;
-struct uiLayout;
 
 #include "DNA_object_enums.h"
 #include "BLI_compiler_attrs.h"
 
 /* object_edit.c */
-struct Object *ED_object_context(struct bContext *C);               /* context.object */
-struct Object *ED_object_active_context(struct bContext *C); /* context.object or context.active_object */
-void ED_hide_collections_menu_draw(const struct bContext *C, struct uiLayout *layout);
+/* context.object */
+struct Object *ED_object_context(struct bContext *C);
+/* context.object or context.active_object */
+struct Object *ED_object_active_context(struct bContext *C);
+void ED_collection_hide_menu_draw(const struct bContext *C, struct uiLayout *layout);
+
+/* object_utils.c */
+bool ED_object_calc_active_center_for_editmode(
+        struct Object *obedit, const bool select_only, float r_center[3]);
+bool ED_object_calc_active_center_for_posemode(
+        struct Object *ob, const bool select_only, float r_center[3]);
+bool ED_object_calc_active_center(
+        struct Object *ob, const bool select_only, float r_center[3]);
 
 /* object_ops.c */
 void ED_operatortypes_object(void);
@@ -108,16 +112,11 @@ bool ED_object_parent_set(struct ReportList *reports, const struct bContext *C, 
                           const int vert_par[3]);
 void ED_object_parent_clear(struct Object *ob, const int type);
 
-void ED_keymap_proportional_cycle(struct wmKeyConfig *keyconf, struct wmKeyMap *keymap);
-void ED_keymap_proportional_obmode(struct wmKeyConfig *keyconf, struct wmKeyMap *keymap);
-void ED_keymap_proportional_maskmode(struct wmKeyConfig *keyconf, struct wmKeyMap *keymap);
-void ED_keymap_proportional_editmode(struct wmKeyConfig *keyconf, struct wmKeyMap *keymap,
-                                     const bool do_connected);
-void ED_keymap_editmesh_elem_mode(struct wmKeyConfig *keyconf, struct wmKeyMap *keymap);
-
 void ED_object_base_select(struct Base *base, eObjectSelect_Mode mode);
 void ED_object_base_activate(struct bContext *C, struct Base *base);
 void ED_object_base_free_and_unlink(struct Main *bmain, struct Scene *scene, struct Object *ob);
+bool ED_object_base_deselect_all_ex(struct ViewLayer *view_layer, struct View3D *v3d, int action, bool *r_any_visible);
+bool ED_object_base_deselect_all(struct ViewLayer *view_layer, struct View3D *v3d, int action);
 
 /* single object duplicate, if (dupflag == 0), fully linked, else it uses the flags given */
 struct Base *ED_object_add_duplicate(struct Main *bmain, struct Scene *scene, struct ViewLayer *view_layer, struct Base *base, int dupflag);
@@ -127,9 +126,7 @@ void ED_object_parent(struct Object *ob, struct Object *parent, const int type, 
 /* bitflags for enter/exit editmode */
 enum {
 	EM_FREEDATA         = (1 << 0),
-	EM_WAITCURSOR       = (1 << 1),
-	EM_IGNORE_LAYER     = (1 << 3),
-	EM_NO_CONTEXT       = (1 << 4),
+	EM_NO_CONTEXT       = (1 << 1),
 };
 bool ED_object_editmode_exit_ex(
         struct Main *bmain, struct Scene *scene, struct Object *obedit, int flag);
@@ -138,9 +135,6 @@ bool ED_object_editmode_exit(struct bContext *C, int flag);
 bool ED_object_editmode_enter_ex(struct Main *bmain, struct Scene *scene, struct Object *ob, int flag);
 bool ED_object_editmode_enter(struct bContext *C, int flag);
 bool ED_object_editmode_load(struct Main *bmain, struct Object *obedit);
-
-bool ED_object_editmode_calc_active_center(struct Object *obedit, const bool select_only, float r_center[3]);
-
 
 void ED_object_vpaintmode_enter_ex(
         struct Main *bmain, struct Depsgraph *depsgraph, struct wmWindowManager *wm,
@@ -158,7 +152,7 @@ void ED_object_wpaintmode_exit(struct bContext *C);
 
 void ED_object_sculptmode_enter_ex(
         struct Main *bmain, struct Depsgraph *depsgraph,
-        struct Scene *scene, struct Object *ob,
+        struct Scene *scene, struct Object *ob, const bool force_dyntopo,
         struct ReportList *reports);
 void ED_object_sculptmode_enter(struct bContext *C, struct ReportList *reports);
 void ED_object_sculptmode_exit_ex(
@@ -175,20 +169,23 @@ float ED_object_new_primitive_matrix(
         const float loc[3], const float rot[3], float primmat[4][4]);
 
 
-/* Avoid allowing too much insane values even by typing (typos can hang/crash Blender otherwise). */
+/* Avoid allowing too much insane values even by typing
+ * (typos can hang/crash Blender otherwise). */
 #define OBJECT_ADD_SIZE_MAXF 1.0e12f
 
-void ED_object_add_unit_props(struct wmOperatorType *ot);
+void ED_object_add_unit_props_size(struct wmOperatorType *ot);
+void ED_object_add_unit_props_radius(struct wmOperatorType *ot);
 void ED_object_add_generic_props(struct wmOperatorType *ot, bool do_editmode);
 void ED_object_add_mesh_props(struct wmOperatorType *ot);
-bool ED_object_add_generic_get_opts(struct bContext *C, struct wmOperator *op, const char view_align_axis,
-                                    float loc[3], float rot[3],
-                                    bool *enter_editmode, bool *is_view_aligned);
+bool ED_object_add_generic_get_opts(
+        struct bContext *C, struct wmOperator *op, const char view_align_axis,
+        float loc[3], float rot[3],
+        bool *enter_editmode, unsigned short *local_view_bits, bool *is_view_aligned);
 
 struct Object *ED_object_add_type(
         struct bContext *C,
         int type, const char *name, const float loc[3], const float rot[3],
-        bool enter_editmode)
+        bool enter_editmode, unsigned short local_view_bits)
         ATTR_NONNULL(1) ATTR_RETURNS_NONNULL;
 
 void ED_object_single_users(struct Main *bmain, struct Scene *scene, const bool full, const bool copy_groups);
@@ -217,6 +214,7 @@ bool ED_object_mode_compat_test(const struct Object *ob, eObjectMode mode);
 bool ED_object_mode_compat_set(struct bContext *C, struct Object *ob, eObjectMode mode, struct ReportList *reports);
 void ED_object_mode_toggle(struct bContext *C, eObjectMode mode);
 void ED_object_mode_set(struct bContext *C, eObjectMode mode);
+void ED_object_mode_exit(struct bContext *C);
 
 bool ED_object_mode_generic_enter(
         struct bContext *C,
@@ -229,14 +227,10 @@ bool ED_object_mode_generic_has_data(
         struct Depsgraph *depsgraph,
         struct Object *ob);
 
-bool ED_object_mode_generic_exists(
-        struct wmWindowManager *wm, struct Object *ob,
-        eObjectMode object_mode);
-
 /* object_modifier.c */
 enum {
 	MODIFIER_APPLY_DATA = 1,
-	MODIFIER_APPLY_SHAPE
+	MODIFIER_APPLY_SHAPE,
 };
 
 struct ModifierData *ED_object_modifier_add(
@@ -248,7 +242,7 @@ void ED_object_modifier_clear(struct Main *bmain, struct Object *ob);
 int ED_object_modifier_move_down(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_move_up(struct ReportList *reports, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_convert(
-        struct ReportList *reports, struct Main *bmain, struct Scene *scene,
+        struct ReportList *reports, struct Main *bmain, struct Depsgraph *depsgraph, struct Scene *scene,
         struct ViewLayer *view_layer, struct Object *ob, struct ModifierData *md);
 int ED_object_modifier_apply(
         struct Main *bmain, struct ReportList *reports, struct Depsgraph *depsgraph, struct Scene *scene,
@@ -308,6 +302,15 @@ const struct EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(
 
 void ED_object_check_force_modifiers(
         struct Main *bmain, struct Scene *scene, struct Object *object);
+
+struct Base *ED_object_find_first_by_data_id(struct ViewLayer *view_layer, struct ID *id);
+
+bool ED_object_jump_to_object(
+        struct bContext *C, struct Object *ob,
+        const bool reveal_hidden);
+bool ED_object_jump_to_bone(
+        struct bContext *C, struct Object *ob, const char *bone_name,
+        const bool reveal_hidden);
 
 /* object_facemap_ops.c */
 void ED_object_facemap_face_add(struct Object *ob, struct bFaceMap *fmap, int facenum);

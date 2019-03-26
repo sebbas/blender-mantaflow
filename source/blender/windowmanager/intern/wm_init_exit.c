@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm_init_exit.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Manage initializing resources and correctly shutting down.
  */
@@ -54,6 +47,7 @@
 #include "BLI_string.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "BLI_timer.h"
 
 #include "BLO_writefile.h"
 #include "BLO_undofile.h"
@@ -61,16 +55,16 @@
 #include "BKE_blender.h"
 #include "BKE_blender_undo.h"
 #include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_font.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_library.h"
 #include "BKE_library_remap.h"
 #include "BKE_main.h"
 #include "BKE_mball_tessellate.h"
 #include "BKE_node.h"
 #include "BKE_report.h"
-#include "BKE_font.h"
+#include "BKE_screen.h"
+#include "BKE_keyconfig.h"
 
 #include "BKE_addon.h"
 #include "BKE_appdir.h"
@@ -158,7 +152,12 @@ static void wm_free_reports(bContext *C)
 	BKE_reports_clear(reports);
 }
 
-bool wm_start_with_console = false; /* used in creator.c */
+static bool wm_start_with_console = false;
+
+void WM_init_state_start_with_console_set(bool value)
+{
+	wm_start_with_console = value;
+}
 
 /**
  * Since we cannot know in advance if we will require the draw manager
@@ -166,7 +165,7 @@ bool wm_start_with_console = false; /* used in creator.c */
  * scripts) we deferre the ghost initialization the most as possible
  * so that it does not break anything that can run in headless mode (as in
  * without display server attached).
- **/
+ */
 static bool opengl_is_init = false;
 
 void WM_init_opengl(Main *bmain)
@@ -186,7 +185,6 @@ void WM_init_opengl(Main *bmain)
 	GPU_set_mipmap(bmain, true);
 	GPU_set_linear_mipmap(true);
 	GPU_set_anisotropic(bmain, U.anisotropic_filter);
-	GPU_set_gpu_mipmapping(bmain, U.use_gpu_mipmap);
 
 	GPU_pass_cache_init();
 
@@ -208,6 +206,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 	GHOST_CreateSystemPaths();
 
 	BKE_addon_pref_type_init();
+	BKE_keyconfig_pref_type_init();
 
 	wm_operatortype_init();
 	wm_operatortypes_register();
@@ -225,7 +224,6 @@ void WM_init(bContext *C, int argc, const char **argv)
 	BKE_region_callback_free_gizmomap_set(wm_gizmomap_remove); /* screen.c */
 	BKE_region_callback_refresh_tag_gizmomap_set(WM_gizmomap_tag_refresh);
 	BKE_library_callback_remap_editor_id_reference_set(WM_main_remap_editor_id_reference);   /* library.c */
-	BKE_blender_callback_test_break_set(wm_window_testbreak); /* blender.c */
 	BKE_spacedata_callback_id_remap_set(ED_spacedata_id_remap); /* screen.c */
 	DEG_editors_set_update_cb(ED_render_id_flush_update,
 	                          ED_render_scene_update);
@@ -253,7 +251,10 @@ void WM_init(bContext *C, int argc, const char **argv)
 	WM_msgbus_types_init();
 
 	/* get the default database, plus a wm */
-	wm_homefile_read(C, NULL, G.factory_startup, false, true, NULL, WM_init_state_app_template_get());
+	bool is_factory_startup = true;
+	wm_homefile_read(
+	        C, NULL, G.factory_startup, false, true, NULL, WM_init_state_app_template_get(),
+	        &is_factory_startup);
 
 	/* Call again to set from userpreferences... */
 	BLT_lang_set(NULL);
@@ -267,8 +268,9 @@ void WM_init(bContext *C, int argc, const char **argv)
 		WM_init_opengl(G_MAIN);
 
 		UI_init();
-		BKE_studiolight_init();
 	}
+
+	BKE_studiolight_init();
 
 	ED_spacemacros_init();
 
@@ -315,12 +317,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 	}
 #endif
 
-	/* load last session, uses regular file reading so it has to be in end (after init py etc) */
-	if (U.uiflag2 & USER_KEEP_SESSION) {
-		/* calling WM_recover_last_session(C, NULL) has been moved to creator.c */
-		/* that prevents loading both the kept session, and the file on the command line */
-	}
-	else {
+	{
 		Main *bmain = CTX_data_main(C);
 		/* note, logic here is from wm_file_read_post,
 		 * call functions that depend on Python being initialized. */
@@ -334,6 +331,9 @@ void WM_init(bContext *C, int argc, const char **argv)
 
 		BLI_callback_exec(bmain, NULL, BLI_CB_EVT_VERSION_UPDATE);
 		BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_POST);
+		if (is_factory_startup) {
+			BLI_callback_exec(bmain, NULL, BLI_CB_EVT_LOAD_FACTORY_STARTUP_POST);
+		}
 
 		wm_file_read_report(C, bmain);
 
@@ -430,17 +430,18 @@ void WM_exit_ext(bContext *C, const bool do_python)
 
 		if (!G.background) {
 			struct MemFile *undo_memfile = wm->undo_stack ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : NULL;
-			if ((U.uiflag2 & USER_KEEP_SESSION) || (undo_memfile != NULL)) {
+			if (undo_memfile != NULL) {
 				/* save the undo state as quit.blend */
+				Main *bmain = CTX_data_main(C);
 				char filename[FILE_MAX];
 				bool has_edited;
 				int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_HISTORY);
 
 				BLI_make_file_string("/", filename, BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
-				has_edited = ED_editors_flush_edits(C, false);
+				has_edited = ED_editors_flush_edits(bmain, false);
 
-				if ((has_edited && BLO_write_file(CTX_data_main(C), filename, fileflags, NULL, NULL)) ||
+				if ((has_edited && BLO_write_file(bmain, filename, fileflags, NULL, NULL)) ||
 				    (undo_memfile && BLO_memfile_write_file(undo_memfile, filename)))
 				{
 					printf("Saved session recovery to '%s'\n", filename);
@@ -459,16 +460,23 @@ void WM_exit_ext(bContext *C, const bool do_python)
 		}
 	}
 
+	BLI_timer_free();
+
 	WM_paneltype_clear();
+
 	BKE_addon_pref_type_free();
+	BKE_keyconfig_pref_type_free();
+
 	wm_operatortype_free();
 	wm_dropbox_free();
 	WM_menutype_free();
 	WM_uilisttype_free();
 
 	/* all non-screen and non-space stuff editors did, like editmode */
-	if (C)
-		ED_editors_exit(C);
+	if (C) {
+		Main *bmain = CTX_data_main(C);
+		ED_editors_exit(bmain, true);
+	}
 
 	ED_undosys_type_free();
 
@@ -489,6 +497,7 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	BKE_tracking_clipboard_free();
 	BKE_mask_clipboard_free();
 	BKE_vfont_clipboard_free();
+	BKE_node_clipboard_free();
 
 #ifdef WITH_COMPOSITOR
 	COM_deinitialize();
@@ -510,7 +519,6 @@ void WM_exit_ext(bContext *C, const bool do_python)
 	ANIM_fmodifiers_copybuf_free();
 	ED_gpencil_anim_copybuf_free();
 	ED_gpencil_strokes_copybuf_free();
-	BKE_node_clipboard_clear();
 
 	/* free gizmo-maps after freeing blender, so no deleted data get accessed during cleaning up of areas */
 	wm_gizmomaptypes_free();

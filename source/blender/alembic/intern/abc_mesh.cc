@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,10 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Esteban Tovagliari, Cedric Paille, Kevin Dietrich
- *
- * ***** END GPL LICENSE BLOCK *****
+ */
+
+/** \file
+ * \ingroup balembic
  */
 
 #include "abc_mesh.h"
@@ -38,6 +36,9 @@ extern "C" {
 #include "BLI_math_geom.h"
 #include "BLI_string.h"
 
+#include "BKE_animsys.h"
+#include "BKE_key.h"
+#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.h"
@@ -288,10 +289,10 @@ static ModifierData *get_liquid_sim_modifier(Scene *scene, Object *ob)
 
 /* ************************************************************************** */
 
-AbcMeshWriter::AbcMeshWriter(Object *ob,
-                             AbcTransformWriter *parent,
-                             uint32_t time_sampling,
-                             ExportSettings &settings)
+AbcGenericMeshWriter::AbcGenericMeshWriter(Object *ob,
+                                           AbcTransformWriter *parent,
+                                           uint32_t time_sampling,
+                                           ExportSettings &settings)
     : AbcObjectWriter(ob, time_sampling, settings, parent)
 {
 	m_is_animated = isAnimated();
@@ -328,26 +329,32 @@ AbcMeshWriter::AbcMeshWriter(Object *ob,
 	}
 }
 
-AbcMeshWriter::~AbcMeshWriter()
+AbcGenericMeshWriter::~AbcGenericMeshWriter()
 {
 	if (m_subsurf_mod) {
 		m_subsurf_mod->mode &= ~eModifierMode_DisableTemporary;
 	}
 }
 
-bool AbcMeshWriter::isAnimated() const
+bool AbcGenericMeshWriter::isAnimated() const
 {
-	/* Check if object has shape keys. */
-	Mesh *me = static_cast<Mesh *>(m_object->data);
-
-	if (me->key) {
+	if (m_object->data != NULL) {
+		AnimData *adt = BKE_animdata_from_id(static_cast<ID*>(m_object->data));
+		/* TODO(Sybren): make this check more strict, as the AnimationData may
+		 * actually be empty (no fcurves, drivers, etc.) and thus effectively
+		 * have no animation at all. */
+		if (adt != NULL) {
+			return true;
+		}
+	}
+	if (BKE_key_from_object(m_object) != NULL) {
 		return true;
 	}
 
 	/* Test modifiers. */
 	ModifierData *md = static_cast<ModifierData *>(m_object->modifiers.first);
-
 	while (md) {
+
 		if (md->type != eModifierType_Subsurf) {
 			return true;
 		}
@@ -355,15 +362,15 @@ bool AbcMeshWriter::isAnimated() const
 		md = md->next;
 	}
 
-	return me->adt != NULL;
+	return false;
 }
 
-void AbcMeshWriter::setIsAnimated(bool is_animated)
+void AbcGenericMeshWriter::setIsAnimated(bool is_animated)
 {
 	m_is_animated = is_animated;
 }
 
-void AbcMeshWriter::do_write()
+void AbcGenericMeshWriter::do_write()
 {
 	/* We have already stored a sample for this object. */
 	if (!m_first_frame && !m_is_animated)
@@ -388,7 +395,7 @@ void AbcMeshWriter::do_write()
 	}
 }
 
-void AbcMeshWriter::writeMesh(struct Mesh *mesh)
+void AbcGenericMeshWriter::writeMesh(struct Mesh *mesh)
 {
 	std::vector<Imath::V3f> points, normals;
 	std::vector<int32_t> poly_verts, loop_counts;
@@ -454,7 +461,7 @@ void AbcMeshWriter::writeMesh(struct Mesh *mesh)
 	writeArbGeoParams(mesh);
 }
 
-void AbcMeshWriter::writeSubD(struct Mesh *mesh)
+void AbcGenericMeshWriter::writeSubD(struct Mesh *mesh)
 {
 	std::vector<float> crease_sharpness;
 	std::vector<Imath::V3f> points;
@@ -505,12 +512,12 @@ void AbcMeshWriter::writeSubD(struct Mesh *mesh)
 }
 
 template <typename Schema>
-void AbcMeshWriter::writeFaceSets(struct Mesh *me, Schema &schema)
+void AbcGenericMeshWriter::writeFaceSets(struct Mesh *me, Schema &schema)
 {
-	std::map< std::string, std::vector<int32_t> > geo_groups;
+	std::map< std::string, std::vector<int32_t>> geo_groups;
 	getGeoGroups(me, geo_groups);
 
-	std::map< std::string, std::vector<int32_t>  >::iterator it;
+	std::map< std::string, std::vector<int32_t>>::iterator it;
 	for (it = geo_groups.begin(); it != geo_groups.end(); ++it) {
 		OFaceSet face_set = schema.createFaceSet(it->first);
 		OFaceSetSchema::Sample samp;
@@ -519,17 +526,18 @@ void AbcMeshWriter::writeFaceSets(struct Mesh *me, Schema &schema)
 	}
 }
 
-Mesh *AbcMeshWriter::getFinalMesh(bool &r_needsfree)
+Mesh *AbcGenericMeshWriter::getFinalMesh(bool &r_needsfree)
 {
 	/* We don't want subdivided mesh data */
 	if (m_subsurf_mod) {
 		m_subsurf_mod->mode |= eModifierMode_DisableTemporary;
 	}
 
+	r_needsfree = false;
+
 	Scene *scene = DEG_get_evaluated_scene(m_settings.depsgraph);
 	Object *ob_eval = DEG_get_evaluated_object(m_settings.depsgraph, m_object);
-	struct Mesh *mesh = mesh_get_eval_final(m_settings.depsgraph, scene, ob_eval, CD_MASK_MESH);
-	r_needsfree = false;
+	struct Mesh *mesh = getEvaluatedMesh(scene, ob_eval, r_needsfree);
 
 	if (m_subsurf_mod) {
 		m_subsurf_mod->mode &= ~eModifierMode_DisableTemporary;
@@ -544,10 +552,14 @@ Mesh *AbcMeshWriter::getFinalMesh(bool &r_needsfree)
 		struct BMeshFromMeshParams bmfmp = {true, false, false, 0};
 		BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &bmcp, &bmfmp);
 
-		BM_mesh_triangulate(bm, quad_method, ngon_method, tag_only, NULL, NULL, NULL);
+		BM_mesh_triangulate(bm, quad_method, ngon_method, 4, tag_only, NULL, NULL, NULL);
 
-		Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+		Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 		BM_mesh_free(bm);
+
+		if (r_needsfree) {
+			BKE_id_free(NULL, mesh);
+		}
 
 		mesh = result;
 		r_needsfree = true;
@@ -563,7 +575,7 @@ Mesh *AbcMeshWriter::getFinalMesh(bool &r_needsfree)
 	return mesh;
 }
 
-void AbcMeshWriter::writeArbGeoParams(struct Mesh *me)
+void AbcGenericMeshWriter::writeArbGeoParams(struct Mesh *me)
 {
 	if (m_is_liquid) {
 		/* We don't need anything more for liquid meshes. */
@@ -580,7 +592,7 @@ void AbcMeshWriter::writeArbGeoParams(struct Mesh *me)
 	}
 }
 
-void AbcMeshWriter::getVelocities(struct Mesh *mesh, std::vector<Imath::V3f> &vels)
+void AbcGenericMeshWriter::getVelocities(struct Mesh *mesh, std::vector<Imath::V3f> &vels)
 {
 	const int totverts = mesh->totvert;
 
@@ -604,9 +616,9 @@ void AbcMeshWriter::getVelocities(struct Mesh *mesh, std::vector<Imath::V3f> &ve
 	}
 }
 
-void AbcMeshWriter::getGeoGroups(
+void AbcGenericMeshWriter::getGeoGroups(
         struct Mesh *mesh,
-        std::map<std::string, std::vector<int32_t> > &geo_groups)
+        std::map<std::string, std::vector<int32_t>> &geo_groups)
 {
 	const int num_poly = mesh->totpoly;
 	MPoly *polygons = mesh->mpoly;
@@ -646,6 +658,23 @@ void AbcMeshWriter::getGeoGroups(
 	}
 }
 
+
+AbcMeshWriter::AbcMeshWriter(Object *ob,
+                             AbcTransformWriter *parent,
+                             uint32_t time_sampling,
+                             ExportSettings &settings)
+    : AbcGenericMeshWriter(ob, parent, time_sampling, settings)
+{}
+
+AbcMeshWriter::~AbcMeshWriter()
+{}
+
+Mesh *AbcMeshWriter::getEvaluatedMesh(Scene *scene_eval, Object *ob_eval, bool &UNUSED(r_needsfree))
+{
+	return mesh_get_eval_final(m_settings.depsgraph, scene_eval, ob_eval, &CD_MASK_MESH);
+}
+
+
 /* ************************************************************************** */
 
 /* Some helpers for mesh generation */
@@ -653,7 +682,7 @@ namespace utils {
 
 static void build_mat_map(const Main *bmain, std::map<std::string, Material *> &mat_map)
 {
-	Material *material = static_cast<Material *>(bmain->mat.first);
+	Material *material = static_cast<Material *>(bmain->materials.first);
 
 	for (; material; material = static_cast<Material *>(material->id.next)) {
 		mat_map[material->id.name + 2] = material;
@@ -1030,7 +1059,7 @@ void AbcMeshReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	m_object->data = mesh;
 
 	Mesh *read_mesh = this->read_mesh(mesh, sample_sel, MOD_MESHSEQ_READ_ALL, NULL);
-	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, CD_MASK_MESH, true);
+	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
 
 	if (m_settings->validate_meshes) {
 		BKE_mesh_validate(mesh, false, false);
@@ -1072,10 +1101,10 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading mesh sample; more detail on the console";
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 
@@ -1313,7 +1342,7 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	m_object->data = mesh;
 
 	Mesh *read_mesh = this->read_mesh(mesh, sample_sel, MOD_MESHSEQ_READ_ALL, NULL);
-	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, CD_MASK_MESH, true);
+	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
 
 	ISubDSchema::Sample sample;
 	try {
@@ -1321,10 +1350,10 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	}
 	catch(Alembic::Util::Exception &ex) {
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return;
 	}
 
@@ -1369,10 +1398,10 @@ Mesh *AbcSubDReader::read_mesh(Mesh *existing_mesh,
 	catch(Alembic::Util::Exception &ex) {
 		*err_str = "Error reading mesh sample; more detail on the console";
 		printf("Alembic: error reading mesh sample for '%s/%s' at time %f: %s\n",
-			   m_iobject.getFullName().c_str(),
-			   m_schema.getName().c_str(),
-			   sample_sel.getRequestedTime(),
-			   ex.what());
+		       m_iobject.getFullName().c_str(),
+		       m_schema.getName().c_str(),
+		       sample_sel.getRequestedTime(),
+		       ex.what());
 		return existing_mesh;
 	}
 

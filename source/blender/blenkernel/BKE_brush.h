@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,30 +12,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_BRUSH_H__
 #define __BKE_BRUSH_H__
 
-/** \file BKE_brush.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * General operations for brushes.
  */
 
 enum eCurveMappingPreset;
-struct bContext;
 struct Brush;
-struct Paint;
 struct ImBuf;
 struct ImagePool;
 struct Main;
+struct Material;
+struct Paint;
 struct Scene;
 struct ToolSettings;
 struct UnifiedPaintSettings;
-struct Material;
+struct bContext;
 
 // enum eCurveMappingPreset;
 
@@ -60,9 +56,6 @@ void BKE_brush_free(struct Brush *brush);
 
 void BKE_brush_sculpt_reset(struct Brush *brush);
 void BKE_brush_gpencil_presets(struct bContext *C);
-void BKE_brush_update_material(struct Main *bmain, struct Material *ma, struct Brush *exclude_brush);
-struct Brush *BKE_brush_getactive_gpencil(struct ToolSettings *ts);
-struct Paint *BKE_brush_get_gpencil_paint(struct ToolSettings *ts);
 
 /* image icon function */
 struct ImBuf *get_brush_icon(struct Brush *brush);
@@ -79,7 +72,7 @@ float BKE_brush_curve_strength_clamped(struct Brush *br, float p, const float le
 float BKE_brush_curve_strength(const struct Brush *br, float p, const float len);
 
 /* sampling */
-float BKE_brush_sample_tex_3D(
+float BKE_brush_sample_tex_3d(
         const struct Scene *scene, const struct Brush *br, const float point[3],
         float rgba[4], const int thread, struct ImagePool *pool);
 float BKE_brush_sample_masktex(
@@ -126,6 +119,14 @@ void BKE_brush_scale_size(
         int *r_brush_size,
         float new_unprojected_radius,
         float old_unprojected_radius);
+
+/* Accessors */
+#define BKE_brush_tool_get(brush, p) \
+	(CHECK_TYPE_ANY(brush, struct Brush *, const struct Brush *), \
+	 *(const char *)POINTER_OFFSET(brush, (p)->runtime.tool_offset))
+#define BKE_brush_tool_set(brush, p, tool) { \
+	CHECK_TYPE_ANY(brush, struct Brush *); \
+	*(char *)POINTER_OFFSET(brush, (p)->runtime.tool_offset) = tool; } ((void)0)
 
 /* debugging only */
 void BKE_brush_debug_print_state(struct Brush *br);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,18 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __GAUSSIANFILTER_H__
 #define __GAUSSIANFILTER_H__
 
-/** \file blender/freestyle/intern/image/GaussianFilter.h
- *  \ingroup freestyle
- *  \brief Class to perform gaussian filtering operations on an image
- *  \author Stephane Grabli
- *  \date 20/05/2003
+/** \file
+ * \ingroup freestyle
+ * \brief Class to perform gaussian filtering operations on an image
  */
 
 #include <cstdlib> // for abs
@@ -65,16 +59,16 @@ public:
 
 	/*! Returns the value for pixel x,y of image "map" after a gaussian blur, made using the sigma value.
 	 *  The sigma value determines the mask size (~ 2 x sigma).
-	 *  \param map
+	 *  \param map:
 	 *    The image we wish to work on. The Map template must implement the following methods:
 	 *    - float pixel(unsigned int x,unsigned int y) const;
 	 *    - unsigned width() const;
 	 *    - unsigned height() const;
-	 *  \param x
+	 *  \param x:
 	 *    The abscissa of the pixel where we want to evaluate the gaussian blur.
-	 *  \param y
+	 *  \param y:
 	 *    The ordinate of the pixel where we want to evaluate the gaussian blur.
-	 *  \param sigma
+	 *  \param sigma:
 	 *    The sigma value of the gaussian function.
 	 */
 	template<class Map>

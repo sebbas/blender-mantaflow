@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,14 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Michel Selten, Willian P. Germano, Stephen Swaney,
  * Chris Keith, Chris Want, Ken Hughes, Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/intern/bpy_interface.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file deals with embedding the python interpreter within blender,
  * starting and stopping python and exposing blender/python modules so they can
@@ -58,9 +53,9 @@
 
 #include "BKE_appdir.h"
 #include "BKE_context.h"
-#include "BKE_text.h"
-#include "BKE_main.h"
 #include "BKE_global.h" /* only for script checking */
+#include "BKE_main.h"
+#include "BKE_text.h"
 
 #include "CCL_api.h"
 
@@ -86,7 +81,6 @@ CLG_LOGREF_DECLARE_GLOBAL(BPY_LOG_RNA, "bpy.rna");
 
 /* in case a python script triggers another python call, stop bpy_context_clear from invalidating */
 static int py_call_level = 0;
-BPy_StructRNA *bpy_context_module = NULL; /* for fast access */
 
 // #define TIME_PY_RUN // simple python tests. prints on exit.
 
@@ -245,7 +239,7 @@ static struct _inittab bpy_internal_modules[] = {
 #endif
 	{"gpu", BPyInit_gpu},
 	{"idprop", BPyInit_idprop},
-	{NULL, NULL}
+	{NULL, NULL},
 };
 
 /* call BPY_context_set first */
@@ -408,7 +402,7 @@ void BPY_python_end(void)
 void BPY_python_reset(bContext *C)
 {
 	/* unrelated security stuff */
-	G.f &= ~(G_SCRIPT_AUTOEXEC_FAIL | G_SCRIPT_AUTOEXEC_FAIL_QUIET);
+	G.f &= ~(G_FLAG_SCRIPT_AUTOEXEC_FAIL | G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET);
 	G.autoexec_fail[0] = '\0';
 
 	BPY_driver_reset();
@@ -538,7 +532,7 @@ static bool python_script_exec(
 			if (do_jump) {
 				/* ensure text is valid before use, the script may have freed its self */
 				Main *bmain_new = CTX_data_main(C);
-				if ((bmain_old == bmain_new) && (BLI_findindex(&bmain_new->text, text) != -1)) {
+				if ((bmain_old == bmain_new) && (BLI_findindex(&bmain_new->texts, text) != -1)) {
 					python_script_error_jump_text(text);
 				}
 			}
@@ -707,7 +701,9 @@ bool BPY_execute_string_as_intptr(
 	return ok;
 }
 
-bool BPY_execute_string_ex(bContext *C, const char *expr, bool use_eval)
+bool BPY_execute_string_ex(
+        bContext *C, const char *imports[],
+        const char *expr, bool use_eval)
 {
 	BLI_assert(expr);
 	PyGILState_STATE gilstate;
@@ -729,13 +725,18 @@ bool BPY_execute_string_ex(bContext *C, const char *expr, bool use_eval)
 	bmain_back = bpy_import_main_get();
 	bpy_import_main_set(CTX_data_main(C));
 
-	retval = PyRun_String(expr, use_eval ? Py_eval_input : Py_file_input, py_dict, py_dict);
+	if (imports && (!PyC_NameSpace_ImportArray(py_dict, imports))) {
+		Py_DECREF(py_dict);
+		retval = NULL;
+	}
+	else {
+		retval = PyRun_String(expr, use_eval ? Py_eval_input : Py_file_input, py_dict, py_dict);
+	}
 
 	bpy_import_main_set(bmain_back);
 
 	if (retval == NULL) {
 		ok = false;
-
 		BPy_errors_to_report(CTX_wm_reports(C));
 	}
 	else {
@@ -749,9 +750,11 @@ bool BPY_execute_string_ex(bContext *C, const char *expr, bool use_eval)
 	return ok;
 }
 
-bool BPY_execute_string(bContext *C, const char *expr)
+bool BPY_execute_string(
+        bContext *C, const char *imports[],
+        const char *expr)
 {
-	return BPY_execute_string_ex(C, expr, true);
+	return BPY_execute_string_ex(C, imports, expr, true);
 }
 
 void BPY_modules_load_user(bContext *C)
@@ -772,11 +775,11 @@ void BPY_modules_load_user(bContext *C)
 
 	bpy_context_set(C, &gilstate);
 
-	for (text = bmain->text.first; text; text = text->id.next) {
+	for (text = bmain->texts.first; text; text = text->id.next) {
 		if (text->flags & TXT_ISSCRIPT && BLI_path_extension_check(text->id.name + 2, ".py")) {
-			if (!(G.f & G_SCRIPT_AUTOEXEC)) {
-				if (!(G.f & G_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
-					G.f |= G_SCRIPT_AUTOEXEC_FAIL;
+			if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
+				if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
+					G.f |= G_FLAG_SCRIPT_AUTOEXEC_FAIL;
 					BLI_snprintf(G.autoexec_fail, sizeof(G.autoexec_fail), "Text '%s'", text->id.name + 2);
 
 					printf("scripts disabled for \"%s\", skipping '%s'\n", BKE_main_blendfile_path(bmain), text->id.name + 2);
@@ -1009,7 +1012,7 @@ bool BPY_string_is_keyword(const char *str)
 	 */
 	const char *kwlist[] = {
 	    "False", "None", "True",
-	    "and", "as", "assert", "break",
+	    "and", "as", "assert", "async", "await", "break",
 	    "class", "continue", "def", "del", "elif", "else", "except",
 	    "finally", "for", "from", "global", "if", "import", "in",
 	    "is", "lambda", "nonlocal", "not", "or", "pass", "raise",

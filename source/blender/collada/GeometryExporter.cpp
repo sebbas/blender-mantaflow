@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed,
- *                 Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/GeometryExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -40,10 +33,9 @@
 extern "C" {
 	#include "BLI_utildefines.h"
 
-	#include "BKE_main.h"
+	#include "BKE_customdata.h"
 	#include "BKE_global.h"
 	#include "BKE_library.h"
-	#include "BKE_customdata.h"
 	#include "BKE_material.h"
 	#include "BKE_mesh.h"
 }
@@ -51,18 +43,12 @@ extern "C" {
 #include "collada_internal.h"
 #include "collada_utils.h"
 
-// TODO: optimize UV sets by making indexed list with duplicates removed
-GeometryExporter::GeometryExporter(COLLADASW::StreamWriter *sw, const ExportSettings *export_settings) : COLLADASW::LibraryGeometries(sw), export_settings(export_settings)
-{
-}
 
-void GeometryExporter::exportGeom(Main *bmain, struct Depsgraph *depsgraph, Scene *sce)
+void GeometryExporter::exportGeom()
 {
+	Scene *sce = blender_context.get_scene();
 	openLibrary();
 
-	mDepsgraph = depsgraph;
-	m_bmain = bmain;
-	mScene = sce;
 	GeometryFunctor gf;
 	gf.forEachMeshObjectInExportSet<GeometryExporter>(sce, *this, this->export_settings->export_set);
 
@@ -73,8 +59,7 @@ void GeometryExporter::operator()(Object *ob)
 {
 	bool use_instantiation = this->export_settings->use_object_instantiation;
 	Mesh *me = bc_get_mesh_copy(
-					mDepsgraph,
-					mScene,
+					blender_context,
 					ob,
 					this->export_settings->export_mesh_type,
 					this->export_settings->apply_modifiers,
@@ -92,6 +77,7 @@ void GeometryExporter::operator()(Object *ob)
 	}
 
 	std::string geom_name = (use_instantiation) ? id_name(ob->data) : id_name(ob);
+	geom_name = encode_xml(geom_name);
 
 	exportedGeometry.insert(geom_id);
 
@@ -108,7 +94,7 @@ void GeometryExporter::operator()(Object *ob)
 	// writes <source> for normal coords
 	createNormalsSource(geom_id, me, nor);
 
-	bool has_uvs = (bool)CustomData_has_layer(&me->fdata, CD_MTFACE);
+	bool has_uvs = (bool)CustomData_has_layer(&me->ldata, CD_MLOOPUV);
 
 	// writes <source> for uv coords if mesh has uv coords
 	if (has_uvs) {
@@ -134,11 +120,11 @@ void GeometryExporter::operator()(Object *ob)
 		// XXX slow
 		if (ob->totcol) {
 			for (int a = 0; a < ob->totcol; a++) {
-				createPolylist(a, has_uvs, has_color, ob, me, geom_id, norind);
+				create_mesh_primitive_list(a, has_uvs, has_color, ob, me, geom_id, norind);
 			}
 		}
 		else {
-			createPolylist(0, has_uvs, has_color, ob, me, geom_id, norind);
+			create_mesh_primitive_list(0, has_uvs, has_color, ob, me, geom_id, norind);
 		}
 	}
 
@@ -194,7 +180,7 @@ void GeometryExporter::export_key_mesh(Object *ob, Mesh *me, KeyBlock *kb)
 	// writes <source> for normal coords
 	createNormalsSource(geom_id, me, nor);
 
-	bool has_uvs = (bool)CustomData_has_layer(&me->fdata, CD_MTFACE);
+	bool has_uvs = (bool)CustomData_has_layer(&me->ldata, CD_MLOOPUV);
 
 	// writes <source> for uv coords if mesh has uv coords
 	if (has_uvs) {
@@ -219,11 +205,11 @@ void GeometryExporter::export_key_mesh(Object *ob, Mesh *me, KeyBlock *kb)
 	// XXX slow
 	if (ob->totcol) {
 		for (int a = 0; a < ob->totcol; a++) {
-			createPolylist(a, has_uvs, has_color, ob, me, geom_id, norind);
+			create_mesh_primitive_list(a, has_uvs, has_color, ob, me, geom_id, norind);
 		}
 	}
 	else {
-		createPolylist(0, has_uvs, has_color, ob, me, geom_id, norind);
+		create_mesh_primitive_list(0, has_uvs, has_color, ob, me, geom_id, norind);
 	}
 
 	closeMesh();
@@ -286,6 +272,64 @@ void GeometryExporter::createLooseEdgeList(Object *ob,
 
 }
 
+static void prepareToAppendValues(bool is_triangulated, COLLADASW::PrimitivesBase &primitive_list, std::vector<unsigned long> &vcount_list)
+{
+	// performs the actual writing
+	if (is_triangulated) {
+		((COLLADASW::Triangles &)primitive_list).prepareToAppendValues();
+	}
+	else {
+		// sets <vcount>
+		primitive_list.setVCountList(vcount_list);
+		((COLLADASW::Polylist &)primitive_list).prepareToAppendValues();
+	}
+}
+
+static void finish_and_delete_primitive_List(bool is_triangulated, COLLADASW::PrimitivesBase *primitive_list)
+{
+	if (is_triangulated) {
+		((COLLADASW::Triangles *)primitive_list)->finish();
+	}
+	else {
+		((COLLADASW::Polylist *)primitive_list)->finish();
+	}
+	delete primitive_list;
+}
+
+static COLLADASW::PrimitivesBase *create_primitive_list(bool is_triangulated, COLLADASW::StreamWriter *mSW)
+{
+	COLLADASW::PrimitivesBase *primitive_list;
+
+	if (is_triangulated)
+	{
+		primitive_list = new COLLADASW::Triangles(mSW);
+	}
+	else {
+		primitive_list = new COLLADASW::Polylist(mSW);
+	}
+	return primitive_list;
+}
+
+static bool collect_vertex_counts_per_poly(Mesh *me, int material_index, std::vector<unsigned long> &vcount_list)
+{
+	MPoly *mpolys = me->mpoly;
+	int totpolys = me->totpoly;
+	bool is_triangulated = true;
+
+	int i;
+	// Expecting that p->mat_nr is always 0 if the mesh has no materials assigned
+	for (i = 0; i < totpolys; i++) {
+		MPoly *p = &mpolys[i];
+		if (p->mat_nr == material_index) {
+			int vertex_count = p->totloop;
+			vcount_list.push_back(vertex_count);
+			if (vertex_count != 3)
+				is_triangulated = false;
+		}
+	}
+	return is_triangulated;
+}
+
 std::string GeometryExporter::makeVertexColorSourceId(std::string& geom_id, char *layer_name)
 {
 	std::string result = getIdBySemantics(geom_id, COLLADASW::InputSemantic::COLOR) + "-" + layer_name;
@@ -293,7 +337,7 @@ std::string GeometryExporter::makeVertexColorSourceId(std::string& geom_id, char
 }
 
 // powerful because it handles both cases when there is material and when there's not
-void GeometryExporter::createPolylist(short material_index,
+void GeometryExporter::create_mesh_primitive_list(short material_index,
                                       bool has_uvs,
                                       bool has_color,
                                       Object *ob,
@@ -306,65 +350,52 @@ void GeometryExporter::createPolylist(short material_index,
 	MLoop *mloops = me->mloop;
 	int totpolys  = me->totpoly;
 
-	// <vcount>
-	int i;
-	int faces_in_polylist = 0;
 	std::vector<unsigned long> vcount_list;
 
-	// count faces with this material
-	for (i = 0; i < totpolys; i++) {
-		MPoly *p = &mpolys[i];
-
-		if (p->mat_nr == material_index) {
-			faces_in_polylist++;
-			vcount_list.push_back(p->totloop);
-		}
-	}
+	bool is_triangulated = collect_vertex_counts_per_poly(me, material_index, vcount_list);
+	int polygon_count = vcount_list.size();
 
 	// no faces using this material
-	if (faces_in_polylist == 0) {
+	if (polygon_count == 0) {
 		fprintf(stderr, "%s: material with index %d is not used.\n", id_name(ob).c_str(), material_index);
 		return;
 	}
 
 	Material *ma = ob->totcol ? give_current_material(ob, material_index + 1) : NULL;
-	COLLADASW::Polylist polylist(mSW);
+	COLLADASW::PrimitivesBase *primitive_list = create_primitive_list(is_triangulated, mSW);
 
 	// sets count attribute in <polylist>
-	polylist.setCount(faces_in_polylist);
+	primitive_list->setCount(polygon_count);
 
 	// sets material name
 	if (ma) {
 		std::string material_id = get_material_id(ma);
 		std::ostringstream ostr;
 		ostr << translate_id(material_id);
-		polylist.setMaterial(ostr.str());
+		primitive_list->setMaterial(ostr.str());
 	}
 
-	COLLADASW::InputList &til = polylist.getInputList();
+	COLLADASW::Input vertex_input(COLLADASW::InputSemantic::VERTEX, getUrlBySemantics(geom_id, COLLADASW::InputSemantic::VERTEX), 0);
+	COLLADASW::Input normals_input(COLLADASW::InputSemantic::NORMAL, getUrlBySemantics(geom_id, COLLADASW::InputSemantic::NORMAL), 1);
 
-	// creates <input> in <polylist> for vertices
-	COLLADASW::Input input1(COLLADASW::InputSemantic::VERTEX, getUrlBySemantics(geom_id, COLLADASW::InputSemantic::VERTEX), 0);
-
-	// creates <input> in <polylist> for normals
-	COLLADASW::Input input2(COLLADASW::InputSemantic::NORMAL, getUrlBySemantics(geom_id, COLLADASW::InputSemantic::NORMAL), 1);
-
-	til.push_back(input1);
-	til.push_back(input2);
+	COLLADASW::InputList &til = primitive_list->getInputList();
+	til.push_back(vertex_input);
+	til.push_back(normals_input);
 
 	// if mesh has uv coords writes <input> for TEXCOORD
-	int num_layers = CustomData_number_of_layers(&me->fdata, CD_MTFACE);
-	int active_uv_index = CustomData_get_active_layer_index(&me->fdata, CD_MTFACE)-1;
-	for (i = 0; i < num_layers; i++) {
-		if (!this->export_settings->active_uv_only || i == active_uv_index) {
+	int num_layers = CustomData_number_of_layers(&me->ldata, CD_MLOOPUV);
+	int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_MLOOPUV);
+	for (int i = 0; i < num_layers; i++) {
+		int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_MLOOPUV, i);
+		if (!this->export_settings->active_uv_only || layer_index == active_uv_index) {
 
-			// char *name = CustomData_get_layer_name(&me->fdata, CD_MTFACE, i);
-			COLLADASW::Input input3(COLLADASW::InputSemantic::TEXCOORD,
+			// char *name = CustomData_get_layer_name(&me->ldata, CD_MLOOPUV, i);
+			COLLADASW::Input texcoord_input(COLLADASW::InputSemantic::TEXCOORD,
 									makeUrl(makeTexcoordSourceId(geom_id, i, this->export_settings->active_uv_only)),
 									2, // this is only until we have optimized UV sets
-									(this->export_settings->active_uv_only) ? 0 : i  // only_active_uv exported -> we have only one set
+									(this->export_settings->active_uv_only) ? 0 : layer_index-1  //set (0,1,2,...)
 									);
-			til.push_back(input3);
+			til.push_back(texcoord_input);
 		}
 	}
 
@@ -384,15 +415,12 @@ void GeometryExporter::createPolylist(short material_index,
 		}
 	}
 
-	// sets <vcount>
-	polylist.setVCountList(vcount_list);
-
 	// performs the actual writing
-	polylist.prepareToAppendValues();
+	prepareToAppendValues(is_triangulated, *primitive_list, vcount_list);
 
 	// <p>
 	int texindex = 0;
-	for (i = 0; i < totpolys; i++) {
+	for (int i = 0; i < totpolys; i++) {
 		MPoly *p = &mpolys[i];
 		int loop_count = p->totloop;
 
@@ -401,21 +429,22 @@ void GeometryExporter::createPolylist(short material_index,
 			BCPolygonNormalsIndices normal_indices = norind[i];
 
 			for (int j = 0; j < loop_count; j++) {
-				polylist.appendValues(l[j].v);
-				polylist.appendValues(normal_indices[j]);
+				primitive_list->appendValues(l[j].v);
+				primitive_list->appendValues(normal_indices[j]);
 				if (has_uvs)
-					polylist.appendValues(texindex + j);
+					primitive_list->appendValues(texindex + j);
 
 				if (has_color)
-					polylist.appendValues(texindex + j);
+					primitive_list->appendValues(texindex + j);
 			}
 		}
 
 		texindex += loop_count;
 	}
 
-	polylist.finish();
+	finish_and_delete_primitive_List(is_triangulated, primitive_list);
 }
+
 
 // creates <source> for positions
 void GeometryExporter::createVertsSource(std::string geom_id, Mesh *me)
@@ -450,7 +479,6 @@ void GeometryExporter::createVertsSource(std::string geom_id, Mesh *me)
 	source.finish();
 
 }
-
 
 void GeometryExporter::createVertexColorSource(std::string geom_id, Mesh *me)
 {
@@ -491,10 +519,10 @@ void GeometryExporter::createVertexColorSource(std::string geom_id, Mesh *me)
 			MLoopCol *mlc = mloopcol + mpoly->loopstart;
 			for (int j = 0; j < mpoly->totloop; j++, mlc++) {
 				source.appendValues(
-						mlc->r / 255.0f,
-						mlc->g / 255.0f,
-						mlc->b / 255.0f,
-						mlc->a / 255.0f
+				        mlc->r / 255.0f,
+				        mlc->g / 255.0f,
+				        mlc->b / 255.0f,
+				        mlc->a / 255.0f
 				);
 			}
 		}

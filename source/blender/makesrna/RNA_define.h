@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2008).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __RNA_DEFINE_H__
 #define __RNA_DEFINE_H__
 
-/** \file RNA_define.h
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  *
  * Functions used during preprocess and runtime, for defining the RNA.
  */
@@ -175,7 +169,7 @@ void RNA_def_property_string_default(PropertyRNA *prop, const char *value);
 
 void RNA_def_property_ui_text(PropertyRNA *prop, const char *name, const char *description);
 void RNA_def_property_ui_range(PropertyRNA *prop, double min, double max, double step, int precision);
-void RNA_def_property_ui_icon(PropertyRNA *prop, int icon, bool consecutive);
+void RNA_def_property_ui_icon(PropertyRNA *prop, int icon, int consecutive);
 
 void RNA_def_property_update(PropertyRNA *prop, int noteflag, const char *updatefunc);
 void RNA_def_property_editable_func(PropertyRNA *prop, const char *editable);
@@ -251,6 +245,10 @@ void RNA_identifier_sanitize(char *identifier, int property);
 extern const int rna_matrix_dimsize_3x3[];
 extern const int rna_matrix_dimsize_4x4[];
 extern const int rna_matrix_dimsize_4x2[];
+
+extern const float rna_default_axis_angle[4];
+extern const float rna_default_quaternion[4];
+extern const float rna_default_scale_3d[3];
 
 /* max size for dynamic defined type descriptors,
  * this value is arbitrary */

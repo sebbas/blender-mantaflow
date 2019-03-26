@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_console/console_ops.c
- *  \ingroup spconsole
+/** \file
+ * \ingroup spconsole
  */
 
 
@@ -93,10 +87,13 @@ static void console_scrollback_limit(SpaceConsole *sc)
 {
 	int tot;
 
-	if (U.scrollback < 32) U.scrollback = 256;  // XXX - save in user defaults
+	if (U.scrollback < 32) {
+		U.scrollback = 256;  // XXX - save in user defaults
+	}
 
-	for (tot = BLI_listbase_count(&sc->scrollback); tot > U.scrollback; tot--)
+	for (tot = BLI_listbase_count(&sc->scrollback); tot > U.scrollback; tot--) {
 		console_scrollback_free(sc, sc->scrollback.first);
+	}
 }
 
 static ConsoleLine *console_history_find(SpaceConsole *sc, const char *str, ConsoleLine *cl_ignore)
@@ -104,11 +101,13 @@ static ConsoleLine *console_history_find(SpaceConsole *sc, const char *str, Cons
 	ConsoleLine *cl;
 
 	for (cl = sc->history.last; cl; cl = cl->prev) {
-		if (cl == cl_ignore)
+		if (cl == cl_ignore) {
 			continue;
+		}
 
-		if (STREQ(str, cl->line))
+		if (STREQ(str, cl->line)) {
 			return cl;
+		}
 	}
 
 	return NULL;
@@ -119,9 +118,15 @@ static bool console_line_cursor_set(ConsoleLine *cl, int cursor)
 {
 	int cursor_new;
 
-	if      (cursor < 0) cursor_new = 0;
-	else if (cursor > cl->len) cursor_new = cl->len;
-	else cursor_new = cursor;
+	if (cursor < 0) {
+		cursor_new = 0;
+	}
+	else if (cursor > cl->len) {
+		cursor_new = cl->len;
+	}
+	else {
+		cursor_new = cursor;
+	}
 
 	if (cursor_new == cl->cursor) {
 		return false;
@@ -190,8 +195,12 @@ static ConsoleLine *console_scrollback_add(const bContext *C, ConsoleLine *from)
 static ConsoleLine *console_lb_add_str__internal(ListBase *lb, char *str, bool own)
 {
 	ConsoleLine *ci = MEM_callocN(sizeof(ConsoleLine), "ConsoleLine Add");
-	if (own) ci->line = str;
-	else ci->line = BLI_strdup(str);
+	if (own) {
+		ci->line = str;
+	}
+	else {
+		ci->line = BLI_strdup(str);
+	}
 
 	ci->len = ci->len_alloc = strlen(str);
 
@@ -213,8 +222,9 @@ ConsoleLine *console_history_verify(const bContext *C)
 {
 	SpaceConsole *sc = CTX_wm_space_console(C);
 	ConsoleLine *ci = sc->history.last;
-	if (ci == NULL)
+	if (ci == NULL) {
 		ci = console_history_add(sc, NULL);
+	}
 
 	return ci;
 }
@@ -248,8 +258,9 @@ static int console_line_insert(ConsoleLine *ci, char *str)
 		len--;
 	}
 
-	if (len == 0)
+	if (len == 0) {
 		return 0;
+	}
 
 	console_line_verify_length(ci, len + ci->len);
 
@@ -306,7 +317,7 @@ static const EnumPropertyItem console_move_type_items[] = {
 	{NEXT_CHAR, "NEXT_CHARACTER", 0, "Next Character", ""},
 	{PREV_WORD, "PREVIOUS_WORD", 0, "Previous Word", ""},
 	{NEXT_WORD, "NEXT_WORD", 0, "Next Word", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int console_move_exec(bContext *C, wmOperator *op)
@@ -486,8 +497,9 @@ static int console_indent_exec(bContext *C, wmOperator *UNUSED(op))
 	int len;
 
 	for (spaces = 0; spaces < ci->len; spaces++) {
-		if (ci->line[spaces] != ' ')
+		if (ci->line[spaces] != ' ') {
 			break;
+		}
 	}
 
 	len = TAB_LENGTH - spaces % TAB_LENGTH;
@@ -530,16 +542,19 @@ static int console_unindent_exec(bContext *C, wmOperator *UNUSED(op))
 	int len;
 
 	for (spaces = 0; spaces < ci->len; spaces++) {
-		if (ci->line[spaces] != ' ')
+		if (ci->line[spaces] != ' ') {
 			break;
+		}
 	}
 
-	if (spaces == 0)
+	if (spaces == 0) {
 		return OPERATOR_CANCELLED;
+	}
 
 	len = spaces % TAB_LENGTH;
-	if (len == 0)
+	if (len == 0) {
 		len = TAB_LENGTH;
+	}
 
 	console_line_verify_length(ci, ci->len - len);
 
@@ -575,7 +590,7 @@ static const EnumPropertyItem console_delete_type_items[] = {
 	{DEL_PREV_CHAR, "PREVIOUS_CHARACTER", 0, "Previous Character", ""},
 	{DEL_NEXT_WORD, "NEXT_WORD", 0, "Next Word", ""},
 	{DEL_PREV_WORD, "PREVIOUS_WORD", 0, "Previous Word", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int console_delete_exec(bContext *C, wmOperator *op)
@@ -707,13 +722,15 @@ static int console_clear_exec(bContext *C, wmOperator *op)
 	/*ConsoleLine *ci = */ console_history_verify(C);
 
 	if (scrollback) { /* last item in mistory */
-		while (sc->scrollback.first)
+		while (sc->scrollback.first) {
 			console_scrollback_free(sc, sc->scrollback.first);
+		}
 	}
 
 	if (history) {
-		while (sc->history.first)
+		while (sc->history.first) {
 			console_history_free(sc, sc->history.first);
+		}
 		console_history_verify(C);
 	}
 
@@ -747,7 +764,8 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
 	SpaceConsole *sc = CTX_wm_space_console(C);
 	ARegion *ar = CTX_wm_region(C);
 
-	ConsoleLine *ci = console_history_verify(C); /* TODO - stupid, just prevents crashes when no command line */
+	/* TODO - stupid, just prevents crashes when no command line */
+	ConsoleLine *ci = console_history_verify(C);
 	const bool reverse = RNA_boolean_get(op->ptr, "reverse"); /* assumes down, reverse is up */
 	int prev_len = ci->len;
 
@@ -756,8 +774,9 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
 	if (ci->prev) {
 		ConsoleLine *ci_prev = (ConsoleLine *)ci->prev;
 
-		if (STREQ(ci->line, ci_prev->line))
+		if (STREQ(ci->line, ci_prev->line)) {
 			console_history_free(sc, ci_prev);
+		}
 	}
 
 	if (reverse) { /* last item in history */
@@ -773,8 +792,9 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
 
 	{   /* add a duplicate of the new arg and remove all other instances */
 		ConsoleLine *cl;
-		while ((cl = console_history_find(sc, ci->line, ci)))
+		while ((cl = console_history_find(sc, ci->line, ci))) {
 			console_history_free(sc, cl);
+		}
 
 		console_history_add(sc, (ConsoleLine *)sc->history.last);
 	}
@@ -814,7 +834,8 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
 	ARegion *ar = CTX_wm_region(C);
 	ScrArea *sa = CTX_wm_area(C);
 	ConsoleLine *ci = console_history_verify(C);
-	char *str = RNA_string_get_alloc(op->ptr, "text", NULL, 0); /* own this text in the new line, don't free */
+	/* own this text in the new line, don't free */
+	char *str = RNA_string_get_alloc(op->ptr, "text", NULL, 0);
 	int cursor = RNA_int_get(op->ptr, "current_character");
 	const bool rem_dupes = RNA_boolean_get(op->ptr, "remove_duplicates");
 	int prev_len = ci->len;
@@ -822,8 +843,9 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
 	if (rem_dupes) {
 		ConsoleLine *cl;
 
-		while ((cl = console_history_find(sc, ci->line, ci)))
+		while ((cl = console_history_find(sc, ci->line, ci))) {
 			console_history_free(sc, cl);
+		}
 
 		if (STREQ(str, ci->line)) {
 			MEM_freeN(str);
@@ -871,7 +893,8 @@ static int console_scrollback_append_exec(bContext *C, wmOperator *op)
 	ARegion *ar = CTX_wm_region(C);
 	ConsoleLine *ci;
 
-	char *str = RNA_string_get_alloc(op->ptr, "text", NULL, 0); /* own this text in the new line, don't free */
+	/* own this text in the new line, don't free */
+	char *str = RNA_string_get_alloc(op->ptr, "text", NULL, 0);
 	int type = RNA_enum_get(op->ptr, "type");
 
 	console_history_verify(C);
@@ -900,7 +923,7 @@ void CONSOLE_OT_scrollback_append(wmOperatorType *ot)
 		{CONSOLE_LINE_INPUT,    "INPUT", 0, "Input", ""},
 		{CONSOLE_LINE_INFO,     "INFO", 0, "Information", ""},
 		{CONSOLE_LINE_ERROR,    "ERROR", 0, "Error", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -931,8 +954,9 @@ static int console_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
 	ConsoleLine cl_dummy = {NULL};
 
-	if (sc->sel_start == sc->sel_end)
+	if (sc->sel_start == sc->sel_end) {
 		return OPERATOR_CANCELLED;
+	}
 
 	console_scrollback_prompt_begin(sc, &cl_dummy);
 
@@ -955,8 +979,9 @@ static int console_copy_exec(bContext *C, wmOperator *UNUSED(op))
 			int sta = max_ii(sel[0], 0);
 			int end = min_ii(sel[1], cl->len);
 
-			if (BLI_dynstr_get_len(buf_dyn))
+			if (BLI_dynstr_get_len(buf_dyn)) {
 				BLI_dynstr_append(buf_dyn, "\n");
+			}
 
 			BLI_dynstr_nappend(buf_dyn, cl->line + sta, end - sta);
 		}
@@ -1001,8 +1026,9 @@ static int console_paste_exec(bContext *C, wmOperator *UNUSED(op))
 	char *buf_str = WM_clipboard_text_get(false, &buf_len);
 	char *buf_step, *buf_next;
 
-	if (buf_str == NULL)
+	if (buf_str == NULL) {
 		return OPERATOR_CANCELLED;
+	}
 
 	buf_step = buf_str;
 

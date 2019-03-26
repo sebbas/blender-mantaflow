@@ -1,5 +1,5 @@
-/** \file smoke/intern/LU_HELPER.cpp
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 
 #include "LU_HELPER.h"

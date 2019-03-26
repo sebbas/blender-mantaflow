@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2006 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file RE_pipeline.h
- *  \ingroup render
+/** \file
+ * \ingroup render
  */
 
 #ifndef __RE_PIPELINE_H__
@@ -36,8 +28,6 @@
 #include "DNA_vec_types.h"
 #include "DEG_depsgraph.h"
 
-struct bMovieHandle;
-struct bNodeTree;
 struct Depsgraph;
 struct Image;
 struct ImageFormatData;
@@ -48,8 +38,10 @@ struct RenderData;
 struct RenderResult;
 struct ReportList;
 struct Scene;
-struct ViewLayer;
 struct StampData;
+struct ViewLayer;
+struct bMovieHandle;
+struct bNodeTree;
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* this include is what is exposed of render to outside world */
@@ -250,20 +242,14 @@ void RE_ChangeModeFlag(struct Render *re, int flag, bool clear);
 struct Object *RE_GetCamera(struct Render *re); /* return camera override if set */
 void RE_SetOverrideCamera(struct Render *re, struct Object *camera);
 void RE_SetCamera(struct Render *re, struct Object *camera);
-void RE_SetWindow(struct Render *re, const rctf *viewplane, float clipsta, float clipend);
-void RE_SetOrtho(struct Render *re, const rctf *viewplane, float clipsta, float clipend);
+void RE_SetWindow(struct Render *re, const rctf *viewplane, float clip_start, float clip_end);
+void RE_SetOrtho(struct Render *re, const rctf *viewplane, float clip_start, float clip_end);
 
 /* option to set viewmatrix before making dbase */
 void RE_SetView(struct Render *re, float mat[4][4]);
 
 /* get current view and window transform */
-void RE_GetView(struct Render *re, float mat[4][4]);
 void RE_GetViewPlane(struct Render *re, rctf *r_viewplane, rcti *r_disprect);
-
-/* make or free the dbase */
-void RE_Database_CameraOnly(
-        struct Render *re, struct Main *bmain, struct Scene *scene,
-        int use_camera_view);
 
 /* set the render threads based on the commandline and autothreads setting */
 void RE_init_threadcount(Render *re);
@@ -335,6 +321,7 @@ struct RenderPass *RE_pass_find_by_type(volatile struct RenderLayer *rl, int pas
 #define RE_BAKE_AO					2
 
 void RE_GetCameraWindow(struct Render *re, struct Object *camera, int frame, float mat[4][4]);
+void RE_GetCameraWindowWithOverscan(struct Render *re, float mat[4][4], float overscan);
 void RE_GetCameraModelMatrix(struct Render *re, struct Object *camera, float r_mat[4][4]);
 struct Scene *RE_GetScene(struct Render *re);
 void RE_SetScene(struct Render *re, struct Scene *sce);

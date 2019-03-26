@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,20 +15,16 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_wm_api.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include "BLI_utildefines.h"
 
@@ -41,7 +35,10 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "UI_interface.h"
+
 #include "wm_cursors.h"
+#include "wm_event_types.h"
 
 #include "rna_internal.h"  /* own include */
 
@@ -63,15 +60,20 @@ const EnumPropertyItem rna_enum_window_cursor_items[] = {
 	{BC_NS_SCROLLCURSOR, "SCROLL_Y", 0, "Scroll-Y", ""},
 	{BC_NSEW_SCROLLCURSOR, "SCROLL_XY", 0, "Scroll-XY", ""},
 	{BC_EYEDROPPER_CURSOR, "EYEDROPPER", 0, "Eyedropper", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 #ifdef RNA_RUNTIME
 
-#include "UI_interface.h"
 #include "BKE_context.h"
+#include "BKE_undo_system.h"
 
 #include "WM_types.h"
+
+static void rna_KeyMapItem_to_string(wmKeyMapItem *kmi, bool compact, char *result)
+{
+	WM_keymap_item_to_string(kmi, compact, result, UI_MAX_SHORTCUT_STR);
+}
 
 static wmKeyMap *rna_keymap_active(wmKeyMap *km, bContext *C)
 {
@@ -132,19 +134,19 @@ static wmGizmoGroupType *wm_gizmogrouptype_find_for_add_remove(ReportList *repor
 	return gzgt;
 }
 
-static void rna_gizmo_group_type_add(ReportList *reports, const char *idname)
+static void rna_gizmo_group_type_ensure(ReportList *reports, const char *idname)
 {
 	wmGizmoGroupType *gzgt = wm_gizmogrouptype_find_for_add_remove(reports, idname);
 	if (gzgt != NULL) {
-		WM_gizmo_group_type_add_ptr(gzgt);
+		WM_gizmo_group_type_ensure_ptr(gzgt);
 	}
 }
 
-static void rna_gizmo_group_type_remove(Main *bmain, ReportList *reports, const char *idname)
+static void rna_gizmo_group_type_unlink_delayed(ReportList *reports, const char *idname)
 {
 	wmGizmoGroupType *gzgt = wm_gizmogrouptype_find_for_add_remove(reports, idname);
 	if (gzgt != NULL) {
-		WM_gizmo_group_type_remove_ptr(bmain, gzgt);
+		WM_gizmo_group_type_unlink_delayed_ptr(gzgt);
 	}
 }
 
@@ -240,6 +242,25 @@ static wmKeyMapItem *rna_KeyMap_item_new(
 	return kmi;
 }
 
+static wmKeyMapItem *rna_KeyMap_item_new_from_item(
+        wmKeyMap *km, ReportList *reports, wmKeyMapItem *kmi_src, bool head)
+{
+/*	wmWindowManager *wm = CTX_wm_manager(C); */
+
+	if ((km->flag & KEYMAP_MODAL) == (kmi_src->idname[0] != '\0')) {
+		BKE_report(reports, RPT_ERROR, "Can not mix modal/non-modal items");
+		return NULL;
+	}
+
+	/* create keymap item */
+	wmKeyMapItem *kmi = WM_keymap_add_item_copy(km, kmi_src);
+	if (head) {
+		BLI_remlink(&km->items, kmi);
+		BLI_addhead(&km->items, kmi);
+	}
+	return kmi;
+}
+
 static wmKeyMapItem *rna_KeyMap_item_new_modal(
         wmKeyMap *km, ReportList *reports, const char *propvalue_str,
         int type, int value, bool any, bool shift, bool ctrl, bool alt,
@@ -283,14 +304,39 @@ static void rna_KeyMap_item_remove(wmKeyMap *km, ReportList *reports, PointerRNA
 	RNA_POINTER_INVALIDATE(kmi_ptr);
 }
 
-static wmKeyMap *rna_keymap_new(wmKeyConfig *keyconf, const char *idname, int spaceid, int regionid, bool modal)
+static PointerRNA rna_KeyMap_item_find_from_operator(
+        ID *id,
+        wmKeyMap *km,
+        const char *idname,
+        PointerRNA *properties,
+        int include_mask, int exclude_mask)
 {
+	char idname_bl[OP_MAX_TYPENAME];
+	WM_operator_bl_idname(idname_bl, idname);
+
+	wmKeyMapItem *kmi = WM_key_event_operator_from_keymap(
+	        km, idname_bl, properties->data, include_mask, exclude_mask);
+	PointerRNA kmi_ptr;
+	RNA_pointer_create(id, &RNA_KeyMapItem, kmi, &kmi_ptr);
+	return kmi_ptr;
+}
+
+static wmKeyMap *rna_keymap_new(wmKeyConfig *keyconf, const char *idname, int spaceid, int regionid, bool modal, bool tool)
+{
+	wmKeyMap *keymap;
+
 	if (modal == 0) {
-		return WM_keymap_ensure(keyconf, idname, spaceid, regionid);
+		keymap = WM_keymap_ensure(keyconf, idname, spaceid, regionid);
 	}
 	else {
-		return WM_modalkeymap_add(keyconf, idname, NULL); /* items will be lazy init */
+		keymap = WM_modalkeymap_add(keyconf, idname, NULL); /* items will be lazy init */
 	}
+
+	if (keymap && tool) {
+		keymap->flag |= KEYMAP_TOOL;
+	}
+
+	return keymap;
 }
 
 static wmKeyMap *rna_keymap_find(wmKeyConfig *keyconf, const char *idname, int spaceid, int regionid)
@@ -338,14 +384,15 @@ static PointerRNA rna_KeyConfig_find_item_from_operator(
         const char *idname,
         int opcontext,
         PointerRNA *properties,
-        bool is_hotkey,
+        int include_mask, int exclude_mask,
         PointerRNA *km_ptr)
 {
 	char idname_bl[OP_MAX_TYPENAME];
 	WM_operator_bl_idname(idname_bl, idname);
 
 	wmKeyMap *km = NULL;
-	wmKeyMapItem *kmi = WM_key_event_operator(C, idname_bl, opcontext, properties->data, (bool)is_hotkey, &km);
+	wmKeyMapItem *kmi = WM_key_event_operator(
+	        C, idname_bl, opcontext, properties->data, include_mask, exclude_mask, &km);
 	PointerRNA kmi_ptr;
 	RNA_pointer_create(&wm->id, &RNA_KeyMap, km, km_ptr);
 	RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi, &kmi_ptr);
@@ -411,6 +458,11 @@ static void rna_PieMenuEnd(bContext *C, PointerRNA *handle)
 	UI_pie_menu_end(C, handle->data);
 }
 
+static void rna_WindowManager_print_undo_steps(wmWindowManager *wm)
+{
+	BKE_undosys_print(wm->undo_stack);
+}
+
 static PointerRNA rna_WindoManager_operator_properties_last(const char *idname)
 {
 	wmOperatorType *ot = WM_operatortype_find(idname, true);
@@ -421,6 +473,79 @@ static PointerRNA rna_WindoManager_operator_properties_last(const char *idname)
 		return ptr;
 	}
 	return PointerRNA_NULL;
+}
+
+static wmEvent *rna_Window_event_add_simulate(
+        wmWindow *win, ReportList *reports,
+        int type, int value, const char *unicode,
+        int x, int y,
+        bool shift, bool ctrl, bool alt, bool oskey)
+{
+	if ((G.f & G_FLAG_EVENT_SIMULATE) == 0) {
+		BKE_report(reports, RPT_ERROR, "Not running with '--enable-event-simulate' enabled");
+		return NULL;
+	}
+
+	if (!ELEM(value, KM_PRESS, KM_RELEASE, KM_NOTHING)) {
+		BKE_report(reports, RPT_ERROR, "value: only 'PRESS/RELEASE/NOTHING' are supported");
+		return NULL;
+	}
+	if (ISKEYBOARD(type) || ISMOUSE_BUTTON(type)) {
+		if (!ELEM(value, KM_PRESS, KM_RELEASE)) {
+			BKE_report(reports, RPT_ERROR, "value: must be 'PRESS/RELEASE' for keyboard/buttons");
+			return NULL;
+		}
+	}
+	if (ELEM(type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
+		if (value != KM_NOTHING) {
+			BKE_report(reports, RPT_ERROR, "value: must be 'NOTHING' for motion");
+			return NULL;
+		}
+	}
+	if (unicode != NULL) {
+		if (value != KM_PRESS) {
+			BKE_report(reports, RPT_ERROR, "value: must be 'PRESS' when unicode is set");
+			return NULL;
+		}
+	}
+	/* TODO: validate NDOF. */
+
+	char ascii = 0;
+	if (unicode != NULL) {
+		int len = BLI_str_utf8_size(unicode);
+		if (len == -1 || unicode[len] != '\0') {
+			BKE_report(reports, RPT_ERROR, "Only a single character supported");
+			return NULL;
+		}
+		if (len == 1 && isascii(unicode[0])) {
+			ascii = unicode[0];
+		}
+	}
+
+	wmEvent e = *win->eventstate;
+	e.type = type;
+	e.val = value;
+	e.x = x;
+	e.y = y;
+	/* Note: KM_MOD_FIRST, KM_MOD_SECOND aren't used anywhere, set as bools */
+	e.shift = shift;
+	e.ctrl = ctrl;
+	e.alt = alt;
+	e.oskey = oskey;
+
+	e.prevx = win->eventstate->x;
+	e.prevy = win->eventstate->y;
+	e.prevval = win->eventstate->val;
+	e.prevtype = win->eventstate->type;
+
+	e.ascii = '\0';
+	e.utf8_buf[0] = '\0';
+	if (unicode != NULL) {
+		e.ascii = ascii;
+		STRNCPY(e.utf8_buf, unicode);
+	}
+
+	return WM_event_add_simulate(win, &e);
 }
 
 #else
@@ -479,6 +604,26 @@ void RNA_api_window(StructRNA *srna)
 
 	RNA_def_function(srna, "cursor_modal_restore", "WM_cursor_modal_restore");
 	RNA_def_function_ui_description(func, "Restore the previous cursor after calling ``cursor_modal_set``");
+
+	/* Arguments match 'rna_KeyMap_item_new'. */
+	func = RNA_def_function(srna, "event_simulate", "rna_Window_event_add_simulate");
+	RNA_def_function_flag(func, FUNC_USE_REPORTS);
+	parm = RNA_def_enum(func, "type", rna_enum_event_type_items, 0, "Type", "");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_enum(func, "value", rna_enum_event_value_items, 0, "Value", "");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_string(func, "unicode", NULL, 0, "", "");
+	RNA_def_parameter_clear_flags(parm, PROP_NEVER_NULL, 0);
+
+	RNA_def_int(func, "x", 0, INT_MIN, INT_MAX, "", "", INT_MIN, INT_MAX);
+	RNA_def_int(func, "y", 0, INT_MIN, INT_MAX, "", "", INT_MIN, INT_MAX);
+
+	RNA_def_boolean(func, "shift", 0, "Shift", "");
+	RNA_def_boolean(func, "ctrl", 0, "Ctrl", "");
+	RNA_def_boolean(func, "alt", 0, "Alt", "");
+	RNA_def_boolean(func, "oskey", 0, "OS Key", "");
+	parm = RNA_def_pointer(func, "event", "Event", "Item", "Added key map item");
+	RNA_def_function_return(func, parm);
 }
 
 void RNA_api_wm(StructRNA *srna)
@@ -516,15 +661,15 @@ void RNA_api_wm(StructRNA *srna)
 	parm = RNA_def_pointer(func, "timer", "Timer", "", "");
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-	func = RNA_def_function(srna, "gizmo_group_type_add", "rna_gizmo_group_type_add");
+	func = RNA_def_function(srna, "gizmo_group_type_ensure", "rna_gizmo_group_type_ensure");
 	RNA_def_function_ui_description(func, "Activate an existing widget group (when the persistent option isn't set)");
 	RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
 	parm = RNA_def_string(func, "identifier", NULL, 0, "", "Gizmo group type name");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
-	func = RNA_def_function(srna, "gizmo_group_type_remove", "rna_gizmo_group_type_remove");
-	RNA_def_function_ui_description(func, "De-activate a widget group (when the persistent option isn't set)");
-	RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+	func = RNA_def_function(srna, "gizmo_group_type_unlink_delayed", "rna_gizmo_group_type_unlink_delayed");
+	RNA_def_function_ui_description(func, "Unlink a widget group (when the persistent option is set)");
+	RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_REPORTS);
 	parm = RNA_def_string(func, "identifier", NULL, 0, "", "Gizmo group type name");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 
@@ -645,6 +790,7 @@ void RNA_api_wm(StructRNA *srna)
 	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_RNAPTR);
 	RNA_def_function_return(func, parm);
 
+	RNA_def_function(srna, "print_undo_steps", "rna_WindowManager_print_undo_steps");
 }
 
 void RNA_api_operator(StructRNA *srna)
@@ -803,6 +949,12 @@ void RNA_api_keymapitem(StructRNA *srna)
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	parm = RNA_def_boolean(func, "result", 0, "Comparison result", "");
 	RNA_def_function_return(func, parm);
+
+	func = RNA_def_function(srna, "to_string", "rna_KeyMapItem_to_string");
+	RNA_def_boolean(func, "compact", false, "Compact", "");
+	parm = RNA_def_string(func, "result", NULL, UI_MAX_SHORTCUT_STR, "result", "");
+	RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0);
+	RNA_def_function_output(func, parm);
 }
 
 void RNA_api_keymapitems(StructRNA *srna)
@@ -847,6 +999,14 @@ void RNA_api_keymapitems(StructRNA *srna)
 	parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "Added key map item");
 	RNA_def_function_return(func, parm);
 
+	func = RNA_def_function(srna, "new_from_item", "rna_KeyMap_item_new_from_item");
+	RNA_def_function_flag(func, FUNC_USE_REPORTS);
+	parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "Item to use as a reference");
+	RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+	RNA_def_boolean(func, "head", 0, "At Head", "");
+	parm = RNA_def_pointer(func, "result", "KeyMapItem", "Item", "Added key map item");
+	RNA_def_function_return(func, parm);
+
 	func = RNA_def_function(srna, "remove", "rna_KeyMap_item_remove");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS);
 	parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
@@ -858,6 +1018,20 @@ void RNA_api_keymapitems(StructRNA *srna)
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	RNA_def_property_ui_text(parm, "id", "ID of the item");
 	parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
+	RNA_def_function_return(func, parm);
+
+	/* Keymap introspection
+	 * Args follow: KeyConfigs.find_item_from_operator */
+	func = RNA_def_function(srna, "find_from_operator", "rna_KeyMap_item_find_from_operator");
+	RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+	parm = RNA_def_string(func, "idname", NULL, 0, "Operator Identifier", "");
+	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+	parm = RNA_def_pointer(func, "properties", "OperatorProperties", "", "");
+	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
+	RNA_def_enum_flag(func, "include", rna_enum_event_type_mask_items, EVT_TYPE_MASK_ALL, "Include", "");
+	RNA_def_enum_flag(func, "exclude", rna_enum_event_type_mask_items, 0, "Exclude", "");
+	parm = RNA_def_pointer(func, "item", "KeyMapItem", "", "");
+	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
 	RNA_def_function_return(func, parm);
 }
 
@@ -871,7 +1045,8 @@ void RNA_api_keymaps(StructRNA *srna)
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	RNA_def_enum(func, "space_type", rna_enum_space_type_items, SPACE_EMPTY, "Space Type", "");
 	RNA_def_enum(func, "region_type", rna_enum_region_type_items, RGN_TYPE_WINDOW, "Region Type", "");
-	RNA_def_boolean(func, "modal", 0, "Modal", "");
+	RNA_def_boolean(func, "modal", 0, "Modal", "Keymap for modal operators");
+	RNA_def_boolean(func, "tool", 0, "Tool", "Keymap for active tools");
 	parm = RNA_def_pointer(func, "keymap", "KeyMap", "Key Map", "Added key map");
 	RNA_def_function_return(func, parm);
 
@@ -924,7 +1099,8 @@ void RNA_api_keyconfigs(StructRNA *srna)
 	RNA_def_property_enum_items(parm, rna_enum_operator_context_items);
 	parm = RNA_def_pointer(func, "properties", "OperatorProperties", "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
-	RNA_def_boolean(func, "is_hotkey", 0, "Hotkey", "Event is not a modifier");
+	RNA_def_enum_flag(func, "include", rna_enum_event_type_mask_items, EVT_TYPE_MASK_ALL, "Include", "");
+	RNA_def_enum_flag(func, "exclude", rna_enum_event_type_mask_items, 0, "Exclude", "");
 	parm = RNA_def_pointer(func, "keymap", "KeyMap", "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_RNAPTR | PARM_OUTPUT);
 	parm = RNA_def_pointer(func, "item", "KeyMapItem", "", "");

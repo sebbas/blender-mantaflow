@@ -18,8 +18,12 @@
 
 #include "blender/CCL_api.h"
 
+#include "blender/blender_device.h"
 #include "blender/blender_sync.h"
 #include "blender/blender_session.h"
+
+#include "render/denoising.h"
+#include "render/merge.h"
 
 #include "util/util_debug.h"
 #include "util/util_foreach.h"
@@ -35,6 +39,10 @@
 
 #include <OSL/oslquery.h>
 #include <OSL/oslconfig.h>
+#endif
+
+#ifdef WITH_OPENCL
+#include "device/device_intern.h"
 #endif
 
 CCL_NAMESPACE_BEGIN
@@ -60,7 +68,6 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
 	/* Backup some settings for comparison. */
 	DebugFlags::OpenCL::DeviceType opencl_device_type = flags.opencl.device_type;
-	DebugFlags::OpenCL::KernelType opencl_kernel_type = flags.opencl.kernel_type;
 	/* Synchronize shared flags. */
 	flags.viewport_static_bvh = get_enum(cscene, "debug_bvh_type");
 	/* Synchronize CPU flags. */
@@ -74,18 +81,6 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	/* Synchronize CUDA flags. */
 	flags.cuda.adaptive_compile = get_boolean(cscene, "debug_use_cuda_adaptive_compile");
 	flags.cuda.split_kernel = get_boolean(cscene, "debug_use_cuda_split_kernel");
-	/* Synchronize OpenCL kernel type. */
-	switch(get_enum(cscene, "debug_opencl_kernel_type")) {
-		case 0:
-			flags.opencl.kernel_type = DebugFlags::OpenCL::KERNEL_DEFAULT;
-			break;
-		case 1:
-			flags.opencl.kernel_type = DebugFlags::OpenCL::KERNEL_MEGA;
-			break;
-		case 2:
-			flags.opencl.kernel_type = DebugFlags::OpenCL::KERNEL_SPLIT;
-			break;
-	}
 	/* Synchronize OpenCL device type. */
 	switch(get_enum(cscene, "debug_opencl_device_type")) {
 		case 0:
@@ -110,9 +105,7 @@ bool debug_flags_sync_from_scene(BL::Scene b_scene)
 	/* Synchronize other OpenCL flags. */
 	flags.opencl.debug = get_boolean(cscene, "debug_use_opencl_debug");
 	flags.opencl.mem_limit = ((size_t)get_int(cscene, "debug_opencl_mem_limit"))*1024*1024;
-	flags.opencl.single_program = get_boolean(cscene, "debug_opencl_kernel_single_program");
-	return flags.opencl.device_type != opencl_device_type ||
-	       flags.opencl.kernel_type != opencl_kernel_type;
+	return flags.opencl.device_type != opencl_device_type;
 }
 
 /* Reset debug flags to default values.
@@ -123,10 +116,8 @@ bool debug_flags_reset()
 	DebugFlagsRef flags = DebugFlags();
 	/* Backup some settings for comparison. */
 	DebugFlags::OpenCL::DeviceType opencl_device_type = flags.opencl.device_type;
-	DebugFlags::OpenCL::KernelType opencl_kernel_type = flags.opencl.kernel_type;
 	flags.reset();
-	return flags.opencl.device_type != opencl_device_type ||
-	       flags.opencl.kernel_type != opencl_kernel_type;
+	return flags.opencl.device_type != opencl_device_type;
 }
 
 }  /* namespace */
@@ -203,10 +194,10 @@ static PyObject *exit_func(PyObject * /*self*/, PyObject * /*args*/)
 
 static PyObject *create_func(PyObject * /*self*/, PyObject *args)
 {
-	PyObject *pyengine, *pyuserpref, *pydata, *pyregion, *pyv3d, *pyrv3d;
+	PyObject *pyengine, *pypreferences, *pydata, *pyregion, *pyv3d, *pyrv3d;
 	int preview_osl;
 
-	if(!PyArg_ParseTuple(args, "OOOOOOi", &pyengine, &pyuserpref, &pydata,
+	if(!PyArg_ParseTuple(args, "OOOOOOi", &pyengine, &pypreferences, &pydata,
 	                     &pyregion, &pyv3d, &pyrv3d, &preview_osl))
 	{
 		return NULL;
@@ -217,9 +208,9 @@ static PyObject *create_func(PyObject * /*self*/, PyObject *args)
 	RNA_pointer_create(NULL, &RNA_RenderEngine, (void*)PyLong_AsVoidPtr(pyengine), &engineptr);
 	BL::RenderEngine engine(engineptr);
 
-	PointerRNA userprefptr;
-	RNA_pointer_create(NULL, &RNA_UserPreferences, (void*)PyLong_AsVoidPtr(pyuserpref), &userprefptr);
-	BL::UserPreferences userpref(userprefptr);
+	PointerRNA preferencesptr;
+	RNA_pointer_create(NULL, &RNA_Preferences, (void*)PyLong_AsVoidPtr(pypreferences), &preferencesptr);
+	BL::Preferences preferences(preferencesptr);
 
 	PointerRNA dataptr;
 	RNA_main_pointer_create((Main*)PyLong_AsVoidPtr(pydata), &dataptr);
@@ -245,11 +236,11 @@ static PyObject *create_func(PyObject * /*self*/, PyObject *args)
 		int width = region.width();
 		int height = region.height();
 
-		session = new BlenderSession(engine, userpref, data, v3d, rv3d, width, height);
+		session = new BlenderSession(engine, preferences, data, v3d, rv3d, width, height);
 	}
 	else {
 		/* offline session or preview render */
-		session = new BlenderSession(engine, userpref, data, preview_osl);
+		session = new BlenderSession(engine, preferences, data, preview_osl);
 	}
 
 	return PyLong_FromVoidPtr(session);
@@ -388,9 +379,18 @@ static PyObject *sync_func(PyObject * /*self*/, PyObject *args)
 	Py_RETURN_NONE;
 }
 
-static PyObject *available_devices_func(PyObject * /*self*/, PyObject * /*args*/)
+static PyObject *available_devices_func(PyObject * /*self*/, PyObject * args)
 {
-	vector<DeviceInfo>& devices = Device::available_devices();
+	const char *type_name;
+	if(!PyArg_ParseTuple(args, "s", &type_name)) {
+		return NULL;
+	}
+
+	DeviceType type = Device::type_from_string(type_name);
+	uint mask = (type == DEVICE_NONE) ? DEVICE_MASK_ALL : DEVICE_MASK(type);
+	mask |= DEVICE_MASK_CPU;
+
+	vector<DeviceInfo> devices = Device::available_devices(mask);
 	PyObject *ret = PyTuple_New(devices.size());
 
 	for(size_t i = 0; i < devices.size(); i++) {
@@ -504,7 +504,7 @@ static PyObject *osl_update_node_func(PyObject * /*self*/, PyObject *args)
 				socket_type = "NodeSocketString";
 				data_type = BL::NodeSocket::type_STRING;
 				if(param->validdefault)
-					default_string = param->sdefault[0];
+					default_string = param->sdefault[0].string();
 			}
 			else
 				continue;
@@ -616,7 +616,182 @@ static PyObject *opencl_disable_func(PyObject * /*self*/, PyObject * /*value*/)
 	DebugFlags().opencl.device_type = DebugFlags::OpenCL::DEVICE_NONE;
 	Py_RETURN_NONE;
 }
+
+static PyObject *opencl_compile_func(PyObject * /*self*/, PyObject *args)
+{
+	PyObject *sequence = PySequence_Fast(args, "Arguments must be a sequence");
+	if(sequence == NULL) {
+		Py_RETURN_FALSE;
+	}
+
+	vector<string> parameters;
+	for(Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(sequence); i++) {
+		PyObject *item = PySequence_Fast_GET_ITEM(sequence, i);
+		PyObject *item_as_string = PyObject_Str(item);
+		const char *parameter_string = PyUnicode_AsUTF8(item_as_string);
+		parameters.push_back(parameter_string);
+		Py_DECREF(item_as_string);
+	}
+	Py_DECREF(sequence);
+
+	if (device_opencl_compile_kernel(parameters)) {
+		Py_RETURN_TRUE;
+	}
+	else {
+		Py_RETURN_FALSE;
+	}
+}
 #endif
+
+static bool image_parse_filepaths(PyObject *pyfilepaths, vector<string>& filepaths)
+{
+	if(PyUnicode_Check(pyfilepaths)) {
+		const char *filepath = PyUnicode_AsUTF8(pyfilepaths);
+		filepaths.push_back(filepath);
+		return true;
+	}
+
+	PyObject *sequence = PySequence_Fast(pyfilepaths, "File paths must be a string or sequence of strings");
+	if(sequence == NULL) {
+		return false;
+	}
+
+	for(Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(sequence); i++) {
+		PyObject *item = PySequence_Fast_GET_ITEM(sequence, i);
+		const char *filepath = PyUnicode_AsUTF8(item);
+		if(filepath == NULL) {
+			PyErr_SetString(PyExc_ValueError, "File paths must be a string or sequence of strings.");
+			Py_DECREF(sequence);
+			return false;
+		}
+		filepaths.push_back(filepath);
+	}
+	Py_DECREF(sequence);
+
+	return true;
+}
+
+static PyObject *denoise_func(PyObject * /*self*/, PyObject *args, PyObject *keywords)
+{
+	static const char *keyword_list[] = {"preferences", "scene", "view_layer",
+	                                     "input", "output",
+	                                     "tile_size", "samples", NULL};
+	PyObject *pypreferences, *pyscene, *pyviewlayer;
+	PyObject *pyinput, *pyoutput = NULL;
+	int tile_size = 0, samples = 0;
+
+	if (!PyArg_ParseTupleAndKeywords(args, keywords, "OOOO|Oii", (char**)keyword_list,
+	                                 &pypreferences, &pyscene, &pyviewlayer,
+									 &pyinput, &pyoutput,
+	                                 &tile_size, &samples)) {
+		return NULL;
+	}
+
+	/* Get device specification from preferences and scene. */
+	PointerRNA preferencesptr;
+	RNA_pointer_create(NULL, &RNA_Preferences, (void*)PyLong_AsVoidPtr(pypreferences), &preferencesptr);
+	BL::Preferences b_preferences(preferencesptr);
+
+	PointerRNA sceneptr;
+	RNA_id_pointer_create((ID*)PyLong_AsVoidPtr(pyscene), &sceneptr);
+	BL::Scene b_scene(sceneptr);
+
+	DeviceInfo device = blender_device_info(b_preferences, b_scene, true);
+
+	/* Get denoising parameters from view layer. */
+	PointerRNA viewlayerptr;
+	RNA_pointer_create((ID*)PyLong_AsVoidPtr(pyscene), &RNA_ViewLayer, PyLong_AsVoidPtr(pyviewlayer), &viewlayerptr);
+	PointerRNA cviewlayer = RNA_pointer_get(&viewlayerptr, "cycles");
+
+	DenoiseParams params;
+	params.radius = get_int(cviewlayer, "denoising_radius");
+	params.strength = get_float(cviewlayer, "denoising_strength");
+	params.feature_strength = get_float(cviewlayer, "denoising_feature_strength");
+	params.relative_pca = get_boolean(cviewlayer, "denoising_relative_pca");
+	params.neighbor_frames = get_int(cviewlayer, "denoising_neighbor_frames");
+
+	/* Parse file paths list. */
+	vector<string> input, output;
+
+	if(!image_parse_filepaths(pyinput, input)) {
+		return NULL;
+	}
+
+	if(pyoutput) {
+		if(!image_parse_filepaths(pyoutput, output)) {
+			return NULL;
+		}
+	}
+	else {
+		output = input;
+	}
+
+	if(input.empty()) {
+		PyErr_SetString(PyExc_ValueError, "No input file paths specified.");
+		return NULL;
+	}
+	if(input.size() != output.size()) {
+		PyErr_SetString(PyExc_ValueError, "Number of input and output file paths does not match.");
+		return NULL;
+	}
+
+	/* Create denoiser. */
+	Denoiser denoiser(device);
+	denoiser.params = params;
+	denoiser.input = input;
+	denoiser.output = output;
+
+	if (tile_size > 0) {
+		denoiser.tile_size = make_int2(tile_size, tile_size);
+	}
+	if (samples > 0) {
+		denoiser.samples_override = samples;
+	}
+
+	/* Run denoiser. */
+	if(!denoiser.run()) {
+		PyErr_SetString(PyExc_ValueError, denoiser.error.c_str());
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
+static PyObject *merge_func(PyObject * /*self*/, PyObject *args, PyObject *keywords)
+{
+	static const char *keyword_list[] = {"input", "output", NULL};
+	PyObject *pyinput, *pyoutput = NULL;
+
+	if (!PyArg_ParseTupleAndKeywords(args, keywords, "OO", (char**)keyword_list, &pyinput, &pyoutput)) {
+		return NULL;
+	}
+
+	/* Parse input list. */
+	vector<string> input;
+	if(!image_parse_filepaths(pyinput, input)) {
+		return NULL;
+	}
+
+	/* Parse output string. */
+	if(!PyUnicode_Check(pyoutput)) {
+		PyErr_SetString(PyExc_ValueError, "Output must be a string.");
+		return NULL;
+	}
+	string output = PyUnicode_AsUTF8(pyoutput);
+
+	/* Merge. */
+	ImageMerger merger;
+	merger.input = input;
+	merger.output = output;
+
+	if(!merger.run()) {
+		PyErr_SetString(PyExc_ValueError, merger.error.c_str());
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
 
 static PyObject *debug_flags_update_func(PyObject * /*self*/, PyObject *args)
 {
@@ -746,11 +921,11 @@ static PyObject *enable_print_stats_func(PyObject * /*self*/, PyObject * /*args*
 
 static PyObject *get_device_types_func(PyObject * /*self*/, PyObject * /*args*/)
 {
-	vector<DeviceInfo>& devices = Device::available_devices();
+	vector<DeviceType> device_types = Device::available_types();
 	bool has_cuda = false, has_opencl = false;
-	for(int i = 0; i < devices.size(); i++) {
-		has_cuda   |= (devices[i].type == DEVICE_CUDA);
-		has_opencl |= (devices[i].type == DEVICE_OPENCL);
+	foreach(DeviceType device_type, device_types) {
+		has_cuda   |= (device_type == DEVICE_CUDA);
+		has_opencl |= (device_type == DEVICE_OPENCL);
 	}
 	PyObject *list = PyTuple_New(2);
 	PyTuple_SET_ITEM(list, 0, PyBool_FromLong(has_cuda));
@@ -772,11 +947,16 @@ static PyMethodDef methods[] = {
 	{"osl_update_node", osl_update_node_func, METH_VARARGS, ""},
 	{"osl_compile", osl_compile_func, METH_VARARGS, ""},
 #endif
-	{"available_devices", available_devices_func, METH_NOARGS, ""},
+	{"available_devices", available_devices_func, METH_VARARGS, ""},
 	{"system_info", system_info_func, METH_NOARGS, ""},
 #ifdef WITH_OPENCL
 	{"opencl_disable", opencl_disable_func, METH_NOARGS, ""},
+ 	{"opencl_compile", opencl_compile_func, METH_VARARGS, ""},
 #endif
+
+	/* Standalone denoising */
+	{"denoise", (PyCFunction)denoise_func, METH_VARARGS|METH_KEYWORDS, ""},
+	{"merge", (PyCFunction)merge_func, METH_VARARGS|METH_KEYWORDS, ""},
 
 	/* Debugging routines */
 	{"debug_flags_update", debug_flags_update_func, METH_VARARGS, ""},
@@ -801,7 +981,7 @@ static struct PyModuleDef module = {
 	"Blender cycles render integration",
 	-1,
 	methods,
-	NULL, NULL, NULL, NULL
+	NULL, NULL, NULL, NULL,
 };
 
 CCL_NAMESPACE_END
@@ -843,10 +1023,18 @@ void *CCL_python_module_init()
 #ifdef WITH_NETWORK
 	PyModule_AddObject(mod, "with_network", Py_True);
 	Py_INCREF(Py_True);
-#else /* WITH_NETWORK */
+#else  /* WITH_NETWORK */
 	PyModule_AddObject(mod, "with_network", Py_False);
 	Py_INCREF(Py_False);
-#endif /* WITH_NETWORK */
+#endif  /* WITH_NETWORK */
+
+#ifdef WITH_EMBREE
+	PyModule_AddObject(mod, "with_embree", Py_True);
+	Py_INCREF(Py_True);
+#else  /* WITH_EMBREE */
+	PyModule_AddObject(mod, "with_embree", Py_False);
+	Py_INCREF(Py_False);
+#endif  /* WITH_EMBREE */
 
 	return (void*)mod;
 }

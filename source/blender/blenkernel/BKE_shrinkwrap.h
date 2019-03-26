@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,51 +15,76 @@
  *
  * The Original Code is Copyright (C) Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_SHRINKWRAP_H__
 #define __BKE_SHRINKWRAP_H__
 
-/** \file BKE_shrinkwrap.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 /* Shrinkwrap stuff */
 #include "BKE_bvhutils.h"
+#include "BLI_bitmap.h"
 
 /*
  * Shrinkwrap is composed by a set of functions and options that define the type of shrink.
  *
  * 3 modes are available:
- *    - Nearest vertex
- *	  - Nearest surface
- *    - Normal projection
+ * - Nearest vertex
+ * - Nearest surface
+ * - Normal projection
  *
  * ShrinkwrapCalcData encapsulates all needed data for shrinkwrap functions.
  * (So that you don't have to pass an enormous amount of arguments to functions)
  */
 
-struct Object;
-struct Mesh;
-struct MVert;
-struct MDeformVert;
-struct ModifierEvalContext;
-struct ShrinkwrapModifierData;
 struct BVHTree;
+struct MDeformVert;
+struct MVert;
+struct Mesh;
+struct ModifierEvalContext;
+struct Object;
+struct ShrinkwrapModifierData;
 struct SpaceTransform;
 
+/* Information about boundary edges in the mesh. */
+typedef struct ShrinkwrapBoundaryVertData {
+	/* Average direction of edges that meet here. */
+	float direction[3];
+
+	/* Closest vector to direction that is orthogonal to vertex normal. */
+	float normal_plane[3];
+} ShrinkwrapBoundaryVertData;
+
+typedef struct ShrinkwrapBoundaryData {
+	/* True if the edge belongs to exactly one face. */
+	const BLI_bitmap *edge_is_boundary;
+	/* True if the looptri has any boundary edges. */
+	const BLI_bitmap *looptri_has_boundary;
+
+	/* Mapping from vertex index to boundary vertex index, or -1.
+	 * Used for compact storage of data about boundary vertices. */
+	const int *vert_boundary_id;
+	unsigned int num_boundary_verts;
+
+	/* Direction data about boundary vertices. */
+	const ShrinkwrapBoundaryVertData *boundary_verts;
+} ShrinkwrapBoundaryData;
+
+void BKE_shrinkwrap_discard_boundary_data(struct Mesh *mesh);
+void BKE_shrinkwrap_compute_boundary_data(struct Mesh *mesh);
+
+/* Information about a mesh and BVH tree. */
 typedef struct ShrinkwrapTreeData {
 	Mesh *mesh;
 
 	BVHTree *bvh;
 	BVHTreeFromMesh treeData;
 
+	float (*pnors)[3];
 	float (*clnors)[3];
+	ShrinkwrapBoundaryData *boundary;
 } ShrinkwrapTreeData;
 
 /* Checks if the modifier needs target normals with these settings. */
@@ -74,8 +97,10 @@ bool BKE_shrinkwrap_init_tree(struct ShrinkwrapTreeData *data, Mesh *mesh, int s
 void BKE_shrinkwrap_free_tree(struct ShrinkwrapTreeData *data);
 
 /* Implementation of the Shrinkwrap modifier */
-void shrinkwrapModifier_deform(struct ShrinkwrapModifierData *smd, struct Scene *scene, struct Object *ob, struct Mesh *mesh,
-                               float (*vertexCos)[3], int numVerts);
+void shrinkwrapModifier_deform(
+        struct ShrinkwrapModifierData *smd, const struct ModifierEvalContext *ctx,
+        struct Scene *scene, struct Object *ob, struct Mesh *mesh,
+        struct MDeformVert *dvert, const int defgrp_index, float (*vertexCos)[3], int numVerts);
 
 /*
  * This function casts a ray in the given BVHTree.. but it takes into consideration the space_transform, that is:
@@ -90,6 +115,10 @@ void shrinkwrapModifier_deform(struct ShrinkwrapModifierData *smd, struct Scene 
 bool BKE_shrinkwrap_project_normal(
         char options, const float vert[3], const float dir[3], const float ray_radius,
         const struct SpaceTransform *transf, struct ShrinkwrapTreeData *tree, BVHTreeRayHit *hit);
+
+/* Maps the point to the nearest surface, either by simple nearest, or by target normal projection. */
+void BKE_shrinkwrap_find_nearest_surface(
+        struct ShrinkwrapTreeData *tree, struct BVHTreeNearest *nearest, float co[3], int type);
 
 /* Computes a smooth normal of the target (if applicable) at the hit location. */
 void BKE_shrinkwrap_compute_smooth_normal(

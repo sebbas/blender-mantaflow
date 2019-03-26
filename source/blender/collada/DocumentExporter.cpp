@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Jan Diederich, Tod Liverseed.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/DocumentExporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #include <stdlib.h>
@@ -151,8 +145,8 @@ char *bc_CustomData_get_active_layer_name(const CustomData *data, int type)
 	return data->layers[layer_index].name;
 }
 
-DocumentExporter::DocumentExporter(Depsgraph *depsgraph, const ExportSettings *export_settings) :
-	depsgraph(depsgraph),
+DocumentExporter::DocumentExporter(BlenderContext &blender_context, const ExportSettings *export_settings) :
+	blender_context(blender_context),
 	export_settings(export_settings) {
 }
 
@@ -180,9 +174,11 @@ static COLLADABU::NativeString make_temp_filepath(const char *name, const char *
 // COLLADA allows this through multiple <channel>s in <animation>.
 // For this to work, we need to know objects that use a certain action.
 
-int DocumentExporter::exportCurrentScene(bContext *C, Scene *sce)
+int DocumentExporter::exportCurrentScene()
 {
-	Main *bmain = CTX_data_main(C);
+	Scene *sce = blender_context.get_scene();
+	bContext *C = blender_context.get_context();
+
 	PointerRNA sceneptr, unit_settings;
 	PropertyRNA *system; /* unused , *scale; */
 
@@ -241,12 +237,7 @@ int DocumentExporter::exportCurrentScene(bContext *C, Scene *sce)
 
 	asset.setUnit(unitname, linearmeasure);
 	asset.setUpAxisType(COLLADASW::Asset::Z_UP);
-	if (U.author[0] != '\0') {
-		asset.getContributor().mAuthor = U.author;
-	}
-	else {
-		asset.getContributor().mAuthor = "Blender User";
-	}
+	asset.getContributor().mAuthor = "Blender User";
 	char version_buf[128];
 #ifdef WITH_BUILDINFO
 	BLI_snprintf(version_buf, sizeof(version_buf), "Blender %d.%02d.%d commit date:%s, commit time:%s, hash:%s",
@@ -272,13 +263,13 @@ int DocumentExporter::exportCurrentScene(bContext *C, Scene *sce)
 		le.exportLights(sce);
 	}
 
-	// <library_images>
-	ImagesExporter ie(writer, this->export_settings);
-	ie.exportImages(sce);
-
 	// <library_effects>
-	EffectsExporter ee(writer, this->export_settings);
-	ee.exportEffects(sce);
+	EffectsExporter ee(writer, this->export_settings, key_image_map);
+	ee.exportEffects(C, sce);
+
+	// <library_images>
+	ImagesExporter ie(writer, this->export_settings, key_image_map);
+	ie.exportImages(sce);
 
 	// <library_materials>
 	MaterialsExporter me(writer, this->export_settings);
@@ -286,28 +277,29 @@ int DocumentExporter::exportCurrentScene(bContext *C, Scene *sce)
 
 	// <library_geometries>
 	if (bc_has_object_type(export_set, OB_MESH)) {
-		GeometryExporter ge(writer, this->export_settings);
-		ge.exportGeom(bmain, depsgraph, sce);
+		GeometryExporter ge(blender_context, writer, this->export_settings);
+		ge.exportGeom();
 	}
 
 	// <library_controllers>
-	ArmatureExporter arm_exporter(writer, this->export_settings);
-	ControllerExporter controller_exporter(writer, this->export_settings);
+	ArmatureExporter arm_exporter(blender_context, writer, this->export_settings);
+	ControllerExporter controller_exporter(blender_context, writer, this->export_settings);
 	if (bc_has_object_type(export_set, OB_ARMATURE) || this->export_settings->include_shapekeys)
 	{
-		controller_exporter.export_controllers(bmain, depsgraph, sce);
+		controller_exporter.export_controllers();
 	}
 
 	// <library_visual_scenes>
 
-	SceneExporter se(writer, &arm_exporter, this->export_settings);
+	SceneExporter se(blender_context, writer, &arm_exporter, this->export_settings);
 
 	if (this->export_settings->include_animations) {
 		// <library_animations>
-		AnimationExporter ae(depsgraph, writer, this->export_settings);
-		ae.exportAnimations(bmain, sce);
+		AnimationExporter ae(blender_context, writer, this->export_settings);
+		ae.exportAnimations();
 	}
-	se.exportScene(C, depsgraph, sce);
+
+	se.exportScene();
 
 	// <scene>
 	std::string scene_name(translate_id(id_name(sce)));
@@ -337,5 +329,4 @@ void DocumentExporter::exportScenes(const char *filename)
  * NOTES:
  *
  * AnimationExporter::sample_animation enables all curves on armature, this is undesirable for a user
- *
  */

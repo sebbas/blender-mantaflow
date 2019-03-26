@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Joshua Leung
- * Contributor(s): None Yet
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/intern/eval/deg_eval_flush.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Core routines for how the Depsgraph works.
  */
@@ -52,14 +45,16 @@ extern "C" {
 
 #include "DEG_depsgraph.h"
 
-#include "intern/nodes/deg_node.h"
-#include "intern/nodes/deg_node_component.h"
-#include "intern/nodes/deg_node_id.h"
-#include "intern/nodes/deg_node_operation.h"
+#include "intern/debug/deg_debug.h"
+#include "intern/depsgraph.h"
+#include "intern/depsgraph_update.h"
+#include "intern/node/deg_node.h"
+#include "intern/node/deg_node_component.h"
+#include "intern/node/deg_node_factory.h"
+#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node_operation.h"
 
-#include "intern/depsgraph_intern.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
-#include "util/deg_util_foreach.h"
 
 // Invalidate datablock data when update is flushed on it.
 //
@@ -85,7 +80,7 @@ enum {
 	COMPONENT_STATE_DONE      = 2,
 };
 
-typedef std::deque<OperationDepsNode *> FlushQueue;
+typedef std::deque<OperationNode *> FlushQueue;
 
 namespace {
 
@@ -95,7 +90,7 @@ void flush_init_operation_node_func(
         const ParallelRangeTLS *__restrict /*tls*/)
 {
 	Depsgraph *graph = (Depsgraph *)data_v;
-	OperationDepsNode *node = graph->operations[i];
+	OperationNode *node = graph->operations[i];
 	node->scheduled = false;
 }
 
@@ -105,9 +100,9 @@ void flush_init_id_node_func(
         const ParallelRangeTLS *__restrict /*tls*/)
 {
 	Depsgraph *graph = (Depsgraph *)data_v;
-	IDDepsNode *id_node = graph->id_nodes[i];
+	IDNode *id_node = graph->id_nodes[i];
 	id_node->custom_flags = ID_STATE_NONE;
-	GHASH_FOREACH_BEGIN(ComponentDepsNode *, comp_node, id_node->components)
+	GHASH_FOREACH_BEGIN(ComponentNode *, comp_node, id_node->components)
 		comp_node->custom_flags = COMPONENT_STATE_NONE;
 	GHASH_FOREACH_END();
 }
@@ -138,7 +133,7 @@ BLI_INLINE void flush_prepare(Depsgraph *graph)
 
 BLI_INLINE void flush_schedule_entrypoints(Depsgraph *graph, FlushQueue *queue)
 {
-	GSET_FOREACH_BEGIN(OperationDepsNode *, op_node, graph->entry_tags)
+	GSET_FOREACH_BEGIN(OperationNode *, op_node, graph->entry_tags)
 	{
 		queue->push_back(op_node);
 		op_node->scheduled = true;
@@ -149,14 +144,14 @@ BLI_INLINE void flush_schedule_entrypoints(Depsgraph *graph, FlushQueue *queue)
 	GSET_FOREACH_END();
 }
 
-BLI_INLINE void flush_handle_id_node(IDDepsNode *id_node)
+BLI_INLINE void flush_handle_id_node(IDNode *id_node)
 {
 	id_node->custom_flags = ID_STATE_MODIFIED;
 }
 
 /* TODO(sergey): We can reduce number of arguments here. */
-BLI_INLINE void flush_handle_component_node(IDDepsNode *id_node,
-                                            ComponentDepsNode *comp_node,
+BLI_INLINE void flush_handle_component_node(IDNode *id_node,
+                                            ComponentNode *comp_node,
                                             FlushQueue *queue)
 {
 	/* We only handle component once. */
@@ -164,24 +159,22 @@ BLI_INLINE void flush_handle_component_node(IDDepsNode *id_node,
 		return;
 	}
 	comp_node->custom_flags = COMPONENT_STATE_DONE;
-	/* Tag all required operations in component for update.  */
-	foreach (OperationDepsNode *op, comp_node->operations) {
-		/* We don't want to flush tags in "upstream" direction for
-		 * certain types of operations.
-		 *
-		 * TODO(sergey): Need a more generic solution for this.
-		 */
-		if (op->opcode == DEG_OPCODE_PARTICLE_SETTINGS_EVAL) {
-			continue;
+	/* Tag all required operations in component for update, unless this is a
+	 * special component where we don't want all operations to be tagged.
+	 *
+	 * TODO(sergey): Make this a more generic solution. */
+	if (comp_node->type != NodeType::PARTICLE_SETTINGS &&
+	    comp_node->type != NodeType::PARTICLE_SYSTEM)
+	{
+		for (OperationNode *op : comp_node->operations) {
+			op->flag |= DEPSOP_FLAG_NEEDS_UPDATE;
 		}
-		op->flag |= DEPSOP_FLAG_NEEDS_UPDATE;
 	}
 	/* when some target changes bone, we might need to re-run the
-	 * whole IK solver, otherwise result might be unpredictable.
-	 */
-	if (comp_node->type == DEG_NODE_TYPE_BONE) {
-		ComponentDepsNode *pose_comp =
-		        id_node->find_component(DEG_NODE_TYPE_EVAL_POSE);
+	 * whole IK solver, otherwise result might be unpredictable. */
+	if (comp_node->type == NodeType::BONE) {
+		ComponentNode *pose_comp =
+		        id_node->find_component(NodeType::EVAL_POSE);
 		BLI_assert(pose_comp != NULL);
 		if (pose_comp->custom_flags == COMPONENT_STATE_NONE) {
 			queue->push_front(pose_comp->get_entry_operation());
@@ -196,25 +189,38 @@ BLI_INLINE void flush_handle_component_node(IDDepsNode *id_node,
  * return value, so it can start being handled right away, without building too
  * much of a queue.
  */
-BLI_INLINE OperationDepsNode *flush_schedule_children(
-        OperationDepsNode *op_node,
+BLI_INLINE OperationNode *flush_schedule_children(
+        OperationNode *op_node,
         FlushQueue *queue)
 {
-	OperationDepsNode *result = NULL;
-	foreach (DepsRelation *rel, op_node->outlinks) {
-		if (rel->flag & DEPSREL_FLAG_NO_FLUSH) {
+	OperationNode *result = NULL;
+	for (Relation *rel : op_node->outlinks) {
+		/* Flush is forbidden, completely. */
+		if (rel->flag & RELATION_FLAG_NO_FLUSH) {
 			continue;
 		}
-		OperationDepsNode *to_node = (OperationDepsNode *)rel->to;
-		if (to_node->scheduled == false) {
-			if (result != NULL) {
-				queue->push_front(to_node);
-			}
-			else {
-				result = to_node;
-			}
-			to_node->scheduled = true;
+		/* Relation only allows flushes on user changes, but the node was not
+		 * affected by user. */
+		if ((rel->flag & RELATION_FLAG_FLUSH_USER_EDIT_ONLY) &&
+		    (op_node->flag & DEPSOP_FLAG_USER_MODIFIED) == 0)
+		{
+			continue;
 		}
+		OperationNode *to_node = (OperationNode *)rel->to;
+		/* Always flush flushable flags, so children always know what happened
+		 * to their parents. */
+		to_node->flag |= (op_node->flag & DEPSOP_FLAG_FLUSH);
+		/* Flush update over the relation, if it was not flushed yet. */
+		if (to_node->scheduled) {
+			continue;
+		}
+		if (result != NULL) {
+			queue->push_front(to_node);
+		}
+		else {
+			result = to_node;
+		}
+		to_node->scheduled = true;
 	}
 	return result;
 }
@@ -225,36 +231,35 @@ void flush_engine_data_update(ID *id)
 	if (draw_data_list == NULL) {
 		return;
 	}
-	LISTBASE_FOREACH(DrawData *, draw_data, draw_data_list) {
+	LISTBASE_FOREACH (DrawData *, draw_data, draw_data_list) {
 		draw_data->recalc |= id->recalc;
 	}
 }
 
 /* NOTE: It will also accumulate flags from changed components. */
-void flush_editors_id_update(Main *bmain,
-                             Depsgraph *graph,
+void flush_editors_id_update(Depsgraph *graph,
                              const DEGEditorUpdateContext *update_ctx)
 {
-	foreach (IDDepsNode *id_node, graph->id_nodes) {
+	for (IDNode *id_node : graph->id_nodes) {
 		if (id_node->custom_flags != ID_STATE_MODIFIED) {
 			continue;
 		}
-		DEG_id_type_tag(bmain, GS(id_node->id_orig->name));
+		DEG_graph_id_type_tag(reinterpret_cast<::Depsgraph*>(graph),
+		                      GS(id_node->id_orig->name));
 		/* TODO(sergey): Do we need to pass original or evaluated ID here? */
 		ID *id_orig = id_node->id_orig;
 		ID *id_cow = id_node->id_cow;
 		/* Copy tag from original data to CoW storage.
 		 * This is because DEG_id_tag_update() sets tags on original
-		 * data.
-		 */
+		 * data. */
 		id_cow->recalc |= (id_orig->recalc & ID_RECALC_ALL);
 		/* Gather recalc flags from all changed components. */
-		GHASH_FOREACH_BEGIN(ComponentDepsNode *, comp_node, id_node->components)
+		GHASH_FOREACH_BEGIN(ComponentNode *, comp_node, id_node->components)
 		{
 			if (comp_node->custom_flags != COMPONENT_STATE_DONE) {
 				continue;
 			}
-			DepsNodeFactory *factory = deg_type_get_factory(comp_node->type);
+			DepsNodeFactory *factory = type_get_factory(comp_node->type);
 			BLI_assert(factory != NULL);
 			id_cow->recalc |= factory->id_recalc_tag();
 		}
@@ -262,9 +267,17 @@ void flush_editors_id_update(Main *bmain,
 		DEG_DEBUG_PRINTF((::Depsgraph *)graph,
 		                 EVAL, "Accumulated recalc bits for %s: %u\n",
 		                 id_orig->name, (unsigned int)id_cow->recalc);
-		/* Inform editors. */
+
+		/* Inform editors. Only if the datablock is being evaluated a second
+		 * time, to distinguish between user edits and initial evaluation when
+		 * the datablock becomes visible.
+		 *
+		 * TODO: image datablocks do not use COW, so might not be detected
+		 * correctly. */
 		if (deg_copy_on_write_is_expanded(id_cow)) {
-			deg_editors_id_update(update_ctx, id_cow);
+			if (graph->is_active) {
+				deg_editors_id_update(update_ctx, id_orig);
+			}
 			/* ID may need to get its auto-override operations refreshed. */
 			if (ID_IS_STATIC_OVERRIDE_AUTO(id_orig)) {
 				id_orig->tag |= LIB_TAG_OVERRIDESTATIC_AUTOREFRESH;
@@ -310,7 +323,7 @@ void invalidate_tagged_evaluated_geometry(ID *id)
 void invalidate_tagged_evaluated_data(Depsgraph *graph)
 {
 #ifdef INVALIDATE_ON_FLUSH
-	foreach (IDDepsNode *id_node, graph->id_nodes) {
+	for (IDNode *id_node : graph->id_nodes) {
 		if (id_node->custom_flags != ID_STATE_MODIFIED) {
 			continue;
 		}
@@ -318,16 +331,16 @@ void invalidate_tagged_evaluated_data(Depsgraph *graph)
 		if (!deg_copy_on_write_is_expanded(id_cow)) {
 			continue;
 		}
-		GHASH_FOREACH_BEGIN(ComponentDepsNode *, comp_node, id_node->components)
+		GHASH_FOREACH_BEGIN(ComponentNode *, comp_node, id_node->components)
 		{
 			if (comp_node->custom_flags != COMPONENT_STATE_DONE) {
 				continue;
 			}
 			switch (comp_node->type) {
-				case DEG_TAG_TRANSFORM:
+				case ID_RECALC_TRANSFORM:
 					invalidate_tagged_evaluated_transform(id_cow);
 					break;
-				case DEG_TAG_GEOMETRY:
+				case ID_RECALC_GEOMETRY:
 					invalidate_tagged_evaluated_geometry(id_cow);
 					break;
 				default:
@@ -368,14 +381,14 @@ void deg_graph_flush_updates(Main *bmain, Depsgraph *graph)
 	update_ctx.view_layer = graph->view_layer;
 	/* Do actual flush. */
 	while (!queue.empty()) {
-		OperationDepsNode *op_node = queue.front();
+		OperationNode *op_node = queue.front();
 		queue.pop_front();
 		while (op_node != NULL) {
 			/* Tag operation as required for update. */
 			op_node->flag |= DEPSOP_FLAG_NEEDS_UPDATE;
 			/* Inform corresponding ID and component nodes about the change. */
-			ComponentDepsNode *comp_node = op_node->owner;
-			IDDepsNode *id_node = comp_node->owner;
+			ComponentNode *comp_node = op_node->owner;
+			IDNode *id_node = comp_node->owner;
 			flush_handle_id_node(id_node);
 			flush_handle_component_node(id_node,
 			                            comp_node,
@@ -385,10 +398,9 @@ void deg_graph_flush_updates(Main *bmain, Depsgraph *graph)
 		}
 	}
 	/* Inform editors about all changes. */
-	flush_editors_id_update(bmain, graph, &update_ctx);
+	flush_editors_id_update(graph, &update_ctx);
 	/* Reset evaluation result tagged which is tagged for update to some state
-	 * which is obvious to catch.
-	 */
+	 * which is obvious to catch. */
 	invalidate_tagged_evaluated_data(graph);
 }
 
@@ -398,9 +410,11 @@ static void graph_clear_operation_func(
         const ParallelRangeTLS *__restrict /*tls*/)
 {
 	Depsgraph *graph = (Depsgraph *)data_v;
-	OperationDepsNode *node = graph->operations[i];
+	OperationNode *node = graph->operations[i];
 	/* Clear node's "pending update" settings. */
-	node->flag &= ~(DEPSOP_FLAG_DIRECTLY_MODIFIED | DEPSOP_FLAG_NEEDS_UPDATE);
+	node->flag &= ~(DEPSOP_FLAG_DIRECTLY_MODIFIED |
+	                DEPSOP_FLAG_NEEDS_UPDATE |
+	                DEPSOP_FLAG_USER_MODIFIED);
 }
 
 /* Clear tags from all operation nodes. */

@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #ifndef __COM_CONVERTER_H__
@@ -63,8 +59,8 @@ public:
 	 *
 	 * \note this method is called when conversion is needed.
 	 *
-	 * \param link the NodeLink what needs conversion
-	 * \param system the ExecutionSystem to add the conversion to.
+	 * \param link: the NodeLink what needs conversion
+	 * \param system: the ExecutionSystem to add the conversion to.
 	 * \see NodeLink - a link between two sockets
 	 */
 	static NodeOperation *convertDataType(NodeOperationOutput *from, NodeOperationInput *to);
@@ -75,8 +71,8 @@ public:
 	 * \note Conversion logic is implemented in this method
 	 * \see InputSocketResizeMode for the possible conversions.
 	 *
-	 * \param link the NodeLink what needs conversion
-	 * \param system the ExecutionSystem to add the conversion to.
+	 * \param link: the NodeLink what needs conversion
+	 * \param system: the ExecutionSystem to add the conversion to.
 	 * \see NodeLink - a link between two sockets
 	 */
 	static void convertResolution(NodeOperationBuilder &builder, NodeOperationOutput *fromSocket, NodeOperationInput *toSocket);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/operators/bmo_connect_pair.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Connect vertex pair across multiple faces (splits faces).
  */
@@ -30,14 +24,13 @@
 
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
-#include "BLI_heap.h"
+#include "BLI_heap_simple.h"
 
 #include "bmesh.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
 
 #include "BLI_mempool.h"
-#include "BLI_listbase.h"
 
 /**
  * Method for connecting across many faces.
@@ -94,7 +87,7 @@
 // #define DEBUG_PRINT
 
 typedef struct PathContext {
-	Heap *states;
+	HeapSimple *states;
 	float matrix[3][3];
 	float axis_sep;
 
@@ -331,7 +324,7 @@ static PathLinkState *state_link_add_test(
 
 	/* after adding a link so we use the updated 'state->dist' */
 	if (is_new) {
-		BLI_heap_insert(pc->states, state->dist, state);
+		BLI_heapsimple_insert(pc->states, state->dist, state);
 	}
 
 	return state;
@@ -640,7 +633,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 
 	/* setup context */
 	{
-		pc.states = BLI_heap_new();
+		pc.states = BLI_heapsimple_new();
 		pc.link_pool = BLI_mempool_create(sizeof(PathLink), 0, 512, BLI_MEMPOOL_NOP);
 	}
 
@@ -655,18 +648,18 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 		PathLinkState *state;
 		state = MEM_callocN(sizeof(*state), __func__);
 		state_link_add(&pc, state, (BMElem *)pc.v_a, NULL);
-		BLI_heap_insert(pc.states, state->dist, state);
+		BLI_heapsimple_insert(pc.states, state->dist, state);
 	}
 
 
-	while (!BLI_heap_is_empty(pc.states)) {
+	while (!BLI_heapsimple_is_empty(pc.states)) {
 
 #ifdef DEBUG_PRINT
-		printf("\n%s: stepping %u\n", __func__, BLI_heap_len(pc.states));
+		printf("\n%s: stepping %u\n", __func__, BLI_heapsimple_len(pc.states));
 #endif
 
-		while (!BLI_heap_is_empty(pc.states)) {
-			PathLinkState *state = BLI_heap_pop_min(pc.states);
+		while (!BLI_heapsimple_is_empty(pc.states)) {
+			PathLinkState *state = BLI_heapsimple_pop_min(pc.states);
 
 			/* either we insert this into 'pc.states' or its freed */
 			bool continue_search;
@@ -679,7 +672,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 				state_best = *state;
 
 				/* we're done, exit all loops */
-				BLI_heap_clear(pc.states, MEM_freeN);
+				BLI_heapsimple_clear(pc.states, MEM_freeN);
 				continue_search = false;
 			}
 			else if (state_step(&pc, state)) {
@@ -696,7 +689,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 			}
 
 			if (continue_search) {
-				BLI_heap_insert(pc.states, state->dist, state);
+				BLI_heapsimple_insert(pc.states, state->dist, state);
 			}
 			else {
 				MEM_freeN(state);
@@ -732,7 +725,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 
 	BLI_mempool_destroy(pc.link_pool);
 
-	BLI_heap_free(pc.states, MEM_freeN);
+	BLI_heapsimple_free(pc.states, MEM_freeN);
 
 #if 1
 	if (state_best.link_last) {

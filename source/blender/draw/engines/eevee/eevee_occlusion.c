@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_occlusion.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Implementation of the screen space Ground Truth Ambient Occlusion.
  */
@@ -29,13 +26,15 @@
 
 #include "BLI_string_utils.h"
 
-#include "DNA_anim_types.h"
 
 #include "DEG_depsgraph_query.h"
 
 #include "BKE_global.h" /* for G.debug_value */
 
 #include "eevee_private.h"
+
+#include "GPU_extensions.h"
+#include "GPU_state.h"
 
 static struct {
 	/* Ground Truth Ambient Occlusion */
@@ -100,7 +99,7 @@ int EEVEE_occlusion_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 
 		common_data->ao_bounce_fac = (scene_eval->eevee.flag & SCE_EEVEE_GTAO_BOUNCE) ? 1.0f : 0.0f;
 
-		effects->gtao_horizons = DRW_texture_pool_query_2D(fs_size[0], fs_size[1], GPU_RGBA8,
+		effects->gtao_horizons = DRW_texture_pool_query_2d(fs_size[0], fs_size[1], GPU_RGBA8,
 		                                                   &draw_engine_eevee_type);
 		GPU_framebuffer_ensure_config(&fbl->gtao_fb, {
 			GPU_ATTACHMENT_NONE,
@@ -108,7 +107,7 @@ int EEVEE_occlusion_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		});
 
 		if (G.debug_value == 6) {
-			effects->gtao_horizons_debug = DRW_texture_pool_query_2D(fs_size[0], fs_size[1], GPU_RGBA8,
+			effects->gtao_horizons_debug = DRW_texture_pool_query_2d(fs_size[0], fs_size[1], GPU_RGBA8,
 			                                                         &draw_engine_eevee_type);
 			GPU_framebuffer_ensure_config(&fbl->gtao_debug_fb, {
 				GPU_ATTACHMENT_NONE,
@@ -145,7 +144,7 @@ void EEVEE_occlusion_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata
 		DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 		float clear[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-		DRW_texture_ensure_fullscreen_2D(&txl->ao_accum, GPU_R32F, 0); /* Should be enough precision for many samples. */
+		DRW_texture_ensure_fullscreen_2d(&txl->ao_accum, GPU_R32F, 0); /* Should be enough precision for many samples. */
 
 		GPU_framebuffer_ensure_config(&fbl->ao_accum_fb, {
 			GPU_ATTACHMENT_NONE,
@@ -196,7 +195,7 @@ void EEVEE_occlusion_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
 		 * - Then we use this angle to compute occlusion with the shading normal at
 		 *   the shading stage. This let us do correct shadowing for each diffuse / specular
 		 *   lobe present in the shader using the correct normal.
-		 **/
+		 */
 		psl->ao_horizon_search = DRW_pass_create("GTAO Horizon Search", DRW_STATE_WRITE_COLOR);
 		DRWShadingGroup *grp = DRW_shgroup_create(e_data.gtao_sh, psl->ao_horizon_search);
 		DRW_shgroup_uniform_texture(grp, "utilTex", EEVEE_materials_get_util_tex());
@@ -248,6 +247,13 @@ void EEVEE_occlusion_compute(
 		}
 		else {
 			DRW_draw_pass(psl->ao_horizon_search);
+		}
+
+		if (GPU_mip_render_workaround() ||
+		    GPU_type_matches(GPU_DEVICE_INTEL_UHD, GPU_OS_WIN, GPU_DRIVER_ANY))
+		{
+			/* Fix dot corruption on intel HD5XX/HD6XX series. */
+			GPU_flush();
 		}
 
 		/* Restore */

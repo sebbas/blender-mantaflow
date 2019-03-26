@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/keyframes_edit.c
- *  \ingroup edanimation
+/** \file
+ * \ingroup edanimation
  */
 
 
@@ -53,7 +47,7 @@
 /* This file defines an API and set of callback-operators for non-destructive editing of keyframe data.
  *
  * Two API functions are defined for actually performing the operations on the data:
- *			ANIM_fcurve_keyframes_loop()
+ * ANIM_fcurve_keyframes_loop()
  * which take the data they operate on, a few callbacks defining what operations to perform.
  *
  * As operators which work on keyframes usually apply the same operation on all BezTriples in
@@ -369,7 +363,8 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked, bDopeSheet *ads, bA
 	return 0;
 }
 
-/* This function is used to apply operation to all keyframes, regardless of the type without needed an AnimListElem wrapper */
+/* This function is used to apply operation to all keyframes,
+ * regardless of the type without needed an AnimListElem wrapper */
 short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked, bDopeSheet *ads, void *data, int keytype, KeyframeEditFunc key_ok, KeyframeEditFunc key_cb, FcuEditFunc fcu_cb)
 {
 	/* sanity checks */
@@ -434,8 +429,8 @@ void ANIM_editkeyframes_refresh(bAnimContext *ac)
 /* Some macros to make this easier... */
 
 /* run the given check on the 3 handles
- *	- check should be a macro, which takes the handle index as its single arg, which it substitutes later
- *	- requires that a var, of type short, is named 'ok', and has been initialized to 0
+ * - check should be a macro, which takes the handle index as its single arg, which it substitutes later
+ * - requires that a var, of type short, is named 'ok', and has been initialized to 0
  */
 #define KEYFRAME_OK_CHECKS(check) \
 	{ \
@@ -495,8 +490,8 @@ static short ok_bezier_value(KeyframeEditData *ked, BezTriple *bezt)
 	short ok = 0;
 
 	/* value is stored in f1 property
-	 *	- this float accuracy check may need to be dropped?
-	 *	- should value be stored in f2 instead so that we won't have conflicts when using f1 for frames too?
+	 * - this float accuracy check may need to be dropped?
+	 * - should value be stored in f2 instead so that we won't have conflicts when using f1 for frames too?
 	 */
 #define KEY_CHECK_OK(_index) IS_EQF(bezt->vec[_index][1], ked->f1)
 	KEYFRAME_OK_CHECKS(KEY_CHECK_OK);
@@ -670,25 +665,35 @@ KeyframeEditFunc ANIM_editkeyframes_ok(short mode)
 {
 	/* eEditKeyframes_Validate */
 	switch (mode) {
-		case BEZT_OK_FRAME: /* only if bezt falls on the right frame (float) */
+		case BEZT_OK_FRAME:
+			/* only if bezt falls on the right frame (float) */
 			return ok_bezier_frame;
-		case BEZT_OK_FRAMERANGE: /* only if bezt falls within the specified frame range (floats) */
+		case BEZT_OK_FRAMERANGE:
+			/* only if bezt falls within the specified frame range (floats) */
 			return ok_bezier_framerange;
-		case BEZT_OK_SELECTED:  /* only if bezt is selected (self) */
+		case BEZT_OK_SELECTED:
+			/* only if bezt is selected (self) */
 			return ok_bezier_selected;
-		case BEZT_OK_VALUE: /* only if bezt value matches (float) */
+		case BEZT_OK_VALUE:
+			/* only if bezt value matches (float) */
 			return ok_bezier_value;
-		case BEZT_OK_VALUERANGE: /* only if bezier falls within the specified value range (floats) */
+		case BEZT_OK_VALUERANGE:
+			/* only if bezier falls within the specified value range (floats) */
 			return ok_bezier_valuerange;
-		case BEZT_OK_REGION: /* only if bezier falls within the specified rect (data -> rectf) */
+		case BEZT_OK_REGION:
+			/* only if bezier falls within the specified rect (data -> rectf) */
 			return ok_bezier_region;
-		case BEZT_OK_REGION_LASSO: /* only if the point falls within KeyframeEdit_LassoData defined data */
+		case BEZT_OK_REGION_LASSO:
+			/* only if the point falls within KeyframeEdit_LassoData defined data */
 			return ok_bezier_region_lasso;
-		case BEZT_OK_REGION_CIRCLE: /* only if the point falls within KeyframeEdit_CircleData defined data */
+		case BEZT_OK_REGION_CIRCLE:
+			/* only if the point falls within KeyframeEdit_CircleData defined data */
 			return ok_bezier_region_circle;
-		case BEZT_OK_CHANNEL_LASSO: /* same as BEZT_OK_REGION_LASSO, but we're only using the x-value of the points */
+		case BEZT_OK_CHANNEL_LASSO:
+			/* same as BEZT_OK_REGION_LASSO, but we're only using the x-value of the points */
 			return ok_bezier_channel_lasso;
-		case BEZT_OK_CHANNEL_CIRCLE: /* same as BEZT_OK_REGION_CIRCLE, but we're only using the x-value of the points */
+		case BEZT_OK_CHANNEL_CIRCLE:
+			/* same as BEZT_OK_REGION_CIRCLE, but we're only using the x-value of the points */
 			return ok_bezier_channel_circle;
 		default: /* nothing was ok */
 			return NULL;
@@ -698,7 +703,10 @@ KeyframeEditFunc ANIM_editkeyframes_ok(short mode)
 /* ******************************************* */
 /* Assorted Utility Functions */
 
-/* helper callback for <animeditor>_cfrasnap_exec() -> used to help get the average time of all selected beztriples */
+/**
+ * Helper callback for <animeditor>_cfrasnap_exec() ->
+ * used to help get the average time of all selected beztriples
+ */
 short bezt_calc_average(KeyframeEditData *ked, BezTriple *bezt)
 {
 	/* only if selected */
@@ -707,7 +715,7 @@ short bezt_calc_average(KeyframeEditData *ked, BezTriple *bezt)
 		ked->f1 += bezt->vec[1][0];
 
 		/* store average value in float 2 (only do rounding at last step)
-		 *	- this isn't always needed, but some operators may also require this
+		 * - this isn't always needed, but some operators may also require this
 		 */
 		ked->f2 += bezt->vec[1][1];
 
@@ -718,7 +726,8 @@ short bezt_calc_average(KeyframeEditData *ked, BezTriple *bezt)
 	return 0;
 }
 
-/* helper callback for columnselect_<animeditor>_keys() -> populate list CfraElems with frame numbers from selected beztriples */
+/* helper callback for columnselect_<animeditor>_keys() -> populate
+ * list CfraElems with frame numbers from selected beztriples */
 short bezt_to_cfraelem(KeyframeEditData *ked, BezTriple *bezt)
 {
 	/* only if selected */
@@ -953,7 +962,7 @@ KeyframeEditFunc ANIM_editkeyframes_mirror(short type)
 /* Settings */
 
 /* standard validation step for a few of these (implemented as macro for inlining without fn-call overhead):
- *	"if the handles are not of the same type, set them to type free"
+ * "if the handles are not of the same type, set them to type free"
  */
 #define ENSURE_HANDLES_MATCH(bezt)                                            \
 	if (bezt->h1 != bezt->h2) {                                               \

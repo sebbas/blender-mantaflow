@@ -18,7 +18,7 @@
 
 # <pep8 compliant>
 import bpy
-from bpy.types import Menu, Panel
+from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
 
 
@@ -36,7 +36,7 @@ class DataButtonsPanel:
 class DATA_PT_context_light(DataButtonsPanel, Panel):
     bl_label = ""
     bl_options = {'HIDE_HEADER'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -62,14 +62,20 @@ class DATA_PT_preview(DataButtonsPanel, Panel):
 
 class DATA_PT_light(DataButtonsPanel, Panel):
     bl_label = "Light"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
 
         light = context.light
 
-        layout.row().prop(light, "type", expand=True)
+        # Compact layout for node editor.
+        if self.bl_space_type == 'PROPERTIES':
+            layout.row().prop(light, "type", expand=True)
+            layout.use_property_split = True
+        else:
+            layout.use_property_split = True
+            layout.row().prop(light, "type")
 
 
 class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
@@ -80,9 +86,13 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
         layout = self.layout
         light = context.light
 
-        layout.row().prop(light, "type", expand=True)
-
-        layout.use_property_split = True
+        # Compact layout for node editor.
+        if self.bl_space_type == 'PROPERTIES':
+            layout.row().prop(light, "type", expand=True)
+            layout.use_property_split = True
+        else:
+            layout.use_property_split = True
+            layout.row().prop(light, "type")
 
         col = layout.column()
         col.prop(light, "color")
@@ -105,6 +115,36 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
                 sub.prop(light, "size_y", text="Y")
 
 
+class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):
+    bl_label = "Custom Distance"
+    bl_parent_id = "DATA_PT_EEVEE_light"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+
+    @classmethod
+    def poll(cls, context):
+        light = context.light
+        engine = context.engine
+
+        return (light and light.type != 'SUN') and (engine in cls.COMPAT_ENGINES)
+
+    def draw_header(self, context):
+        light = context.light
+
+        layout = self.layout
+        layout.active = light.use_shadow
+        layout.prop(light, "use_custom_distance", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        light = context.light
+        layout.use_property_split = True
+
+        col = layout.column()
+
+        col.prop(light, "cutoff_distance", text="Distance")
+
+
 class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
     bl_label = "Shadow"
     bl_options = {'DEFAULT_CLOSED'}
@@ -114,7 +154,10 @@ class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
     def poll(cls, context):
         light = context.light
         engine = context.engine
-        return (light and light.type in {'POINT', 'SUN', 'SPOT', 'AREA'}) and (engine in cls.COMPAT_ENGINES)
+        return (
+            (light and light.type in {'POINT', 'SUN', 'SPOT', 'AREA'}) and
+            (engine in cls.COMPAT_ENGINES)
+        )
 
     def draw_header(self, context):
         light = context.light
@@ -131,7 +174,8 @@ class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
         col = layout.column()
         sub = col.column(align=True)
         sub.prop(light, "shadow_buffer_clip_start", text="Clip Start")
-        sub.prop(light, "shadow_buffer_clip_end", text="End")
+        if light.type == 'SUN':
+            sub.prop(light, "shadow_buffer_clip_end", text="End")
 
         col.prop(light, "shadow_buffer_soft", text="Softness")
 
@@ -178,7 +222,10 @@ class DATA_PT_EEVEE_shadow_contact(DataButtonsPanel, Panel):
     def poll(cls, context):
         light = context.light
         engine = context.engine
-        return (light and light.type in {'POINT', 'SUN', 'SPOT', 'AREA'}) and (engine in cls.COMPAT_ENGINES)
+        return (
+            (light and light.type in {'POINT', 'SUN', 'SPOT', 'AREA'}) and
+            (engine in cls.COMPAT_ENGINES)
+        )
 
     def draw_header(self, context):
         light = context.light
@@ -203,7 +250,7 @@ class DATA_PT_EEVEE_shadow_contact(DataButtonsPanel, Panel):
 
 class DATA_PT_area(DataButtonsPanel, Panel):
     bl_label = "Area Shape"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -230,7 +277,7 @@ class DATA_PT_area(DataButtonsPanel, Panel):
 class DATA_PT_spot(DataButtonsPanel, Panel):
     bl_label = "Spot Shape"
     bl_parent_id = "DATA_PT_EEVEE_light"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -262,7 +309,10 @@ class DATA_PT_falloff_curve(DataButtonsPanel, Panel):
         light = context.light
         engine = context.engine
 
-        return (light and light.type in {'POINT', 'SPOT'} and light.falloff_type == 'CUSTOM_CURVE') and (engine in cls.COMPAT_ENGINES)
+        return (
+            (light and light.type in {'POINT', 'SPOT'} and light.falloff_type == 'CUSTOM_CURVE') and
+            (engine in cls.COMPAT_ENGINES)
+        )
 
     def draw(self, context):
         light = context.light
@@ -271,7 +321,7 @@ class DATA_PT_falloff_curve(DataButtonsPanel, Panel):
 
 
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     _context_path = "object.data"
     _property_type = bpy.types.Light
 
@@ -281,6 +331,7 @@ classes = (
     DATA_PT_preview,
     DATA_PT_light,
     DATA_PT_EEVEE_light,
+    DATA_PT_EEVEE_light_distance,
     DATA_PT_EEVEE_shadow,
     DATA_PT_EEVEE_shadow_contact,
     DATA_PT_EEVEE_shadow_cascaded_shadow_map,

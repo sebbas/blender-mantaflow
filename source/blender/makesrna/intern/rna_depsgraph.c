@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation (2014).
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_depsgraph.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
@@ -46,6 +40,7 @@
 #include "BLI_math.h"
 
 #include "BKE_anim.h"
+#include "BKE_object.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_debug.h"
@@ -77,6 +72,22 @@ static PointerRNA rna_DepsgraphObjectInstance_instance_object_get(PointerRNA *pt
 		instance_object = deg_iter->dupli_object_current->ob;
 	}
 	return rna_pointer_inherit_refine(ptr, &RNA_Object, instance_object);
+}
+
+static bool rna_DepsgraphObjectInstance_show_self_get(PointerRNA *ptr)
+{
+	BLI_Iterator *iterator = ptr->data;
+	DEGObjectIterData *deg_iter = (DEGObjectIterData *)iterator->data;
+	int ob_visibility = BKE_object_visibility(iterator->current, deg_iter->eval_mode);
+	return (ob_visibility & OB_VISIBLE_SELF) != 0;
+}
+
+static bool rna_DepsgraphObjectInstance_show_particles_get(PointerRNA *ptr)
+{
+	BLI_Iterator *iterator = ptr->data;
+	DEGObjectIterData *deg_iter = (DEGObjectIterData *)iterator->data;
+	int ob_visibility = BKE_object_visibility(iterator->current, deg_iter->eval_mode);
+	return (ob_visibility & OB_VISIBLE_PARTICLES) != 0;
 }
 
 static PointerRNA rna_DepsgraphObjectInstance_parent_get(PointerRNA *ptr)
@@ -134,7 +145,10 @@ static void rna_DepsgraphObjectInstance_matrix_world_get(PointerRNA *ptr, float 
 		copy_m4_m4((float(*)[4])mat, deg_iter->dupli_object_current->mat);
 	}
 	else {
-		unit_m4((float(*)[4])mat);
+		/* We can return actual object's matrix here, no reason to return identity matrix
+		 * when this is not actually an instance... */
+		Object *ob = (Object *)iterator->current;
+		copy_m4_m4((float(*)[4])mat, ob->obmat);
 	}
 }
 
@@ -177,27 +191,27 @@ static PointerRNA rna_DepsgraphUpdate_id_get(PointerRNA *ptr)
 	return rna_pointer_inherit_refine(ptr, &RNA_ID, ptr->data);
 }
 
-static bool rna_DepsgraphUpdate_is_dirty_transform_get(PointerRNA *ptr)
+static bool rna_DepsgraphUpdate_is_updated_transform_get(PointerRNA *ptr)
 {
 	ID *id = ptr->data;
-	return ((id->recalc & ID_RECALC_TRANSFORM) == 0);
+	return ((id->recalc & ID_RECALC_TRANSFORM) != 0);
 }
 
-static bool rna_DepsgraphUpdate_is_dirty_geometry_get(PointerRNA *ptr)
+static bool rna_DepsgraphUpdate_is_updated_geometry_get(PointerRNA *ptr)
 {
 	ID *id = ptr->data;
 	if (id->recalc & ID_RECALC_GEOMETRY) {
-		return false;
+		return true;
 	}
 	if (GS(id->name) != ID_OB) {
-		return true;
+		return false;
 	}
 	Object *object = (Object *)id;
 	ID *data = object->data;
 	if (data == NULL) {
-		return true;
+		return false;
 	}
-	return ((data->recalc & ID_RECALC_ALL) == 0);
+	return ((data->recalc & ID_RECALC_ALL) != 0);
 }
 
 /* **************** Depsgraph **************** */
@@ -280,38 +294,67 @@ static PointerRNA rna_Depsgraph_objects_get(CollectionPropertyIterator *iter)
  * Contains extra information about duplicator and persistent ID.
  */
 
+/* XXX Ugly python seems to query next item of an iterator before using current one (see T57558).
+ * This forces us to use that nasty ping-pong game between two sets of iterator data, so that previous one remains
+ * valid memory for python to access to. Yuck.
+ */
+typedef struct RNA_Depsgraph_Instances_Iterator
+{
+	BLI_Iterator iterators[2];
+	DEGObjectIterData deg_data[2];
+	DupliObject dupli_object_current[2];
+	int counter;
+} RNA_Depsgraph_Instances_Iterator;
+
 static void rna_Depsgraph_object_instances_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
-	iter->internal.custom = MEM_callocN(sizeof(BLI_Iterator), __func__);
-	DEGObjectIterData *data = MEM_callocN(sizeof(DEGObjectIterData), __func__);
+	RNA_Depsgraph_Instances_Iterator *di_it = iter->internal.custom = MEM_callocN(sizeof(*di_it), __func__);
 
+	DEGObjectIterData *data = &di_it->deg_data[0];
 	data->graph = (Depsgraph *)ptr->data;
 	data->flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
 	             DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET |
 	             DEG_ITER_OBJECT_FLAG_VISIBLE |
 	             DEG_ITER_OBJECT_FLAG_DUPLI;
 
-	((BLI_Iterator *)iter->internal.custom)->valid = true;
-	DEG_iterator_objects_begin(iter->internal.custom, data);
-	iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
+	di_it->iterators[0].valid = true;
+	DEG_iterator_objects_begin(&di_it->iterators[0], data);
+	iter->valid = di_it->iterators[0].valid;
 }
 
 static void rna_Depsgraph_object_instances_next(CollectionPropertyIterator *iter)
 {
-	DEG_iterator_objects_next(iter->internal.custom);
-	iter->valid = ((BLI_Iterator *)iter->internal.custom)->valid;
+	RNA_Depsgraph_Instances_Iterator *di_it = (RNA_Depsgraph_Instances_Iterator *)iter->internal.custom;
+
+	/* We need to copy current iterator status to next one beeing worked on. */
+	di_it->iterators[(di_it->counter + 1) % 2] = di_it->iterators[di_it->counter % 2];
+	di_it->deg_data[(di_it->counter + 1) % 2] = di_it->deg_data[di_it->counter % 2];
+	di_it->counter++;
+
+	di_it->iterators[di_it->counter % 2].data = &di_it->deg_data[di_it->counter % 2];
+	DEG_iterator_objects_next(&di_it->iterators[di_it->counter % 2]);
+	/* Dupli_object_current is also temp memory generated during the iterations,
+	 * it may be freed when last item has been iterated, so we have same issue as with the iterator itself:
+	 * we need to keep a local copy, which memory remains valid a bit longer, for python accesses to work. */
+	if (di_it->deg_data[di_it->counter % 2].dupli_object_current != NULL) {
+		di_it->dupli_object_current[di_it->counter % 2] = *di_it->deg_data[di_it->counter % 2].dupli_object_current;
+		di_it->deg_data[di_it->counter % 2].dupli_object_current = &di_it->dupli_object_current[di_it->counter % 2];
+	}
+	iter->valid = di_it->iterators[di_it->counter % 2].valid;
 }
 
 static void rna_Depsgraph_object_instances_end(CollectionPropertyIterator *iter)
 {
-	DEG_iterator_objects_end(iter->internal.custom);
-	MEM_freeN(((BLI_Iterator *)iter->internal.custom)->data);
-	MEM_freeN(iter->internal.custom);
+	RNA_Depsgraph_Instances_Iterator *di_it = (RNA_Depsgraph_Instances_Iterator *)iter->internal.custom;
+	DEG_iterator_objects_end(&di_it->iterators[0]);
+	DEG_iterator_objects_end(&di_it->iterators[1]);
+	MEM_freeN(di_it);
 }
 
 static PointerRNA rna_Depsgraph_object_instances_get(CollectionPropertyIterator *iter)
 {
-	BLI_Iterator *iterator = (BLI_Iterator *)iter->internal.custom;
+	RNA_Depsgraph_Instances_Iterator *di_it = (RNA_Depsgraph_Instances_Iterator *)iter->internal.custom;
+	BLI_Iterator *iterator = &di_it->iterators[di_it->counter % 2];
 	return rna_pointer_inherit_refine(&iter->parent, &RNA_DepsgraphObjectInstance, iterator);
 }
 
@@ -423,9 +466,19 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
 	RNA_def_property_pointer_funcs(prop, "rna_DepsgraphObjectInstance_object_get", NULL, NULL, NULL);
 
+	prop = RNA_def_property(srna, "show_self", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Show Self", "The object geometry itself should be visible in the render");
+	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_show_self_get", NULL);
+
+	prop = RNA_def_property(srna, "show_particles", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Show Particles", "Particles part of the object should be visible in the render");
+	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_show_particles_get", NULL);
+
 	prop = RNA_def_property(srna, "is_instance", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Is Instance", "Denotes whether the object is coming from dupli-list");
+	RNA_def_property_ui_text(prop, "Is Instance", "Denotes if the object is generated by another object");
 	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphObjectInstance_is_instance_get", NULL);
 
 	prop = RNA_def_property(srna, "instance_object", PROP_POINTER, PROP_NONE);
@@ -436,7 +489,7 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Object");
-	RNA_def_property_ui_text(prop, "Parent", "Evaluated parent object of the duplication list");
+	RNA_def_property_ui_text(prop, "Parent", "If the object is an instance, the parent object that generated it");
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
 	RNA_def_property_pointer_funcs(prop, "rna_DepsgraphObjectInstance_parent_get", NULL, NULL, NULL);
 
@@ -455,7 +508,7 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "random_id", PROP_INT, PROP_UNSIGNED);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Dupli random id", "Random id for this dupli object");
+	RNA_def_property_ui_text(prop, "Dupli random id", "Random id for this instance, typically for randomized shading");
 	RNA_def_property_int_funcs(prop, "rna_DepsgraphObjectInstance_random_id_get", NULL, NULL);
 
 	prop = RNA_def_property(srna, "matrix_world", PROP_FLOAT, PROP_MATRIX);
@@ -492,15 +545,18 @@ static void rna_def_depsgraph_update(BlenderRNA *brna)
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
 	RNA_def_property_pointer_funcs(prop, "rna_DepsgraphUpdate_id_get", NULL, NULL, NULL);
 
-	prop = RNA_def_property(srna, "is_dirty_transform", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Transform", "Object transformation is not updated");
-	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_dirty_transform_get", NULL);
+	/* Use term 'is_updated' instead of 'is_dirty' here because this is a signal
+	 * that users of the depsgraph may want to update their data (render engines for eg). */
 
-	prop = RNA_def_property(srna, "is_dirty_geometry", PROP_BOOLEAN, PROP_NONE);
+	prop = RNA_def_property(srna, "is_updated_transform", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
-	RNA_def_property_ui_text(prop, "Geometry", "Object geometry is not updated");
-	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_dirty_geometry_get", NULL);
+	RNA_def_property_ui_text(prop, "Transform", "Object transformation is updated");
+	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_transform_get", NULL);
+
+	prop = RNA_def_property(srna, "is_updated_geometry", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+	RNA_def_property_ui_text(prop, "Geometry", "Object geometry is updated");
+	RNA_def_property_boolean_funcs(prop, "rna_DepsgraphUpdate_is_updated_geometry_get", NULL);
 }
 
 static void rna_def_depsgraph(BlenderRNA *brna)
@@ -513,7 +569,7 @@ static void rna_def_depsgraph(BlenderRNA *brna)
 	static EnumPropertyItem enum_depsgraph_mode_items[] = {
 		{DAG_EVAL_VIEWPORT, "VIEWPORT", 0, "Viewport", "Viewport non-rendered mode"},
 		{DAG_EVAL_RENDER, "RENDER", 0, "Render", "Render"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "Depsgraph", NULL);
@@ -617,7 +673,10 @@ static void rna_def_depsgraph(BlenderRNA *brna)
 	                                  "rna_Depsgraph_object_instances_end",
 	                                  "rna_Depsgraph_object_instances_get",
 	                                  NULL, NULL, NULL, NULL);
-	RNA_def_property_ui_text(prop, "Object Instances", "All object instances to display or render");
+	RNA_def_property_ui_text(prop, "Object Instances",
+	                         "All object instances to display or render "
+	                         "(WARNING: only use this as an iterator, never as a sequence, "
+	                         "and do not keep any references to its items)");
 
 	prop = RNA_def_property(srna, "updates", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_struct_type(prop, "DepsgraphUpdate");

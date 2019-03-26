@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_object_enums.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  *
  * Enums typedef's for use in public headers.
  */
@@ -37,16 +33,16 @@ typedef enum eObjectMode {
 	OB_MODE_TEXTURE_PAINT = 1 << 4,
 	OB_MODE_PARTICLE_EDIT = 1 << 5,
 	OB_MODE_POSE          = 1 << 6,
-	OB_MODE_GPENCIL_EDIT  = 1 << 7,
-	OB_MODE_GPENCIL_PAINT = 1 << 8,
-	OB_MODE_GPENCIL_SCULPT = 1 << 9,
-	OB_MODE_GPENCIL_WEIGHT = 1 << 10,
+	OB_MODE_EDIT_GPENCIL  = 1 << 7,
+	OB_MODE_PAINT_GPENCIL = 1 << 8,
+	OB_MODE_SCULPT_GPENCIL = 1 << 9,
+	OB_MODE_WEIGHT_GPENCIL = 1 << 10,
 } eObjectMode;
 
 /* Any mode where the brush system is used. */
 #define OB_MODE_ALL_PAINT (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)
 
-#define OB_MODE_ALL_PAINT_GPENCIL (OB_MODE_GPENCIL_PAINT | OB_MODE_GPENCIL_SCULPT | OB_MODE_GPENCIL_WEIGHT)
+#define OB_MODE_ALL_PAINT_GPENCIL (OB_MODE_PAINT_GPENCIL | OB_MODE_SCULPT_GPENCIL | OB_MODE_WEIGHT_GPENCIL)
 
 /* Any mode that uses Object.sculpt. */
 #define OB_MODE_ALL_SCULPT (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)

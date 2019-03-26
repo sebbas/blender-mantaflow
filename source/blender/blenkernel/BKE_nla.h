@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,29 +15,22 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung (full recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_NLA_H__
 #define __BKE_NLA_H__
 
-/** \file BKE_nla.h
- *  \ingroup bke
- *  \author Joshua Leung (full recode)
+/** \file
+ * \ingroup bke
  */
 
 struct AnimData;
 struct Main;
 struct NlaStrip;
 struct NlaTrack;
-struct bAction;
 struct Scene;
 struct Speaker;
+struct bAction;
 
 struct PointerRNA;
 struct PropertyRNA;
@@ -47,13 +38,13 @@ struct PropertyRNA;
 /* ----------------------------- */
 /* Data Management */
 
-void BKE_nlastrip_free(ListBase *strips, struct NlaStrip *strip);
-void BKE_nlatrack_free(ListBase *tracks, struct NlaTrack *nlt);
-void BKE_nla_tracks_free(ListBase *tracks);
+void BKE_nlastrip_free(ListBase *strips, struct NlaStrip *strip, bool do_id_user);
+void BKE_nlatrack_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
+void BKE_nla_tracks_free(ListBase *tracks, bool do_id_user);
 
-struct NlaStrip *BKE_nlastrip_copy(struct Main *bmain, struct NlaStrip *strip, const bool use_same_action);
-struct NlaTrack *BKE_nlatrack_copy(struct Main *bmain, struct NlaTrack *nlt, const bool use_same_actions);
-void BKE_nla_tracks_copy(struct Main *bmain, ListBase *dst, ListBase *src);
+struct NlaStrip *BKE_nlastrip_copy(struct Main *bmain, struct NlaStrip *strip, const bool use_same_action, const int flag);
+struct NlaTrack *BKE_nlatrack_copy(struct Main *bmain, struct NlaTrack *nlt, const bool use_same_actions, const int flag);
+void BKE_nla_tracks_copy(struct Main *bmain, ListBase *dst, ListBase *src, const int flag);
 
 struct NlaTrack *BKE_nlatrack_add(struct AnimData *adt, struct NlaTrack *prev);
 struct NlaStrip *BKE_nlastrip_new(struct bAction *act);

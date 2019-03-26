@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung, Sergej Reich
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file rigidbody.c
- *  \ingroup blenkernel
- *  \brief Blender-side interface and methods for dealing with Rigid Body simulations
+/** \file
+ * \ingroup blenkernel
+ * \brief Blender-side interface and methods for dealing with Rigid Body simulations
  */
 
 #include <stdio.h>
@@ -37,9 +29,10 @@
 #include <math.h>
 #include <limits.h>
 
+#include "CLG_log.h"
+
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_math.h"
 
 #ifdef WITH_BULLET
@@ -57,19 +50,26 @@
 
 #include "BKE_collection.h"
 #include "BKE_effect.h"
-#include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
-#include "BKE_library_query.h"
+#include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
+#ifdef WITH_BULLET
+#  include "BKE_global.h"
+#  include "BKE_library.h"
+#  include "BKE_library_query.h"
+#endif
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+#ifdef WITH_BULLET
+static CLG_LogRef LOG = {"bke.rigidbody"};
+#endif
 
 /* ************************************** */
 /* Memory Management */
@@ -148,7 +148,7 @@ void BKE_rigidbody_free_world(Scene *scene)
 void BKE_rigidbody_free_object(Object *ob, RigidBodyWorld *rbw)
 {
 	bool is_orig = (ob->id.tag & LIB_TAG_COPIED_ON_WRITE) == 0;
-	RigidBodyOb *rbo = (ob) ? ob->rigidbody_object : NULL;
+	RigidBodyOb *rbo = ob->rigidbody_object;
 
 	/* sanity check */
 	if (rbo == NULL)
@@ -289,14 +289,14 @@ static rbCollisionShape *rigidbody_get_shape_convexhull_from_mesh(Object *ob, fl
 		totvert = (mesh) ? mesh->totvert : 0;
 	}
 	else {
-		printf("ERROR: cannot make Convex Hull collision shape for non-Mesh object\n");
+		CLOG_ERROR(&LOG, "cannot make Convex Hull collision shape for non-Mesh object");
 	}
 
 	if (totvert) {
 		shape = RB_shape_new_convex_hull((float *)mvert, sizeof(MVert), totvert, margin, can_embed);
 	}
 	else {
-		printf("ERROR: no vertices to define Convex Hull collision shape with\n");
+		CLOG_ERROR(&LOG, "no vertices to define Convex Hull collision shape with");
 	}
 
 	return shape;
@@ -331,7 +331,7 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
 
 		/* sanity checking - potential case when no data will be present */
 		if ((totvert == 0) || (tottri == 0)) {
-			printf("WARNING: no geometry data converted for Mesh Collision Shape (ob = %s)\n", ob->id.name + 2);
+			CLOG_WARN(&LOG, "no geometry data converted for Mesh Collision Shape (ob = %s)", ob->id.name + 2);
 		}
 		else {
 			rbMeshData *mdata;
@@ -379,7 +379,7 @@ static rbCollisionShape *rigidbody_get_shape_trimesh_from_mesh(Object *ob)
 		}
 	}
 	else {
-		printf("ERROR: cannot make Triangular Mesh collision shape for non-Mesh object\n");
+		CLOG_ERROR(&LOG, "cannot make Triangular Mesh collision shape for non-Mesh object");
 	}
 
 	return shape;
@@ -410,9 +410,9 @@ static void rigidbody_validate_sim_shape(Object *ob, bool rebuild)
 		return;
 
 	/* if automatically determining dimensions, use the Object's boundbox
-	 *	- assume that all quadrics are standing upright on local z-axis
-	 *	- assume even distribution of mass around the Object's pivot
-	 *	  (i.e. Object pivot is centralized in boundbox)
+	 * - assume that all quadrics are standing upright on local z-axis
+	 * - assume even distribution of mass around the Object's pivot
+	 *   (i.e. Object pivot is centralized in boundbox)
 	 */
 	// XXX: all dimensions are auto-determined now... later can add stored settings for this
 	/* get object dimensions without scaling */
@@ -498,10 +498,10 @@ void BKE_rigidbody_calc_volume(Object *ob, float *r_vol)
 	float volume = 0.0f;
 
 	/* if automatically determining dimensions, use the Object's boundbox
-	 *	- assume that all quadrics are standing upright on local z-axis
-	 *	- assume even distribution of mass around the Object's pivot
-	 *	  (i.e. Object pivot is centralized in boundbox)
-	 *	- boundbox gives full width
+	 * - assume that all quadrics are standing upright on local z-axis
+	 * - assume even distribution of mass around the Object's pivot
+	 *   (i.e. Object pivot is centralized in boundbox)
+	 * - boundbox gives full width
 	 */
 	// XXX: all dimensions are auto-determined now... later can add stored settings for this
 	BKE_object_dimensions_get(ob, size);
@@ -583,10 +583,10 @@ void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_center[3])
 	zero_v3(r_center);
 
 	/* if automatically determining dimensions, use the Object's boundbox
-	 *	- assume that all quadrics are standing upright on local z-axis
-	 *	- assume even distribution of mass around the Object's pivot
-	 *	  (i.e. Object pivot is centralized in boundbox)
-	 *	- boundbox gives full width
+	 * - assume that all quadrics are standing upright on local z-axis
+	 * - assume even distribution of mass around the Object's pivot
+	 *   (i.e. Object pivot is centralized in boundbox)
+	 * - boundbox gives full width
 	 */
 	// XXX: all dimensions are auto-determined now... later can add stored settings for this
 	BKE_object_dimensions_get(ob, size);
@@ -642,7 +642,7 @@ void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_center[3])
 /**
  * Create physics sim representation of object given RigidBody settings
  *
- * \param rebuild Even if an instance already exists, replace it
+ * \param rebuild: Even if an instance already exists, replace it
  */
 static void rigidbody_validate_sim_object(RigidBodyWorld *rbw, Object *ob, bool rebuild)
 {
@@ -651,7 +651,7 @@ static void rigidbody_validate_sim_object(RigidBodyWorld *rbw, Object *ob, bool 
 	float rot[4];
 
 	/* sanity checks:
-	 *	- object doesn't have RigidBody info already: then why is it here?
+	 * - object doesn't have RigidBody info already: then why is it here?
 	 */
 	if (rbo == NULL)
 		return;
@@ -770,7 +770,7 @@ static void rigidbody_constraint_set_limits(
 /**
  * Create physics sim representation of constraint given rigid body constraint settings
  *
- * \param rebuild Even if an instance already exists, replace it
+ * \param rebuild: Even if an instance already exists, replace it
  */
 static void rigidbody_validate_sim_constraint(RigidBodyWorld *rbw, Object *ob, bool rebuild)
 {
@@ -783,8 +783,8 @@ static void rigidbody_validate_sim_constraint(RigidBodyWorld *rbw, Object *ob, b
 	float ang_upper;
 
 	/* sanity checks:
-	 *	- object should have a rigid body constraint
-	 *  - rigid body constraint should have at least one constrained object
+	 * - object should have a rigid body constraint
+	 * - rigid body constraint should have at least one constrained object
 	 */
 	if (rbc == NULL) {
 		return;
@@ -944,8 +944,8 @@ RigidBodyWorld *BKE_rigidbody_create_world(Scene *scene)
 	RigidBodyWorld *rbw;
 
 	/* sanity checks
-	 *	- there must be a valid scene to add world to
-	 *	- there mustn't be a sim world using this group already
+	 * - there must be a valid scene to add world to
+	 * - there mustn't be a sim world using this group already
 	 */
 	if (scene == NULL)
 		return NULL;
@@ -955,7 +955,7 @@ RigidBodyWorld *BKE_rigidbody_create_world(Scene *scene)
 	rbw->shared = MEM_callocN(sizeof(*rbw->shared), "RigidBodyWorld_Shared");
 
 	/* set default settings */
-	rbw->effector_weights = BKE_add_effector_weights(NULL);
+	rbw->effector_weights = BKE_effector_add_weights(NULL);
 
 	rbw->ltime = PSFRA;
 
@@ -1025,9 +1025,9 @@ RigidBodyOb *BKE_rigidbody_create_object(Scene *scene, Object *ob, short type)
 	RigidBodyWorld *rbw = scene->rigidbody_world;
 
 	/* sanity checks
-	 *	- rigidbody world must exist
-	 *	- object must exist
-	 *	- cannot add rigid body if it already exists
+	 * - rigidbody world must exist
+	 * - object must exist
+	 * - cannot add rigid body if it already exists
 	 */
 	if (ob == NULL || (ob->rigidbody_object != NULL))
 		return NULL;
@@ -1069,6 +1069,7 @@ RigidBodyOb *BKE_rigidbody_create_object(Scene *scene, Object *ob, short type)
 
 	/* flag cache as outdated */
 	BKE_rigidbody_cache_reset(rbw);
+	rbo->flag |= (RBO_FLAG_NEEDS_VALIDATE | RBO_FLAG_NEEDS_RESHAPE);
 
 	/* return this object */
 	return rbo;
@@ -1081,9 +1082,9 @@ RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short ty
 	RigidBodyWorld *rbw = scene->rigidbody_world;
 
 	/* sanity checks
-	 *	- rigidbody world must exist
-	 *	- object must exist
-	 *	- cannot add constraint if it already exists
+	 * - rigidbody world must exist
+	 * - object must exist
+	 * - cannot add constraint if it already exists
 	 */
 	if (ob == NULL || (ob->rigidbody_constraint != NULL))
 		return NULL;
@@ -1099,6 +1100,7 @@ RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short ty
 
 	rbc->flag |= RBC_FLAG_ENABLED;
 	rbc->flag |= RBC_FLAG_DISABLE_COLLISIONS;
+	rbc->flag |= RBC_FLAG_NEEDS_VALIDATE;
 
 	rbc->spring_type = RBC_SPRING_TYPE2;
 
@@ -1143,12 +1145,58 @@ RigidBodyCon *BKE_rigidbody_create_constraint(Scene *scene, Object *ob, short ty
 	return rbc;
 }
 
+void BKE_rigidbody_objects_collection_validate(Scene *scene, RigidBodyWorld *rbw)
+{
+	if (rbw->group != NULL) {
+		FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(rbw->group, object)
+		{
+			if (object->type != OB_MESH || object->rigidbody_object != NULL) {
+				continue;
+			}
+			object->rigidbody_object = BKE_rigidbody_create_object(scene, object, RBO_TYPE_ACTIVE);
+		}
+		FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+	}
+}
+
+void BKE_rigidbody_constraints_collection_validate(Scene *scene, RigidBodyWorld *rbw)
+{
+	if (rbw->constraints != NULL) {
+		FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN(rbw->constraints, object)
+		{
+			if (object->rigidbody_constraint != NULL) {
+				continue;
+			}
+			object->rigidbody_constraint = BKE_rigidbody_create_constraint(scene, object, RBC_TYPE_FIXED);
+		}
+		FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+	}
+}
+
+void BKE_rigidbody_main_collection_object_add(Main *bmain, Collection *collection, Object *object)
+{
+	for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+		RigidBodyWorld *rbw = scene->rigidbody_world;
+
+		if (rbw == NULL) {
+			continue;
+		}
+
+		if (rbw->group == collection && object->type == OB_MESH && object->rigidbody_object == NULL) {
+			object->rigidbody_object = BKE_rigidbody_create_object(scene, object, RBO_TYPE_ACTIVE);
+		}
+		if (rbw->constraints == collection && object->rigidbody_constraint == NULL) {
+			object->rigidbody_constraint = BKE_rigidbody_create_constraint(scene, object, RBC_TYPE_FIXED);
+		}
+	}
+}
+
 /* ************************************** */
 /* Utilities API */
 
 /* Get RigidBody world for the given scene, creating one if needed
  *
- * \param scene Scene to find active Rigid Body world for
+ * \param scene: Scene to find active Rigid Body world for
  */
 RigidBodyWorld *BKE_rigidbody_get_world(Scene *scene)
 {
@@ -1332,7 +1380,7 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Scene *scene, RigidBod
 			pd_point_from_loc(scene, eff_loc, eff_vel, 0, &epoint);
 
 			/* calculate net force of effectors, and apply to sim object
-			 *	- we use 'central force' since apply force requires a "relative position" which we don't have...
+			 * - we use 'central force' since apply force requires a "relative position" which we don't have...
 			 */
 			BKE_effectors_apply(effectors, NULL, effector_weights, &epoint, eff_force, NULL);
 			if (G.f & G_DEBUG)
@@ -1358,10 +1406,12 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Scene *scene, RigidBod
 /**
  * Updates and validates world, bodies and shapes.
  *
- * \param rebuild Rebuild entire simulation
+ * \param rebuild: Rebuild entire simulation
  */
 static void rigidbody_update_simulation(Depsgraph *depsgraph, Scene *scene, RigidBodyWorld *rbw, bool rebuild)
 {
+	float ctime = DEG_get_ctime(depsgraph);
+
 	/* update world */
 	if (rebuild)
 		BKE_rigidbody_validate_sim_world(scene, rbw, true);
@@ -1393,12 +1443,15 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph, Scene *scene, Rigi
 			/* validate that we've got valid object set up here... */
 			RigidBodyOb *rbo = ob->rigidbody_object;
 			/* update transformation matrix of the object so we don't get a frame of lag for simple animations */
-			BKE_object_where_is_calc(depsgraph, scene, ob);
+			BKE_object_where_is_calc_time(depsgraph, scene, ob, ctime);
 
+			/* TODO remove this whole block once we are sure we never get NULL rbo here anymore. */
+			/* This cannot be done in CoW evaluation context anymore... */
 			if (rbo == NULL) {
+				BLI_assert(!"CoW object part of RBW object collection without RB object data, should not happen.\n");
 				/* Since this object is included in the sim group but doesn't have
 				 * rigid body settings (perhaps it was added manually), add!
-				 *	- assume object to be active? That is the default for newly added settings...
+				 * - assume object to be active? That is the default for newly added settings...
 				 */
 				ob->rigidbody_object = BKE_rigidbody_create_object(scene, ob, RBO_TYPE_ACTIVE);
 				rigidbody_validate_sim_object(rbw, ob, true);
@@ -1426,8 +1479,8 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph, Scene *scene, Rigi
 					// XXX: we assume that this can only get applied for active/passive shapes that will be included as rigidbodies
 					RB_body_set_collision_shape(rbo->shared->physics_object, rbo->shared->physics_shape);
 				}
-				rbo->flag &= ~(RBO_FLAG_NEEDS_VALIDATE | RBO_FLAG_NEEDS_RESHAPE);
 			}
+			rbo->flag &= ~(RBO_FLAG_NEEDS_VALIDATE | RBO_FLAG_NEEDS_RESHAPE);
 
 			/* update simulation object... */
 			rigidbody_update_sim_ob(depsgraph, scene, rbw, ob, rbo);
@@ -1444,9 +1497,12 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph, Scene *scene, Rigi
 		/* validate that we've got valid object set up here... */
 		RigidBodyCon *rbc = ob->rigidbody_constraint;
 		/* update transformation matrix of the object so we don't get a frame of lag for simple animations */
-		BKE_object_where_is_calc(depsgraph, scene, ob);
+		BKE_object_where_is_calc_time(depsgraph, scene, ob, ctime);
 
+		/* TODO remove this whole block once we are sure we never get NULL rbo here anymore. */
+		/* This cannot be done in CoW evaluation context anymore... */
 		if (rbc == NULL) {
+			BLI_assert(!"CoW object part of RBW constraints collection without RB constraint data, should not happen.\n");
 			/* Since this object is included in the group but doesn't have
 			 * constraint settings (perhaps it was added manually), add!
 			 */
@@ -1464,8 +1520,8 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph, Scene *scene, Rigi
 			else if (rbc->flag & RBC_FLAG_NEEDS_VALIDATE) {
 				rigidbody_validate_sim_constraint(rbw, ob, false);
 			}
-			rbc->flag &= ~RBC_FLAG_NEEDS_VALIDATE;
 		}
+		rbc->flag &= ~RBC_FLAG_NEEDS_VALIDATE;
 	}
 	FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
 }
@@ -1735,6 +1791,9 @@ bool BKE_rigidbody_check_sim_running(RigidBodyWorld *rbw, float ctime) { return 
 void BKE_rigidbody_cache_reset(RigidBodyWorld *rbw) {}
 void BKE_rigidbody_rebuild_world(Depsgraph *depsgraph, Scene *scene, float ctime) {}
 void BKE_rigidbody_do_simulation(Depsgraph *depsgraph, Scene *scene, float ctime) {}
+void BKE_rigidbody_objects_collection_validate(Scene *scene, RigidBodyWorld *rbw) {}
+void BKE_rigidbody_constraints_collection_validate(Scene *scene, RigidBodyWorld *rbw) {}
+void BKE_rigidbody_main_collection_object_add(Main *bmain, Collection *collection, Object *object) {}
 
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic pop

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/wm_window.h
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 
@@ -33,10 +26,10 @@
 #define __WM_WINDOW_H__
 
 struct EnumPropertyItem;
-struct wmEvent;
-struct wmOperator;
 struct PointerRNA;
 struct PropertyRNA;
+struct wmEvent;
+struct wmOperator;
 
 /* *************** internal api ************** */
 void		wm_ghost_init			(bContext *C);
@@ -55,7 +48,6 @@ void		wm_window_title				(wmWindowManager *wm, wmWindow *win);
 void		wm_window_ghostwindows_ensure(wmWindowManager *wm);
 void		wm_window_ghostwindows_remove_invalid(bContext *C, wmWindowManager *wm);
 void		wm_window_process_events	(const bContext *C);
-void		wm_window_process_events_nosleep(void);
 
 void		wm_window_clear_drawable(wmWindowManager *wm);
 void		wm_window_make_drawable(wmWindowManager *wm, wmWindow *win);
@@ -73,8 +65,6 @@ void		wm_get_cursor_position			(wmWindow *win, int *x, int *y);
 void		wm_cursor_position_from_ghost	(wmWindow *win, int *x, int *y);
 void		wm_cursor_position_to_ghost		(wmWindow *win, int *x, int *y);
 
-void		wm_window_testbreak		(void);
-
 #ifdef WITH_INPUT_IME
 void		wm_window_IME_begin	(wmWindow *win, int x, int y, int w, int h, bool complete);
 void		wm_window_IME_end	(wmWindow *win);
@@ -87,6 +77,8 @@ void		wm_quit_with_optional_confirmation_prompt(bContext *C, wmWindow *win) ATTR
 
 int			wm_window_new_exec(bContext *C, struct wmOperator *op);
 int			wm_window_new_main_exec(bContext *C, struct wmOperator *op);
+
+void		wm_test_autorun_warning(bContext *C);
 
 /* Initial (unmaximized) size to start with for
  * systems that can't find it for themselves (X11).

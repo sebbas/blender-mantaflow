@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #ifndef __COM_FASTGAUSSIANBLUROPERATION_H__
@@ -45,7 +41,7 @@ public:
 enum {
 	FAST_GAUSS_OVERLAY_MIN  = -1,
 	FAST_GAUSS_OVERLAY_NONE =  0,
-	FAST_GAUSS_OVERLAY_MAX  =  1
+	FAST_GAUSS_OVERLAY_MAX  =  1,
 };
 
 class FastGaussianBlurValueOperation : public NodeOperation {

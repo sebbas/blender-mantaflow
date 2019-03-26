@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -20,14 +18,13 @@
  *
  * The Original Code is: some of this file.
  *
- * ***** END GPL LICENSE BLOCK *****
  * */
 
 #ifndef __BLI_MATH_ROTATION_H__
 #define __BLI_MATH_ROTATION_H__
 
-/** \file BLI_math_rotation.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -53,7 +50,8 @@ void copy_qt_qt(float q[4], const float a[4]);
 void mul_qt_qtqt(float q[4], const float a[4], const float b[4]);
 void mul_qt_v3(const float q[4], float r[3]);
 void mul_qt_fl(float q[4], const float f);
-void mul_fac_qt_fl(float q[4], const float f);
+
+void pow_qt_fl_normalized(float q[4], const float f);
 
 void sub_qt_qtqt(float q[4], const float a[4], const float b[4]);
 
@@ -79,10 +77,12 @@ void add_qt_qtqt(float q[4], const float a[4], const float b[4], const float t);
 void quat_to_mat3(float mat[3][3], const float q[4]);
 void quat_to_mat4(float mat[4][4], const float q[4]);
 
-void mat3_normalized_to_quat(float q[4], float mat[3][3]);
-void mat4_normalized_to_quat(float q[4], float mat[4][4]);
-void mat3_to_quat(float q[4], float mat[3][3]);
-void mat4_to_quat(float q[4], float mat[4][4]);
+void quat_to_compatible_quat(float q[4], const float a[4], const float old[4]);
+
+void mat3_normalized_to_quat(float q[4], const float mat[3][3]);
+void mat4_normalized_to_quat(float q[4], const float mat[4][4]);
+void mat3_to_quat(float q[4], const float mat[3][3]);
+void mat4_to_quat(float q[4], const float mat[4][4]);
 void tri_to_quat_ex(float quat[4], const float v1[3], const float v2[3], const float v3[3],
                     const float no_orig[3]);
 float tri_to_quat(float q[4], const float a[3], const float b[3], const float c[3]);
@@ -103,7 +103,7 @@ float angle_signed_qt(const float q[4]);
 float angle_signed_qtqt(const float q1[4], const float q2[4]);
 
 /* TODO: don't what this is, but it's not the same as mat3_to_quat */
-void mat3_to_quat_is_ok(float q[4], float mat[3][3]);
+void mat3_to_quat_is_ok(float q[4], const float mat[3][3]);
 
 /* other */
 void print_qt(const char *str, const float q[4]);
@@ -121,10 +121,10 @@ void axis_angle_normalized_to_mat3_ex(float mat[3][3], const float axis[3],
 void axis_angle_normalized_to_mat3(float R[3][3], const float axis[3], const float angle);
 void axis_angle_to_mat4(float R[4][4], const float axis[3], const float angle);
 
-void mat3_normalized_to_axis_angle(float axis[3], float *angle, float M[3][3]);
-void mat4_normalized_to_axis_angle(float axis[3], float *angle, float M[4][4]);
-void mat3_to_axis_angle(float axis[3], float *angle, float M[3][3]);
-void mat4_to_axis_angle(float axis[3], float *angle, float M[4][4]);
+void mat3_normalized_to_axis_angle(float axis[3], float *angle, const float M[3][3]);
+void mat4_normalized_to_axis_angle(float axis[3], float *angle, const float M[4][4]);
+void mat3_to_axis_angle(float axis[3], float *angle, const float M[3][3]);
+void mat4_to_axis_angle(float axis[3], float *angle, const float M[4][4]);
 void quat_to_axis_angle(float axis[3], float *angle, const float q[4]);
 
 void      angle_to_mat2(float R[2][2], const float angle);
@@ -144,10 +144,10 @@ void eul_to_quat(float quat[4], const float eul[3]);
 void eul_to_mat3(float mat[3][3], const float eul[3]);
 void eul_to_mat4(float mat[4][4], const float eul[3]);
 
-void mat3_normalized_to_eul(float eul[3], float mat[3][3]);
-void mat4_normalized_to_eul(float eul[3], float mat[4][4]);
-void mat3_to_eul(float eul[3], float mat[3][3]);
-void mat4_to_eul(float eul[3], float mat[4][4]);
+void mat3_normalized_to_eul(float eul[3], const float mat[3][3]);
+void mat4_normalized_to_eul(float eul[3], const float mat[4][4]);
+void mat3_to_eul(float eul[3], const float mat[3][3]);
+void mat4_to_eul(float eul[3], const float mat[4][4]);
 void quat_to_eul(float eul[3], const float quat[4]);
 
 void mat3_normalized_to_compatible_eul(float eul[3], const float old[3], float mat[3][3]);
@@ -179,18 +179,18 @@ void eulO_to_mat4(float mat[4][4], const float eul[3], const short order);
 void eulO_to_axis_angle(float axis[3], float *angle, const float eul[3], const short order);
 void eulO_to_gimbal_axis(float gmat[3][3], const float eul[3], const short order);
 
-void mat3_normalized_to_eulO(float eul[3], const short order, float mat[3][3]);
-void mat4_normalized_to_eulO(float eul[3], const short order, float mat[4][4]);
-void mat3_to_eulO(float eul[3], const short order, float mat[3][3]);
-void mat4_to_eulO(float eul[3], const short order, float mat[4][4]);
+void mat3_normalized_to_eulO(float eul[3], const short order, const float mat[3][3]);
+void mat4_normalized_to_eulO(float eul[3], const short order, const float mat[4][4]);
+void mat3_to_eulO(float eul[3], const short order, const float mat[3][3]);
+void mat4_to_eulO(float eul[3], const short order, const float mat[4][4]);
 void quat_to_eulO(float eul[3], const short order, const float quat[4]);
 void axis_angle_to_eulO(float eul[3], const short order, const float axis[3], const float angle);
 
-void mat3_normalized_to_compatible_eulO(float eul[3], float old[3], const short order, float mat[3][3]);
-void mat4_normalized_to_compatible_eulO(float eul[3], float old[3], const short order, float mat[4][4]);
-void mat3_to_compatible_eulO(float eul[3], float old[3], const short order, float mat[3][3]);
-void mat4_to_compatible_eulO(float eul[3], float old[3], const short order, float mat[4][4]);
-void quat_to_compatible_eulO(float eul[3], float old[3], const short order, const float quat[4]);
+void mat3_normalized_to_compatible_eulO(float eul[3], const float old[3], const short order, const float mat[3][3]);
+void mat4_normalized_to_compatible_eulO(float eul[3], const float old[3], const short order, const float mat[4][4]);
+void mat3_to_compatible_eulO(float eul[3], const float old[3], const short order, const float mat[3][3]);
+void mat4_to_compatible_eulO(float eul[3], const float old[3], const short order, const float mat[4][4]);
+void quat_to_compatible_eulO(float eul[3], const float old[3], const short order, const float quat[4]);
 
 void rotate_eulO(float eul[3], const short order, char axis, float angle);
 
@@ -209,7 +209,7 @@ void normalize_dq(DualQuat *dq, float totw);
 void add_weighted_dq_dq(DualQuat *r, const DualQuat *dq, float weight);
 void mul_v3m3_dq(float r[3], float R[3][3], DualQuat *dq);
 
-void mat4_to_dquat(DualQuat *r, float base[4][4], float M[4][4]);
+void mat4_to_dquat(DualQuat *r, const float base[4][4], const float M[4][4]);
 void dquat_to_mat4(float R[4][4], const DualQuat *dq);
 
 void quat_apply_track(float quat[4], short axis, short upflag);

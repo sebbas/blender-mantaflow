@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operators and API's for renaming bones both in and out of Edit Mode
  */
 
-/** \file blender/editors/armature/armature_naming.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include <string.h>
@@ -52,7 +45,6 @@
 #include "BKE_constraint.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
-#include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -182,10 +174,10 @@ void ED_armature_bone_rename(Main *bmain, bArmature *arm, const char *oldnamep, 
 		}
 
 		/* force copy on write to update database */
-		DEG_id_tag_update(&arm->id, DEG_TAG_COPY_ON_WRITE);
+		DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
 
 		/* do entire dbase - objects */
-		for (ob = bmain->object.first; ob; ob = ob->id.next) {
+		for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 			ModifierData *md;
 
 			/* we have the object using the armature */
@@ -215,7 +207,7 @@ void ED_armature_bone_rename(Main *bmain, bArmature *arm, const char *oldnamep, 
 				}
 
 				/* Update any object constraints to use the new bone name */
-				for (cob = bmain->object.first; cob; cob = cob->id.next) {
+				for (cob = bmain->objects.first; cob; cob = cob->id.next) {
 					if (cob->constraints.first)
 						constraint_bone_name_fix(ob, &cob->constraints, oldname, newname);
 					if (cob->pose) {
@@ -313,7 +305,7 @@ void ED_armature_bone_rename(Main *bmain, bArmature *arm, const char *oldnamep, 
 					}
 				}
 			}
-			DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+			DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 		}
 
 		/* Fix all animdata that may refer to this bone - we can't just do the ones attached to objects, since
@@ -328,7 +320,7 @@ void ED_armature_bone_rename(Main *bmain, bArmature *arm, const char *oldnamep, 
 		/* correct view locking */
 		{
 			bScreen *screen;
-			for (screen = bmain->screen.first; screen; screen = screen->id.next) {
+			for (screen = bmain->screens.first; screen; screen = screen->id.next) {
 				ScrArea *sa;
 				/* add regions */
 				for (sa = screen->areabase.first; sa; sa = sa->next) {
@@ -411,7 +403,7 @@ static int armature_flip_names_exec(bContext *C, wmOperator *op)
 	const bool do_strip_numbers = RNA_boolean_get(op->ptr, "do_strip_numbers");
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
@@ -447,7 +439,7 @@ static int armature_flip_names_exec(bContext *C, wmOperator *op)
 		BLI_freelistN(&bones_names);
 
 		/* since we renamed stuff... */
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
 		/* copied from #rna_Bone_update_renamed */
 		/* redraw view */
@@ -490,7 +482,7 @@ static int armature_autoside_names_exec(bContext *C, wmOperator *op)
 	bool changed_multi = false;
 
 	uint objects_len = 0;
-	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, &objects_len);
+	Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(view_layer, CTX_wm_view3d(C), &objects_len);
 	for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
 		Object *ob = objects[ob_index];
 		bArmature *arm = ob->data;
@@ -532,7 +524,7 @@ static int armature_autoside_names_exec(bContext *C, wmOperator *op)
 		changed_multi = true;
 
 		/* Since we renamed stuff... */
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
 		/* Note, notifier might evolve. */
 		WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
@@ -547,7 +539,7 @@ void ARMATURE_OT_autoside_names(wmOperatorType *ot)
 		{0, "XAXIS", 0, "X-Axis", "Left/Right"},
 		{1, "YAXIS", 0, "Y-Axis", "Front/Back"},
 		{2, "ZAXIS", 0, "Z-Axis", "Top/Bottom"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */

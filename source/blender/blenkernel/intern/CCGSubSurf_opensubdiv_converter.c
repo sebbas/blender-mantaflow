@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/CCGSubSurf_opensubdiv_converter.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef WITH_OPENSUBDIV
@@ -82,6 +78,13 @@ static OpenSubdiv_SchemeType conv_dm_get_type(
 		return OSD_SCHEME_BILINEAR;
 	else
 		return OSD_SCHEME_CATMARK;
+}
+
+static OpenSubdiv_VtxBoundaryInterpolation
+conv_dm_get_vtx_boundary_interpolation(
+        const OpenSubdiv_Converter *UNUSED(converter))
+{
+	return OSD_VTX_BOUNDARY_EDGE_ONLY;
 }
 
 static OpenSubdiv_FVarLinearInterpolation conv_dm_get_fvar_linear_interpolation(
@@ -448,6 +451,8 @@ void ccgSubSurf_converter_setup_from_derivedmesh(
 
 	converter->getSchemeType = conv_dm_get_type;
 
+	converter->getVtxBoundaryInterpolation =
+	        conv_dm_get_vtx_boundary_interpolation;
 	converter->getFVarLinearInterpolation =
 	        conv_dm_get_fvar_linear_interpolation;
 	converter->specifiesFullTopology = conv_dm_specifies_full_topology;
@@ -544,6 +549,13 @@ static OpenSubdiv_SchemeType conv_ccg_get_bilinear_type(
 	else {
 		return OSD_SCHEME_CATMARK;
 	}
+}
+
+static OpenSubdiv_VtxBoundaryInterpolation
+conv_ccg_get_vtx_boundary_interpolation(
+        const OpenSubdiv_Converter *UNUSED(converter))
+{
+	return OSD_VTX_BOUNDARY_EDGE_ONLY;
 }
 
 static OpenSubdiv_FVarLinearInterpolation
@@ -750,6 +762,8 @@ void ccgSubSurf_converter_setup_from_ccg(CCGSubSurf *ss,
 {
 	converter->getSchemeType = conv_ccg_get_bilinear_type;
 
+	converter->getVtxBoundaryInterpolation =
+	        conv_ccg_get_vtx_boundary_interpolation;
 	converter->getFVarLinearInterpolation =
 	        conv_ccg_get_fvar_linear_interpolation;
 	converter->specifiesFullTopology = conv_ccg_specifies_full_topology;

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_ipo_types.h
- *  \ingroup DNA
- *  \deprecated
+/** \file
+ * \ingroup DNA
+ * \deprecated
  *   The contents of this file are now officially deprecated. They were used for the 'old' animation system,
  *   which has (as of 2.50) been replaced with a completely new system by Joshua Leung (aligorith). All defines,
  *   etc. are only still maintained to provide backwards compatibility for old files.
@@ -51,11 +43,15 @@
 
 /* IPO Curve Driver */
 typedef struct IpoDriver {
-	struct Object *ob;			/* target/driver ob */
-	short blocktype, adrcode;	/* sub-channel to use */
+	/** Target/driver ob. */
+	struct Object *ob;
+	/** Sub-channel to use. */
+	short blocktype, adrcode;
 
-	short type, flag;			/* driver settings */
-	char name[128];				/* bone, or python expression here */
+	/** Driver settings. */
+	short type, flag;
+	/** Bone, or python expression here. */
+	char name[128];
 } IpoDriver;
 
 /* --- IPO Curve --- */
@@ -64,22 +60,34 @@ typedef struct IpoDriver {
 typedef struct IpoCurve {
 	struct IpoCurve *next,  *prev;
 
-	struct BPoint *bp;					/* array of BPoints (sizeof(BPoint) * totvert) - i.e. baked/imported data */
-	struct BezTriple *bezt;				/* array of BezTriples (sizeof(BezTriple) * totvert)  - i.e. user-editable keyframes  */
+	/** Array of BPoints (sizeof(BPoint) * totvert) - i.e. baked/imported data. */
+	struct BPoint *bp;
+	/** Array of BezTriples (sizeof(BezTriple) * totvert)  - i.e. user-editable keyframes . */
+	struct BezTriple *bezt;
 
-	rctf maxrct, totrct;				/* bounding boxes */
+	/** Bounding boxes. */
+	rctf maxrct, totrct;
 
-	short blocktype, adrcode, vartype;	/* blocktype= ipo-blocktype; adrcode= type of ipo-curve; vartype= 'format' of data */
-	short totvert;						/* total number of BezTriples (i.e. keyframes) on curve */
-	short ipo, extrap;					/* interpolation and extrapolation modes  */
-	short flag, rt;						/* flag= settings; rt= ??? */
-	float ymin, ymax;					/* minimum/maximum y-extents for curve */
-	unsigned int bitmask;				/* ??? */
+	/** Blocktype= ipo-blocktype; adrcode= type of ipo-curve; vartype= 'format' of data. */
+	short blocktype, adrcode, vartype;
+	/** Total number of BezTriples (i.e. keyframes) on curve. */
+	short totvert;
+	/** Interpolation and extrapolation modes . */
+	short ipo, extrap;
+	/** Flag= settings; rt= ???. */
+	short flag, rt;
+	/** Minimum/maximum y-extents for curve. */
+	float ymin, ymax;
+	/** ???. */
+	unsigned int bitmask;
 
-	float slide_min, slide_max;			/* minimum/maximum values for sliders (in action editor) */
-	float curval;						/* value of ipo-curve for current frame */
+	/** Minimum/maximum values for sliders (in action editor). */
+	float slide_min, slide_max;
+	/** Value of ipo-curve for current frame. */
+	float curval;
 
-	IpoDriver *driver;					/* pointer to ipo-driver for this curve */
+	/** Pointer to ipo-driver for this curve. */
+	IpoDriver *driver;
 } IpoCurve;
 
 /* --- ID-Datablock --- */
@@ -88,11 +96,17 @@ typedef struct IpoCurve {
 typedef struct Ipo {
 	ID id;
 
-	ListBase curve;				/* A list of IpoCurve structs in a linked list. */
-	rctf cur;					/* Rect defining extents of keyframes? */
+	/** A list of IpoCurve structs in a linked list. */
+	ListBase curve;
+	/** Rect defining extents of keyframes?. */
+	rctf cur;
 
-	short blocktype, showkey;	/* blocktype: self-explanatory; showkey: either 0 or 1 (show vertical yellow lines for editing) */
-	short muteipo, pad;			/* muteipo: either 0 or 1 (whether ipo block is muted) */
+	/** Blocktype: self-explanatory; showkey: either 0 or 1
+	 * (show vertical yellow lines for editing). */
+	short blocktype, showkey;
+	/** Muteipo: either 0 or 1 (whether ipo block is muted). */
+	short muteipo;
+	char _pad[2];
 } Ipo;
 
 /* ----------- adrcodes (for matching ipo-curves to data) ------------- */
@@ -186,24 +200,24 @@ typedef struct Ipo {
 #define MA_FRESTRAI	25
 #define MA_ADD		26
 
-#define MA_MAP1		(1<<5)
-#define MA_MAP2		(1<<6)
-#define MA_MAP3		(1<<7)
-#define MA_MAP4		(1<<8)
-#define MA_MAP5		(1<<9)
-#define MA_MAP6		(1<<10)
-#define MA_MAP7		(1<<11)
-#define MA_MAP8		(1<<12)
-#define MA_MAP9		(1<<13)
-#define MA_MAP10	(1<<14)
-#define MA_MAP11	(1<<15)
-#define MA_MAP12	(1<<16)
-#define MA_MAP13	(1<<17)
-#define MA_MAP14	(1<<18)
-#define MA_MAP15	(1<<19)
-#define MA_MAP16	(1<<20)
-#define MA_MAP17	(1<<21)
-#define MA_MAP18	(1<<22)
+#define MA_MAP1		(1 << 5)
+#define MA_MAP2		(1 << 6)
+#define MA_MAP3		(1 << 7)
+#define MA_MAP4		(1 << 8)
+#define MA_MAP5		(1 << 9)
+#define MA_MAP6		(1 << 10)
+#define MA_MAP7		(1 << 11)
+#define MA_MAP8		(1 << 12)
+#define MA_MAP9		(1 << 13)
+#define MA_MAP10	(1 << 14)
+#define MA_MAP11	(1 << 15)
+#define MA_MAP12	(1 << 16)
+#define MA_MAP13	(1 << 17)
+#define MA_MAP14	(1 << 18)
+#define MA_MAP15	(1 << 19)
+#define MA_MAP16	(1 << 20)
+#define MA_MAP17	(1 << 21)
+#define MA_MAP18	(1 << 22)
 
 /* ********** Texture Slots (MTex) ********** */
 
@@ -312,7 +326,7 @@ typedef struct Ipo {
 #define WO_STARDIST	15
 #define WO_STARSIZE	16
 
-/* ********** Lamp (ID_LA) ********** */
+/* ********** Light (ID_LA) ********** */
 
 #define LA_TOTIPO	21
 #define LA_TOTNAM	10
@@ -504,6 +518,6 @@ typedef struct Ipo {
 
 /* driver->flag */
 	/* invalid flag: currently only used for buggy pydriver expressions */
-#define IPO_DRIVER_FLAG_INVALID 	(1<<0)
+#define IPO_DRIVER_FLAG_INVALID 	(1 << 0)
 
 #endif

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,10 @@
  *
  * The Original Code is Copyright (C) 2006 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Daniel Genrich (Genscher)
- *                 Sebastian Barschkis (sebbas)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_smoke_types.h
- *  \ingroup DNA
+/** \file
+ * \ingroup DNA
  */
 
 #ifndef __DNA_SMOKE_TYPES_H__
@@ -88,6 +79,12 @@ enum {
 	SLICE_AXIS_X    = 1,
 	SLICE_AXIS_Y    = 2,
 	SLICE_AXIS_Z    = 3,
+};
+
+/* axis aligned method */
+enum {
+	VOLUME_INTERP_LINEAR   = 0,
+	VOLUME_INTERP_CUBIC    = 1,
 };
 
 enum {
@@ -417,13 +414,15 @@ typedef struct SmokeDomainSettings {
 #define FLUID_FLOW_USE_INFLOW (1<<5) /* control when to apply inflow */
 
 typedef struct SmokeFlowSettings {
-	struct SmokeModifierData *smd; /* for fast RNA access */
+	/** For fast RNA access. */
+	struct SmokeModifierData *smd;
 	struct Mesh *mesh;
 	struct ParticleSystem *psys;
 	struct Tex *noise_texture;
 
 	/* initial velocity */
-	float *verts_old; /* previous vertex positions in domain space */
+	/** Previous vertex positions in domain space. */
+	float *verts_old;
 	int numverts;
 	float vel_multi; // Multiplier for inherited velocity
 	float vel_normal;
@@ -435,17 +434,21 @@ typedef struct SmokeFlowSettings {
 	float density;
 	float color[3];
 	float fuel_amount;
-	float temp; /* delta temperature (temp - ambient temp) */
-	float volume_density; /* density emitted within mesh volume */
-	float surface_distance; /* maximum emission distance from mesh surface */
+	/** Delta temperature (temp - ambient temp). */
+	float temp;
+	/** Density emitted within mesh volume. */
+	float volume_density;
+	/** Maximum emission distance from mesh surface. */
+	float surface_distance;
 	float particle_size;
 	int subframes;
 
 	/* texture control */
 	float texture_size;
 	float texture_offset;
-	int pad;
-	char uvlayer_name[64];	/* MAX_CUSTOMDATA_LAYER_NAME */
+	char _pad[4];
+	/** MAX_CUSTOMDATA_LAYER_NAME. */
+	char uvlayer_name[64];
 	short vgroup_density;
 
 	short type; /* smoke, flames, both, outflow, liquid */
@@ -468,7 +471,8 @@ typedef struct SmokeFlowSettings {
 
 /* collision objects (filled with smoke) */
 typedef struct SmokeCollSettings {
-	struct SmokeModifierData *smd; /* for fast RNA access */
+	/** For fast RNA access. */
+	struct SmokeModifierData *smd;
 	struct Mesh *mesh;
 	float *verts_old;
 	int numverts;

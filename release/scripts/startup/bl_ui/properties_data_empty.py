@@ -17,7 +17,6 @@
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
-import bpy
 from bpy.types import Panel
 
 
@@ -41,6 +40,7 @@ class DATA_PT_empty(DataButtonsPanel, Panel):
         ob = context.object
 
         layout.prop(ob, "empty_display_type", text="Display As")
+        layout.prop(ob, "empty_display_size", text="Size")
 
         if ob.empty_display_type == 'IMAGE':
             layout.template_ID(ob, "data", open="image.open", unlink="object.unlink_data")
@@ -48,14 +48,21 @@ class DATA_PT_empty(DataButtonsPanel, Panel):
 
             layout.row(align=True).row(align=True)
 
-            layout.prop(ob, "color", text="Transparency", index=3, slider=True)
+            layout.prop(ob, "use_empty_image_alpha")
+
+            col = layout.column()
+            col.active = ob.use_empty_image_alpha
+            col.prop(ob, "color", text="Transparency", index=3, slider=True)
+
             col = layout.column(align=True)
             col.prop(ob, "empty_image_offset", text="Offset X", index=0)
             col.prop(ob, "empty_image_offset", text="Y", index=1)
 
-        layout.separator()
-
-        layout.prop(ob, "empty_display_size", text="Size")
+            col = layout.column()
+            col.row().prop(ob, "empty_image_depth", text="Depth", expand=True)
+            col.row().prop(ob, "empty_image_side", text="Side", expand=True)
+            col.prop(ob, "show_empty_image_orthographic", text="Display Orthographic")
+            col.prop(ob, "show_empty_image_perspective", text="Display Perspective")
 
 
 classes = (

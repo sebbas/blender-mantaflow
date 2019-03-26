@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file workbench_effect_taa.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  */
 
 
@@ -29,7 +26,9 @@
 
 static struct {
 	struct GPUShader *effect_taa_sh;
+	float jitter_5[5][2];
 	float jitter_8[8][2];
+	float jitter_11[11][2];
 	float jitter_16[16][2];
 	float jitter_32[32][2];
 } e_data = {NULL};
@@ -82,7 +81,9 @@ static void workbench_taa_jitter_init_order(float (*table)[2], int num)
 
 static void workbench_taa_jitter_init(void)
 {
+	workbench_taa_jitter_init_order(e_data.jitter_5, 5);
 	workbench_taa_jitter_init_order(e_data.jitter_8, 8);
+	workbench_taa_jitter_init_order(e_data.jitter_11, 11);
 	workbench_taa_jitter_init_order(e_data.jitter_16, 16);
 	workbench_taa_jitter_init_order(e_data.jitter_32, 32);
 }
@@ -98,13 +99,13 @@ int workbench_taa_calculate_num_iterations(WORKBENCH_Data *vedata)
 			result = (scene->r.mode & R_OSA) ? scene->r.osa : 1;
 		}
 		else if (IN_RANGE_INCL(
-		            wpd->user_preferences->gpu_viewport_quality,
+		            wpd->preferences->gpu_viewport_quality,
 		            GPU_VIEWPORT_QUALITY_TAA8, GPU_VIEWPORT_QUALITY_TAA16))
 		{
 			result = 8;
 		}
 		else if (IN_RANGE_INCL(
-		            wpd->user_preferences->gpu_viewport_quality,
+		            wpd->preferences->gpu_viewport_quality,
 		            GPU_VIEWPORT_QUALITY_TAA16, GPU_VIEWPORT_QUALITY_TAA32))
 		{
 			result = 16;
@@ -171,8 +172,9 @@ DRWPass *workbench_taa_create_pass(WORKBENCH_Data *vedata, GPUTexture **color_bu
 	int previous_jitter_index = effect_info->jitter_index;
 
 	{
-		DRW_texture_ensure_fullscreen_2D(&txl->history_buffer_tx, GPU_RGBA16F, 0);
-		DRW_texture_ensure_fullscreen_2D(&txl->depth_buffer_tx, GPU_DEPTH24_STENCIL8, 0);
+		const eGPUTextureFormat hist_buffer_format = DRW_state_is_image_render() ? GPU_RGBA16F : GPU_RGBA8;
+		DRW_texture_ensure_fullscreen_2d(&txl->history_buffer_tx, hist_buffer_format, 0);
+		DRW_texture_ensure_fullscreen_2d(&txl->depth_buffer_tx, GPU_DEPTH24_STENCIL8, 0);
 	}
 
 	{
@@ -214,8 +216,14 @@ void workbench_taa_draw_scene_start(WORKBENCH_Data *vedata)
 	num_samples = workbench_taa_calculate_num_iterations(vedata);
 	switch (num_samples) {
 		default:
+		case 5:
+			samples = e_data.jitter_5;
+			break;
 		case 8:
 			samples = e_data.jitter_8;
+			break;
+		case 11:
+			samples = e_data.jitter_11;
 			break;
 		case 16:
 			samples = e_data.jitter_16;
@@ -227,10 +235,9 @@ void workbench_taa_draw_scene_start(WORKBENCH_Data *vedata)
 
 	mix_factor = 1.0f / (effect_info->jitter_index + 1);
 
-	const int bitmask = num_samples - 1;
 	const int jitter_index = effect_info->jitter_index;
 	const float *transform_offset = samples[jitter_index];
-	effect_info->jitter_index = (jitter_index + 1) & bitmask;
+	effect_info->jitter_index = (jitter_index + 1) % num_samples;
 
 	/* construct new matrices from transform delta */
 	float viewmat[4][4];

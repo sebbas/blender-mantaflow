@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,13 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/render/render_view.c
- *  \ingroup edrend
+/** \file
+ * \ingroup edrend
  */
 
 #include <string.h>
@@ -66,7 +61,7 @@ static ScrArea *biggest_non_image_area(bContext *C)
 	for (sa = sc->areabase.first; sa; sa = sa->next) {
 		if (sa->winx > 30 && sa->winy > 30) {
 			size = sa->winx * sa->winy;
-			if (!sa->full && sa->spacetype == SPACE_BUTS) {
+			if (!sa->full && sa->spacetype == SPACE_PROPERTIES) {
 				if (foundwin == 0 && size > bwmaxsize) {
 					bwmaxsize = size;
 					big = sa;

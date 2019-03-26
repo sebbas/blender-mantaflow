@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file DRW_engine.h
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #ifndef __DRW_ENGINE_H__
@@ -29,29 +26,28 @@
 #include "BLI_sys_types.h"  /* for bool */
 
 struct ARegion;
-struct CollectionEngineSettings;
-struct Depsgraph;
-struct DRWPass;
 struct DRWInstanceDataList;
-struct Main;
-struct Material;
-struct Scene;
+struct DRWPass;
+struct Depsgraph;
 struct DrawEngineType;
-struct ID;
-struct IDProperty;
-struct bContext;
-struct Object;
-struct ViewLayer;
-struct ViewContext;
-struct ViewportEngineData;
-struct View3D;
-struct rcti;
 struct GPUMaterial;
 struct GPUOffScreen;
 struct GPUViewport;
+struct ID;
+struct IDProperty;
+struct Main;
+struct Material;
+struct Object;
 struct RenderEngine;
 struct RenderEngineType;
+struct Scene;
+struct View3D;
+struct ViewContext;
+struct ViewLayer;
+struct ViewportEngineData;
 struct WorkSpace;
+struct bContext;
+struct rcti;
 
 #include "DNA_object_enums.h"
 
@@ -98,6 +94,7 @@ typedef bool (*DRW_ObjectFilterFn)(
         struct Object *ob, void *user_data);
 
 void DRW_draw_view(const struct bContext *C);
+void DRW_draw_region_engine_info(int xoffset, int yoffset);
 
 void DRW_draw_render_loop_ex(
         struct Depsgraph *depsgraph,
@@ -126,7 +123,13 @@ void DRW_draw_depth_loop(
         struct Depsgraph *depsgraph,
         struct ARegion *ar, struct View3D *v3d);
 
+void DRW_framebuffer_select_id_setup(struct ARegion *ar, const bool clear);
+void DRW_framebuffer_select_id_release(struct ARegion *ar);
+void DRW_framebuffer_select_id_read(const struct rcti *rect, uint *r_buf);
+void DRW_framebuffer_depth_read(const struct rcti *rect, float *r_buf);
+
 /* grease pencil render */
+bool DRW_render_check_grease_pencil(struct Depsgraph *depsgraph);
 void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph);
 void DRW_gpencil_freecache(struct Object *ob);
 

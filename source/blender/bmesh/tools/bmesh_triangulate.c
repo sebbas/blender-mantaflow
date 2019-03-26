@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Joseph Eagar
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/bmesh/tools/bmesh_triangulate.c
- *  \ingroup bmesh
+/** \file
+ * \ingroup bmesh
  *
  * Triangulate.
- *
  */
 
 #include "DNA_modifier_types.h"  /* for MOD_TRIANGULATE_NGON_BEAUTY only */
@@ -90,8 +83,9 @@ static void bm_face_triangulate_mapping(
 
 
 void BM_mesh_triangulate(
-        BMesh *bm, const int quad_method, const int ngon_method, const bool tag_only,
-        BMOperator *op, BMOpSlot *slot_facemap_out, BMOpSlot *slot_facemap_double_out)
+        BMesh *bm, const int quad_method, const int ngon_method, const int min_vertices,
+        const bool tag_only, BMOperator *op, BMOpSlot *slot_facemap_out,
+        BMOpSlot *slot_facemap_double_out)
 {
 	BMIter iter;
 	BMFace *face;
@@ -110,7 +104,7 @@ void BM_mesh_triangulate(
 	if (slot_facemap_out) {
 		/* same as below but call: bm_face_triangulate_mapping() */
 		BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
-			if (face->len > 3) {
+			if (face->len >= min_vertices) {
 				if (tag_only == false || BM_elem_flag_test(face, BM_ELEM_TAG)) {
 					bm_face_triangulate_mapping(
 					        bm, face,
@@ -125,7 +119,7 @@ void BM_mesh_triangulate(
 		LinkNode *faces_double = NULL;
 
 		BM_ITER_MESH (face, &iter, bm, BM_FACES_OF_MESH) {
-			if (face->len > 3) {
+			if (face->len >= min_vertices) {
 				if (tag_only == false || BM_elem_flag_test(face, BM_ELEM_TAG)) {
 					BM_face_triangulate(
 					        bm, face,

@@ -217,7 +217,16 @@ if(WITH_CYCLES_OSL)
 	)
 endif()
 
-if(WITH_CYCLES_OPENSUBDIV)
+if(WITH_CYCLES_EMBREE)
+	add_definitions(-DWITH_EMBREE)
+	add_definitions(-DEMBREE_STATIC_LIB)
+	include_directories(
+		SYSTEM
+		${EMBREE_INCLUDE_DIRS}
+	)
+endif()
+
+if(WITH_OPENSUBDIV)
 	add_definitions(-DWITH_OPENSUBDIV)
 	include_directories(
 		SYSTEM
@@ -292,6 +301,8 @@ if(WITH_CYCLES_CUDA_BINARIES AND (NOT WITH_CYCLES_CUBIN_COMPILER))
 			set(MAX_MSVC 1911)
 		elseif(${CUDA_VERSION} EQUAL "10.0")
 			set(MAX_MSVC 1999)
+		elseif(${CUDA_VERSION} EQUAL "10.1")
+			set(MAX_MSVC 1999)
 		endif()
 		if(NOT MSVC_VERSION LESS ${MAX_MSVC} OR CMAKE_C_COMPILER_ID MATCHES "Clang")
 			message(STATUS "nvcc not supported for this compiler version, using cycles_cubin_cc instead.")
@@ -299,13 +310,20 @@ if(WITH_CYCLES_CUDA_BINARIES AND (NOT WITH_CYCLES_CUBIN_COMPILER))
 		endif()
 		unset(MAX_MSVC)
 	elseif(APPLE)
-		if(${XCODE_VERSION} VERSION_GREATER_EQUAL 10.0)
+		if(NOT (${XCODE_VERSION} VERSION_LESS 10.0))
 			message(STATUS "nvcc not supported for this compiler version, using cycles_cubin_cc instead.")
 			set(WITH_CYCLES_CUBIN_COMPILER ON)
 		endif()
 	endif()
 endif()
 
+# NVRTC gives wrong rendering result in CUDA 10.0, so we must use NVCC.
+if(WITH_CYCLES_CUDA_BINARIES AND WITH_CYCLES_CUBIN_COMPILER)
+	if(NOT (${CUDA_VERSION} VERSION_LESS 10.0))
+		message(STATUS "cycles_cubin_cc not supported for CUDA 10.0+, using nvcc instead.")
+		set(WITH_CYCLES_CUBIN_COMPILER OFF)
+	endif()
+endif()
 
 # Subdirectories
 

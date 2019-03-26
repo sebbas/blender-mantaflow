@@ -1,5 +1,5 @@
-/** \file elbeem/intern/controlparticles.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 // --------------------------------------------------------------------------
 //

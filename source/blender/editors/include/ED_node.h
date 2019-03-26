@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ED_node.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_NODE_H__
@@ -34,23 +27,23 @@
 struct ID;
 struct Main;
 struct Scene;
+struct Scene;
+struct ScrArea;
 struct Tex;
+struct View2D;
 struct bContext;
-struct bNodeTree;
 struct bNode;
-struct bNodeType;
 struct bNodeSocketType;
 struct bNodeTree;
+struct bNodeTree;
 struct bNodeTreeType;
-struct ScrArea;
-struct Scene;
-struct View2D;
+struct bNodeType;
 
 typedef enum {
 	NODE_TOP    = 1,
 	NODE_BOTTOM = 2,
 	NODE_LEFT   = 4,
-	NODE_RIGHT  = 8
+	NODE_RIGHT  = 8,
 } NodeBorder;
 
 #define NODE_GRID_STEPS     5
@@ -98,6 +91,7 @@ void ED_node_shader_default(const struct bContext *C, struct ID *id);
 void ED_node_composit_default(const struct bContext *C, struct Scene *scene);
 void ED_node_texture_default(const struct bContext *C, struct Tex *tex);
 bool ED_node_select_check(ListBase *lb);
+void ED_node_select_all(ListBase *lb, int action);
 void ED_node_post_apply_transform(struct bContext *C, struct bNodeTree *ntree);
 void ED_node_set_active(struct Main *bmain, struct bNodeTree *ntree, struct bNode *node);
 

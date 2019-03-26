@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_file/space_file.c
- *  \ingroup spfile
+/** \file
+ * \ingroup spfile
  */
 
 #include <string.h>
@@ -33,11 +26,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BIF_gl.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_fileops_types.h"
 
 
 #include "BKE_appdir.h"
@@ -81,6 +72,7 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
 	ar = MEM_callocN(sizeof(ARegion), "header for file");
 	BLI_addtail(&sfile->regionbase, ar);
 	ar->regiontype = RGN_TYPE_HEADER;
+	/* Ignore user preference "USER_HEADER_BOTTOM" here (always show top for new types). */
 	ar->alignment = RGN_ALIGN_TOP;
 
 	/* Tools region */
@@ -267,20 +259,8 @@ static void file_refresh(const bContext *C, ScrArea *sa)
 		}
 	}
 
-	if (params->renamefile[0] != '\0') {
-		int idx = filelist_file_findpath(sfile->files, params->renamefile);
-		if (idx >= 0) {
-			FileDirEntry *file = filelist_file(sfile->files, idx);
-			if (file) {
-				filelist_entry_select_set(sfile->files, file, FILE_SEL_ADD, FILE_SEL_EDITING, CHECK_ALL);
-			}
-		}
-		BLI_strncpy(sfile->params->renameedit, sfile->params->renamefile, sizeof(sfile->params->renameedit));
-		/* File listing is now async, do not clear renamefile if matching entry not found
-		 * and dirlist is not finished! */
-		if (idx >= 0 || filelist_is_ready(sfile->files)) {
-			params->renamefile[0] = '\0';
-		}
+	if (params->rename_flag != 0) {
+		file_params_renamefile_activate(sfile, params);
 	}
 
 	if (sfile->layout) {
@@ -489,137 +469,14 @@ static void file_operatortypes(void)
 /* NOTE: do not add .blend file reading on this level */
 static void file_keymap(struct wmKeyConfig *keyconf)
 {
-	wmKeyMapItem *kmi;
 	/* keys for all regions */
-	wmKeyMap *keymap = WM_keymap_ensure(keyconf, "File Browser", SPACE_FILE, 0);
-
-	/* More common 'fliebrowser-like navigation' shortcuts. */
-	WM_keymap_add_item(keymap, "FILE_OT_parent", UPARROWKEY, KM_PRESS, KM_ALT, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_previous", LEFTARROWKEY, KM_PRESS, KM_ALT, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_next", RIGHTARROWKEY, KM_PRESS, KM_ALT, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_refresh", RKEY, KM_PRESS, 0, 0);
-
-	WM_keymap_add_item(keymap, "FILE_OT_parent", PKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_previous", BACKSPACEKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_next", BACKSPACEKEY, KM_PRESS, KM_SHIFT, 0);
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_toggle", HKEY, KM_PRESS, 0, 0);
-	RNA_string_set(kmi->ptr, "data_path", "space_data.params.show_hidden");
-	WM_keymap_add_item(keymap, "FILE_OT_directory_new", IKEY, KM_PRESS, 0, 0);
-
-	WM_keymap_add_item(keymap, "FILE_OT_delete", XKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_delete", DELKEY, KM_PRESS, 0, 0);
-
-	WM_keymap_verify_item(keymap, "FILE_OT_smoothscroll", TIMER1, KM_ANY, KM_ANY, 0);
-
-	WM_keymap_add_item(keymap, "FILE_OT_bookmark_toggle", TKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_bookmark_add", BKEY, KM_PRESS, KM_CTRL, 0);
+	WM_keymap_ensure(keyconf, "File Browser", SPACE_FILE, 0);
 
 	/* keys for main region */
-	keymap = WM_keymap_ensure(keyconf, "File Browser Main", SPACE_FILE, 0);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_execute", LEFTMOUSE, KM_DBL_CLICK, 0, 0);
-	RNA_boolean_set(kmi->ptr, "need_active", true);
-
-	WM_keymap_add_item(keymap, "FILE_OT_refresh", PADPERIOD, KM_PRESS, 0, 0);
-
-	/* left mouse selects and opens */
-	WM_keymap_add_item(keymap, "FILE_OT_select", LEFTMOUSE, KM_CLICK, 0, 0);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select", LEFTMOUSE, KM_CLICK, KM_SHIFT, 0);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select", LEFTMOUSE, KM_CLICK, KM_CTRL | KM_SHIFT, 0);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "fill", true);
-
-	/* right mouse selects without opening */
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select", RIGHTMOUSE, KM_CLICK, 0, 0);
-	RNA_boolean_set(kmi->ptr, "open", false);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select", RIGHTMOUSE, KM_CLICK, KM_SHIFT, 0);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "open", false);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select", RIGHTMOUSE, KM_CLICK, KM_ALT, 0);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "fill", true);
-	RNA_boolean_set(kmi->ptr, "open", false);
-
-
-	/* arrow keys navigation (walk selecting) */
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", UPARROWKEY, KM_PRESS, 0, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_UP);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", UPARROWKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_UP);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", UPARROWKEY, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_UP);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "fill", true);
-
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", DOWNARROWKEY, KM_PRESS, 0, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_DOWN);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", DOWNARROWKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_DOWN);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", DOWNARROWKEY, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_DOWN);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "fill", true);
-
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", LEFTARROWKEY, KM_PRESS, 0, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_LEFT);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", LEFTARROWKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_LEFT);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", LEFTARROWKEY, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_LEFT);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "fill", true);
-
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", RIGHTARROWKEY, KM_PRESS, 0, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_RIGHT);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", RIGHTARROWKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_RIGHT);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_select_walk", RIGHTARROWKEY, KM_PRESS, KM_SHIFT | KM_CTRL, 0);
-	RNA_enum_set(kmi->ptr, "direction", FILE_SELECT_WALK_RIGHT);
-	RNA_boolean_set(kmi->ptr, "extend", true);
-	RNA_boolean_set(kmi->ptr, "fill", true);
-
-
-	/* front and back mouse folder navigation */
-	WM_keymap_add_item(keymap, "FILE_OT_previous", BUTTON4MOUSE, KM_CLICK, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_next", BUTTON5MOUSE, KM_CLICK, 0, 0);
-
-	WM_keymap_add_item(keymap, "FILE_OT_select_all", AKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_select_box", BKEY, KM_PRESS, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_select_box", EVT_TWEAK_L, KM_ANY, 0, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_rename", LEFTMOUSE, KM_PRESS, KM_CTRL, 0);
-	WM_keymap_add_item(keymap, "FILE_OT_highlight", MOUSEMOVE, KM_ANY, KM_ANY, 0);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADPLUSKEY, KM_PRESS, 0, 0);
-	RNA_int_set(kmi->ptr, "increment", 1);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADPLUSKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_int_set(kmi->ptr, "increment", 10);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADPLUSKEY, KM_PRESS, KM_CTRL, 0);
-	RNA_int_set(kmi->ptr, "increment", 100);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADMINUS, KM_PRESS, 0, 0);
-	RNA_int_set(kmi->ptr, "increment", -1);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADMINUS, KM_PRESS, KM_SHIFT, 0);
-	RNA_int_set(kmi->ptr, "increment", -10);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADMINUS, KM_PRESS, KM_CTRL, 0);
-	RNA_int_set(kmi->ptr, "increment", -100);
-
+	WM_keymap_ensure(keyconf, "File Browser Main", SPACE_FILE, 0);
 
 	/* keys for button region (top) */
-	keymap = WM_keymap_ensure(keyconf, "File Browser Buttons", SPACE_FILE, 0);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADPLUSKEY, KM_PRESS, 0, 0);
-	RNA_int_set(kmi->ptr, "increment", 1);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADPLUSKEY, KM_PRESS, KM_SHIFT, 0);
-	RNA_int_set(kmi->ptr, "increment", 10);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADPLUSKEY, KM_PRESS, KM_CTRL, 0);
-	RNA_int_set(kmi->ptr, "increment", 100);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADMINUS, KM_PRESS, 0, 0);
-	RNA_int_set(kmi->ptr, "increment", -1);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADMINUS, KM_PRESS, KM_SHIFT, 0);
-	RNA_int_set(kmi->ptr, "increment", -10);
-	kmi = WM_keymap_add_item(keymap, "FILE_OT_filenum", PADMINUS, KM_PRESS, KM_CTRL, 0);
-	RNA_int_set(kmi->ptr, "increment", -100);
+	WM_keymap_ensure(keyconf, "File Browser Buttons", SPACE_FILE, 0);
 }
 
 

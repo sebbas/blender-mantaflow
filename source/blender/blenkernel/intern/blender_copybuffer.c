@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/blender_copybuffer.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Used for copy/paste operator, (using a temporary file).
  */
@@ -36,7 +32,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-#include "BLI_callbacks.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_moviecache.h"
@@ -60,7 +55,6 @@
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Copy/Paste `.blend`, partial saves.
  * \{ */
 
@@ -88,7 +82,7 @@ bool BKE_copybuffer_save(Main *bmain_src, const char *filename, ReportList *repo
 	return retval;
 }
 
-bool BKE_copybuffer_read(Main *bmain_dst, const char *libname, ReportList *reports)
+bool BKE_copybuffer_read(Main *bmain_dst, const char *libname, ReportList *reports, const unsigned int id_types_mask)
 {
 	BlendHandle *bh = BLO_blendhandle_from_file(libname, reports);
 	if (bh == NULL) {
@@ -97,13 +91,13 @@ bool BKE_copybuffer_read(Main *bmain_dst, const char *libname, ReportList *repor
 	}
 	/* Here appending/linking starts. */
 	Main *mainl = BLO_library_link_begin(bmain_dst, &bh, libname);
-	BLO_library_link_copypaste(mainl, bh);
-	BLO_library_link_end(mainl, &bh, 0, NULL, NULL, NULL);
+	BLO_library_link_copypaste(mainl, bh, id_types_mask);
+	BLO_library_link_end(mainl, &bh, 0, NULL, NULL, NULL, NULL);
 	/* Mark all library linked objects to be updated. */
 	BKE_main_lib_objects_recalc_all(bmain_dst);
 	IMB_colormanagement_check_file_config(bmain_dst);
 	/* Append, rather than linking. */
-	Library *lib = BLI_findstring(&bmain_dst->library, libname, offsetof(Library, filepath));
+	Library *lib = BLI_findstring(&bmain_dst->libraries, libname, offsetof(Library, filepath));
 	BKE_library_make_local(bmain_dst, lib, NULL, true, false);
 	/* Important we unset, otherwise these object wont
 	 * link into other scenes from this blend file.
@@ -114,13 +108,15 @@ bool BKE_copybuffer_read(Main *bmain_dst, const char *libname, ReportList *repor
 }
 
 /**
- * \return Success.
+ * \return Number of IDs directly pasted from the buffer (does not includes indirectly pulled out ones).
  */
-bool BKE_copybuffer_paste(bContext *C, const char *libname, const short flag, ReportList *reports)
+int BKE_copybuffer_paste(
+        bContext *C, const char *libname, const short flag, ReportList *reports, const unsigned int id_types_mask)
 {
 	Main *bmain = CTX_data_main(C);
 	Scene *scene = CTX_data_scene(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	View3D *v3d = CTX_wm_view3d(C);  /* may be NULL. */
 	Main *mainl = NULL;
 	Library *lib;
 	BlendHandle *bh;
@@ -129,7 +125,7 @@ bool BKE_copybuffer_paste(bContext *C, const char *libname, const short flag, Re
 
 	if (bh == NULL) {
 		/* error reports will have been made by BLO_blendhandle_from_file() */
-		return false;
+		return 0;
 	}
 
 	BKE_view_layer_base_deselect_all(view_layer);
@@ -143,16 +139,16 @@ bool BKE_copybuffer_paste(bContext *C, const char *libname, const short flag, Re
 	/* here appending/linking starts */
 	mainl = BLO_library_link_begin(bmain, &bh, libname);
 
-	BLO_library_link_copypaste(mainl, bh);
+	const int num_pasted = BLO_library_link_copypaste(mainl, bh, id_types_mask);
 
-	BLO_library_link_end(mainl, &bh, flag, bmain, scene, view_layer);
+	BLO_library_link_end(mainl, &bh, flag, bmain, scene, view_layer, v3d);
 
 	/* mark all library linked objects to be updated */
 	BKE_main_lib_objects_recalc_all(bmain);
 	IMB_colormanagement_check_file_config(bmain);
 
 	/* append, rather than linking */
-	lib = BLI_findstring(&bmain->library, libname, offsetof(Library, filepath));
+	lib = BLI_findstring(&bmain->libraries, libname, offsetof(Library, filepath));
 	BKE_library_make_local(bmain, lib, NULL, true, false);
 
 	/* important we unset, otherwise these object wont
@@ -169,7 +165,7 @@ bool BKE_copybuffer_paste(bContext *C, const char *libname, const short flag, Re
 	BLO_blendhandle_close(bh);
 	/* remove library... */
 
-	return true;
+	return num_pasted;
 }
 
 /** \} */

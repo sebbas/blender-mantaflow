@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Nathan Letwory.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/SkinInfo.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -232,7 +226,10 @@ void SkinInfo::link_armature(bContext *C, Object *ob, std::map<COLLADAFW::Unique
 	amd->object = ob_arm;
 
 #if 1
-	bc_set_parent(ob, ob_arm, C);
+	/* XXX Why do we enforce objects to be children of Armatures if they weren't so before ?*/
+	if (!BKE_object_is_child_recursive(ob_arm, ob)) {
+		bc_set_parent(ob, ob_arm, C);
+	}
 #else
 	Object workob;
 	ob->parent = ob_arm;
@@ -241,7 +238,7 @@ void SkinInfo::link_armature(bContext *C, Object *ob, std::map<COLLADAFW::Unique
 	BKE_object_workob_calc_parent(scene, ob, &workob);
 	invert_m4_m4(ob->parentinv, workob.obmat);
 
-	DEG_id_tag_update(&obn->id, OB_RECALC_OB | OB_RECALC_DATA);
+	DEG_id_tag_update(&obn->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 #endif
 	copy_m4_m4(ob->obmat, bind_shape_matrix);
 	BKE_object_apply_mat4(ob, ob->obmat, 0, 0);

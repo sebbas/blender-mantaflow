@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2018 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/subdiv_ccg_mask.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #include "BKE_subdiv_ccg.h"
@@ -35,9 +29,9 @@
 #include "DNA_object_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_customdata.h"
+#include "BKE_subdiv.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -59,51 +53,8 @@ typedef struct GridPaintMaskData {
 	PolyCornerIndex *ptex_poly_corner;
 } GridPaintMaskData;
 
-/* Coordinates within grid has different convention from PTex coordinates.
- * This function converts the latter ones to former.
- */
-BLI_INLINE void ptex_uv_to_grid_uv(const float ptex_u, const float ptex_v,
-                                   float *r_grid_u, float *r_grid_v)
-{
-	*r_grid_u = 1.0f - ptex_v;
-	*r_grid_v = 1.0f - ptex_u;
-}
-
-/* Simplified version of mdisp_rot_face_to_crn, only handles quad and
- * works in normalized coordinates.
- *
- * NOTE: Output coordinates are in ptex coordinates.
- */
-BLI_INLINE int rotate_quad_to_corner(const float u, const float v,
-                                     float *r_u, float *r_v)
-{
-	int corner;
-	if (u <= 0.5f && v <= 0.5f) {
-		corner = 0;
-		*r_u = 2.0f * u;
-		*r_v = 2.0f * v;
-	}
-	else if (u > 0.5f  && v <= 0.5f) {
-		corner = 1;
-		*r_u = 2.0f * v;
-		*r_v = 2.0f * (1.0f - u);
-	}
-	else if (u > 0.5f  && v > 0.5f) {
-		corner = 2;
-		*r_u = 2.0f * (1.0f - u);
-		*r_v = 2.0f * (1.0f - v);
-	}
-	else {
-		BLI_assert(u <= 0.5f && v >= 0.5f);
-		corner = 3;
-		*r_u = 2.0f * (1.0f - v);
-		*r_v = 2.0f * u;
-	}
-	return corner;
-}
-
 static int mask_get_grid_and_coord(
-        SubdivCCGMask *mask_evaluator,
+        SubdivCCGMaskEvaluator *mask_evaluator,
         const int ptex_face_index, const float u, const float v,
         const GridPaintMask **r_mask_grid,
         float *grid_u, float *grid_v)
@@ -116,15 +67,15 @@ static int mask_get_grid_and_coord(
 	int corner = 0;
 	if (poly->totloop == 4) {
 		float corner_u, corner_v;
-		corner = rotate_quad_to_corner(u, v, &corner_u, &corner_v);
+		corner = BKE_subdiv_rotate_quad_to_corner(u, v, &corner_u, &corner_v);
 		*r_mask_grid =
 		        &data->grid_paint_mask[start_grid_index + corner];
-		ptex_uv_to_grid_uv(corner_u, corner_v, grid_u, grid_v);
+		BKE_subdiv_ptex_face_uv_to_grid_uv(corner_u, corner_v, grid_u, grid_v);
 	}
 	else {
 		*r_mask_grid =
 		        &data->grid_paint_mask[start_grid_index];
-		ptex_uv_to_grid_uv(u, v, grid_u, grid_v);
+		BKE_subdiv_ptex_face_uv_to_grid_uv(u, v, grid_u, grid_v);
 	}
 	return corner;
 }
@@ -135,13 +86,13 @@ BLI_INLINE float read_mask_grid(const GridPaintMask *mask_grid,
 	if (mask_grid->data == NULL) {
 		return 0;
 	}
-	const int grid_size = (1 << (mask_grid->level - 1)) + 1;
+	const int grid_size = BKE_subdiv_grid_size_from_level(mask_grid->level);
 	const int x = (grid_u * (grid_size - 1) + 0.5f);
 	const int y = (grid_v * (grid_size - 1) + 0.5f);
 	return mask_grid->data[y * grid_size + x];
 }
 
-static float eval_mask(SubdivCCGMask *mask_evaluator,
+static float eval_mask(SubdivCCGMaskEvaluator *mask_evaluator,
                        const int ptex_face_index,
                        const float u, const float v)
 {
@@ -154,7 +105,7 @@ static float eval_mask(SubdivCCGMask *mask_evaluator,
 	return read_mask_grid(mask_grid, grid_u, grid_v);
 }
 
-static void free_mask_data(SubdivCCGMask *mask_evaluator)
+static void free_mask_data(SubdivCCGMaskEvaluator *mask_evaluator)
 {
 	GridPaintMaskData *data = mask_evaluator->user_data;
 	MEM_freeN(data->ptex_poly_corner);
@@ -175,8 +126,8 @@ static int count_num_ptex_faces(const Mesh *mesh)
 	return num_ptex_faces;
 }
 
-static void displacement_data_init_mapping(SubdivCCGMask *mask_evaluator,
-                                           const Mesh *mesh)
+static void mask_data_init_mapping(SubdivCCGMaskEvaluator *mask_evaluator,
+                                   const Mesh *mesh)
 {
 	GridPaintMaskData *data = mask_evaluator->user_data;
 	const MPoly *mpoly = mesh->mpoly;
@@ -205,24 +156,24 @@ static void displacement_data_init_mapping(SubdivCCGMask *mask_evaluator,
 	}
 }
 
-static void displacement_init_data(SubdivCCGMask *mask_evaluator,
-                                   const Mesh *mesh)
+static void mask_init_data(SubdivCCGMaskEvaluator *mask_evaluator,
+                           const Mesh *mesh)
 {
 	GridPaintMaskData *data = mask_evaluator->user_data;
 	data->mpoly = mesh->mpoly;
 	data->grid_paint_mask =
 	        CustomData_get_layer(&mesh->ldata, CD_GRID_PAINT_MASK);
-	displacement_data_init_mapping(mask_evaluator, mesh);
+	mask_data_init_mapping(mask_evaluator, mesh);
 }
 
-static void displacement_init_functions(SubdivCCGMask *mask_evaluator)
+static void mask_init_functions(SubdivCCGMaskEvaluator *mask_evaluator)
 {
 	mask_evaluator->eval_mask = eval_mask;
 	mask_evaluator->free = free_mask_data;
 }
 
 bool BKE_subdiv_ccg_mask_init_from_paint(
-        SubdivCCGMask *mask_evaluator,
+        SubdivCCGMaskEvaluator *mask_evaluator,
         const struct Mesh *mesh)
 {
 	GridPaintMask *grid_paint_mask =
@@ -233,7 +184,7 @@ bool BKE_subdiv_ccg_mask_init_from_paint(
 	/* Allocate all required memory. */
 	mask_evaluator->user_data = MEM_callocN(sizeof(GridPaintMaskData),
 	                                        "mask from grid data");
-	displacement_init_data(mask_evaluator, mesh);
-	displacement_init_functions(mask_evaluator);
+	mask_init_data(mask_evaluator, mesh);
+	mask_init_functions(mask_evaluator);
 	return true;
 }

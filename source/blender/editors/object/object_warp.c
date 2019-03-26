@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 by Blender Foundation
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/object/object_warp.c
- *  \ingroup edobj
+/** \file
+ * \ingroup edobj
  */
 
 #include "DNA_object_types.h"
@@ -223,12 +219,8 @@ static int object_warp_verts_exec(bContext *C, wmOperator *op)
 			RNA_property_float_get_array(op->ptr, prop_center, center);
 		}
 		else {
-			Scene *scene = CTX_data_scene(C);
-			View3D *v3d = CTX_wm_view3d(C);
-			const float *cursor;
-
-			cursor = ED_view3d_cursor3d_get(scene, v3d)->location;
-			copy_v3_v3(center, cursor);
+			const Scene *scene = CTX_data_scene(C);
+			copy_v3_v3(center, scene->cursor.location);
 
 			RNA_property_float_set_array(op->ptr, prop_center, center);
 		}

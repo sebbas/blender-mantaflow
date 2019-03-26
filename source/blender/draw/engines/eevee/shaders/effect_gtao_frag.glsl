@@ -1,7 +1,7 @@
 /**
  * This shader only compute maximum horizon angles for each directions.
  * The final integration is done at the resolve stage with the shading normal.
- **/
+ */
 
 uniform float rotationOffset;
 
@@ -26,7 +26,7 @@ void main()
 
 	vec4 noise = texelfetch_noise_tex(gl_FragCoord.xy);
 
-	gtao_deferred(normal, viewPosition, noise, depth, visibility, bent_normal);
+	gtao_deferred(normal, noise, depth, visibility, bent_normal);
 
 	/* Handle Background case. Prevent artifact due to uncleared Horizon Render Target. */
 	FragColor = vec4((depth == 1.0) ? 0.0 : visibility);
@@ -37,12 +37,12 @@ void main()
 #ifdef LAYERED_DEPTH
 uniform sampler2DArray depthBufferLayered;
 uniform int layer;
-# define gtao_depthBuffer depthBufferLayered
-# define gtao_textureLod(a, b, c) textureLod(a, vec3(b, layer), c)
+#  define gtao_depthBuffer depthBufferLayered
+#  define gtao_textureLod(a, b, c) textureLod(a, vec3(b, layer), c)
 
 #else
-# define gtao_depthBuffer depthBuffer
-# define gtao_textureLod(a, b, c) textureLod(a, b, c)
+#  define gtao_depthBuffer depthBuffer
+#  define gtao_textureLod(a, b, c) textureLod(a, b, c)
 
 #endif
 

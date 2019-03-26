@@ -64,7 +64,7 @@ def addon_modules_sorted():
 
 def disable_addons():
     # first disable all
-    addons = bpy.context.user_preferences.addons
+    addons = bpy.context.preferences.addons
     for mod_name in list(addons.keys()):
         addon_utils.disable(mod_name, default_set=True)
     assert(bool(addons) is False)
@@ -75,7 +75,7 @@ def test_load_addons():
 
     disable_addons()
 
-    addons = bpy.context.user_preferences.addons
+    addons = bpy.context.preferences.addons
 
     addons_fail = []
 
@@ -97,12 +97,12 @@ def test_load_addons():
 
 def reload_addons(do_reload=True, do_reverse=True):
     modules = addon_modules_sorted()
-    addons = bpy.context.user_preferences.addons
+    addons = bpy.context.preferences.addons
 
     disable_addons()
 
     # Run twice each time.
-    for i in (0, 1):
+    for _ in (0, 1):
         for mod in modules:
             mod_name = mod.__name__
             print("\tenabling:", mod_name)

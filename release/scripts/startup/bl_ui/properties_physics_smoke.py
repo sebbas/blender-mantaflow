@@ -83,7 +83,7 @@ class PhysicButtonsPanel:
 
 class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
     bl_label = "Fluid"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -107,7 +107,7 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
     bl_label = "Settings"
     bl_parent_id = 'PHYSICS_PT_manta'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -173,7 +173,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
             else:
                 col.prop(domain, "gravity", text="Gravity")
             # TODO (sebas): Clipping var useful for manta openvdb caching?
-            # col.prop(domain, "clipping")
+            # col.prop(domain, "clipping", text="Empty Space")
 
             col.separator()
 
@@ -244,7 +244,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Smoke"
     bl_parent_id = 'PHYSICS_PT_manta_fluid'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -277,7 +277,7 @@ class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
     bl_label = "Dissolve"
     bl_parent_id = 'PHYSICS_PT_manta_smoke'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -318,7 +318,7 @@ class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
     bl_label = "Fire"
     bl_parent_id = 'PHYSICS_PT_manta_fluid'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -398,7 +398,7 @@ class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Flow Source"
     bl_parent_id = 'PHYSICS_PT_manta_fluid'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -476,7 +476,7 @@ class PHYSICS_PT_manta_flow_texture(PhysicButtonsPanel, Panel):
     bl_label = "Texture"
     bl_parent_id = 'PHYSICS_PT_manta_fluid'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -559,7 +559,7 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
     bl_label = "Noise"
     bl_parent_id = 'PHYSICS_PT_manta'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -621,7 +621,7 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Mesh"
     bl_parent_id = 'PHYSICS_PT_manta'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -798,7 +798,7 @@ class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Diffusion"
     bl_parent_id = 'PHYSICS_PT_manta'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -908,7 +908,7 @@ class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
     bl_label = "Collections"
     bl_parent_id = 'PHYSICS_PT_manta'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -934,7 +934,7 @@ class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
 class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     bl_label = "Cache"
     bl_parent_id = 'PHYSICS_PT_manta'
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -991,7 +991,7 @@ class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Field Weights"
     bl_parent_id = 'PHYSICS_PT_manta'
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
     def poll(cls, context):
@@ -1043,9 +1043,11 @@ class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
         sub.prop(domain, "slice_axis")
         sub.prop(domain, "slice_depth")
 
-        col = col.row()
-        col.enabled = do_full_slicing or not do_axis_slicing
-        col.prop(domain, "slice_per_voxel")
+        row = col.row()
+        row.enabled = do_full_slicing or not do_axis_slicing
+        row.prop(domain, "slice_per_voxel")
+
+        col.prop(domain, "display_interpolation")
 
 
 class PHYSICS_PT_manta_viewport_display_color(PhysicButtonsPanel, Panel):
@@ -1090,7 +1092,7 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
     def draw_header(self, context):
         md = context.smoke.domain_settings
 
-        self.layout.prop(md, "display_velocity", text="")
+        self.layout.prop(md, "show_velocity", text="")
 
     def draw(self, context):
         layout = self.layout
@@ -1100,7 +1102,7 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
 
         col = flow.column()
-        col.enabled = domain.display_velocity
+        col.enabled = domain.show_velocity
         col.prop(domain, "vector_display_type", text="Display As")
         col.prop(domain, "vector_scale")
 

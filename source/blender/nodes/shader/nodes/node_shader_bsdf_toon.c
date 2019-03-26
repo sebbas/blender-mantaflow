@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include "../node_shader_util.h"
@@ -34,20 +26,20 @@ static bNodeSocketTemplate sh_node_bsdf_toon_in[] = {
 	{	SOCK_FLOAT,  1, N_("Size"),		0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
 	{	SOCK_FLOAT,  1, N_("Smooth"),	0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
 	{	SOCK_VECTOR, 1, N_("Normal"),	0.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, PROP_NONE, SOCK_HIDE_VALUE},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static bNodeSocketTemplate sh_node_bsdf_toon_out[] = {
 	{	SOCK_SHADER, 0, N_("BSDF")},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static int node_shader_gpu_bsdf_toon(GPUMaterial *mat, bNode *node, bNodeExecData *UNUSED(execdata), GPUNodeStack *in, GPUNodeStack *out)
 {
 	if (!in[3].link)
-		in[3].link = GPU_builtin(GPU_VIEW_NORMAL);
-	else
-		GPU_link(mat, "direction_transform_m4v3", in[3].link, GPU_builtin(GPU_VIEW_MATRIX), &in[3].link);
+		GPU_link(mat, "world_normals_get", &in[3].link);
+
+	GPU_material_flag_set(mat, GPU_MATFLAG_DIFFUSE);
 
 	return GPU_stack_link(mat, node, "node_bsdf_toon", in, out);
 }

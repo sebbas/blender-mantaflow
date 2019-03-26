@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/intern/wm.c
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  *
  * Internal functions for managing UI registrable types (operator, UI and menu types)
  *
@@ -43,15 +36,13 @@
 
 #include "BLI_utildefines.h"
 #include "BLI_blenlib.h"
-#include "BLI_ghash.h"
 
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
-#include "BKE_screen.h"
 #include "BKE_report.h"
-#include "BKE_global.h"
 #include "BKE_workspace.h"
 
 #include "WM_api.h"
@@ -125,8 +116,8 @@ void WM_operator_free_all_after(wmWindowManager *wm, struct wmOperator *op)
  * Use with extreme care!,
  * properties, customdata etc - must be compatible.
  *
- * \param op  Operator to assign the type to.
- * \param ot  OperatorType to assign.
+ * \param op: Operator to assign the type to.
+ * \param ot: OperatorType to assign.
  */
 void WM_operator_type_set(wmOperator *op, wmOperatorType *ot)
 {
@@ -206,17 +197,17 @@ void WM_operator_handlers_clear(wmWindowManager *wm, wmOperatorType *ot)
 	wmWindow *win;
 	for (win = wm->windows.first; win; win = win->next) {
 		ListBase *lb[2] = {&win->handlers, &win->modalhandlers};
-		wmEventHandler *handler;
-		int i;
-
-		for (i = 0; i < 2; i++) {
-			for (handler = lb[i]->first; handler; handler = handler->next) {
-				if (handler->op && handler->op->type == ot) {
-					/* don't run op->cancel because it needs the context,
-					 * assume whoever unregisters the operator will cleanup */
-					handler->flag |= WM_HANDLER_DO_FREE;
-					WM_operator_free(handler->op);
-					handler->op = NULL;
+		for (int i = 0; i < ARRAY_SIZE(lb); i++) {
+			LISTBASE_FOREACH (wmEventHandler *, handler_base, lb[i]) {
+				if (handler_base->type == WM_HANDLER_TYPE_OP) {
+					wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
+					if (handler->op && handler->op->type == ot) {
+						/* don't run op->cancel because it needs the context,
+						 * assume whoever unregisters the operator will cleanup */
+						handler->head.flag |= WM_HANDLER_DO_FREE;
+						WM_operator_free(handler->op);
+						handler->op = NULL;
+					}
 				}
 			}
 		}
@@ -225,26 +216,41 @@ void WM_operator_handlers_clear(wmWindowManager *wm, wmOperatorType *ot)
 
 /* ****************************************** */
 
-void WM_keymap_init(bContext *C)
+void WM_keyconfig_reload(bContext *C)
+{
+	if (CTX_py_init_get(C) && !G.background) {
+		BPY_execute_string(
+		        C, (const char *[]){"bpy", NULL},
+		        "bpy.utils.keyconfig_init()");
+	}
+}
+
+void WM_keyconfig_init(bContext *C)
 {
 	wmWindowManager *wm = CTX_wm_manager(C);
 
 	/* create standard key configs */
-	if (!wm->defaultconf)
-		wm->defaultconf = WM_keyconfig_new(wm, "Blender");
-	if (!wm->addonconf)
-		wm->addonconf = WM_keyconfig_new(wm, "Blender Addon");
-	if (!wm->userconf)
-		wm->userconf = WM_keyconfig_new(wm, "Blender User");
+	if (wm->defaultconf == NULL) {
+		/* Keep lowercase to match the preset filename. */
+		wm->defaultconf = WM_keyconfig_new(wm, WM_KEYCONFIG_STR_DEFAULT, false);
+	}
+	if (wm->addonconf == NULL) {
+		wm->addonconf = WM_keyconfig_new(wm, WM_KEYCONFIG_STR_DEFAULT " addon", false);
+	}
+	if (wm->userconf == NULL) {
+		wm->userconf = WM_keyconfig_new(wm, WM_KEYCONFIG_STR_DEFAULT " user", false);
+	}
 
 	/* initialize only after python init is done, for keymaps that
 	 * use python operators */
-	if (CTX_py_init_get(C) && (wm->initialized & WM_KEYMAP_IS_INITIALIZED) == 0) {
+	if (CTX_py_init_get(C) && (wm->initialized & WM_KEYCONFIG_IS_INITIALIZED) == 0) {
 		/* create default key config, only initialize once,
 		 * it's persistent across sessions */
 		if (!(wm->defaultconf->flag & KEYCONF_INIT_DEFAULT)) {
 			wm_window_keymap(wm->defaultconf);
 			ED_spacetypes_keymap(wm->defaultconf);
+
+			WM_keyconfig_reload(C);
 
 			wm->defaultconf->flag |= KEYCONF_INIT_DEFAULT;
 		}
@@ -252,7 +258,7 @@ void WM_keymap_init(bContext *C)
 		WM_keyconfig_update_tag(NULL, NULL);
 		WM_keyconfig_update(wm);
 
-		wm->initialized |= WM_KEYMAP_IS_INITIALIZED;
+		wm->initialized |= WM_KEYCONFIG_IS_INITIALIZED;
 	}
 }
 
@@ -274,7 +280,7 @@ void WM_check(bContext *C)
 	if (!G.background) {
 		/* case: fileread */
 		if ((wm->initialized & WM_WINDOW_IS_INITIALIZED) == 0) {
-			WM_keymap_init(C);
+			WM_keyconfig_init(C);
 			WM_autosave_init(wm);
 		}
 

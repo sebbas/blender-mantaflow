@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/mesh/editmesh_add_gizmo.c
- *  \ingroup edmesh
+/** \file
+ * \ingroup edmesh
  *
  * Creation gizmos.
  */
@@ -70,7 +66,6 @@ static void calc_initial_placement_point_from_view(
 {
 
 	Scene *scene = CTX_data_scene(C);
-	View3D *v3d = CTX_wm_view3d(C);
 	ARegion *ar = CTX_wm_region(C);
 	RegionView3D *rv3d = ar->regiondata;
 
@@ -78,7 +73,7 @@ static void calc_initial_placement_point_from_view(
 
 	float cursor_matrix[4][4];
 	float orient_matrix[3][3];
-	ED_view3d_cursor3d_calc_mat4(scene, v3d, cursor_matrix);
+	ED_view3d_cursor3d_calc_mat4(scene, cursor_matrix);
 
 	float dots[3] = {
 		dot_v3v3(rv3d->viewinv[2], cursor_matrix[0]),

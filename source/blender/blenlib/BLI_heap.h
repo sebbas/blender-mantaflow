@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,16 +12,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLI_HEAP_H__
 #define __BLI_HEAP_H__
 
-/** \file BLI_heap.h
- *  \ingroup bli
- *  \brief A min-heap / priority queue ADT
+/** \file
+ * \ingroup bli
+ * \brief A min-heap / priority queue ADT
  */
 
 struct Heap;
@@ -43,6 +39,7 @@ void            BLI_heap_remove(Heap *heap, HeapNode *node) ATTR_NONNULL(1, 2);
 bool            BLI_heap_is_empty(const Heap *heap) ATTR_NONNULL(1);
 unsigned int    BLI_heap_len(const Heap *heap) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 HeapNode       *BLI_heap_top(const Heap *heap) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+float           BLI_heap_top_value(const Heap *heap) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 void           *BLI_heap_pop_min(Heap *heap) ATTR_NONNULL(1);
 void            BLI_heap_node_value_update(Heap *heap, HeapNode *node, float value) ATTR_NONNULL(1, 2);
 void            BLI_heap_node_value_update_ptr(Heap *heap, HeapNode *node, float value, void *ptr) ATTR_NONNULL(1, 2);

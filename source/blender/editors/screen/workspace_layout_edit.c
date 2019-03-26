@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/screen/workspace_layout_edit.c
- *  \ingroup edscr
+/** \file
+ * \ingroup edscr
  */
 
 #include <stdlib.h>
@@ -31,7 +27,6 @@
 #include "DNA_workspace_types.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
@@ -70,13 +65,22 @@ WorkSpaceLayout *ED_workspace_layout_duplicate(
 	bScreen *screen_new;
 	WorkSpaceLayout *layout_new;
 
-	if (BKE_screen_is_fullscreen_area(screen_old)) {
-		return NULL; /* XXX handle this case! */
-	}
-
 	layout_new = ED_workspace_layout_add(bmain, workspace, win, name);
 	screen_new = BKE_workspace_layout_screen_get(layout_new);
-	screen_data_copy(screen_new, screen_old);
+
+	if (BKE_screen_is_fullscreen_area(screen_old)) {
+		for (ScrArea *area_old = screen_old->areabase.first; area_old; area_old = area_old->next) {
+			if (area_old->full) {
+				ScrArea *area_new = (ScrArea *)screen_new->areabase.first;
+				ED_area_data_copy(area_new, area_old, true);
+				ED_area_tag_redraw(area_new);
+				break;
+			}
+		}
+	}
+	else {
+		screen_data_copy(screen_new, screen_old);
+	}
 
 	return layout_new;
 }

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2007 by Janne Karhu.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/physics/physics_pointcache.c
- *  \ingroup edphys
+/** \file
+ * \ingroup edphys
  */
 
 #include <stdlib.h>
@@ -40,12 +32,12 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_context.h"
-#include "BKE_screen.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_main.h"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
+
+#include "DEG_depsgraph.h"
 
 #include "ED_particle.h"
 
@@ -69,6 +61,7 @@ static bool ptcache_poll(bContext *C)
 }
 
 typedef struct PointCacheJob {
+	wmWindowManager *wm;
 	void *owner;
 	short *stop, *do_update;
 	float *progress;
@@ -123,8 +116,7 @@ static void ptcache_job_startjob(void *customdata, short *stop, short *do_update
 	/* XXX annoying hack: needed to prevent data corruption when changing
 	 * scene frame in separate threads
 	 */
-	G.is_rendering = true;
-	BKE_spacedata_draw_locks(true);
+	WM_set_locked_interface(job->wm, true);
 
 	BKE_ptcache_bake(job->baker);
 
@@ -137,10 +129,7 @@ static void ptcache_job_endjob(void *customdata)
 	PointCacheJob *job = customdata;
 	Scene *scene = job->baker->scene;
 
-	G.is_rendering = false;
-	BKE_spacedata_draw_locks(false);
-
-	WM_set_locked_interface(G_MAIN->wm.first, false);
+	WM_set_locked_interface(job->wm, false);
 
 	WM_main_add_notifier(NC_SCENE | ND_FRAME, scene);
 	WM_main_add_notifier(NC_OBJECT | ND_POINTCACHE, job->baker->pid.ob);
@@ -199,6 +188,7 @@ static int ptcache_bake_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 	bool all = STREQ(op->type->idname, "PTCACHE_OT_bake_all");
 
 	PointCacheJob *job = MEM_mallocN(sizeof(PointCacheJob), "PointCacheJob");
+	job->wm = CTX_wm_manager(C);
 	job->baker = ptcache_baker_create(C, op, all);
 	job->baker->bake_job = job;
 	job->baker->update_progress = ptcache_job_update;
@@ -290,9 +280,9 @@ void PTCACHE_OT_bake_all(wmOperatorType *ot)
 void PTCACHE_OT_free_bake_all(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Free All Physics Bakes";
+	ot->name = "Delete All Physics Bakes";
 	ot->idname = "PTCACHE_OT_free_bake_all";
-	ot->description = "Free all baked caches of all objects in the current scene";
+	ot->description = "Delete all baked caches of all objects in the current scene";
 
 	/* api callbacks */
 	ot->exec = ptcache_free_bake_all_exec;
@@ -348,8 +338,8 @@ void PTCACHE_OT_bake(wmOperatorType *ot)
 void PTCACHE_OT_free_bake(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Free Physics Bake";
-	ot->description = "Free physics bake";
+	ot->name = "Delete Physics Bake";
+	ot->description = "Delete physics bake";
 	ot->idname = "PTCACHE_OT_free_bake";
 
 	/* api callbacks */
@@ -386,10 +376,11 @@ static int ptcache_add_new_exec(bContext *C, wmOperator *UNUSED(op))
 		PointCache *cache_new = BKE_ptcache_add(pid.ptcaches);
 		cache_new->step = pid.default_step;
 		*(pid.cache_ptr) = cache_new;
-	}
 
-	WM_event_add_notifier(C, NC_SCENE|ND_FRAME, scene);
-	WM_event_add_notifier(C, NC_OBJECT|ND_POINTCACHE, ob);
+		DEG_id_tag_update(&ob->id, ID_RECALC_POINT_CACHE);
+		WM_event_add_notifier(C, NC_SCENE|ND_FRAME, scene);
+		WM_event_add_notifier(C, NC_OBJECT|ND_POINTCACHE, ob);
+	}
 
 	return OPERATOR_FINISHED;
 }
@@ -406,9 +397,10 @@ static int ptcache_remove_exec(bContext *C, wmOperator *UNUSED(op))
 		BLI_remlink(pid.ptcaches, pid.cache);
 		BKE_ptcache_free(pid.cache);
 		*(pid.cache_ptr) = pid.ptcaches->first;
-	}
 
-	WM_event_add_notifier(C, NC_OBJECT|ND_POINTCACHE, ob);
+		DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+		WM_event_add_notifier(C, NC_OBJECT|ND_POINTCACHE, ob);
+	}
 
 	return OPERATOR_FINISHED;
 }

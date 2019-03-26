@@ -1,6 +1,4 @@
 /*
- * Copyright 2011, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,9 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Jeroen Bakker
- *		Monique Dewanchand
+ * Copyright 2011, Blender Foundation.
  */
 
 #ifndef __COM_NODEOPERATION_H__
@@ -68,7 +64,7 @@ typedef enum InputResizeMode {
 	/** \brief Fit the width or the height of the input image to the width or height of the working area of the node, image will be larger than the working area */
 	COM_SC_FIT = NS_CR_FIT,
 	/** \brief Fit the width and the height of the input image to the width and height of the working area of the node, image will be equally larger than the working area */
-	COM_SC_STRETCH = NS_CR_STRETCH
+	COM_SC_STRETCH = NS_CR_STRETCH,
 } InputResizeMode;
 
 /**
@@ -143,19 +139,19 @@ public:
 	/**
 	 * \brief determine the resolution of this node
 	 * \note this method will not set the resolution, this is the responsibility of the caller
-	 * \param resolution the result of this operation
-	 * \param preferredResolution the preferable resolution as no resolution could be determined
+	 * \param resolution: the result of this operation
+	 * \param preferredResolution: the preferable resolution as no resolution could be determined
 	 */
 	virtual void determineResolution(unsigned int resolution[2], unsigned int preferredResolution[2]);
 
 	/**
 	 * \brief isOutputOperation determines whether this operation is an output of the ExecutionSystem during rendering or editing.
 	 *
-	 * Default behaviour if not overridden, this operation will not be evaluated as being an output of the ExecutionSystem.
+	 * Default behavior if not overridden, this operation will not be evaluated as being an output of the ExecutionSystem.
 	 *
 	 * \see ExecutionSystem
 	 * \group check
-	 * \param rendering [true false]
+	 * \param rendering: [true false]
 	 *  true: rendering
 	 *  false: editing
 	 *
@@ -171,9 +167,9 @@ public:
 	/**
 	 * \brief when a chunk is executed by a CPUDevice, this method is called
 	 * \ingroup execution
-	 * \param rect the rectangle of the chunk (location and size)
-	 * \param chunkNumber the chunkNumber to be calculated
-	 * \param memoryBuffers all input MemoryBuffer's needed
+	 * \param rect: the rectangle of the chunk (location and size)
+	 * \param chunkNumber: the chunkNumber to be calculated
+	 * \param memoryBuffers: all input MemoryBuffer's needed
 	 */
 	virtual void executeRegion(rcti * /*rect*/,
 	                           unsigned int /*chunkNumber*/) {}
@@ -182,13 +178,13 @@ public:
 	 * \brief when a chunk is executed by an OpenCLDevice, this method is called
 	 * \ingroup execution
 	 * \note this method is only implemented in WriteBufferOperation
-	 * \param context the OpenCL context
-	 * \param program the OpenCL program containing all compositor kernels
-	 * \param queue the OpenCL command queue of the device the chunk is executed on
-	 * \param rect the rectangle of the chunk (location and size)
-	 * \param chunkNumber the chunkNumber to be calculated
-	 * \param memoryBuffers all input MemoryBuffer's needed
-	 * \param outputBuffer the outputbuffer to write to
+	 * \param context: the OpenCL context
+	 * \param program: the OpenCL program containing all compositor kernels
+	 * \param queue: the OpenCL command queue of the device the chunk is executed on
+	 * \param rect: the rectangle of the chunk (location and size)
+	 * \param chunkNumber: the chunkNumber to be calculated
+	 * \param memoryBuffers: all input MemoryBuffer's needed
+	 * \param outputBuffer: the outputbuffer to write to
 	 */
 	virtual void executeOpenCLRegion(OpenCLDevice * /*device*/,
 	                                 rcti * /*rect*/,
@@ -199,14 +195,14 @@ public:
 	/**
 	 * \brief custom handle to add new tasks to the OpenCL command queue in order to execute a chunk on an GPUDevice
 	 * \ingroup execution
-	 * \param context the OpenCL context
-	 * \param program the OpenCL program containing all compositor kernels
-	 * \param queue the OpenCL command queue of the device the chunk is executed on
-	 * \param outputMemoryBuffer the allocated memory buffer in main CPU memory
-	 * \param clOutputBuffer the allocated memory buffer in OpenCLDevice memory
-	 * \param inputMemoryBuffers all input MemoryBuffer's needed
-	 * \param clMemToCleanUp all created cl_mem references must be added to this list. Framework will clean this after execution
-	 * \param clKernelsToCleanUp all created cl_kernel references must be added to this list. Framework will clean this after execution
+	 * \param context: the OpenCL context
+	 * \param program: the OpenCL program containing all compositor kernels
+	 * \param queue: the OpenCL command queue of the device the chunk is executed on
+	 * \param outputMemoryBuffer: the allocated memory buffer in main CPU memory
+	 * \param clOutputBuffer: the allocated memory buffer in OpenCLDevice memory
+	 * \param inputMemoryBuffers: all input MemoryBuffer's needed
+	 * \param clMemToCleanUp: all created cl_mem references must be added to this list. Framework will clean this after execution
+	 * \param clKernelsToCleanUp: all created cl_kernel references must be added to this list. Framework will clean this after execution
 	 */
 	virtual void executeOpenCL(OpenCLDevice * /*device*/,
 	                           MemoryBuffer * /*outputMemoryBuffer*/,
@@ -222,7 +218,7 @@ public:
 
 	/**
 	 * \brief set the resolution
-	 * \param resolution the resolution to set
+	 * \param resolution: the resolution to set
 	 */
 	void setResolution(unsigned int resolution[2]) {
 		if (!isResolutionSet()) {
@@ -271,7 +267,7 @@ public:
 
 	/**
 	 * \brief set the index of the input socket that will determine the resolution of this operation
-	 * \param index the index to set
+	 * \param index: the index to set
 	 */
 	void setResolutionInputSocketIndex(unsigned int index);
 
@@ -397,8 +393,8 @@ public:
 
 	/**
 	 * \brief determine the resolution of this data going through this socket
-	 * \param resolution the result of this operation
-	 * \param preferredResolution the preferable resolution as no resolution could be determined
+	 * \param resolution: the result of this operation
+	 * \param preferredResolution: the preferable resolution as no resolution could be determined
 	 */
 	void determineResolution(unsigned int resolution[2], unsigned int preferredResolution[2]);
 

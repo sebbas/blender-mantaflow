@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,12 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * API's for creating vertex groups from bones
  * - Interfaces with heat weighting in meshlaplacian
  */
 
-/** \file blender/editors/armature/armature_skinning.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "DNA_mesh_types.h"
@@ -43,7 +36,6 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
-#include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_mesh_iterators.h"
 #include "BKE_mesh_runtime.h"
@@ -53,6 +45,7 @@
 #include "BKE_subsurf.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_armature.h"
 #include "ED_mesh.h"
@@ -249,7 +242,7 @@ static void envelope_bone_weighting(
 }
 
 static void add_verts_to_dgroups(
-        ReportList *reports, Depsgraph *depsgraph, Scene *scene, Object *ob, Object *par,
+        ReportList *reports, Depsgraph *depsgraph, Scene *UNUSED(scene), Object *ob, Object *par,
         int heat, const bool mirror)
 {
 	/* This functions implements the automatic computation of vertex group
@@ -325,7 +318,7 @@ static void add_verts_to_dgroups(
 				if ((par->pose) && (pchan = BKE_pose_channel_find_name(par->pose, bone->name))) {
 					if (bone->segments > 1) {
 						segments = bone->segments;
-						b_bone_spline_setup(pchan, 1, bbone_array);
+						BKE_pchan_bbone_spline_setup(pchan, true, bbone_array);
 						bbone = bbone_array;
 					}
 				}
@@ -375,7 +368,9 @@ static void add_verts_to_dgroups(
 
 	if (wpmode) {
 		/* if in weight paint mode, use final verts from evaluated mesh */
-		Mesh *me_eval = mesh_get_eval_final(depsgraph, scene, ob, CD_MASK_BAREMESH);
+		Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+		Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+		Mesh *me_eval = mesh_get_eval_final(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
 		BKE_mesh_foreach_mapped_vert_coords_get(me_eval, verts, mesh->totvert);
 		vertsfilled = 1;
