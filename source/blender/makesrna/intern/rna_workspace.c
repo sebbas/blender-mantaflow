@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_workspace.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include "RNA_define.h"
@@ -123,13 +119,19 @@ static bToolRef *rna_WorkSpace_tools_from_tkey(WorkSpace *workspace, const bTool
 static bToolRef *rna_WorkSpace_tools_from_space_view3d_mode(
         WorkSpace *workspace, int mode, bool create)
 {
-	return rna_WorkSpace_tools_from_tkey(workspace, &(bToolKey){ .space_type = SPACE_VIEW3D, .mode = mode}, create);
+	return rna_WorkSpace_tools_from_tkey(workspace, &(bToolKey){ .space_type = SPACE_VIEW3D, .mode = mode, }, create);
 }
 
 static bToolRef *rna_WorkSpace_tools_from_space_image_mode(
         WorkSpace *workspace, int mode, bool create)
 {
-	return rna_WorkSpace_tools_from_tkey(workspace, &(bToolKey){ .space_type = SPACE_IMAGE, .mode = mode}, create);
+	return rna_WorkSpace_tools_from_tkey(workspace, &(bToolKey){ .space_type = SPACE_IMAGE, .mode = mode, }, create);
+}
+
+static bToolRef *rna_WorkSpace_tools_from_space_node(
+        WorkSpace *workspace, bool create)
+{
+	return rna_WorkSpace_tools_from_tkey(workspace, &(bToolKey){ .space_type = SPACE_NODE, .mode = 0, }, create);
 }
 
 const EnumPropertyItem *rna_WorkSpace_tools_mode_itemf(
@@ -141,30 +143,30 @@ const EnumPropertyItem *rna_WorkSpace_tools_mode_itemf(
 		case SPACE_VIEW3D:
 			return rna_enum_context_mode_items;
 		case SPACE_IMAGE:
-			return rna_enum_space_image_mode_items;
+			return rna_enum_space_image_mode_all_items;
 	}
 	return DummyRNA_DEFAULT_items;
 }
 
-static int rna_WorkspaceTool_index_get(PointerRNA *ptr)
+static int rna_WorkSpaceTool_index_get(PointerRNA *ptr)
 {
 	bToolRef *tref = ptr->data;
 	return (tref->runtime) ? tref->runtime->index : 0;
 }
 
-static int rna_WorkspaceTool_has_datablock_get(PointerRNA *ptr)
+static int rna_WorkSpaceTool_has_datablock_get(PointerRNA *ptr)
 {
 	bToolRef *tref = ptr->data;
 	return (tref->runtime) ? (tref->runtime->data_block[0] != '\0') : false;
 }
 
-static void rna_WorkspaceTool_widget_get(PointerRNA *ptr, char *value)
+static void rna_WorkSpaceTool_widget_get(PointerRNA *ptr, char *value)
 {
 	bToolRef *tref = ptr->data;
 	strcpy(value, tref->runtime ? tref->runtime->gizmo_group : "");
 }
 
-static int rna_WorkspaceTool_widget_length(PointerRNA *ptr)
+static int rna_WorkSpaceTool_widget_length(PointerRNA *ptr)
 {
 	bToolRef *tref = ptr->data;
 	return tref->runtime ? strlen(tref->runtime->gizmo_group) : 0;
@@ -227,20 +229,19 @@ static void rna_def_workspace_tool(BlenderRNA *brna)
 	StructRNA *srna;
 	PropertyRNA *prop;
 
-	srna = RNA_def_struct(brna, "WorkspaceTool", NULL);
+	srna = RNA_def_struct(brna, "WorkSpaceTool", NULL);
 	RNA_def_struct_sdna(srna, "bToolRef");
 	RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
 	RNA_def_struct_ui_text(srna, "Work Space Tool", "");
 
-	prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-	RNA_def_property_string_sdna(prop, NULL, "idname");
-	RNA_def_property_ui_text(prop, "Name", "");
+	prop = RNA_def_property(srna, "idname", PROP_STRING, PROP_NONE);
+	RNA_def_property_ui_text(prop, "Identifier", "");
 	RNA_def_struct_name_property(srna, prop);
 
 	prop = RNA_def_property(srna, "index", PROP_INT, PROP_NONE);
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Index", "");
-	RNA_def_property_int_funcs(prop, "rna_WorkspaceTool_index_get", NULL, NULL);
+	RNA_def_property_int_funcs(prop, "rna_WorkSpaceTool_index_get", NULL, NULL);
 
 	prop = RNA_def_property(srna, "space_type", PROP_ENUM, PROP_NONE);
 	RNA_def_property_enum_sdna(prop, NULL, "space_type");
@@ -259,13 +260,13 @@ static void rna_def_workspace_tool(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "has_datablock", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Has Datablock", "");
-	RNA_def_property_boolean_funcs(prop, "rna_WorkspaceTool_has_datablock_get", NULL);
+	RNA_def_property_boolean_funcs(prop, "rna_WorkSpaceTool_has_datablock_get", NULL);
 	RNA_define_verify_sdna(1);
 
 	prop = RNA_def_property(srna, "widget", PROP_STRING, PROP_NONE);
 	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Widget", "");
-	RNA_def_property_string_funcs(prop, "rna_WorkspaceTool_widget_get", "rna_WorkspaceTool_widget_length", NULL);
+	RNA_def_property_string_funcs(prop, "rna_WorkSpaceTool_widget_get", "rna_WorkSpaceTool_widget_length", NULL);
 	RNA_define_verify_sdna(1);
 
 	RNA_api_workspace_tool(srna);
@@ -290,16 +291,23 @@ static void rna_def_workspace_tools(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	RNA_def_boolean(func, "create", false, "Create", "");
 	/* return type */
-	parm = RNA_def_pointer(func, "result", "WorkspaceTool", "", "");
+	parm = RNA_def_pointer(func, "result", "WorkSpaceTool", "", "");
 	RNA_def_function_return(func, parm);
 
 	func = RNA_def_function(srna, "from_space_image_mode", "rna_WorkSpace_tools_from_space_image_mode");
 	RNA_def_function_ui_description(func, "");
-	parm = RNA_def_enum(func, "mode", rna_enum_space_image_mode_items, 0, "", "");
+	parm = RNA_def_enum(func, "mode", rna_enum_space_image_mode_all_items, 0, "", "");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 	RNA_def_boolean(func, "create", false, "Create", "");
 	/* return type */
-	parm = RNA_def_pointer(func, "result", "WorkspaceTool", "", "");
+	parm = RNA_def_pointer(func, "result", "WorkSpaceTool", "", "");
+	RNA_def_function_return(func, parm);
+
+	func = RNA_def_function(srna, "from_space_node", "rna_WorkSpace_tools_from_space_node");
+	RNA_def_function_ui_description(func, "");
+	RNA_def_boolean(func, "create", false, "Create", "");
+	/* return type */
+	parm = RNA_def_pointer(func, "result", "WorkSpaceTool", "", "");
 	RNA_def_function_return(func, parm);
 }
 
@@ -328,7 +336,7 @@ static void rna_def_workspace(BlenderRNA *brna)
 
 	prop = RNA_def_property(srna, "tools", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_collection_sdna(prop, NULL, "tools", NULL);
-	RNA_def_property_struct_type(prop, "WorkspaceTool");
+	RNA_def_property_struct_type(prop, "WorkSpaceTool");
 	RNA_def_property_ui_text(prop, "Tools", "");
 	rna_def_workspace_tools(brna, prop);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 by Mike Erwin.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, Clément Foucault
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpu/intern/gpu_vertex_buffer.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * GPU vertex buffer
  */
@@ -48,7 +42,7 @@ static GLenum convert_usage_type_to_gl(GPUUsageType type)
 	static const GLenum table[] = {
 		[GPU_USAGE_STREAM] = GL_STREAM_DRAW,
 		[GPU_USAGE_STATIC] = GL_STATIC_DRAW,
-		[GPU_USAGE_DYNAMIC] = GL_DYNAMIC_DRAW
+		[GPU_USAGE_DYNAMIC] = GL_DYNAMIC_DRAW,
 	};
 	return table[type];
 }
@@ -119,10 +113,6 @@ void GPU_vertbuf_data_alloc(GPUVertBuf *verts, uint v_len)
 	/* catch any unnecessary use */
 	assert(verts->vertex_alloc != v_len || verts->data == NULL);
 #endif
-	/* only create the buffer the 1st time */
-	if (verts->vbo_id == 0) {
-		verts->vbo_id = GPU_buf_alloc();
-	}
 	/* discard previous data if any */
 	if (verts->data) {
 		MEM_freeN(verts->data);
@@ -156,7 +146,7 @@ void GPU_vertbuf_data_resize(GPUVertBuf *verts, uint v_len)
 /* Set vertex count but does not change allocation.
  * Only this many verts will be uploaded to the GPU and rendered.
  * This is useful for streaming data. */
-void GPU_vertbuf_vertex_count_set(GPUVertBuf *verts, uint v_len)
+void GPU_vertbuf_data_len_set(GPUVertBuf *verts, uint v_len)
 {
 #if TRUST_NO_ONE
 	assert(verts->data != NULL); /* only for dynamic data */
@@ -173,7 +163,7 @@ void GPU_vertbuf_vertex_count_set(GPUVertBuf *verts, uint v_len)
 void GPU_vertbuf_attr_set(GPUVertBuf *verts, uint a_idx, uint v_idx, const void *data)
 {
 	const GPUVertFormat *format = &verts->format;
-	const GPUVertAttr *a = format->attribs + a_idx;
+	const GPUVertAttr *a = &format->attrs[a_idx];
 
 #if TRUST_NO_ONE
 	assert(a_idx < format->attr_len);
@@ -187,7 +177,7 @@ void GPU_vertbuf_attr_set(GPUVertBuf *verts, uint a_idx, uint v_idx, const void 
 void GPU_vertbuf_attr_fill(GPUVertBuf *verts, uint a_idx, const void *data)
 {
 	const GPUVertFormat *format = &verts->format;
-	const GPUVertAttr *a = format->attribs + a_idx;
+	const GPUVertAttr *a = &format->attrs[a_idx];
 
 #if TRUST_NO_ONE
 	assert(a_idx < format->attr_len);
@@ -200,7 +190,7 @@ void GPU_vertbuf_attr_fill(GPUVertBuf *verts, uint a_idx, const void *data)
 void GPU_vertbuf_attr_fill_stride(GPUVertBuf *verts, uint a_idx, uint stride, const void *data)
 {
 	const GPUVertFormat *format = &verts->format;
-	const GPUVertAttr *a = format->attribs + a_idx;
+	const GPUVertAttr *a = &format->attrs[a_idx];
 
 #if TRUST_NO_ONE
 	assert(a_idx < format->attr_len);
@@ -224,7 +214,7 @@ void GPU_vertbuf_attr_fill_stride(GPUVertBuf *verts, uint a_idx, uint stride, co
 void GPU_vertbuf_attr_get_raw_data(GPUVertBuf *verts, uint a_idx, GPUVertBufRaw *access)
 {
 	const GPUVertFormat *format = &verts->format;
-	const GPUVertAttr *a = format->attribs + a_idx;
+	const GPUVertAttr *a = &format->attrs[a_idx];
 
 #if TRUST_NO_ONE
 	assert(a_idx < format->attr_len);
@@ -260,6 +250,10 @@ static void VertBuffer_upload_data(GPUVertBuf *verts)
 
 void GPU_vertbuf_use(GPUVertBuf *verts)
 {
+	/* only create the buffer the 1st time */
+	if (verts->vbo_id == 0) {
+		verts->vbo_id = GPU_buf_alloc();
+	}
 	glBindBuffer(GL_ARRAY_BUFFER, verts->vbo_id);
 	if (verts->dirty) {
 		VertBuffer_upload_data(verts);

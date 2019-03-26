@@ -33,7 +33,7 @@ __all__ = (
 
 import bpy as _bpy
 
-# Normally matches 'user_preferences.app_template_id',
+# Normally matches 'preferences.app_template_id',
 # but loading new preferences will get us out of sync.
 _app_template = {
     "id": "",
@@ -51,8 +51,6 @@ _modules = {}
 
 
 def _enable(template_id, *, handle_error=None, ignore_not_found=False):
-    import os
-    import sys
     from bpy_restrict_state import RestrictBlend
 
     if handle_error is None:
@@ -107,7 +105,6 @@ def _disable(template_id, *, handle_error=None):
        taking an exception argument.
     :type handle_error: function
     """
-    import sys
 
     if handle_error is None:
         def handle_error(ex):
@@ -178,7 +175,7 @@ def activate(template_id=None):
     addon_utils.disable_all()
 
     # ignore_not_found so modules that don't contain scripts don't raise errors
-    mod = _enable(template_id, ignore_not_found=True) if template_id else None
+    _mod = _enable(template_id, ignore_not_found=True) if template_id else None
 
     _app_template["id"] = template_id
 
@@ -187,7 +184,7 @@ def reset(*, reload_scripts=False):
     """
     Sets default state.
     """
-    template_id = _bpy.context.user_preferences.app_template
+    template_id = _bpy.context.preferences.app_template
     if _bpy.app.debug_python:
         print("bl_app_template_utils.reset('%s')" % template_id)
 

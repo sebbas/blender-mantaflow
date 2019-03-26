@@ -1,5 +1,5 @@
-/** \file elbeem/intern/ntl_ray.h
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

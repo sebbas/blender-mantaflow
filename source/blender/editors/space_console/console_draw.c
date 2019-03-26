@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_console/console_draw.c
- *  \ingroup spconsole
+/** \file
+ * \ingroup spconsole
  */
 
 #include <math.h>
@@ -39,7 +33,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BIF_gl.h"
 #include "GPU_immediate.h"
 
 #include "UI_interface.h"
@@ -139,8 +132,9 @@ static void console_cursor_wrap_offset(const char *str, int width, int *row, int
 			*column = 0;
 		}
 
-		if (end && str >= end)
+		if (end && str >= end) {
 			break;
+		}
 
 		*column += col;
 	}

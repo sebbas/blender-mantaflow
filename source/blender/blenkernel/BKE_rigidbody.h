@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,29 +15,25 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung, Sergej Reich
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file BKE_rigidbody.h
- *  \ingroup blenkernel
- *  \brief API for Blender-side Rigid Body stuff
+/** \file
+ * \ingroup blenkernel
+ * \brief API for Blender-side Rigid Body stuff
  */
 
 
 #ifndef __BKE_RIGIDBODY_H__
 #define __BKE_RIGIDBODY_H__
 
-struct RigidBodyWorld;
 struct RigidBodyOb;
+struct RigidBodyWorld;
 
+struct Collection;
 struct Depsgraph;
-struct Scene;
+struct Main;
 struct Object;
+struct Scene;
 
 /* -------------- */
 /* Memory Management */
@@ -65,6 +59,13 @@ void BKE_rigidbody_world_id_loop(struct RigidBodyWorld *rbw, RigidbodyWorldIDFun
 struct RigidBodyWorld *BKE_rigidbody_create_world(struct Scene *scene);
 struct RigidBodyOb *BKE_rigidbody_create_object(struct Scene *scene, struct Object *ob, short type);
 struct RigidBodyCon *BKE_rigidbody_create_constraint(struct Scene *scene, struct Object *ob, short type);
+
+/* Ensure newly set collections' objects all have required data. */
+void BKE_rigidbody_objects_collection_validate(struct Scene *scene, struct RigidBodyWorld *rbw);
+void BKE_rigidbody_constraints_collection_validate(struct Scene *scene, struct RigidBodyWorld *rbw);
+
+/* Ensure object added to collection gets RB data if that collection is a RB one. */
+void BKE_rigidbody_main_collection_object_add(struct Main *bmain, struct Collection *collection, struct Object *object);
 
 /* copy */
 struct RigidBodyWorld *BKE_rigidbody_world_copy(struct RigidBodyWorld *rbw, const int flag);

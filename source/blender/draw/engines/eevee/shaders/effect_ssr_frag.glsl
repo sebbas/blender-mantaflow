@@ -18,7 +18,11 @@ vec2 decode_hit_data(vec2 hit_data, out bool has_hit, out bool is_planar)
 {
 	is_planar = (hit_data.x < 0);
 	has_hit = (hit_data.y > 0);
-	return vec2(abs(hit_data)) / 32767.0; /* 16bit signed int limit */
+	vec2 hit_co = vec2(abs(hit_data)) / 32767.0; /* 16bit signed int limit */
+	if (is_planar) {
+		hit_co.x = 1.0 - hit_co.x;
+	}
+	return hit_co;
 }
 
 #ifdef STEP_RAYTRACE
@@ -91,8 +95,9 @@ void main()
 
 	/* Early out */
 	/* We can't do discard because we don't clear the render target. */
-	if (depth == 1.0)
+	if (depth == 1.0) {
 		return;
+	}
 
 	vec2 uvs = vec2(fullres_texel) / vec2(textureSize(depthBuffer, 0));
 
@@ -105,16 +110,18 @@ void main()
 	vec4 speccol_roughness = texelFetch(specroughBuffer, fullres_texel, 0).rgba;
 
 	/* Early out */
-	if (dot(speccol_roughness.rgb, vec3(1.0)) == 0.0)
+	if (dot(speccol_roughness.rgb, vec3(1.0)) == 0.0) {
 		return;
+	}
 
 	float roughness = speccol_roughness.a;
 	float roughnessSquared = max(1e-3, roughness * roughness);
 	float a2 = roughnessSquared * roughnessSquared;
 
 	/* Early out */
-	if (roughness > ssrMaxRoughness + 0.2)
+	if (roughness > ssrMaxRoughness + 0.2) {
 		return;
+	}
 
 	vec4 rand = texelFetch(utilTex, ivec3(halfres_texel % LUT_SIZE, 2), 0);
 
@@ -216,6 +223,7 @@ vec2 get_reprojected_reflection(vec3 hit, vec3 pos, vec3 N)
 float get_sample_depth(vec2 hit_co, bool is_planar, float planar_index)
 {
 	if (is_planar) {
+		hit_co.x = 1.0 - hit_co.x;
 		return textureLod(planarDepth, vec3(hit_co, planar_index), 0.0).r;
 	}
 	else {
@@ -234,15 +242,16 @@ vec3 get_hit_vector(
 		vec3 trace_pos = line_plane_intersect(worldPosition, V, pd.pl_plane_eq);
 		hit_vec = hit_pos - trace_pos;
 		hit_vec = reflect(hit_vec, pd.pl_normal);
+		/* Modify here so mip texel alignment is correct. */
+		hit_co.x = 1.0 - hit_co.x;
 	}
 	else {
 		/* Find hit position in previous frame. */
-		mask = screen_border_mask(gl_FragCoord.xy / vec2(textureSize(depthBuffer, 0)));
 		hit_co = get_reprojected_reflection(hit_pos, worldPosition, N);
 		hit_vec = hit_pos - worldPosition;
 	}
 
-	mask = min(mask, screen_border_mask(hit_co));
+	mask = screen_border_mask(hit_co);
 	return hit_vec;
 }
 
@@ -395,8 +404,9 @@ void main()
 	float depth = textureLod(depthBuffer, uvs, 0.0).r;
 
 	/* Early out */
-	if (depth == 1.0)
+	if (depth == 1.0) {
 		discard;
+	}
 
 	/* Using world space */
 	vec3 viewPosition = get_view_space_from_depth(uvs, depth); /* Needed for viewCameraVec */
@@ -407,35 +417,8 @@ void main()
 	vec4 speccol_roughness = texelFetch(specroughBuffer, fullres_texel, 0).rgba;
 
 	/* Early out */
-	if (dot(speccol_roughness.rgb, vec3(1.0)) == 0.0)
+	if (dot(speccol_roughness.rgb, vec3(1.0)) == 0.0) {
 		discard;
-
-	/* TODO optimize with textureGather */
-	/* Doing these fetches early to hide latency. */
-	vec4 hit_pdf;
-	hit_pdf.x = texelFetch(pdfBuffer, halfres_texel + neighbors[0 + neighborOffset], 0).r;
-	hit_pdf.y = texelFetch(pdfBuffer, halfres_texel + neighbors[1 + neighborOffset], 0).r;
-	hit_pdf.z = texelFetch(pdfBuffer, halfres_texel + neighbors[2 + neighborOffset], 0).r;
-	hit_pdf.w = texelFetch(pdfBuffer, halfres_texel + neighbors[3 + neighborOffset], 0).r;
-
-	ivec4 hit_data[2];
-	hit_data[0].xy = texelFetch(hitBuffer, halfres_texel + neighbors[0 + neighborOffset], 0).rg;
-	hit_data[0].zw = texelFetch(hitBuffer, halfres_texel + neighbors[1 + neighborOffset], 0).rg;
-	hit_data[1].xy = texelFetch(hitBuffer, halfres_texel + neighbors[2 + neighborOffset], 0).rg;
-	hit_data[1].zw = texelFetch(hitBuffer, halfres_texel + neighbors[3 + neighborOffset], 0).rg;
-
-	/* Find Planar Reflections affecting this pixel */
-	PlanarData pd;
-	float planar_index;
-	for (int i = 0; i < MAX_PLANAR && i < prbNumPlanar; ++i) {
-		pd = planars_data[i];
-
-		float fade = probe_attenuation_planar(pd, worldPosition, N, 0.0);
-
-		if (fade > 0.5) {
-			planar_index = float(i);
-			break;
-		}
 	}
 
 	float roughness = speccol_roughness.a;
@@ -454,6 +437,34 @@ void main()
 	float weight_acc = 0.0;
 
 	if (roughness < ssrMaxRoughness + 0.2) {
+		/* TODO optimize with textureGather */
+		/* Doing these fetches early to hide latency. */
+		vec4 hit_pdf;
+		hit_pdf.x = texelFetch(pdfBuffer, halfres_texel + neighbors[0 + neighborOffset], 0).r;
+		hit_pdf.y = texelFetch(pdfBuffer, halfres_texel + neighbors[1 + neighborOffset], 0).r;
+		hit_pdf.z = texelFetch(pdfBuffer, halfres_texel + neighbors[2 + neighborOffset], 0).r;
+		hit_pdf.w = texelFetch(pdfBuffer, halfres_texel + neighbors[3 + neighborOffset], 0).r;
+
+		ivec4 hit_data[2];
+		hit_data[0].xy = texelFetch(hitBuffer, halfres_texel + neighbors[0 + neighborOffset], 0).rg;
+		hit_data[0].zw = texelFetch(hitBuffer, halfres_texel + neighbors[1 + neighborOffset], 0).rg;
+		hit_data[1].xy = texelFetch(hitBuffer, halfres_texel + neighbors[2 + neighborOffset], 0).rg;
+		hit_data[1].zw = texelFetch(hitBuffer, halfres_texel + neighbors[3 + neighborOffset], 0).rg;
+
+		/* Find Planar Reflections affecting this pixel */
+		PlanarData pd;
+		float planar_index;
+		for (int i = 0; i < MAX_PLANAR && i < prbNumPlanar; ++i) {
+			pd = planars_data[i];
+
+			float fade = probe_attenuation_planar(pd, worldPosition, N, 0.0);
+
+			if (fade > 0.5) {
+				planar_index = float(i);
+				break;
+			}
+		}
+
 		ssr_accum += get_ssr_samples(hit_pdf, hit_data, pd, planar_index, worldPosition, N, V,
 		                             roughnessSquared, cone_tan, source_uvs, weight_acc);
 	}

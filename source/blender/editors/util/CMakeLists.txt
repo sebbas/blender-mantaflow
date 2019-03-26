@@ -13,9 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
@@ -43,7 +40,6 @@ set(SRC
 	ed_transverts.c
 	ed_util.c
 	gizmo_utils.c
-	keymap_templates.c
 	numinput.c
 	select_utils.c
 
@@ -65,7 +61,6 @@ set(SRC
 	../include/ED_keyframes_draw.h
 	../include/ED_keyframes_edit.h
 	../include/ED_keyframing.h
-	../include/ED_keymap_templates.h
 	../include/ED_lattice.h
 	../include/ED_logic.h
 	../include/ED_markers.h

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,35 +15,29 @@
  *
  * The Original Code is Copyright (C) Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpencil_modifiers/intern/MOD_gpencil_util.h
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 #ifndef __MOD_GPENCIL_UTIL_H__
 #define __MOD_GPENCIL_UTIL_H__
 
+struct GHash;
+struct MDeformVert;
 struct Main;
+struct Material;
 struct Object;
 struct bGPDlayer;
 struct bGPDstroke;
-struct MDeformVert;
-struct Material;
-struct GHash;
 
 bool is_stroke_affected_by_modifier(
         struct Object *ob, char *mlayername, int mpassindex,
-		int gpl_passindex, int minpoints,
+        int gpl_passindex, int minpoints,
         bGPDlayer *gpl, bGPDstroke *gps,
-		bool inv1, bool inv2, bool inv3);
+        bool inv1, bool inv2, bool inv3);
 
 float get_modifier_point_weight(struct MDeformVert *dvert, bool inverse, int def_nr);
 

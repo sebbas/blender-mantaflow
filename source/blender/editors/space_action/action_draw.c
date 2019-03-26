@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_action/action_draw.c
- *  \ingroup spaction
+/** \file
+ * \ingroup spaction
  */
 
 
@@ -55,7 +47,6 @@
 
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
 
-#include "BIF_gl.h"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
@@ -137,7 +128,9 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *ar)
 			    IN_RANGE(ymaxc, v2d->cur.ymin, v2d->cur.ymax) )
 			{
 				/* draw all channels using standard channel-drawing API */
-				ANIM_channel_draw_widgets(C, ac, ale, block, yminc, ymaxc, channel_index);
+				rctf channel_rect;
+				BLI_rctf_init(&channel_rect, 0, v2d->cur.xmax, yminc, ymaxc);
+				ANIM_channel_draw_widgets(C, ac, ale, block, &channel_rect, channel_index);
 			}
 
 			/* adjust y-position for next one */
@@ -319,7 +312,7 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *ar)
 			}
 		}
 
-		/*	Increment the step */
+		/* Increment the step */
 		y -= ACHANNEL_STEP(ac);
 	}
 	GPU_blend(false);
@@ -336,9 +329,9 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *ar)
 	immUnbindProgram();
 
 	/* Draw keyframes
-	 *	1) Only channels that are visible in the Action Editor get drawn/evaluated.
-	 *	   This is to try to optimize this for heavier data sets
-	 *	2) Keyframes which are out of view horizontally are disregarded
+	 * 1) Only channels that are visible in the Action Editor get drawn/evaluated.
+	 *    This is to try to optimize this for heavier data sets
+	 * 2) Keyframes which are out of view horizontally are disregarded
 	 */
 	y = (float)(-ACHANNEL_HEIGHT(ac));
 
@@ -357,28 +350,28 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *ar)
 				/* draw 'keyframes' for each specific datatype */
 				switch (ale->datatype) {
 					case ALE_ALL:
-						draw_summary_channel(v2d, ale->data, y, ac->yscale_fac);
+						draw_summary_channel(v2d, ale->data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_SCE:
-						draw_scene_channel(v2d, ads, ale->key_data, y, ac->yscale_fac);
+						draw_scene_channel(v2d, ads, ale->key_data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_OB:
-						draw_object_channel(v2d, ads, ale->key_data, y, ac->yscale_fac);
+						draw_object_channel(v2d, ads, ale->key_data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_ACT:
-						draw_action_channel(v2d, adt, ale->key_data, y, ac->yscale_fac);
+						draw_action_channel(v2d, adt, ale->key_data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_GROUP:
-						draw_agroup_channel(v2d, adt, ale->data, y, ac->yscale_fac);
+						draw_agroup_channel(v2d, adt, ale->data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_FCURVE:
-						draw_fcurve_channel(v2d, adt, ale->key_data, y, ac->yscale_fac);
+						draw_fcurve_channel(v2d, adt, ale->key_data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_GPFRAME:
-						draw_gpl_channel(v2d, ads, ale->data, y, ac->yscale_fac);
+						draw_gpl_channel(v2d, ads, ale->data, y, ac->yscale_fac, saction->flag);
 						break;
 					case ALE_MASKLAY:
-						draw_masklay_channel(v2d, ads, ale->data, y, ac->yscale_fac);
+						draw_masklay_channel(v2d, ads, ale->data, y, ac->yscale_fac, saction->flag);
 						break;
 				}
 			}
@@ -476,7 +469,6 @@ void timeline_draw_cache(SpaceAction *saction, Object *ob, Scene *scene)
 		}
 
 		const int sta = pid->cache->startframe, end = pid->cache->endframe;
-		const int len = (end - sta + 1) * 6;
 
 		GPU_blend(true);
 
@@ -493,23 +485,40 @@ void timeline_draw_cache(SpaceAction *saction, Object *ob, Scene *scene)
 
 		immUniformColor4fv(col);
 
-		if (len > 0) {
-			immBeginAtMost(GPU_PRIM_TRIS, len);
+		{
+			/* draw a quad for each chunk of consecutive cached frames */
+			const int chunk_tot = 32;
+			int chunk_len = 0;
+			int ista = 0, iend = -1;
 
-			/* draw a quad for each cached frame */
 			for (int i = sta; i <= end; i++) {
 				if (pid->cache->cached_frames[i - sta]) {
-					immVertex2f(pos, (float)i - 0.5f, 0.0f);
-					immVertex2f(pos, (float)i - 0.5f, 1.0f);
-					immVertex2f(pos, (float)i + 0.5f, 1.0f);
-
-					immVertex2f(pos, (float)i - 0.5f, 0.0f);
-					immVertex2f(pos, (float)i + 0.5f, 1.0f);
-					immVertex2f(pos, (float)i + 0.5f, 0.0f);
+					if (chunk_len == 0) {
+						immBeginAtMost(GPU_PRIM_TRIS, chunk_tot * 6);
+					}
+					if (ista > iend) {
+						chunk_len++;
+						ista = i;
+					}
+					iend = i;
+				}
+				else {
+					if (ista <= iend) {
+						immRectf_fast(pos, (float)ista - 0.5f, 0.0f, (float)iend + 0.5f, 1.0f);
+						iend = ista - 1;
+					}
+					if (chunk_len >= chunk_tot) {
+						immEnd();
+						chunk_len = 0;
+					}
 				}
 			}
-
-			immEnd();
+			if (ista <= iend) {
+				immRectf_fast(pos, (float)ista - 0.5f, 0.0f, (float)iend + 0.5f, 1.0f);
+			}
+			if (chunk_len != 0) {
+				immEnd();
+			}
 		}
 
 		GPU_blend(false);

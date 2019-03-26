@@ -136,7 +136,10 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         split = layout.split()
 
         col = split.column()
-        col.prop(md, "width")
+        if md.offset_type == 'PERCENT':
+            col.prop(md, "width_pct")
+        else:
+            col.prop(md, "width")
         col.prop(md, "segments")
         col.prop(md, "profile")
         col.prop(md, "material")
@@ -147,6 +150,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "loop_slide")
         col.prop(md, "mark_seam")
         col.prop(md, "mark_sharp")
+        col.prop(md, "harden_normals")
 
         layout.label(text="Limit Method:")
         layout.row().prop(md, "limit_method", expand=True)
@@ -159,10 +163,13 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.label(text="Width Method:")
         layout.row().prop(md, "offset_type", expand=True)
 
-        layout.label(text="Normal Mode")
-        layout.row().prop(md, "hnmode", expand=True)
-        layout.prop(md, "hn_strength")
-        layout.prop(md, "set_wn_strength")
+        layout.label(text="Set Face Strength Mode")
+        layout.row().prop(md, "face_strength_mode", expand=True)
+
+        layout.label(text="Miter Patterns")
+        layout.row().prop(md, "miter_outer")
+        layout.row().prop(md, "miter_inner")
+        layout.row().prop(md, "spread")
 
     def BOOLEAN(self, layout, ob, md):
         split = layout.split()
@@ -537,6 +544,9 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             sub.active = bool(md.vertex_group)
             sub.prop(md, "invert_vertex_group", text="", icon='ARROW_LEFTRIGHT')
 
+        col = layout.column()
+        col.prop(md, "threshold")
+
     def MESH_DEFORM(self, layout, ob, md):
         split = layout.split()
 
@@ -566,24 +576,56 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             layout.operator("object.meshdeform_bind", text="Bind")
 
     def MIRROR(self, layout, ob, md):
-        split = layout.split(factor=0.25)
+        axis_text = "XYZ"
+        split = layout.split(factor=0.33)
 
         col = split.column()
         col.label(text="Axis:")
-        col.prop(md, "use_x")
-        col.prop(md, "use_y")
-        col.prop(md, "use_z")
+        for i, text in enumerate(axis_text):
+            col.prop(md, "use_axis", text=text, index=i)
 
         col = split.column()
+        col.label(text="Bisect:")
+        for i, text in enumerate(axis_text):
+            colsub = col.column()
+            colsub.prop(md, "use_bisect_axis", text=text, index=i)
+            colsub.active = md.use_axis[i]
+
+        col = split.column()
+        col.label(text="Flip:")
+        for i, text in enumerate(axis_text):
+            colsub = col.column()
+            colsub.prop(md, "use_bisect_flip_axis", text=text, index=i)
+            colsub.active = md.use_axis[i] and md.use_bisect_axis[i]
+
+        layout.separator()
+
+        col = layout.column()
+        col.label(text="Mirror Object:")
+        col.prop(md, "mirror_object", text="")
+
+        layout.separator()
+
+        col = layout.column()
         col.label(text="Options:")
-        col.prop(md, "use_mirror_merge", text="Merge")
-        col.prop(md, "use_clip", text="Clipping")
-        col.prop(md, "use_mirror_vertex_groups", text="Vertex Groups")
 
-        col = split.column()
+        row = layout.row()
+        row.prop(md, "use_mirror_vertex_groups", text="Vertex Groups")
+        row.prop(md, "use_clip", text="Clipping")
+        row = layout.row()
+        row.prop(md, "use_mirror_merge", text="Merge")
+
+        col = layout.column()
+        if md.use_mirror_merge is True:
+            col.prop(md, "merge_threshold")
+
+        layout.separator()
+        col = layout.column()
+
         col.label(text="Textures:")
-        col.prop(md, "use_mirror_u", text="Flip U")
-        col.prop(md, "use_mirror_v", text="Flip V")
+        row = layout.row()
+        row.prop(md, "use_mirror_u", text="Flip U")
+        row.prop(md, "use_mirror_v", text="Flip V")
 
         col = layout.column(align=True)
 
@@ -597,13 +639,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "offset_u")
         col.prop(md, "offset_v")
 
-        col = layout.column()
-
-        if md.use_mirror_merge is True:
-            col.prop(md, "merge_threshold")
-        col.label(text="Mirror Object:")
-        col.prop(md, "mirror_object", text="")
-
     def MULTIRES(self, layout, ob, md):
         layout.row().prop(md, "subdivision_type", expand=True)
 
@@ -612,8 +647,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.prop(md, "levels", text="Preview")
         col.prop(md, "sculpt_levels", text="Sculpt")
         col.prop(md, "render_levels", text="Render")
-        if hasattr(md, "quality"):
-            col.prop(md, "quality")
+        col.prop(md, "quality")
 
         col = split.column()
 
@@ -701,7 +735,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         layout.separator()
 
         if md.is_cached:
-            layout.operator("object.ocean_bake", text="Free Bake").free = True
+            layout.operator("object.ocean_bake", text="Delete Bake").free = True
         else:
             layout.operator("object.ocean_bake").free = False
 
@@ -825,7 +859,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col.label(text="Mode:")
         col.prop(md, "wrap_method", text="")
 
-        if md.wrap_method in {'PROJECT', 'NEAREST_SURFACEPOINT'}:
+        if md.wrap_method in {'PROJECT', 'NEAREST_SURFACEPOINT', 'TARGET_PROJECT'}:
             col.prop(md, "wrap_mode", text="")
 
         if md.wrap_method == 'PROJECT':
@@ -991,8 +1025,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
             col.label(text="Subdivisions:")
             col.prop(md, "levels", text="View")
             col.prop(md, "render_levels", text="Render")
-            if hasattr(md, "quality"):
-                col.prop(md, "quality")
+            col.prop(md, "quality")
 
         col = split.column()
         col.label(text="Options:")
@@ -1331,9 +1364,12 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
         col = row.column()
         col.label(text="Quad Method:")
         col.prop(md, "quad_method", text="")
+        col.prop(md, "keep_custom_normals")
         col = row.column()
         col.label(text="Ngon Method:")
         col.prop(md, "ngon_method", text="")
+        col.label(text="Minimum Vertices:")
+        col.prop(md, "min_vertices", text="")
 
     def UV_WARP(self, layout, ob, md):
         split = layout.split()
@@ -1768,7 +1804,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         row = col.row(align=True)
-        row.prop(md, "thickness")
+        row.prop(md, "thickness", text="Thickness Factor")
 
         col.prop(md, "normalize_thickness")
 
@@ -1845,6 +1881,18 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "frame_scale")
 
         row = layout.row()
+        row.separator()
+
+        row = layout.row()
+        row.enabled = md.mode != 'FIX'
+        row.prop(md, "use_custom_frame_range")
+
+        row = layout.row(align=True)
+        row.enabled = md.mode != 'FIX' and md.use_custom_frame_range is True
+        row.prop(md, "frame_start")
+        row.prop(md, "frame_end")
+
+        row = layout.row()
         row.enabled = md.mode != 'FIX'
         row.prop(md, "use_keep_loop")
 
@@ -1919,7 +1967,7 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row.prop(md, "layer_pass", text="Pass")
         row.prop(md, "invert_layer_pass", text="", icon='ARROW_LEFTRIGHT')
 
-    def GP_INSTANCE(self, layout, ob, md):
+    def GP_ARRAY(self, layout, ob, md):
         gpd = ob.data
 
         col = layout.column()
@@ -1929,12 +1977,11 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         col = split.column()
         col.label(text="Offset:")
         col.prop(md, "offset", text="")
+        col.prop(md, "offset_object", text="Object")
 
         col = split.column()
         col.label(text="Shift:")
         col.prop(md, "shift", text="")
-        row = col.row(align=True)
-        row.prop(md, "lock_axis", expand=True)
 
         split = layout.split()
         col = split.column()

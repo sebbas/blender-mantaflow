@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s):
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_anim.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 #include <stdio.h>
@@ -76,6 +70,7 @@ void ui_but_anim_flag(uiBut *but, float cfra)
 	bool special;
 
 	but->flag &= ~(UI_BUT_ANIMATED | UI_BUT_ANIMATED_KEY | UI_BUT_DRIVEN);
+	but->drawflag &= ~UI_BUT_ANIMATED_CHANGED;
 
 	/* NOTE: "special" is reserved for special F-Curves stored on the animation data
 	 *        itself (which are used to animate properties of the animation data).
@@ -91,11 +86,20 @@ void ui_but_anim_flag(uiBut *but, float cfra)
 			 * we need to correct the frame number to "look inside" the
 			 * remapped action
 			 */
-			if (adt)
+			if (adt) {
 				cfra = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
+			}
 
-			if (fcurve_frame_has_keyframe(fcu, cfra, 0))
+			if (fcurve_frame_has_keyframe(fcu, cfra, 0)) {
 				but->flag |= UI_BUT_ANIMATED_KEY;
+			}
+
+			/* XXX: this feature is totally broken and useless with NLA */
+			if (adt == NULL || adt->nla_tracks.first == NULL) {
+				if (fcurve_is_changed(but->rnapoin, but->rnaprop, fcu, cfra)) {
+					but->drawflag |= UI_BUT_ANIMATED_CHANGED;
+				}
+			}
 		}
 		else {
 			but->flag |= UI_BUT_DRIVEN;
@@ -195,25 +199,29 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
 
 	/* button must have RNA-pointer to a numeric-capable property */
 	if (ELEM(NULL, but->rnapoin.data, but->rnaprop)) {
-		if (G.debug & G_DEBUG)
+		if (G.debug & G_DEBUG) {
 			printf("ERROR: create expression failed - button has no RNA info attached\n");
+		}
 		return false;
 	}
 
 	if (RNA_property_array_check(but->rnaprop) != 0) {
 		if (but->rnaindex == -1) {
-			if (G.debug & G_DEBUG)
+			if (G.debug & G_DEBUG) {
 				printf("ERROR: create expression failed - can't create expression for entire array\n");
+			}
 			return false;
 		}
 	}
 
 	/* make sure we have animdata for this */
-	/* FIXME: until materials can be handled by depsgraph, don't allow drivers to be created for them */
+	/* FIXME: until materials can be handled by depsgraph,
+	 * don't allow drivers to be created for them */
 	id = (ID *)but->rnapoin.id.data;
 	if ((id == NULL) || (GS(id->name) == ID_MA) || (GS(id->name) == ID_TE)) {
-		if (G.debug & G_DEBUG)
+		if (G.debug & G_DEBUG) {
 			printf("ERROR: create expression failed - invalid data-block for adding drivers (%p)\n", id);
+		}
 		return false;
 	}
 
@@ -260,8 +268,9 @@ void ui_but_anim_autokey(bContext *C, uiBut *but, Scene *scene, float cfra)
 
 	fcu = ui_but_get_fcurve(but, NULL, &action, &driven, &special);
 
-	if (fcu == NULL)
+	if (fcu == NULL) {
 		return;
+	}
 
 	if (special) {
 		/* NLA Strip property */
@@ -270,7 +279,7 @@ void ui_but_anim_autokey(bContext *C, uiBut *but, Scene *scene, float cfra)
 			ReportList *reports = CTX_wm_reports(C);
 			ToolSettings *ts = scene->toolsettings;
 
-			insert_keyframe_direct(depsgraph, reports, but->rnapoin, but->rnaprop, fcu, cfra, ts->keyframe_type, 0);
+			insert_keyframe_direct(depsgraph, reports, but->rnapoin, but->rnaprop, fcu, cfra, ts->keyframe_type, NULL, 0);
 			WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 		}
 	}
@@ -283,7 +292,7 @@ void ui_but_anim_autokey(bContext *C, uiBut *but, Scene *scene, float cfra)
 			ReportList *reports = CTX_wm_reports(C);
 			ToolSettings *ts = scene->toolsettings;
 
-			insert_keyframe_direct(depsgraph, reports, but->rnapoin, but->rnaprop, fcu, cfra, ts->keyframe_type, INSERTKEY_DRIVER);
+			insert_keyframe_direct(depsgraph, reports, but->rnapoin, but->rnaprop, fcu, cfra, ts->keyframe_type, NULL, INSERTKEY_DRIVER);
 			WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 		}
 	}
@@ -305,7 +314,7 @@ void ui_but_anim_autokey(bContext *C, uiBut *but, Scene *scene, float cfra)
 			BLI_assert((fcu->array_index == but->rnaindex) || (but->rnaindex == -1));
 			insert_keyframe(bmain, depsgraph, reports, id, action,
 			                ((fcu->grp) ? (fcu->grp->name) : (NULL)),
-			                fcu->rna_path, but->rnaindex, cfra, ts->keyframe_type, flag);
+			                fcu->rna_path, but->rnaindex, cfra, ts->keyframe_type, NULL, flag);
 
 			WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 		}

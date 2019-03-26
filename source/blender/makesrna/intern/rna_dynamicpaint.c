@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,20 +12,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Miika Hämäläinen
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_dynamicpaint.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 #include <stdlib.h>
 #include <limits.h>
 
-#include "BLI_math_base.h"
 
 #include "BKE_modifier.h"
 #include "BKE_dynamicpaint.h"
@@ -48,7 +41,7 @@
 const EnumPropertyItem rna_enum_prop_dynamicpaint_type_items[] = {
 	{MOD_DYNAMICPAINT_TYPE_CANVAS, "CANVAS", 0, "Canvas", ""},
 	{MOD_DYNAMICPAINT_TYPE_BRUSH, "BRUSH", 0, "Brush", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 
@@ -94,12 +87,12 @@ static char *rna_DynamicPaintSurface_path(PointerRNA *ptr)
 
 
 /*
- *	Surfaces
+ * Surfaces
  */
 
 static void rna_DynamicPaint_redoModifier(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+	DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 }
 
 static void rna_DynamicPaintSurfaces_updateFrames(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
@@ -158,10 +151,15 @@ static void rna_DynamicPaintSurfaces_changeFormat(Main *bmain, Scene *scene, Poi
 	rna_DynamicPaintSurface_reset(bmain, scene, ptr);
 }
 
-static void rna_DynamicPaint_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_DynamicPaint_reset_dependency(Main *bmain, Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
+{
+	DEG_relations_tag_update(bmain);
+}
+
+static void rna_DynamicPaintSurface_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 	rna_DynamicPaintSurface_reset(bmain, scene, ptr);
-	DEG_relations_tag_update(bmain);
+	rna_DynamicPaint_reset_dependency(bmain, scene, ptr);
 }
 
 static PointerRNA rna_PaintSurface_active_get(PointerRNA *ptr)
@@ -336,20 +334,20 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 		/*{MOD_DPAINT_SURFACE_F_PTEX, "PTEX", ICON_TEXTURE_SHADED, "Ptex", ""}, */
 		{MOD_DPAINT_SURFACE_F_VERTEX, "VERTEX", ICON_OUTLINER_DATA_MESH, "Vertex", ""},
 		{MOD_DPAINT_SURFACE_F_IMAGESEQ, "IMAGE", ICON_FILE_IMAGE, "Image Sequence", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/*  Surface type - generated dynamically based on surface format */
 	static const EnumPropertyItem prop_dynamicpaint_surface_type[] = {
 		{MOD_DPAINT_SURFACE_T_PAINT, "PAINT", 0, "Paint", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/*  Surface output preview. currently only paint has multiple outputs */
 	static const EnumPropertyItem prop_dynamicpaint_surface_preview[] = {
 		{MOD_DPAINT_SURFACE_PREV_PAINT, "PAINT", 0, "Paint", ""},
 		{MOD_DPAINT_SURFACE_PREV_WETMAP, "WETMAP", 0, "Wetmap", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/*  Initial color setting */
@@ -358,7 +356,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 		{MOD_DPAINT_INITIAL_COLOR, "COLOR", ICON_COLOR, "Color", ""},
 		{MOD_DPAINT_INITIAL_TEXTURE, "TEXTURE", ICON_TEXTURE, "UV Texture", ""},
 		{MOD_DPAINT_INITIAL_VERTEXCOLOR, "VERTEX_COLOR", ICON_GROUP_VCOL, "Vertex Color", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/*  Effect type
@@ -367,7 +365,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 		{1, "SPREAD", 0, "Spread", ""},
 		{2, "DRIP", 0, "Drip", ""},
 		{3, "SHRINK", 0, "Shrink", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* Displacemap file format */
@@ -376,14 +374,14 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 #ifdef WITH_OPENEXR
 		{MOD_DPAINT_IMGFORMAT_OPENEXR, "OPENEXR", 0, "OpenEXR", ""},
 #endif
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* Displacemap type */
 	static const EnumPropertyItem prop_dynamicpaint_displace_type[] = {
 		{MOD_DPAINT_DISP_DISPLACE, "DISPLACE", 0, "Displacement", ""},
 		{MOD_DPAINT_DISP_DEPTH, "DEPTH", 0, "Depth", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 
@@ -424,11 +422,12 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT, "rna_DynamicPaintSurface_uniqueName");
 	RNA_def_struct_name_property(srna, prop);
 
-	prop = RNA_def_property(srna, "brush_group", PROP_POINTER, PROP_NONE);
+	prop = RNA_def_property(srna, "brush_collection", PROP_POINTER, PROP_NONE);
 	RNA_def_property_struct_type(prop, "Collection");
+	RNA_def_property_pointer_sdna(prop, NULL, "brush_group");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Brush Collection", "Only use brush objects from this collection");
-	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_DynamicPaint_reset_dependency");
+	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_DynamicPaintSurface_reset_dependency");
 
 
 	/*
@@ -439,20 +438,20 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_DPAINT_DISSOLVE);
 	RNA_def_property_ui_text(prop, "Dissolve", "Enable to make surface changes disappear over time");
 
-	prop = RNA_def_property(srna, "dissolve_speed", PROP_INT, PROP_NONE);
+	prop = RNA_def_property(srna, "dissolve_speed", PROP_INT, PROP_TIME);
 	RNA_def_property_int_sdna(prop, NULL, "diss_speed");
 	RNA_def_property_range(prop, 1.0, 10000.0);
 	RNA_def_property_ui_range(prop, 1.0, 10000.0, 5, -1);
-	RNA_def_property_ui_text(prop, "Dissolve Speed", "Approximately in how many frames should dissolve happen");
+	RNA_def_property_ui_text(prop, "Dissolve Time", "Approximately in how many frames should dissolve happen");
 
 	prop = RNA_def_property(srna, "use_drying", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_DPAINT_USE_DRYING);
 	RNA_def_property_ui_text(prop, "Dry", "Enable to make surface wetness dry over time");
 
-	prop = RNA_def_property(srna, "dry_speed", PROP_INT, PROP_NONE);
+	prop = RNA_def_property(srna, "dry_speed", PROP_INT, PROP_TIME);
 	RNA_def_property_range(prop, 1.0, 10000.0);
 	RNA_def_property_ui_range(prop, 1.0, 10000.0, 5, -1);
-	RNA_def_property_ui_text(prop, "Dry Speed", "Approximately in how many frames should drying happen");
+	RNA_def_property_ui_text(prop, "Dry Time", "Approximately in how many frames should drying happen");
 
 	/*
 	 *   Simulation settings
@@ -511,7 +510,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_DynamicPaint_redoModifier");
 
 	/*
-	 *	Initial Color
+	 * Initial Color
 	 */
 
 	prop = RNA_def_property(srna, "init_color_type", PROP_ENUM, PROP_NONE);
@@ -536,7 +535,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING_DRAW | ND_MODIFIER, "rna_DynamicPaintSurface_reset");
 
 	/*
-	 *   Effect Settings
+	 * Effect Settings
 	 */
 	prop = RNA_def_property(srna, "effect_ui", PROP_ENUM, PROP_NONE);
 	RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -756,7 +755,7 @@ static void rna_def_dynamic_paint_canvas_settings(BlenderRNA *brna)
 	RNA_def_struct_path_func(srna, "rna_DynamicPaintCanvasSettings_path");
 
 	/*
-	 *	Surface Slots
+	 * Surface Slots
 	 */
 	prop = RNA_def_property(srna, "canvas_surfaces", PROP_COLLECTION, PROP_NONE);
 	RNA_def_property_collection_funcs(prop, "rna_DynamicPaint_surfaces_begin", "rna_iterator_listbase_next",
@@ -775,18 +774,18 @@ static void rna_def_dynamic_paint_brush_settings(BlenderRNA *brna)
 	/* paint collision type */
 	static const EnumPropertyItem prop_dynamicpaint_collisiontype[] = {
 		{MOD_DPAINT_COL_PSYS, "PARTICLE_SYSTEM", ICON_PARTICLES, "Particle System", ""},
-		{MOD_DPAINT_COL_POINT, "POINT", ICON_META_EMPTY, "Object Center", ""},
-		{MOD_DPAINT_COL_DIST, "DISTANCE", ICON_META_EMPTY, "Proximity", ""},
+		{MOD_DPAINT_COL_POINT, "POINT", ICON_EMPTY_AXIS, "Object Center", ""},
+		{MOD_DPAINT_COL_DIST, "DISTANCE", ICON_DRIVER_DISTANCE, "Proximity", ""},
 		{MOD_DPAINT_COL_VOLDIST, "VOLUME_DISTANCE", ICON_META_CUBE, "Mesh Volume + Proximity", ""},
 		{MOD_DPAINT_COL_VOLUME, "VOLUME", ICON_MESH_CUBE, "Mesh Volume", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_dynamicpaint_prox_falloff[] = {
 		{MOD_DPAINT_PRFALL_SMOOTH, "SMOOTH", ICON_SPHERECURVE, "Smooth", ""},
 		{MOD_DPAINT_PRFALL_CONSTANT, "CONSTANT", ICON_NOCURVE, "Constant", ""},
 		{MOD_DPAINT_PRFALL_RAMP, "RAMP", ICON_COLOR, "Color Ramp", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_dynamicpaint_brush_wave_type[] = {
@@ -794,14 +793,14 @@ static void rna_def_dynamic_paint_brush_settings(BlenderRNA *brna)
 		{MOD_DPAINT_WAVEB_DEPTH, "DEPTH", 0, "Obstacle", ""},
 		{MOD_DPAINT_WAVEB_FORCE, "FORCE", 0, "Force", ""},
 		{MOD_DPAINT_WAVEB_REFLECT, "REFLECT", 0, "Reflect Only", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_dynamicpaint_brush_ray_dir[] = {
 		{MOD_DPAINT_RAY_CANVAS, "CANVAS", 0, "Canvas Normal", ""},
 		{MOD_DPAINT_RAY_BRUSH_AVG, "BRUSH", 0, "Brush Normal", ""},
 		{MOD_DPAINT_RAY_ZPLUS, "Z_AXIS", 0, "Z-Axis", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "DynamicPaintBrushSettings", NULL);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Daniel Genrich
- *                 Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_smoke.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -30,7 +23,6 @@
 #include <limits.h>
 
 #include "BLI_sys_types.h"
-#include "BLI_threads.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -52,6 +44,8 @@
 
 #ifdef RNA_RUNTIME
 
+#include "BLI_threads.h"
+
 #include "BKE_colorband.h"
 #include "BKE_context.h"
 #include "BKE_particle.h"
@@ -64,7 +58,7 @@
 
 static void rna_Smoke_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-	DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+	DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 }
 
 static void rna_Smoke_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -78,7 +72,7 @@ static void rna_Smoke_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
 	SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 	if (settings->smd && settings->smd->domain)
 		settings->point_cache[0]->flag |= PTCACHE_OUTDATED;
-	DEG_id_tag_update(ptr->id.data, OB_RECALC_DATA);
+	DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 }
 
 static void rna_Smoke_cachetype_set(struct PointerRNA *ptr, int value)
@@ -455,7 +449,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{MOD_SMOKE_NOISEFFT, "NOISEFFT", 0, "FFT", ""},
 #endif
 		/*  {MOD_SMOKE_NOISECURL, "NOISECURL", 0, "Curl", ""}, */
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem prop_compression_items[] = {
@@ -470,14 +464,14 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	static const EnumPropertyItem smoke_cache_comp_items[] = {
 		{SM_CACHE_LIGHT, "CACHELIGHT", 0, "Light", "Fast but not so effective compression"},
 		{SM_CACHE_HEAVY, "CACHEHEAVY", 0, "Heavy", "Effective but slow compression"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem smoke_highres_sampling_items[] = {
 		{SM_HRES_FULLSAMPLE, "FULLSAMPLE", 0, "Full Sample", ""},
 		{SM_HRES_LINEAR, "LINEAR", 0, "Linear", ""},
 		{SM_HRES_NEAREST, "NEAREST", 0, "Nearest", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem smoke_data_depth_items[] = {
@@ -491,7 +485,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 		{SM_BORDER_VERTICAL, "BORDERVERTICAL", 0, "Vertically Open",
 		 "Smoke doesn't collide with top and bottom sides"},
 		{SM_BORDER_CLOSED, "BORDERCLOSED", 0, "Collide All", "Smoke collides with every side"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem cache_file_type_items[] = {
@@ -499,19 +493,25 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 #ifdef WITH_OPENVDB
 		{PTCACHE_FILE_OPENVDB, "OPENVDB", 0, "OpenVDB", "OpenVDB file format"},
 #endif
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem smoke_view_items[] = {
 	    {MOD_SMOKE_SLICE_VIEW_ALIGNED, "VIEW_ALIGNED", 0, "View", "Slice volume parallel to the view plane"},
 	    {MOD_SMOKE_SLICE_AXIS_ALIGNED, "AXIS_ALIGNED", 0, "Axis", "Slice volume parallel to the major axis"},
-	    {0, NULL, 0, NULL, NULL}
+	    {0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem axis_slice_method_items[] = {
 	    {AXIS_SLICE_FULL, "FULL", 0, "Full", "Slice the whole domain object"},
 	    {AXIS_SLICE_SINGLE, "SINGLE", 0, "Single", "Perform a single slice of the domain object"},
-	    {0, NULL, 0, NULL, NULL}
+	    {0, NULL, 0, NULL, NULL},
+	};
+
+	static const EnumPropertyItem interp_method_item[] = {
+	    {VOLUME_INTERP_LINEAR, "LINEAR", 0, "Linear", "Good smoothness and speed"},
+	    {VOLUME_INTERP_CUBIC, "CUBIC", 0, "Cubic", "Smoothed high quality interpolation, but slower"},
+	    {0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem axis_slice_position_items[] = {
@@ -519,13 +519,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	    {SLICE_AXIS_X, "X", 0, "X", "Slice along the X axis"},
 	    {SLICE_AXIS_Y, "Y", 0, "Y", "Slice along the Y axis"},
 	    {SLICE_AXIS_Z, "Z", 0, "Z", "Slice along the Z axis"},
-	    {0, NULL, 0, NULL, NULL}
+	    {0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem vector_draw_items[] = {
 	    {VECTOR_DRAW_NEEDLE, "NEEDLE", 0, "Needle", "Display vectors as needles"},
 	    {VECTOR_DRAW_STREAMLINE, "STREAMLINE", 0, "Streamlines", "Display vectors as streamlines"},
-	    {0, NULL, 0, NULL, NULL}
+	    {0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "SmokeDomainSettings", NULL);
@@ -556,7 +556,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
 	prop = RNA_def_property(srna, "show_high_resolution", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_sdna(prop, NULL, "viewsettings", MOD_SMOKE_VIEW_SHOWBIG);
+	RNA_def_property_boolean_sdna(prop, NULL, "viewsettings", MOD_SMOKE_VIEW_SHOW_HIGHRES);
 	RNA_def_property_ui_text(prop, "Show High Resolution", "Show high resolution (using amplification)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
@@ -583,21 +583,21 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	                         "How much heat affects smoke motion (higher value results in faster rising smoke)");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "collision_group", PROP_POINTER, PROP_NONE);
+	prop = RNA_def_property(srna, "collision_collection", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "coll_group");
 	RNA_def_property_struct_type(prop, "Collection");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Collision Collection", "Limit collisions to this collection");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset_dependency");
 
-	prop = RNA_def_property(srna, "fluid_group", PROP_POINTER, PROP_NONE);
+	prop = RNA_def_property(srna, "fluid_collection", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "fluid_group");
 	RNA_def_property_struct_type(prop, "Collection");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
 	RNA_def_property_ui_text(prop, "Fluid Collection", "Limit fluid objects to this collection");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset_dependency");
 
-	prop = RNA_def_property(srna, "effector_group", PROP_POINTER, PROP_NONE);
+	prop = RNA_def_property(srna, "effector_collection", PROP_POINTER, PROP_NONE);
 	RNA_def_property_pointer_sdna(prop, NULL, "eff_group");
 	RNA_def_property_struct_type(prop, "Collection");
 	RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -611,7 +611,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Strength", "Strength of noise");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "dissolve_speed", PROP_INT, PROP_NONE);
+	prop = RNA_def_property(srna, "dissolve_speed", PROP_INT, PROP_TIME);
 	RNA_def_property_int_sdna(prop, NULL, "diss_speed");
 	RNA_def_property_range(prop, 1.0, 10000.0);
 	RNA_def_property_ui_range(prop, 1.0, 10000.0, 1, -1);
@@ -757,7 +757,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Smoke", "Amount of smoke created by burning fuel");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
 
-	prop = RNA_def_property(srna, "flame_vorticity", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "flame_vorticity", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_range(prop, 0.0, 2.0);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
 	RNA_def_property_ui_text(prop, "Vorticity", "Additional vorticity for the flames");
@@ -842,7 +842,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	                         "How many slices per voxel should be generated");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-	prop = RNA_def_property(srna, "slice_depth", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "slice_depth", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "slice_depth");
 	RNA_def_property_range(prop, 0.0, 1.0);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 3);
@@ -856,7 +856,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Thickness", "Thickness of smoke drawing in the viewport");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 
-	prop = RNA_def_property(srna, "display_velocity", PROP_BOOLEAN, PROP_NONE);
+	prop = RNA_def_property(srna, "display_interpolation", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "interp_method");
+	RNA_def_property_enum_items(prop, interp_method_item);
+	RNA_def_property_ui_text(prop, "Interpolation", "Interpolation method to use for smoke/fire volumes in solid mode");
+	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+	prop = RNA_def_property(srna, "show_velocity", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "draw_velocity", 0);
 	RNA_def_property_ui_text(prop, "Display Velocity", "Toggle visualization of the velocity field as needles");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
@@ -894,7 +900,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	    {FLUID_FIELD_VELOCITY_X, "VELOCITY_X", 0, "X Velocity", "X component of the velocity field"},
 	    {FLUID_FIELD_VELOCITY_Y, "VELOCITY_Y", 0, "Y Velocity", "Y component of the velocity field"},
 	    {FLUID_FIELD_VELOCITY_Z, "VELOCITY_Z", 0, "Z Velocity", "Z component of the velocity field"},
-	    {0, NULL, 0, NULL, NULL}
+	    {0, NULL, 0, NULL, NULL},
 	};
 
 	prop = RNA_def_property(srna, "coba_field", PROP_ENUM, PROP_NONE);
@@ -914,7 +920,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 	RNA_def_property_range(prop, 0.0, 1.0);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 3);
 	RNA_def_property_ui_text(prop, "Clipping",
-	                         "Value under which voxels are considered empty space to optimize caching or rendering");
+	                         "Value under which voxels are considered empty space to optimize caching and rendering");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 }
 
@@ -928,19 +934,19 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 		{MOD_SMOKE_FLOW_TYPE_SMOKE, "SMOKE", 0, "Smoke", "Add smoke"},
 		{MOD_SMOKE_FLOW_TYPE_SMOKEFIRE, "BOTH", 0, "Fire + Smoke", "Add fire and smoke"},
 		{MOD_SMOKE_FLOW_TYPE_FIRE, "FIRE", 0, "Fire", "Add fire"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem smoke_flow_sources[] = {
 		{MOD_SMOKE_FLOW_SOURCE_PARTICLES, "PARTICLES", ICON_PARTICLES, "Particle System", "Emit smoke from particles"},
 		{MOD_SMOKE_FLOW_SOURCE_MESH, "MESH", ICON_META_CUBE, "Mesh", "Emit smoke from mesh surface or volume"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem smoke_flow_texture_types[] = {
 		{MOD_SMOKE_FLOW_TEXTURE_MAP_AUTO, "AUTO", 0, "Generated", "Generated coordinates centered to flow object"},
 		{MOD_SMOKE_FLOW_TEXTURE_MAP_UV, "UV", 0, "UV", "Use UV layer for texture coordinates"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	srna = RNA_def_struct(brna, "SmokeFlowSettings", NULL);
@@ -948,7 +954,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	RNA_def_struct_sdna(srna, "SmokeFlowSettings");
 	RNA_def_struct_path_func(srna, "rna_SmokeFlowSettings_path");
 
-	prop = RNA_def_property(srna, "density", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "density", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_float_sdna(prop, NULL, "density");
 	RNA_def_property_range(prop, 0.0, 1);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 4);
@@ -1024,13 +1030,13 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "Random", "Amount of random velocity");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "volume_density", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "volume_density", PROP_FLOAT, PROP_FACTOR);
 	RNA_def_property_range(prop, 0.0, 1.0);
 	RNA_def_property_ui_range(prop, 0.0, 1.0, 0.05, 5);
 	RNA_def_property_ui_text(prop, "Volume", "Factor for smoke emitted from inside the mesh volume");
 	RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
 
-	prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
+	prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_DISTANCE);
 	RNA_def_property_range(prop, 0.0, 10.0);
 	RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
 	RNA_def_property_ui_text(prop, "Surface", "Maximum distance from mesh surface to emit smoke");
@@ -1102,7 +1108,7 @@ static void rna_def_smoke_coll_settings(BlenderRNA *brna)
 		{SM_COLL_STATIC, "COLLSTATIC", 0, "Static", "Non moving obstacle"},
 		{SM_COLL_RIGID, "COLLRIGID", 0, "Rigid", "Rigid obstacle"},
 		{SM_COLL_ANIMATED, "COLLANIMATED", 0, "Animated", "Animated obstacle"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	StructRNA *srna;

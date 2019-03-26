@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,15 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 #ifndef __BKE_WORLD_H__
 #define __BKE_WORLD_H__
 
-/** \file BKE_world.h
- *  \ingroup bke
- *  \since March 2001
- *  \author nzc
+/** \file
+ * \ingroup bke
  */
 
+struct Depsgraph;
 struct Main;
 struct World;
 
@@ -43,5 +34,6 @@ void BKE_world_copy_data(struct Main *bmain, struct World *wrld_dst, const struc
 struct World *BKE_world_copy(struct Main *bmain, const struct World *wrld);
 struct World *BKE_world_localize(struct World *wrld);
 void BKE_world_make_local(struct Main *bmain, struct World *wrld, const bool lib_local);
+void BKE_world_eval(struct Depsgraph *depsgraph, struct World *world);
 
 #endif

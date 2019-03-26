@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, 2002-2009 full recode.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/armature/pose_transform.c
- *  \ingroup edarmature
+/** \file
+ * \ingroup edarmature
  */
 
 #include "DNA_anim_types.h"
@@ -38,18 +32,17 @@
 #include "BLI_math.h"
 #include "BLI_string_utils.h"
 
-#include "BKE_animsys.h"
 #include "BKE_action.h"
+#include "BKE_animsys.h"
 #include "BKE_appdir.h"
 #include "BKE_armature.h"
 #include "BKE_blender_copybuffer.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
-#include "BKE_global.h"
 #include "BKE_idprop.h"
+#include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
-#include "BKE_layer.h"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
@@ -72,7 +65,8 @@
 /* ********************************************** */
 /* Pose Apply */
 
-/* helper for apply_armature_pose2bones - fixes parenting of objects that are bone-parented to armature */
+/* helper for apply_armature_pose2bones - fixes parenting of objects
+ * that are bone-parented to armature */
 static void applyarmature_fix_boneparents(const bContext *C, Scene *scene, Object *armob)
 {
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
@@ -80,7 +74,7 @@ static void applyarmature_fix_boneparents(const bContext *C, Scene *scene, Objec
 	Object workob, *ob;
 
 	/* go through all objects in database */
-	for (ob = bmain->object.first; ob; ob = ob->id.next) {
+	for (ob = bmain->objects.first; ob; ob = ob->id.next) {
 		/* if parent is bone in this armature, apply corrections */
 		if ((ob->parent == armob) && (ob->partype == PARBONE)) {
 			/* apply current transform from parent (not yet destroyed),
@@ -100,7 +94,8 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
 	Main *bmain = CTX_data_main(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Scene *scene = CTX_data_scene(C);
-	Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C)); // must be active object, not edit-object
+	// must be active object, not edit-object
+	Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
 	const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
 	bArmature *arm = BKE_armature_from_object(ob);
 	bPose *pose;
@@ -111,7 +106,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
 	if (ob->type != OB_ARMATURE)
 		return OPERATOR_CANCELLED;
 	if (BKE_object_obdata_is_libdata(ob)) {
-		BKE_report(op->reports, RPT_ERROR, "Cannot apply pose to lib-linked armature"); /* error_libdata(); */
+		BKE_report(op->reports, RPT_ERROR, "Cannot apply pose to lib-linked armature");
 		return OPERATOR_CANCELLED;
 	}
 
@@ -137,8 +132,8 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
 		copy_v3_v3(curbone->tail, pchan_eval->pose_tail);
 
 		/* fix roll:
-		 *	1. find auto-calculated roll value for this bone now
-		 *	2. remove this from the 'visual' y-rotation
+		 * 1. find auto-calculated roll value for this bone now
+		 * 2. remove this from the 'visual' y-rotation
 		 */
 		{
 			float premat[3][3], imat[3][3], pmat[3][3], tmat[3][3];
@@ -207,7 +202,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
 
 	/* note, notifier might evolve */
 	WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-	DEG_id_tag_update(&ob->id, DEG_TAG_COPY_ON_WRITE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
 
 	return OPERATOR_FINISHED;
 }
@@ -232,9 +227,10 @@ void POSE_OT_armature_apply(wmOperatorType *ot)
 static int pose_visual_transform_apply_exec(bContext *C, wmOperator *UNUSED(op))
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	View3D *v3d = CTX_wm_view3d(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 
-	FOREACH_OBJECT_IN_MODE_BEGIN(view_layer, OB_MODE_POSE, ob)
+	FOREACH_OBJECT_IN_MODE_BEGIN(view_layer, v3d, OB_ARMATURE, OB_MODE_POSE, ob)
 	{
 		/* loop over all selected pchans
 		 *
@@ -260,7 +256,7 @@ static int pose_visual_transform_apply_exec(bContext *C, wmOperator *UNUSED(op))
 		}
 		FOREACH_PCHAN_SELECTED_IN_OBJECT_END;
 
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
 		/* note, notifier might evolve */
 		WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
@@ -310,10 +306,10 @@ static void set_pose_keys(Object *ob)
 /**
  * Perform paste pose, for a single bone.
  *
- * \param ob Object where bone to paste to lives
- * \param chan Bone that pose to paste comes from
- * \param selOnly Only paste on selected bones
- * \param flip Flip on x-axis
+ * \param ob: Object where bone to paste to lives
+ * \param chan: Bone that pose to paste comes from
+ * \param selOnly: Only paste on selected bones
+ * \param flip: Flip on x-axis
  * \return Whether the bone that we pasted to if we succeeded
  */
 static bPoseChannel *pose_bone_do_paste(Object *ob, bPoseChannel *chan, const bool selOnly, const bool flip)
@@ -342,7 +338,7 @@ static bPoseChannel *pose_bone_do_paste(Object *ob, bPoseChannel *chan, const bo
 	/* continue? */
 	if (paste_ok) {
 		/* only loc rot size
-		 *	- only copies transform info for the pose
+		 * - only copies transform info for the pose
 		 */
 		copy_v3_v3(pchan->loc, chan->loc);
 		copy_v3_v3(pchan->size, chan->size);
@@ -475,8 +471,8 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
 	Object ob_copy = *ob;
 	bArmature arm_copy = *((bArmature *)ob->data);
 	ob_copy.data = &arm_copy;
-	BLI_addtail(&temp_bmain->object, &ob_copy);
-	BLI_addtail(&temp_bmain->armature, &arm_copy);
+	BLI_addtail(&temp_bmain->objects, &ob_copy);
+	BLI_addtail(&temp_bmain->armatures, &arm_copy);
 	/* begin copy buffer on a temp bmain. */
 	BKE_copybuffer_begin(temp_bmain);
 	/* Store the whole object to the copy buffer because pose can't be
@@ -489,8 +485,8 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
 	 * This is required because objects in temp bmain shares same pointers
 	 * as the real ones.
 	 */
-	BLI_listbase_clear(&temp_bmain->object);
-	BLI_listbase_clear(&temp_bmain->armature);
+	BLI_listbase_clear(&temp_bmain->objects);
+	BLI_listbase_clear(&temp_bmain->armatures);
 	BKE_main_free(temp_bmain);
 	/* We are all done! */
 	BKE_report(op->reports, RPT_INFO, "Copied pose to buffer");
@@ -534,19 +530,19 @@ static int pose_paste_exec(bContext *C, wmOperator *op)
 	char str[FILE_MAX];
 	Main *tmp_bmain = BKE_main_new();
 	BLI_make_file_string("/", str, BKE_tempdir_base(), "copybuffer_pose.blend");
-	if (!BKE_copybuffer_read(tmp_bmain, str, op->reports)) {
+	if (!BKE_copybuffer_read(tmp_bmain, str, op->reports, FILTER_ID_OB)) {
 		BKE_report(op->reports, RPT_ERROR, "Copy buffer is empty");
 		BKE_main_free(tmp_bmain);
 		return OPERATOR_CANCELLED;
 	}
 	/* Make sure data from this file is usable for pose paste. */
-	if (BLI_listbase_count_at_most(&tmp_bmain->object, 2) != 1) {
+	if (BLI_listbase_count_at_most(&tmp_bmain->objects, 2) != 1) {
 		BKE_report(op->reports, RPT_ERROR, "Copy buffer is not from pose mode");
 		BKE_main_free(tmp_bmain);
 		return OPERATOR_CANCELLED;
 	}
 
-	Object *object_from = tmp_bmain->object.first;
+	Object *object_from = tmp_bmain->objects.first;
 	bPose *pose_from = object_from->pose;
 	if (pose_from == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "Copy buffer has no pose");
@@ -580,7 +576,7 @@ static int pose_paste_exec(bContext *C, wmOperator *op)
 	BKE_main_free(tmp_bmain);
 
 	/* Update event for pose and deformation children. */
-	DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
 	/* Recalculate paths if any of the bones have paths... */
 	if ((ob->pose->avs.path_bakeflag & MOTIONPATH_BAKE_HAS_PATHS)) {
@@ -744,7 +740,8 @@ static void pchan_clear_rot(bPoseChannel *pchan)
 		}
 	}
 
-	/* Clear also Bendy Bone stuff - Roll is obvious, but Curve X/Y stuff is also kindof rotational in nature... */
+	/* Clear also Bendy Bone stuff - Roll is obvious,
+	 * but Curve X/Y stuff is also kindof rotational in nature... */
 	pchan->roll1 = 0.0f;
 	pchan->roll2 = 0.0f;
 
@@ -779,7 +776,8 @@ static int pose_clear_transform_generic_exec(bContext *C, wmOperator *op,
 
 	/* only clear relevant transforms for selected bones */
 	ViewLayer *view_layer = CTX_data_view_layer(C);
-	FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, OB_MODE_POSE, ob_iter)
+	View3D *v3d = CTX_wm_view3d(C);
+	FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, OB_ARMATURE, OB_MODE_POSE, ob_iter)
 	{
 		Object *ob_eval = DEG_get_evaluated_object(CTX_data_depsgraph(C), ob_iter); // XXX: UGLY HACK (for autokey + clear transforms)
 		ListBase dsources = {NULL, NULL};
@@ -833,7 +831,7 @@ static int pose_clear_transform_generic_exec(bContext *C, wmOperator *op,
 				BLI_freelistN(&dsources);
 			}
 
-			DEG_id_tag_update(&ob_iter->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob_iter->id, ID_RECALC_GEOMETRY);
 
 			/* note, notifier might evolve */
 			WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, ob_iter);
@@ -935,11 +933,12 @@ void POSE_OT_transforms_clear(wmOperatorType *ot)
 static int pose_clear_user_transforms_exec(bContext *C, wmOperator *op)
 {
 	ViewLayer *view_layer = CTX_data_view_layer(C);
+	View3D *v3d = CTX_wm_view3d(C);
 	Scene *scene = CTX_data_scene(C);
 	float cframe = (float)CFRA;
 	const bool only_select = RNA_boolean_get(op->ptr, "only_selected");
 
-	FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, OB_MODE_POSE, ob)
+	FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, OB_ARMATURE, OB_MODE_POSE, ob)
 	{
 		if ((ob->adt) && (ob->adt->action)) {
 			/* XXX: this is just like this to avoid contaminating anything else;
@@ -985,7 +984,7 @@ static int pose_clear_user_transforms_exec(bContext *C, wmOperator *op)
 		}
 
 		/* notifiers and updates */
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, ob);
 	}
 	FOREACH_OBJECT_IN_MODE_END;

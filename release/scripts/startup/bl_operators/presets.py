@@ -19,8 +19,15 @@
 # <pep8 compliant>
 
 import bpy
-from bpy.types import Menu, Operator, Panel, WindowManager
-from bpy.props import StringProperty, BoolProperty
+from bpy.types import (
+    Menu,
+    Operator,
+    WindowManager,
+)
+from bpy.props import (
+    BoolProperty,
+    StringProperty,
+)
 
 # For preset popover menu
 WindowManager.preset_name = StringProperty(
@@ -245,9 +252,12 @@ class ExecutePreset(Operator):
         if hasattr(preset_class, "reset_cb"):
             preset_class.reset_cb(context)
 
-        # execute the preset using script.python_file_run
         if ext == ".py":
-            bpy.ops.script.python_file_run(filepath=filepath)
+            try:
+                bpy.utils.execfile(filepath)
+            except Exception as ex:
+                self.report({'ERROR'}, "Failed to execute the preset: " + repr(ex))
+
         elif ext == ".xml":
             import rna_xml
             rna_xml.xml_file_run(context,
@@ -258,40 +268,6 @@ class ExecutePreset(Operator):
             preset_class.post_cb(context)
 
         return {'FINISHED'}
-
-
-class PresetMenu(Panel):
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'HEADER'
-    bl_label = "Presets"
-    path_menu = Menu.path_menu
-
-    @classmethod
-    def draw_panel_header(cls, layout):
-        layout.emboss = 'NONE'
-        layout.popover(
-            panel=cls.__name__,
-            icon='PRESET',
-            text="",
-        )
-
-    @classmethod
-    def draw_menu(cls, layout, text=None):
-        if text is None:
-            text = cls.bl_label
-
-        layout.popover(
-            panel=cls.__name__,
-            icon='PRESET',
-            text=text,
-        )
-
-    def draw(self, context):
-        layout = self.layout
-        layout.emboss = 'PULLDOWN_MENU'
-        layout.operator_context = 'EXEC_DEFAULT'
-
-        Menu.draw_preset(self, context)
 
 
 class AddPresetRender(AddPresetBase, Operator):
@@ -379,12 +355,18 @@ class AddPresetCloth(AddPresetBase, Operator):
     ]
 
     preset_values = [
-        "cloth.settings.air_damping",
-        "cloth.settings.bending_stiffness",
-        "cloth.settings.mass",
         "cloth.settings.quality",
-        "cloth.settings.spring_damping",
-        "cloth.settings.structural_stiffness",
+        "cloth.settings.mass",
+        "cloth.settings.air_damping",
+        "cloth.settings.bending_model",
+        "cloth.settings.tension_stiffness",
+        "cloth.settings.compression_stiffness",
+        "cloth.settings.shear_stiffness",
+        "cloth.settings.bending_stiffness",
+        "cloth.settings.tension_damping",
+        "cloth.settings.compression_damping",
+        "cloth.settings.shear_damping",
+        "cloth.settings.bending_damping",
     ]
 
     preset_subdir = "cloth"
@@ -454,32 +436,6 @@ class AddPresetHairDynamics(AddPresetBase, Operator):
         "settings.voxel_cell_size",
         "settings.pin_stiffness",
     ]
-
-
-class AddPresetInteraction(AddPresetBase, Operator):
-    """Add or remove an Application Interaction Preset"""
-    bl_idname = "wm.interaction_preset_add"
-    bl_label = "Add Interaction Preset"
-    preset_menu = "USERPREF_MT_interaction_presets"
-
-    preset_defines = [
-        "user_preferences = bpy.context.user_preferences"
-    ]
-
-    preset_values = [
-        "user_preferences.edit.use_drag_immediately",
-        "user_preferences.edit.use_insertkey_xyz_to_rgb",
-        "user_preferences.inputs.invert_mouse_zoom",
-        "user_preferences.inputs.select_mouse",
-        "user_preferences.inputs.use_emulate_numpad",
-        "user_preferences.inputs.use_mouse_continuous",
-        "user_preferences.inputs.use_mouse_emulate_3_button",
-        "user_preferences.inputs.view_rotate_method",
-        "user_preferences.inputs.view_zoom_axis",
-        "user_preferences.inputs.view_zoom_method",
-    ]
-
-    preset_subdir = "interaction"
 
 
 class AddPresetTrackingCamera(AddPresetBase, Operator):
@@ -598,7 +554,7 @@ class AddPresetKeyconfig(AddPresetBase, Operator):
     preset_subdir = "keyconfig"
 
     def add(self, context, filepath):
-        bpy.ops.wm.keyconfig_export(filepath=filepath)
+        bpy.ops.preferences.keyconfig_export(filepath=filepath)
         bpy.utils.keyconfig_set(filepath)
 
     def pre_cb(self, context):
@@ -684,7 +640,7 @@ class AddPresetGpencilBrush(AddPresetBase, Operator):
     preset_menu = "VIEW3D_PT_gpencil_brush_presets"
 
     preset_defines = [
-        "brush = bpy.context.active_gpencil_brush",
+        "brush = bpy.context.tool_settings.gpencil_paint.brush",
         "settings = brush.gpencil_settings"
     ]
 
@@ -693,7 +649,7 @@ class AddPresetGpencilBrush(AddPresetBase, Operator):
         "settings.active_smooth_factor",
         "settings.angle",
         "settings.angle_factor",
-        "settings.use_stabilizer",
+        "settings.use_settings_stabilizer",
         "brush.smooth_stroke_radius",
         "brush.smooth_stroke_factor",
         "settings.pen_smooth_factor",
@@ -702,12 +658,13 @@ class AddPresetGpencilBrush(AddPresetBase, Operator):
         "settings.pen_thick_smooth_steps",
         "settings.pen_subdivision_steps",
         "settings.random_subdiv",
-        "settings.enable_random",
+        "settings.use_settings_random",
         "settings.random_pressure",
         "settings.random_strength",
         "settings.uv_random",
         "settings.pen_jitter",
         "settings.use_jitter_pressure",
+        "settings.trim",
     ]
 
     preset_subdir = "gpencil_brush"
@@ -751,6 +708,8 @@ class AddPresetGpencilMaterial(AddPresetBase, Operator):
         "gpcolor.texture_clamp",
         "gpcolor.texture_mix",
         "gpcolor.mix_factor",
+        "gpcolor.show_stroke",
+        "gpcolor.show_fill",
     ]
 
     preset_subdir = "gpencil_material"
@@ -762,7 +721,6 @@ classes = (
     AddPresetFluid,
     AddPresetManta,
     AddPresetHairDynamics,
-    AddPresetInteraction,
     AddPresetInterfaceTheme,
     AddPresetKeyconfig,
     AddPresetNodeColor,

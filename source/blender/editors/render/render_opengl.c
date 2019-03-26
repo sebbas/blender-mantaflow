@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,13 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/render/render_opengl.c
- *  \ingroup edrend
+/** \file
+ * \ingroup edrend
  */
 
 
@@ -47,6 +42,7 @@
 
 #include "BKE_camera.h"
 #include "BKE_context.h"
+#include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
@@ -160,10 +156,10 @@ static bool screen_opengl_is_multiview(OGLRender *oglrender)
 	RegionView3D *rv3d = oglrender->rv3d;
 	RenderData *rd = &oglrender->scene->r;
 
-	if ((rd == NULL) || ((!oglrender->is_sequencer) && ((rv3d == NULL) || (v3d == NULL))))
+	if ((rd == NULL) || ((v3d != NULL) && (rv3d == NULL)))
 		return false;
 
-	return (rd->scemode & R_MULTIVIEW) && ((oglrender->is_sequencer) || (rv3d->persp == RV3D_CAMOB && v3d->camera));
+	return (rd->scemode & R_MULTIVIEW) && ((v3d == NULL) || (rv3d->persp == RV3D_CAMOB && v3d->camera));
 }
 
 static void screen_opengl_views_setup(OGLRender *oglrender)
@@ -207,8 +203,9 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 		}
 	}
 	else {
-		if (!oglrender->is_sequencer)
+		if (v3d) {
 			RE_SetOverrideCamera(oglrender->re, V3D_CAMERA_SCENE(oglrender->scene, v3d));
+		}
 
 		/* remove all the views that are not needed */
 		rv = rr->views.last;
@@ -328,9 +325,10 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 			wmOrtho2(0, sizex, 0, sizey);
 			GPU_matrix_translate_2f(sizex / 2, sizey / 2);
 
-			G.f |= G_RENDER_OGL;
-			ED_gpencil_draw_ex(rv3d, scene, gpd, sizex, sizey, scene->r.cfra, SPACE_SEQ);
-			G.f &= ~G_RENDER_OGL;
+			G.f |= G_FLAG_RENDER_VIEWPORT;
+			ED_annotation_draw_ex(
+			        scene, gpd, sizex, sizey, scene->r.cfra, SPACE_SEQ);
+			G.f &= ~G_FLAG_RENDER_VIEWPORT;
 
 			gp_rect = MEM_mallocN(sizex * sizey * sizeof(unsigned char) * 4, "offscreen rect");
 			GPU_offscreen_read_pixels(oglrender->ofs, GL_UNSIGNED_BYTE, gp_rect);
@@ -600,15 +598,18 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
 	oglrender->prevar = prevar;
 
 	if (is_view_context) {
-		ED_view3d_context_user_region(C, &oglrender->v3d, &oglrender->ar); /* so quad view renders camera */
+		/* so quad view renders camera */
+		ED_view3d_context_user_region(C, &oglrender->v3d, &oglrender->ar);
+
 		oglrender->rv3d = oglrender->ar->regiondata;
 
 		/* MUST be cleared on exit */
-		oglrender->scene->customdata_mask_modal = ED_view3d_datamask(oglrender->scene, oglrender->v3d);
+		memset(&oglrender->scene->customdata_mask_modal, 0, sizeof(oglrender->scene->customdata_mask_modal));
+		ED_view3d_datamask(C, oglrender->scene, oglrender->v3d, &oglrender->scene->customdata_mask_modal);
 
 		/* apply immediately in case we're rendering from a script,
 		 * running notifiers again will overwrite */
-		oglrender->scene->customdata_mask |= oglrender->scene->customdata_mask_modal;
+		CustomData_MeshMasks_update(&oglrender->scene->customdata_mask, &oglrender->scene->customdata_mask_modal);
 	}
 
 	/* create render */
@@ -739,7 +740,7 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
 		MEM_freeN(oglrender->seq_data.ibufs_arr);
 	}
 
-	oglrender->scene->customdata_mask_modal = 0;
+	memset(&oglrender->scene->customdata_mask_modal, 0, sizeof(oglrender->scene->customdata_mask_modal));
 
 	CTX_wm_area_set(C, oglrender->prevsa);
 	CTX_wm_region_set(C, oglrender->prevar);
@@ -1099,8 +1100,8 @@ void RENDER_OT_opengl(wmOperatorType *ot)
 	PropertyRNA *prop;
 
 	/* identifiers */
-	ot->name = "OpenGL Render";
-	ot->description = "OpenGL render active viewport";
+	ot->name = "Viewport Render";
+	ot->description = "Take a snapshot of the active viewport";
 	ot->idname = "RENDER_OT_opengl";
 
 	/* api callbacks */

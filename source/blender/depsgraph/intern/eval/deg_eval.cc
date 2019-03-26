@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Joshua Leung
- * Contributor(s): None Yet
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/intern/eval/deg_eval.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Evaluation engine entrypoints for Depsgraph Engine.
  */
@@ -34,9 +27,12 @@
 
 #include "PIL_time.h"
 
+#include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 #include "BLI_task.h"
 #include "BLI_ghash.h"
+
+#include "BKE_global.h"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -49,15 +45,12 @@
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_flush.h"
 #include "intern/eval/deg_eval_stats.h"
-#include "intern/nodes/deg_node.h"
-#include "intern/nodes/deg_node_component.h"
-#include "intern/nodes/deg_node_id.h"
-#include "intern/nodes/deg_node_operation.h"
-#include "intern/nodes/deg_node_time.h"
+#include "intern/node/deg_node.h"
+#include "intern/node/deg_node_component.h"
+#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node_time.h"
 #include "intern/depsgraph.h"
-#include "intern/depsgraph_intern.h"
-
-#include "util/deg_util_foreach.h"
 
 namespace DEG {
 
@@ -67,12 +60,13 @@ namespace DEG {
 /* Forward declarations. */
 static void schedule_children(TaskPool *pool,
                               Depsgraph *graph,
-                              OperationDepsNode *node,
+                              OperationNode *node,
                               const int thread_id);
 
 struct DepsgraphEvalState {
 	Depsgraph *graph;
 	bool do_stats;
+	bool is_cow_stage;
 };
 
 static void deg_task_run_func(TaskPool *pool,
@@ -81,7 +75,7 @@ static void deg_task_run_func(TaskPool *pool,
 {
 	void *userdata_v = BLI_task_pool_userdata(pool);
 	DepsgraphEvalState *state = (DepsgraphEvalState *)userdata_v;
-	OperationDepsNode *node = (OperationDepsNode *)taskdata;
+	OperationNode *node = (OperationNode *)taskdata;
 	/* Sanity checks. */
 	BLI_assert(!node->is_noop() && "NOOP nodes should not actually be scheduled");
 	/* Perform operation. */
@@ -99,17 +93,16 @@ static void deg_task_run_func(TaskPool *pool,
 	BLI_task_pool_delayed_push_end(pool, thread_id);
 }
 
-typedef struct CalculatePendingData {
+struct CalculatePendingData {
 	Depsgraph *graph;
-} CalculatePendingData;
+};
 
-static bool check_operation_node_visible(OperationDepsNode *op_node)
+static bool check_operation_node_visible(OperationNode *op_node)
 {
-	const ComponentDepsNode *comp_node = op_node->owner;
+	const ComponentNode *comp_node = op_node->owner;
 	/* Special exception, copy on write component is to be always evaluated,
-	 * to keep copied "database" in a consistent state.
-	 */
-	if (comp_node->type == DEG_NODE_TYPE_COPY_ON_WRITE) {
+	 * to keep copied "database" in a consistent state. */
+	if (comp_node->type == NodeType::COPY_ON_WRITE) {
 		return true;
 	}
 	return comp_node->affects_directly_visible;
@@ -122,7 +115,7 @@ static void calculate_pending_func(
 {
 	CalculatePendingData *data = (CalculatePendingData *)data_v;
 	Depsgraph *graph = data->graph;
-	OperationDepsNode *node = graph->operations[i];
+	OperationNode *node = graph->operations[i];
 	/* Update counters, applies for both visible and invisible IDs. */
 	node->num_links_pending = 0;
 	node->scheduled = false;
@@ -134,16 +127,15 @@ static void calculate_pending_func(
 	if ((node->flag & DEPSOP_FLAG_NEEDS_UPDATE) == 0) {
 		return;
 	}
-	foreach (DepsRelation *rel, node->inlinks) {
-		if (rel->from->type == DEG_NODE_TYPE_OPERATION &&
-		    (rel->flag & DEPSREL_FLAG_CYCLIC) == 0)
+	for (Relation *rel : node->inlinks) {
+		if (rel->from->type == NodeType::OPERATION &&
+		    (rel->flag & RELATION_FLAG_CYCLIC) == 0)
 		{
-			OperationDepsNode *from = (OperationDepsNode *)rel->from;
+			OperationNode *from = (OperationNode *)rel->from;
 			/* TODO(sergey): This is how old layer system was checking for the
 			 * calculation, but how is it possible that visible object depends
 			 * on an invisible? This is something what is prohibited after
-			 * deg_graph_build_flush_layers().
-			 */
+			 * deg_graph_build_flush_layers(). */
 			if (!check_operation_node_visible(from)) {
 				continue;
 			}
@@ -176,7 +168,7 @@ static void initialize_execution(DepsgraphEvalState *state, Depsgraph *graph)
 	const bool do_stats = state->do_stats;
 	calculate_pending_parents(graph);
 	/* Clear tags and other things which needs to be clear. */
-	foreach (OperationDepsNode *node, graph->operations) {
+	for (OperationNode *node : graph->operations) {
 		if (do_stats) {
 			node->stats.reset_current();
 		}
@@ -188,7 +180,7 @@ static void initialize_execution(DepsgraphEvalState *state, Depsgraph *graph)
  *                scheduled after a task has been completed.
  */
 static void schedule_node(TaskPool *pool, Depsgraph *graph,
-                          OperationDepsNode *node, bool dec_parents,
+                          OperationNode *node, bool dec_parents,
                           const int thread_id)
 {
 	/* No need to schedule nodes of invisible ID. */
@@ -196,24 +188,32 @@ static void schedule_node(TaskPool *pool, Depsgraph *graph,
 		return;
 	}
 	/* No need to schedule operations which are not tagged for update, they are
-	 * considered to be up to date.
-	 */
+	 * considered to be up to date. */
 	if ((node->flag & DEPSOP_FLAG_NEEDS_UPDATE) == 0) {
 		return;
 	}
 	/* TODO(sergey): This is not strictly speaking safe to read
-	 * num_links_pending.
-  */
+	 * num_links_pending. */
 	if (dec_parents) {
 		BLI_assert(node->num_links_pending > 0);
 		atomic_sub_and_fetch_uint32(&node->num_links_pending, 1);
 	}
 	/* Cal not schedule operation while its dependencies are not yet
-	 * evaluated.
-	 */
+	 * evaluated. */
 	if (node->num_links_pending != 0) {
 		return;
 	}
+	/* During the COW stage only schedule COW nodes. */
+	DepsgraphEvalState *state = (DepsgraphEvalState *)BLI_task_pool_userdata(pool);
+	if (state->is_cow_stage) {
+		if (node->owner->type != NodeType::COPY_ON_WRITE) {
+			return;
+		}
+	}
+	else {
+		BLI_assert(node->scheduled || node->owner->type != NodeType::COPY_ON_WRITE);
+	}
+	/* Actually schedule the node. */
 	bool is_scheduled = atomic_fetch_and_or_uint8(
 	        (uint8_t *)&node->scheduled, (uint8_t)true);
 	if (!is_scheduled) {
@@ -235,19 +235,19 @@ static void schedule_node(TaskPool *pool, Depsgraph *graph,
 
 static void schedule_graph(TaskPool *pool, Depsgraph *graph)
 {
-	foreach (OperationDepsNode *node, graph->operations) {
+	for (OperationNode *node : graph->operations) {
 		schedule_node(pool, graph, node, false, 0);
 	}
 }
 
 static void schedule_children(TaskPool *pool,
                               Depsgraph *graph,
-                              OperationDepsNode *node,
+                              OperationNode *node,
                               const int thread_id)
 {
-	foreach (DepsRelation *rel, node->outlinks) {
-		OperationDepsNode *child = (OperationDepsNode *)rel->to;
-		BLI_assert(child->type == DEG_NODE_TYPE_OPERATION);
+	for (Relation *rel : node->outlinks) {
+		OperationNode *child = (OperationNode *)rel->to;
+		BLI_assert(child->type == NodeType::OPERATION);
 		if (child->scheduled) {
 			/* Happens when having cyclic dependencies. */
 			continue;
@@ -255,7 +255,7 @@ static void schedule_children(TaskPool *pool,
 		schedule_node(pool,
 		              graph,
 		              child,
-		              (rel->flag & DEPSREL_FLAG_CYCLIC) == 0,
+		              (rel->flag & RELATION_FLAG_CYCLIC) == 0,
 		              thread_id);
 	}
 }
@@ -265,13 +265,12 @@ static void depsgraph_ensure_view_layer(Depsgraph *graph)
 	/* We update copy-on-write scene in the following cases:
 	 * - It was not expanded yet.
 	 * - It was tagged for update of CoW component.
-	 * This allows us to have proper view layer pointer.
-	 */
+	 * This allows us to have proper view layer pointer. */
 	Scene *scene_cow = graph->scene_cow;
 	if (!deg_copy_on_write_is_expanded(&scene_cow->id) ||
 	     scene_cow->id.recalc & ID_RECALC_COPY_ON_WRITE)
 	{
-		const IDDepsNode *id_node = graph->find_id_node(&graph->scene->id);
+		const IDNode *id_node = graph->find_id_node(&graph->scene->id);
 		deg_update_copy_on_write_datablock(graph, id_node);
 	}
 }
@@ -291,6 +290,7 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
 	}
 	const bool do_time_debug = ((G.debug & G_DEBUG_DEPSGRAPH_TIME) != 0);
 	const double start_time = do_time_debug ? PIL_check_seconds_timer() : 0;
+	graph->debug_is_evaluating = true;
 	depsgraph_ensure_view_layer(graph);
 	/* Set up evaluation state. */
 	DepsgraphEvalState state;
@@ -311,13 +311,18 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
 	/* Prepare all nodes for evaluation. */
 	initialize_execution(&state, graph);
 	/* Do actual evaluation now. */
+	/* First, process all Copy-On-Write nodes. */
+	state.is_cow_stage = true;
+	schedule_graph(task_pool, graph);
+	BLI_task_pool_work_wait_and_reset(task_pool);
+	/* After that, process all other nodes. */
+	state.is_cow_stage = false;
 	schedule_graph(task_pool, graph);
 	BLI_task_pool_work_and_wait(task_pool);
 	BLI_task_pool_free(task_pool);
 	/* Finalize statistics gathering. This is because we only gather single
 	 * operation timing here, without aggregating anything to avoid any extra
-	 * synchronization.
-	 */
+	 * synchronization. */
 	if (state.do_stats) {
 		deg_eval_stats_aggregate(graph);
 	}
@@ -326,6 +331,7 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
 	if (need_free_scheduler) {
 		BLI_task_scheduler_free(task_scheduler);
 	}
+	graph->debug_is_evaluating = false;
 	if (do_time_debug) {
 		printf("Depsgraph updated in %f seconds.\n",
 		       PIL_check_seconds_timer() - start_time);

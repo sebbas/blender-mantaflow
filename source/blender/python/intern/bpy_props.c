@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/python/intern/bpy_props.c
- *  \ingroup pythonintern
+/** \file
+ * \ingroup pythonintern
  *
  * This file defines 'bpy.props' module used so scripts can define their own
  * rna properties for use with python operators or adding new properties to
@@ -58,8 +52,6 @@ enum {
 	BPY_DATA_CB_SLOT_SIZE       = 4,
 };
 
-extern BPy_StructRNA *bpy_context_module;
-
 static const EnumPropertyItem property_flag_items[] = {
 	{PROP_HIDDEN, "HIDDEN", 0, "Hidden", ""},
 	{PROP_SKIP_SAVE, "SKIP_SAVE", 0, "Skip Save", ""},
@@ -67,7 +59,8 @@ static const EnumPropertyItem property_flag_items[] = {
 	{PROP_LIB_EXCEPTION, "LIBRARY_EDITABLE", 0, "Library Editable", ""},
 	{PROP_PROPORTIONAL, "PROPORTIONAL", 0, "Adjust values proportionally to eachother", ""},
 	{PROP_TEXTEDIT_UPDATE, "TEXTEDIT_UPDATE", 0, "Update on every keystroke in textedit 'mode'", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 #define BPY_PROPDEF_OPTIONS_DOC \
 "   :arg options: Enumerator in ['HIDDEN', 'SKIP_SAVE', 'ANIMATABLE', 'LIBRARY_EDITABLE', 'PROPORTIONAL'," \
@@ -80,7 +73,8 @@ static const EnumPropertyItem property_flag_enum_items[] = {
 	{PROP_ANIMATABLE, "ANIMATABLE", 0, "Animatable", ""},
 	{PROP_LIB_EXCEPTION, "LIBRARY_EDITABLE", 0, "Library Editable", ""},
 	{PROP_ENUM_FLAG, "ENUM_FLAG", 0, "Enum Flag", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 #define BPY_PROPDEF_OPTIONS_ENUM_DOC \
 "   :arg options: Enumerator in ['HIDDEN', 'SKIP_SAVE', 'ANIMATABLE', 'ENUM_FLAG', 'LIBRARY_EDITABLE'].\n" \
@@ -98,7 +92,8 @@ static const EnumPropertyItem property_subtype_string_items[] = {
 	{PROP_PASSWORD, "PASSWORD", 0, "Password", "A string that is displayed hidden ('********')"},
 
 	{PROP_NONE, "NONE", 0, "None", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 #define BPY_PROPDEF_SUBTYPE_STRING_DOC \
 "   :arg subtype: Enumerator in ['FILE_PATH', 'DIR_PATH', 'FILE_NAME', 'BYTE_STRING', 'PASSWORD', 'NONE'].\n" \
@@ -114,7 +109,8 @@ static const EnumPropertyItem property_subtype_number_items[] = {
 	{PROP_DISTANCE, "DISTANCE", 0, "Distance", ""},
 
 	{PROP_NONE, "NONE", 0, "None", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 #define BPY_PROPDEF_SUBTYPE_NUMBER_DOC \
 "   :arg subtype: Enumerator in ['PIXEL', 'UNSIGNED', 'PERCENTAGE', 'FACTOR', 'ANGLE', 'TIME', 'DISTANCE', 'NONE'].\n" \
@@ -134,14 +130,16 @@ static const EnumPropertyItem property_subtype_array_items[] = {
 	{PROP_COLOR_GAMMA, "COLOR_GAMMA", 0, "Color Gamma", ""},
 	{PROP_LAYER, "LAYER", 0, "Layer", ""},
 	{PROP_LAYER_MEMBER, "LAYER_MEMBER", 0, "Layer Member", ""},
+	{PROP_POWER, "POWER", 0, "Power", ""},
 
 	{PROP_NONE, "NONE", 0, "None", ""},
-	{0, NULL, 0, NULL, NULL}};
+	{0, NULL, 0, NULL, NULL},
+};
 
 #define BPY_PROPDEF_SUBTYPE_ARRAY_DOC \
 "   :arg subtype: Enumerator in ['COLOR', 'TRANSLATION', 'DIRECTION', " \
                                 "'VELOCITY', 'ACCELERATION', 'MATRIX', 'EULER', 'QUATERNION', 'AXISANGLE', " \
-                                "'XYZ', 'COLOR_GAMMA', 'LAYER', 'LAYER_MEMBER', 'NONE'].\n" \
+                                "'XYZ', 'COLOR_GAMMA', 'LAYER', 'LAYER_MEMBER', 'POWER', 'NONE'].\n" \
 "   :type subtype: string\n"
 
 /* PyObject's */
@@ -1904,8 +1902,8 @@ static void bpy_prop_callback_assign_enum(struct PropertyRNA *prop, PyObject *ge
 "   :type description: string\n" \
 
 #define BPY_PROPDEF_UNIT_DOC \
-"   :arg unit: Enumerator in ['NONE', 'LENGTH', 'AREA', 'VOLUME', 'ROTATION', 'TIME', 'VELOCITY', 'ACCELERATION', 'MASS', 'CAMERA'].\n" \
-"   :type unit: string\n"	\
+"   :arg unit: Enumerator in ['NONE', 'LENGTH', 'AREA', 'VOLUME', 'ROTATION', 'TIME', 'VELOCITY', 'ACCELERATION', 'MASS', 'CAMERA', 'POWER'].\n" \
+"   :type unit: string\n" \
 
 #define BPY_PROPDEF_NUM_MIN_DOC \
 "   :arg min: Hard minimum, trying to assign a value below will silently assign this minimum instead.\n" \
@@ -3083,9 +3081,10 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
 			return NULL;
 
 		if (!RNA_struct_is_a(ptype, &RNA_PropertyGroup)) {
-			PyErr_Format(PyExc_TypeError,
-				"CollectionProperty(...) expected an RNA type derived from %.200s",
-				RNA_struct_ui_name(&RNA_ID), RNA_struct_ui_name(&RNA_PropertyGroup));
+			PyErr_Format(
+			        PyExc_TypeError,
+			        "CollectionProperty(...) expected an RNA type derived from %.200s",
+			        RNA_struct_ui_name(&RNA_ID), RNA_struct_ui_name(&RNA_PropertyGroup));
 			return NULL;
 		}
 
@@ -3180,7 +3179,7 @@ static struct PyMethodDef props_methods[] = {
 	{"CollectionProperty", (PyCFunction)BPy_CollectionProperty, METH_VARARGS | METH_KEYWORDS, BPy_CollectionProperty_doc},
 
 	{"RemoveProperty", (PyCFunction)BPy_RemoveProperty, METH_VARARGS | METH_KEYWORDS, BPy_RemoveProperty_doc},
-	{NULL, NULL, 0, NULL}
+	{NULL, NULL, 0, NULL},
 };
 
 static struct PyModuleDef props_module = {
@@ -3192,7 +3191,7 @@ static struct PyModuleDef props_module = {
 	".. note:: All parameters to these functions must be passed as keywords.\n",
 	-1, /* multiple "initialization" just copies the module dict. */
 	props_methods,
-	NULL, NULL, NULL, NULL
+	NULL, NULL, NULL, NULL,
 };
 
 PyObject *BPY_rna_props(void)

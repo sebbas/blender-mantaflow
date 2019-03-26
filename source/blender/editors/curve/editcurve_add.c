@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/curve/editcurve_add.c
- *  \ingroup edcurve
+/** \file
+ * \ingroup edcurve
  */
 
 #include "DNA_object_types.h"
@@ -42,7 +34,6 @@
 
 #include "BKE_context.h"
 #include "BKE_curve.h"
-#include "BKE_library.h"
 
 #include "DEG_depsgraph.h"
 
@@ -61,7 +52,7 @@
 
 static const float nurbcircle[8][2] = {
 	{0.0, -1.0}, {-1.0, -1.0}, {-1.0, 0.0}, {-1.0,  1.0},
-	{0.0,  1.0}, { 1.0,  1.0}, { 1.0, 0.0}, { 1.0, -1.0}
+	{0.0,  1.0}, { 1.0,  1.0}, { 1.0, 0.0}, { 1.0, -1.0},
 };
 
 /************ add primitive, used by object/ module ****************/
@@ -157,7 +148,9 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 				bezt->vec[0][1] += -0.5f * grid;
 				bezt->vec[2][0] += -0.5f * grid;
 				bezt->vec[2][1] +=  0.5f * grid;
-				for (a = 0; a < 3; a++) mul_m4_v3(mat, bezt->vec[a]);
+				for (a = 0; a < 3; a++) {
+					mul_m4_v3(mat, bezt->vec[a]);
+				}
 
 				bezt++;
 				bezt->h1 = bezt->h2 = HD_ALIGN;
@@ -170,7 +163,9 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 				bezt->vec[1][1] = 0;
 				bezt->vec[2][0] = grid * 2;
 				bezt->vec[2][1] = 0;
-				for (a = 0; a < 3; a++) mul_m4_v3(mat, bezt->vec[a]);
+				for (a = 0; a < 3; a++) {
+					mul_m4_v3(mat, bezt->vec[a]);
+				}
 
 				BKE_nurb_handles_calc(nu);
 			}
@@ -200,7 +195,9 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 				bp->vec[0] += 1.5f * grid;
 
 				bp = nu->bp;
-				for (a = 0; a < 4; a++, bp++) mul_m4_v3(mat, bp->vec);
+				for (a = 0; a < 4; a++, bp++) {
+					mul_m4_v3(mat, bp->vec);
+				}
 
 				if (cutype == CU_NURBS) {
 					nu->knotsu = NULL; /* nurbs_knot_calc_u allocates */
@@ -234,7 +231,9 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 			bp->vec[0] += 2.0f * grid;
 
 			bp = nu->bp;
-			for (a = 0; a < 5; a++, bp++) mul_m4_v3(mat, bp->vec);
+			for (a = 0; a < 5; a++, bp++) {
+				mul_m4_v3(mat, bp->vec);
+			}
 
 			if (cutype == CU_NURBS) {
 				nu->knotsu = NULL; /* nurbs_knot_calc_u allocates */
@@ -254,28 +253,36 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 				bezt->h1 = bezt->h2 = HD_AUTO;
 				bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
 				bezt->vec[1][0] += -grid;
-				for (a = 0; a < 3; a++) mul_m4_v3(mat, bezt->vec[a]);
+				for (a = 0; a < 3; a++) {
+					mul_m4_v3(mat, bezt->vec[a]);
+				}
 				bezt->radius = bezt->weight = 1.0;
 
 				bezt++;
 				bezt->h1 = bezt->h2 = HD_AUTO;
 				bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
 				bezt->vec[1][1] += grid;
-				for (a = 0; a < 3; a++) mul_m4_v3(mat, bezt->vec[a]);
+				for (a = 0; a < 3; a++) {
+					mul_m4_v3(mat, bezt->vec[a]);
+				}
 				bezt->radius = bezt->weight = 1.0;
 
 				bezt++;
 				bezt->h1 = bezt->h2 = HD_AUTO;
 				bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
 				bezt->vec[1][0] += grid;
-				for (a = 0; a < 3; a++) mul_m4_v3(mat, bezt->vec[a]);
+				for (a = 0; a < 3; a++) {
+					mul_m4_v3(mat, bezt->vec[a]);
+				}
 				bezt->radius = bezt->weight = 1.0;
 
 				bezt++;
 				bezt->h1 = bezt->h2 = HD_AUTO;
 				bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
 				bezt->vec[1][1] += -grid;
-				for (a = 0; a < 3; a++) mul_m4_v3(mat, bezt->vec[a]);
+				for (a = 0; a < 3; a++) {
+					mul_m4_v3(mat, bezt->vec[a]);
+				}
 				bezt->radius = bezt->weight = 1.0;
 
 				BKE_nurb_handles_calc(nu);
@@ -298,8 +305,12 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 						bp->vec[0] += 0.25f * nurbcircle[a][0] * grid - 0.75f * grid;
 						bp->vec[2] += 0.25f * nurbcircle[a][1] * grid;
 					}
-					if (a & 1) bp->vec[3] = 0.25 * M_SQRT2;
-					else bp->vec[3] = 1.0;
+					if (a & 1) {
+						bp->vec[3] = 0.25 * M_SQRT2;
+					}
+					else {
+						bp->vec[3] = 1.0;
+					}
 					mul_m4_v3(mat, bp->vec);
 					bp->radius = bp->weight = 1.0;
 
@@ -344,7 +355,7 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 			break;
 		case CU_PRIM_TUBE: /* Cylinder */
 			if (cutype == CU_NURBS) {
-				nu = ED_curve_add_nurbs_primitive(C, obedit, mat, CU_NURBS | CU_PRIM_CIRCLE, 0); /* circle */
+				nu = ED_curve_add_nurbs_primitive(C, obedit, mat, CU_NURBS | CU_PRIM_CIRCLE, 0);
 				nu->resolu = cu->resolu;
 				nu->flag = CU_SMOOTH;
 				BLI_addtail(editnurb, nu); /* temporal for extrude and translate */
@@ -387,8 +398,12 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 					bp->f1 = SELECT;
 					bp->vec[0] += nurbcircle[a][0] * grid;
 					bp->vec[2] += nurbcircle[a][1] * grid;
-					if (a & 1) bp->vec[3] = 0.5 * M_SQRT2;
-					else bp->vec[3] = 1.0;
+					if (a & 1) {
+						bp->vec[3] = 0.5 * M_SQRT2;
+					}
+					else {
+						bp->vec[3] = 1.0;
+					}
 					mul_m4_v3(mat, bp->vec);
 					bp++;
 				}
@@ -397,12 +412,15 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 
 				BLI_addtail(editnurb, nu); /* temporal for spin */
 
-				if (newob && (U.flag & USER_ADD_VIEWALIGNED) == 0)
+				if (newob && (U.flag & USER_ADD_VIEWALIGNED) == 0) {
 					ed_editnurb_spin(umat, NULL, obedit, tmp_vec, tmp_cent);
-				else if ((U.flag & USER_ADD_VIEWALIGNED))
+				}
+				else if ((U.flag & USER_ADD_VIEWALIGNED)) {
 					ed_editnurb_spin(viewmat, NULL, obedit, zvec, mat[3]);
-				else
+				}
+				else {
 					ed_editnurb_spin(umat, NULL, obedit, tmp_vec, mat[3]);
+				}
 
 				BKE_nurb_knot_calc_v(nu);
 
@@ -421,7 +439,7 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 				float tmp_vec[3] = {0.f, 0.f, 1.f};
 
 				xzproj = 1;
-				nu = ED_curve_add_nurbs_primitive(C, obedit, mat, CU_NURBS | CU_PRIM_CIRCLE, 0); /* circle */
+				nu = ED_curve_add_nurbs_primitive(C, obedit, mat, CU_NURBS | CU_PRIM_CIRCLE, 0);
 				xzproj = 0;
 				nu->resolu = cu->resolu;
 				nu->resolv = cu->resolv;
@@ -429,12 +447,15 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 				BLI_addtail(editnurb, nu); /* temporal for spin */
 
 				/* same as above */
-				if (newob && (U.flag & USER_ADD_VIEWALIGNED) == 0)
+				if (newob && (U.flag & USER_ADD_VIEWALIGNED) == 0) {
 					ed_editnurb_spin(umat, NULL, obedit, tmp_vec, tmp_cent);
-				else if ((U.flag & USER_ADD_VIEWALIGNED))
+				}
+				else if ((U.flag & USER_ADD_VIEWALIGNED)) {
 					ed_editnurb_spin(viewmat, NULL, obedit, zvec, mat[3]);
-				else
+				}
+				else {
 					ed_editnurb_spin(umat, NULL, obedit, tmp_vec, mat[3]);
+				}
 
 
 				BLI_remlink(editnurb, nu);
@@ -465,7 +486,7 @@ Nurb *ED_curve_add_nurbs_primitive(bContext *C, Object *obedit, float mat[4][4],
 		cu->actnu = BLI_listbase_count(editnurb);
 		cu->actvert = CU_ACT_NONE;
 
-		BKE_nurb_test2D(nu);
+		BKE_nurb_test_2d(nu);
 	}
 
 	return nu;
@@ -478,41 +499,44 @@ static int curvesurf_prim_add(bContext *C, wmOperator *op, int type, int isSurf)
 	Nurb *nu;
 	bool newob = false;
 	bool enter_editmode;
+	ushort local_view_bits;
 	float dia;
 	float loc[3], rot[3];
 	float mat[4][4];
 
 	WM_operator_view3d_unit_defaults(C, op);
 
-	if (!ED_object_add_generic_get_opts(C, op, 'Z', loc, rot, &enter_editmode, NULL))
+	if (!ED_object_add_generic_get_opts(C, op, 'Z', loc, rot, &enter_editmode, &local_view_bits, NULL)) {
 		return OPERATOR_CANCELLED;
+	}
 
 	if (!isSurf) { /* adding curve */
 		if (obedit == NULL || obedit->type != OB_CURVE) {
 			const char *name = get_curve_defname(type);
 			Curve *cu;
 
-			obedit = ED_object_add_type(C, OB_CURVE, name, loc, rot, true);
+			obedit = ED_object_add_type(C, OB_CURVE, name, loc, rot, true, local_view_bits);
 			newob = true;
 
 			cu = (Curve *)obedit->data;
 			cu->flag |= CU_DEFORM_FILL;
 
-			if (type & CU_PRIM_PATH)
+			if (type & CU_PRIM_PATH) {
 				cu->flag |= CU_PATH | CU_3D;
+			}
 		}
 		else {
-			DEG_id_tag_update(&obedit->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&obedit->id, ID_RECALC_GEOMETRY);
 		}
 	}
 	else { /* adding surface */
 		if (obedit == NULL || obedit->type != OB_SURF) {
 			const char *name = get_surf_defname(type);
-			obedit = ED_object_add_type(C, OB_SURF, name, loc, rot, true);
+			obedit = ED_object_add_type(C, OB_SURF, name, loc, rot, true, local_view_bits);
 			newob = true;
 		}
 		else {
-			DEG_id_tag_update(&obedit->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&obedit->id, ID_RECALC_GEOMETRY);
 		}
 	}
 
@@ -565,7 +589,7 @@ void CURVE_OT_primitive_bezier_curve_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -588,7 +612,7 @@ void CURVE_OT_primitive_bezier_circle_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -611,7 +635,7 @@ void CURVE_OT_primitive_nurbs_curve_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -634,7 +658,7 @@ void CURVE_OT_primitive_nurbs_circle_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -657,7 +681,7 @@ void CURVE_OT_primitive_nurbs_path_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -681,7 +705,7 @@ void SURFACE_OT_primitive_nurbs_surface_curve_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -704,7 +728,7 @@ void SURFACE_OT_primitive_nurbs_surface_circle_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -727,7 +751,7 @@ void SURFACE_OT_primitive_nurbs_surface_surface_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -750,7 +774,7 @@ void SURFACE_OT_primitive_nurbs_surface_cylinder_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -773,7 +797,7 @@ void SURFACE_OT_primitive_nurbs_surface_sphere_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }
 
@@ -796,6 +820,6 @@ void SURFACE_OT_primitive_nurbs_surface_torus_add(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	ED_object_add_unit_props(ot);
+	ED_object_add_unit_props_radius(ot);
 	ED_object_add_generic_props(ot, true);
 }

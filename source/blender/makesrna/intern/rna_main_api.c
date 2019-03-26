@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_main_api.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -39,7 +32,6 @@
 #include "DNA_object_types.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_path_util.h"
 
 #include "RNA_define.h"
 #include "RNA_access.h"
@@ -49,41 +41,39 @@
 
 #ifdef RNA_RUNTIME
 
-#include "BKE_main.h"
+#include "BKE_action.h"
+#include "BKE_armature.h"
+#include "BKE_brush.h"
 #include "BKE_camera.h"
 #include "BKE_collection.h"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
-#include "BKE_mesh.h"
-#include "BKE_armature.h"
-#include "BKE_lamp.h"
-#include "BKE_library.h"
-#include "BKE_library_remap.h"
-#include "BKE_object.h"
-#include "BKE_material.h"
+#include "BKE_font.h"
+#include "BKE_gpencil.h"
 #include "BKE_icons.h"
 #include "BKE_idcode.h"
 #include "BKE_image.h"
-#include "BKE_texture.h"
+#include "BKE_light.h"
+#include "BKE_lattice.h"
+#include "BKE_library_remap.h"
+#include "BKE_lightprobe.h"
+#include "BKE_linestyle.h"
+#include "BKE_mask.h"
+#include "BKE_material.h"
+#include "BKE_mball.h"
+#include "BKE_mesh.h"
+#include "BKE_movieclip.h"
+#include "BKE_node.h"
+#include "BKE_object.h"
+#include "BKE_paint.h"
+#include "BKE_particle.h"
 #include "BKE_scene.h"
 #include "BKE_sound.h"
-#include "BKE_text.h"
-#include "BKE_action.h"
-#include "BKE_brush.h"
-#include "BKE_lattice.h"
-#include "BKE_mball.h"
-#include "BKE_world.h"
-#include "BKE_particle.h"
-#include "BKE_paint.h"
-#include "BKE_font.h"
-#include "BKE_node.h"
 #include "BKE_speaker.h"
-#include "BKE_lightprobe.h"
-#include "BKE_movieclip.h"
-#include "BKE_mask.h"
-#include "BKE_gpencil.h"
-#include "BKE_linestyle.h"
+#include "BKE_text.h"
+#include "BKE_texture.h"
 #include "BKE_workspace.h"
+#include "BKE_world.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -91,7 +81,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_lamp_types.h"
+#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_speaker_types.h"
@@ -120,6 +110,7 @@
 #endif
 
 #include "WM_api.h"
+#include "WM_types.h"
 
 
 static void rna_idname_validate(const char *name, char *r_name)
@@ -135,11 +126,16 @@ static void rna_Main_ID_remove(
 {
 	ID *id = id_ptr->data;
 	if (do_unlink) {
-		BKE_libblock_delete(bmain, id);
+		BKE_id_delete(bmain, id);
 		RNA_POINTER_INVALIDATE(id_ptr);
+		/* Force full redraw, mandatory to avoid crashes when running this from UI... */
+		WM_main_add_notifier(NC_WINDOW, NULL);
 	}
 	else if (ID_REAL_USERS(id) <= 0) {
-		BKE_libblock_free_ex(bmain, id, do_id_user, do_ui_user);
+		const int flag = (do_id_user ? 0 : LIB_ID_FREE_NO_USER_REFCOUNT) |
+		                 (do_ui_user ? 0 : LIB_ID_FREE_NO_UI_USER);
+		/* Still using ID flags here, this is in-between commit anyway... */
+		BKE_id_free_ex(bmain, id, flag, true);
 		RNA_POINTER_INVALIDATE(id_ptr);
 	}
 	else {
@@ -169,7 +165,7 @@ static Scene *rna_Main_scenes_new(Main *bmain, const char *name)
 }
 static void rna_Main_scenes_remove(Main *bmain, bContext *C, ReportList *reports, PointerRNA *scene_ptr, bool do_unlink)
 {
-	/* don't call BKE_libblock_free(...) directly */
+	/* don't call BKE_id_free(...) directly */
 	Scene *scene = scene_ptr->data;
 	Scene *scene_new;
 
@@ -329,12 +325,12 @@ Mesh *rna_Main_meshes_new_from_object(
 	return BKE_mesh_new_from_object(depsgraph, bmain, sce, ob, apply_modifiers, calc_undeformed);
 }
 
-static Lamp *rna_Main_lights_new(Main *bmain, const char *name, int type)
+static Light *rna_Main_lights_new(Main *bmain, const char *name, int type)
 {
 	char safe_name[MAX_ID_NAME - 2];
 	rna_idname_validate(name, safe_name);
 
-	Lamp *lamp = BKE_lamp_add(bmain, safe_name);
+	Light *lamp = BKE_light_add(bmain, safe_name);
 	lamp->type = type;
 	id_us_min(&lamp->id);
 	return lamp;
@@ -615,41 +611,41 @@ static LightProbe *rna_Main_lightprobe_new(Main *bmain, const char *name)
 		BKE_main_id_tag_listbase(&bmain->_listbase_name, LIB_TAG_DOIT, value);     \
 	}                                                                              \
 
-RNA_MAIN_ID_TAG_FUNCS_DEF(cameras, camera, ID_CA)
-RNA_MAIN_ID_TAG_FUNCS_DEF(scenes, scene, ID_SCE)
-RNA_MAIN_ID_TAG_FUNCS_DEF(objects, object, ID_OB)
-RNA_MAIN_ID_TAG_FUNCS_DEF(materials, mat, ID_MA)
-RNA_MAIN_ID_TAG_FUNCS_DEF(node_groups, nodetree, ID_NT)
-RNA_MAIN_ID_TAG_FUNCS_DEF(meshes, mesh, ID_ME)
-RNA_MAIN_ID_TAG_FUNCS_DEF(lights, lamp, ID_LA)
-RNA_MAIN_ID_TAG_FUNCS_DEF(libraries, library, ID_LI)
-RNA_MAIN_ID_TAG_FUNCS_DEF(screens, screen, ID_SCR)
+RNA_MAIN_ID_TAG_FUNCS_DEF(cameras, cameras, ID_CA)
+RNA_MAIN_ID_TAG_FUNCS_DEF(scenes, scenes, ID_SCE)
+RNA_MAIN_ID_TAG_FUNCS_DEF(objects, objects, ID_OB)
+RNA_MAIN_ID_TAG_FUNCS_DEF(materials, materials, ID_MA)
+RNA_MAIN_ID_TAG_FUNCS_DEF(node_groups, nodetrees, ID_NT)
+RNA_MAIN_ID_TAG_FUNCS_DEF(meshes, meshes, ID_ME)
+RNA_MAIN_ID_TAG_FUNCS_DEF(lights, lights, ID_LA)
+RNA_MAIN_ID_TAG_FUNCS_DEF(libraries, libraries, ID_LI)
+RNA_MAIN_ID_TAG_FUNCS_DEF(screens, screens, ID_SCR)
 RNA_MAIN_ID_TAG_FUNCS_DEF(window_managers, wm, ID_WM)
-RNA_MAIN_ID_TAG_FUNCS_DEF(images, image, ID_IM)
-RNA_MAIN_ID_TAG_FUNCS_DEF(lattices, latt, ID_LT)
-RNA_MAIN_ID_TAG_FUNCS_DEF(curves, curve, ID_CU)
-RNA_MAIN_ID_TAG_FUNCS_DEF(metaballs, mball, ID_MB)
-RNA_MAIN_ID_TAG_FUNCS_DEF(fonts, vfont, ID_VF)
-RNA_MAIN_ID_TAG_FUNCS_DEF(textures, tex, ID_TE)
-RNA_MAIN_ID_TAG_FUNCS_DEF(brushes, brush, ID_BR)
-RNA_MAIN_ID_TAG_FUNCS_DEF(worlds, world, ID_WO)
-RNA_MAIN_ID_TAG_FUNCS_DEF(collections, collection, ID_GR)
+RNA_MAIN_ID_TAG_FUNCS_DEF(images, images, ID_IM)
+RNA_MAIN_ID_TAG_FUNCS_DEF(lattices, lattices, ID_LT)
+RNA_MAIN_ID_TAG_FUNCS_DEF(curves, curves, ID_CU)
+RNA_MAIN_ID_TAG_FUNCS_DEF(metaballs, metaballs, ID_MB)
+RNA_MAIN_ID_TAG_FUNCS_DEF(fonts, fonts, ID_VF)
+RNA_MAIN_ID_TAG_FUNCS_DEF(textures, textures, ID_TE)
+RNA_MAIN_ID_TAG_FUNCS_DEF(brushes, brushes, ID_BR)
+RNA_MAIN_ID_TAG_FUNCS_DEF(worlds, worlds, ID_WO)
+RNA_MAIN_ID_TAG_FUNCS_DEF(collections, collections, ID_GR)
 //RNA_MAIN_ID_TAG_FUNCS_DEF(shape_keys, key, ID_KE)
-RNA_MAIN_ID_TAG_FUNCS_DEF(texts, text, ID_TXT)
-RNA_MAIN_ID_TAG_FUNCS_DEF(speakers, speaker, ID_SPK)
-RNA_MAIN_ID_TAG_FUNCS_DEF(sounds, sound, ID_SO)
-RNA_MAIN_ID_TAG_FUNCS_DEF(armatures, armature, ID_AR)
-RNA_MAIN_ID_TAG_FUNCS_DEF(actions, action, ID_AC)
-RNA_MAIN_ID_TAG_FUNCS_DEF(particles, particle, ID_PA)
+RNA_MAIN_ID_TAG_FUNCS_DEF(texts, texts, ID_TXT)
+RNA_MAIN_ID_TAG_FUNCS_DEF(speakers, speakers, ID_SPK)
+RNA_MAIN_ID_TAG_FUNCS_DEF(sounds, sounds, ID_SO)
+RNA_MAIN_ID_TAG_FUNCS_DEF(armatures, armatures, ID_AR)
+RNA_MAIN_ID_TAG_FUNCS_DEF(actions, actions, ID_AC)
+RNA_MAIN_ID_TAG_FUNCS_DEF(particles, particles, ID_PA)
 RNA_MAIN_ID_TAG_FUNCS_DEF(palettes, palettes, ID_PAL)
-RNA_MAIN_ID_TAG_FUNCS_DEF(gpencil, gpencil, ID_GD)
-RNA_MAIN_ID_TAG_FUNCS_DEF(movieclips, movieclip, ID_MC)
-RNA_MAIN_ID_TAG_FUNCS_DEF(masks, mask, ID_MSK)
-RNA_MAIN_ID_TAG_FUNCS_DEF(linestyle, linestyle, ID_LS)
+RNA_MAIN_ID_TAG_FUNCS_DEF(gpencils, gpencils, ID_GD)
+RNA_MAIN_ID_TAG_FUNCS_DEF(movieclips, movieclips, ID_MC)
+RNA_MAIN_ID_TAG_FUNCS_DEF(masks, masks, ID_MSK)
+RNA_MAIN_ID_TAG_FUNCS_DEF(linestyle, linestyles, ID_LS)
 RNA_MAIN_ID_TAG_FUNCS_DEF(cachefiles, cachefiles, ID_CF)
 RNA_MAIN_ID_TAG_FUNCS_DEF(paintcurves, paintcurves, ID_PC)
 RNA_MAIN_ID_TAG_FUNCS_DEF(workspaces, workspaces, ID_WS)
-RNA_MAIN_ID_TAG_FUNCS_DEF(lightprobes, lightprobe, ID_LP)
+RNA_MAIN_ID_TAG_FUNCS_DEF(lightprobes, lightprobes, ID_LP)
 
 #undef RNA_MAIN_ID_TAG_FUNCS_DEF
 
@@ -830,7 +826,7 @@ void RNA_def_main_node_groups(BlenderRNA *brna, PropertyRNA *cprop)
 
 	static const EnumPropertyItem dummy_items[] = {
 		{0, "DUMMY", 0, "", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	RNA_def_property_srna(cprop, "BlendDataNodeTrees");
@@ -1665,7 +1661,7 @@ void RNA_def_main_gpencil(BlenderRNA *brna, PropertyRNA *cprop)
 	RNA_def_struct_sdna(srna, "Main");
 	RNA_def_struct_ui_text(srna, "Main Grease Pencils", "Collection of grease pencils");
 
-	func = RNA_def_function(srna, "tag", "rna_Main_gpencil_tag");
+	func = RNA_def_function(srna, "tag", "rna_Main_gpencils_tag");
 	parm = RNA_def_boolean(func, "value", 0, "Value", "");
 	RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 

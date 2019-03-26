@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Peter Schlaile <peter [at] schlaile [dot] de> 2011
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/imbuf/intern/indexer.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 #include <stdlib.h>
@@ -413,7 +407,7 @@ static void get_tc_filename(struct anim *anim, IMB_Timecode_Type tc,
 		"record_run%s%s.blen_tc",
 		"free_run%s%s.blen_tc",
 		"interp_free_run%s%s.blen_tc",
-		"record_run_no_gaps%s%s.blen_tc"
+		"record_run_no_gaps%s%s.blen_tc",
 	};
 
 	char stream_suffix[20];
@@ -885,11 +879,11 @@ static void index_rebuild_ffmpeg_proc_decoded_frame(
 				tc_frameno = context->frameno_gapless;
 
 			IMB_index_builder_proc_frame(
-				context->indexer[i],
-				curr_packet->data,
-				curr_packet->size,
-				tc_frameno,
-				s_pos, s_dts, pts);
+			        context->indexer[i],
+			        curr_packet->data,
+			        curr_packet->size,
+			        tc_frameno,
+			        s_pos, s_dts, pts);
 		}
 	}
 
@@ -943,7 +937,7 @@ static int index_rebuild_ffmpeg(FFmpegIndexBuilderContext *context,
 
 		if (frame_finished) {
 			index_rebuild_ffmpeg_proc_decoded_frame(
-				context, &next_packet, in_frame);
+			        context, &next_packet, in_frame);
 		}
 		av_free_packet(&next_packet);
 	}
@@ -963,12 +957,12 @@ static int index_rebuild_ffmpeg(FFmpegIndexBuilderContext *context,
 			frame_finished = 0;
 
 			avcodec_decode_video2(
-				context->iCodecCtx, in_frame, &frame_finished,
-				&next_packet);
+			        context->iCodecCtx, in_frame, &frame_finished,
+			        &next_packet);
 
 			if (frame_finished) {
 				index_rebuild_ffmpeg_proc_decoded_frame(
-					context, &next_packet, in_frame);
+				        context, &next_packet, in_frame);
 			}
 		} while (frame_finished);
 	}

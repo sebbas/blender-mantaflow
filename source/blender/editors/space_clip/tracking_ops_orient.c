@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_clip/tracking_ops_orient.c
- *  \ingroup spclip
+/** \file
+ * \ingroup spclip
  */
 
 #include "MEM_guardedalloc.h"
@@ -145,8 +137,7 @@ static int count_selected_bundles(bContext *C)
 	return tot;
 }
 
-static void object_solver_inverted_matrix(Depsgraph *depsgraph,
-                                          Scene *scene,
+static void object_solver_inverted_matrix(Scene *scene,
                                           Object *ob,
                                           float invmat[4][4])
 {
@@ -163,7 +154,7 @@ static void object_solver_inverted_matrix(Depsgraph *depsgraph,
 			bObjectSolverConstraint *data = (bObjectSolverConstraint *)con->data;
 			if (!found) {
 				Object *cam = data->camera ? data->camera : scene->camera;
-				BKE_object_where_is_calc_mat4(depsgraph, scene, cam, invmat);
+				BKE_object_where_is_calc_mat4(cam, invmat);
 			}
 			mul_m4_m4m4(invmat, invmat, data->invmat);
 			found = true;
@@ -201,7 +192,6 @@ static int set_origin_exec(bContext *C, wmOperator *op)
 	MovieClip *clip = ED_space_clip_get_clip(sc);
 	MovieTracking *tracking = &clip->tracking;
 	Scene *scene = CTX_data_scene(C);
-	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Object *camera = get_camera_with_movieclip(scene, clip);
 	int selected_count = count_selected_bundles(C);
 
@@ -238,20 +228,20 @@ static int set_origin_exec(bContext *C, wmOperator *op)
 	mul_v3_fl(median, 1.0f / selected_count);
 
 	float mat[4][4], vec[3];
-	BKE_tracking_get_camera_object_matrix(depsgraph, scene, camera, mat);
+	BKE_tracking_get_camera_object_matrix(scene, camera, mat);
 	mul_v3_m4v3(vec, mat, median);
 
 	if (tracking_object->flag & TRACKING_OBJECT_CAMERA) {
 		sub_v3_v3(object->loc, vec);
 	}
 	else {
-		object_solver_inverted_matrix(depsgraph, scene, object, mat);
+		object_solver_inverted_matrix(scene, object, mat);
 		mul_v3_m4v3(vec, mat, vec);
 		copy_v3_v3(object->loc, vec);
 	}
 
 	DEG_id_tag_update(&clip->id, 0);
-	DEG_id_tag_update(&object->id, OB_RECALC_OB);
+	DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
 
 	WM_event_add_notifier(C, NC_MOVIECLIP | NA_EVALUATED, clip);
 	WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
@@ -280,8 +270,7 @@ void CLIP_OT_set_origin(wmOperatorType *ot)
 
 /********************** set floor operator *********************/
 
-static void set_axis(Depsgraph *depsgraph,
-                     Scene *scene,
+static void set_axis(Scene *scene,
                      Object *ob,
                      MovieClip *clip,
                      MovieTrackingObject *tracking_object,
@@ -295,14 +284,14 @@ static void set_axis(Depsgraph *depsgraph,
 
 	BKE_object_to_mat4(ob, obmat);
 
-	BKE_tracking_get_camera_object_matrix(depsgraph, scene, camera, mat);
+	BKE_tracking_get_camera_object_matrix(scene, camera, mat);
 	mul_v3_m4v3(vec, mat, track->bundle_pos);
 	copy_v3_v3(dvec, vec);
 
 	if (!is_camera) {
 		float imat[4][4];
 
-		object_solver_inverted_matrix(depsgraph, scene, ob, imat);
+		object_solver_inverted_matrix(scene, ob, imat);
 		mul_v3_m4v3(vec, imat, vec);
 
 		invert_m4_m4(imat, obmat);
@@ -433,7 +422,7 @@ static int set_plane_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	BKE_tracking_get_camera_object_matrix(depsgraph, scene, camera, mat);
+	BKE_tracking_get_camera_object_matrix(scene, camera, mat);
 
 	/* Get 3 bundles to use as reference. */
 	track = tracksbase->first;
@@ -496,10 +485,10 @@ static int set_plane_exec(bContext *C, wmOperator *op)
 	}
 
 	BKE_object_where_is_calc(depsgraph, scene, object);
-	set_axis(depsgraph, scene, object, clip, tracking_object, axis_track, 'X');
+	set_axis(scene, object, clip, tracking_object, axis_track, 'X');
 
 	DEG_id_tag_update(&clip->id, 0);
-	DEG_id_tag_update(&object->id, OB_RECALC_OB);
+	DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
 
 	WM_event_add_notifier(C, NC_MOVIECLIP | NA_EVALUATED, clip);
 	WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
@@ -512,7 +501,7 @@ void CLIP_OT_set_plane(wmOperatorType *ot)
 	static const EnumPropertyItem plane_items[] = {
 		{0, "FLOOR", 0, "Floor", "Set floor plane"},
 		{1, "WALL", 0, "Wall", "Set wall plane"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -542,7 +531,6 @@ static int set_axis_exec(bContext *C, wmOperator *op)
 	MovieTracking *tracking = &clip->tracking;
 	MovieTrackingObject *tracking_object = BKE_tracking_object_get_active(tracking);
 	Scene *scene = CTX_data_scene(C);
-	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Object *object;
 	int axis = RNA_enum_get(op->ptr, "axis");
 
@@ -571,10 +559,10 @@ static int set_axis_exec(bContext *C, wmOperator *op)
 		track = track->next;
 	}
 
-	set_axis(depsgraph, scene, object, clip, tracking_object, track, axis == 0 ? 'X' : 'Y');
+	set_axis(scene, object, clip, tracking_object, track, axis == 0 ? 'X' : 'Y');
 
 	DEG_id_tag_update(&clip->id, 0);
-	DEG_id_tag_update(&object->id, OB_RECALC_OB);
+	DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
 
 	WM_event_add_notifier(C, NC_MOVIECLIP | NA_EVALUATED, clip);
 	WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
@@ -587,7 +575,7 @@ void CLIP_OT_set_axis(wmOperatorType *ot)
 	static const EnumPropertyItem axis_actions[] = {
 		{0, "X", 0, "X", "Align bundle align X axis"},
 		{1, "Y", 0, "Y", "Align bundle align Y axis"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */
@@ -622,7 +610,6 @@ static int do_set_scale(bContext *C,
 	MovieTrackingObject *tracking_object = BKE_tracking_object_get_active(tracking);
 	MovieTrackingTrack *track;
 	Scene *scene = CTX_data_scene(C);
-	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	Object *object = NULL;
 	Object *camera = get_camera_with_movieclip(scene, clip);
 	ListBase *tracksbase = BKE_tracking_get_active_tracks(tracking);
@@ -647,7 +634,7 @@ static int do_set_scale(bContext *C,
 		}
 	}
 
-	BKE_tracking_get_camera_object_matrix(depsgraph, scene, camera, mat);
+	BKE_tracking_get_camera_object_matrix(scene, camera, mat);
 
 	track = tracksbase->first;
 	while (track) {
@@ -683,18 +670,18 @@ static int do_set_scale(bContext *C,
 		}
 		else {
 			if (tracking_object->flag & TRACKING_OBJECT_CAMERA) {
-				mul_v3_fl(object->size, scale);
+				mul_v3_fl(object->scale, scale);
 				mul_v3_fl(object->loc, scale);
 			}
 			else if (!scale_solution) {
 				Object *solver_camera = object_solver_camera(scene, object);
 
-				object->size[0] = object->size[1] = object->size[2] = 1.0f / scale;
+				object->scale[0] = object->scale[1] = object->scale[2] = 1.0f / scale;
 
 				if (solver_camera) {
-					object->size[0] /= solver_camera->size[0];
-					object->size[1] /= solver_camera->size[1];
-					object->size[2] /= solver_camera->size[2];
+					object->scale[0] /= solver_camera->scale[0];
+					object->scale[1] /= solver_camera->scale[1];
+					object->scale[2] /= solver_camera->scale[2];
 				}
 			}
 			else {
@@ -704,7 +691,7 @@ static int do_set_scale(bContext *C,
 			DEG_id_tag_update(&clip->id, 0);
 
 			if (object)
-				DEG_id_tag_update(&object->id, OB_RECALC_OB);
+				DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
 
 			WM_event_add_notifier(C, NC_MOVIECLIP | NA_EVALUATED, clip);
 			WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);

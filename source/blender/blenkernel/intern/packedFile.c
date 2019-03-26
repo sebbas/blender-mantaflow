@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/blenkernel/intern/packedFile.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 
@@ -52,7 +44,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_font.h"
-#include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
@@ -127,15 +118,15 @@ int countPackedFiles(Main *bmain)
 	int count = 0;
 
 	/* let's check if there are packed files... */
-	for (ima = bmain->image.first; ima; ima = ima->id.next)
+	for (ima = bmain->images.first; ima; ima = ima->id.next)
 		if (BKE_image_has_packedfile(ima))
 			count ++;
 
-	for (vf = bmain->vfont.first; vf; vf = vf->id.next)
+	for (vf = bmain->fonts.first; vf; vf = vf->id.next)
 		if (vf->packedfile)
 			count++;
 
-	for (sound = bmain->sound.first; sound; sound = sound->id.next)
+	for (sound = bmain->sounds.first; sound; sound = sound->id.next)
 		if (sound->packedfile)
 			count++;
 
@@ -231,7 +222,7 @@ void packAll(Main *bmain, ReportList *reports, bool verbose)
 	bSound *sound;
 	int tot = 0;
 
-	for (ima = bmain->image.first; ima; ima = ima->id.next) {
+	for (ima = bmain->images.first; ima; ima = ima->id.next) {
 		if (BKE_image_has_packedfile(ima) == false && !ID_IS_LINKED(ima)) {
 			if (ima->source == IMA_SRC_FILE) {
 				BKE_image_packfiles(reports, ima, ID_BLEND_PATH(bmain, &ima->id));
@@ -244,14 +235,14 @@ void packAll(Main *bmain, ReportList *reports, bool verbose)
 		}
 	}
 
-	for (vfont = bmain->vfont.first; vfont; vfont = vfont->id.next) {
+	for (vfont = bmain->fonts.first; vfont; vfont = vfont->id.next) {
 		if (vfont->packedfile == NULL && !ID_IS_LINKED(vfont) && BKE_vfont_is_builtin(vfont) == false) {
 			vfont->packedfile = newPackedFile(reports, vfont->name, BKE_main_blendfile_path(bmain));
 			tot ++;
 		}
 	}
 
-	for (sound = bmain->sound.first; sound; sound = sound->id.next) {
+	for (sound = bmain->sounds.first; sound; sound = sound->id.next) {
 		if (sound->packedfile == NULL && !ID_IS_LINKED(sound)) {
 			sound->packedfile = newPackedFile(reports, sound->name, BKE_main_blendfile_path(bmain));
 			tot++;
@@ -607,7 +598,7 @@ int unpackLibraries(Main *bmain, ReportList *reports)
 	char *newname;
 	int ret_value = RET_ERROR;
 
-	for (lib = bmain->library.first; lib; lib = lib->id.next) {
+	for (lib = bmain->libraries.first; lib; lib = lib->id.next) {
 		if (lib->packedfile && lib->name[0]) {
 
 			newname = unpackFile(reports, BKE_main_blendfile_path(bmain), lib->filepath, lib->filepath, lib->packedfile, PF_WRITE_ORIGINAL);
@@ -632,7 +623,7 @@ void packLibraries(Main *bmain, ReportList *reports)
 	Library *lib;
 
 	/* test for relativenss */
-	for (lib = bmain->library.first; lib; lib = lib->id.next)
+	for (lib = bmain->libraries.first; lib; lib = lib->id.next)
 		if (!BLI_path_is_rel(lib->name))
 			break;
 
@@ -641,7 +632,7 @@ void packLibraries(Main *bmain, ReportList *reports)
 		return;
 	}
 
-	for (lib = bmain->library.first; lib; lib = lib->id.next)
+	for (lib = bmain->libraries.first; lib; lib = lib->id.next)
 		if (lib->packedfile == NULL)
 			lib->packedfile = newPackedFile(reports, lib->name, BKE_main_blendfile_path(bmain));
 }
@@ -652,15 +643,15 @@ void unpackAll(Main *bmain, ReportList *reports, int how)
 	VFont *vf;
 	bSound *sound;
 
-	for (ima = bmain->image.first; ima; ima = ima->id.next)
+	for (ima = bmain->images.first; ima; ima = ima->id.next)
 		if (BKE_image_has_packedfile(ima))
 			unpackImage(bmain, reports, ima, how);
 
-	for (vf = bmain->vfont.first; vf; vf = vf->id.next)
+	for (vf = bmain->fonts.first; vf; vf = vf->id.next)
 		if (vf->packedfile)
 			unpackVFont(bmain, reports, vf, how);
 
-	for (sound = bmain->sound.first; sound; sound = sound->id.next)
+	for (sound = bmain->sounds.first; sound; sound = sound->id.next)
 		if (sound->packedfile)
 			unpackSound(bmain, reports, sound, how);
 }

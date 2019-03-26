@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/nodes/shader/node_shader_util.c
- *  \ingroup nodes
+/** \file
+ * \ingroup nodes
  */
 
 
@@ -110,6 +102,8 @@ void node_gpu_stack_from_data(struct GPUNodeStack *gs, int type, bNodeStack *ns)
 
 		if (type == SOCK_FLOAT)
 			gs->type = GPU_FLOAT;
+		else if (type == SOCK_INT)
+			gs->type = GPU_FLOAT; /* HACK: Support as float. */
 		else if (type == SOCK_VECTOR)
 			gs->type = GPU_VEC3;
 		else if (type == SOCK_RGBA)

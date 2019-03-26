@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,41 +15,36 @@
  *
  * The Original Code is Copyright (C) 2008, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_GPENCIL_H__
 #define __BKE_GPENCIL_H__
 
- /** \file BKE_gpencil.h
-  *  \ingroup bke
-  *  \author Joshua Leung
-  */
+/** \file
+ * \ingroup bke
+ */
 
+struct ArrayGpencilModifierData;
+struct BoundBox;
+struct Brush;
 struct CurveMapping;
 struct Depsgraph;
 struct GpencilModifierData;
-struct ToolSettings;
+struct LatticeGpencilModifierData;
 struct ListBase;
-struct bGPdata;
-struct bGPDlayer;
-struct bGPDframe;
-struct bGPDspoint;
-struct bGPDstroke;
+struct Main;
 struct Material;
+struct Object;
+struct SimplifyGpencilModifierData;
+struct ToolSettings;
+struct bDeformGroup;
+struct bGPDframe;
+struct bGPDlayer;
 struct bGPDpalette;
 struct bGPDpalettecolor;
-struct Main;
-struct BoundBox;
-struct Brush;
-struct Object;
-struct bDeformGroup;
-struct SimplifyGpencilModifierData;
-struct InstanceGpencilModifierData;
-struct LatticeGpencilModifierData;
+struct bGPDspoint;
+struct bGPDstroke;
+struct bGPdata;
 
 struct MDeformVert;
 struct MDeformWeight;
@@ -65,7 +58,6 @@ bool BKE_gpencil_free_strokes(struct bGPDframe *gpf);
 void BKE_gpencil_free_frames(struct bGPDlayer *gpl);
 void BKE_gpencil_free_layers(struct ListBase *list);
 bool BKE_gpencil_free_frame_runtime_data(struct bGPDframe *derived_gpf);
-void BKE_gpencil_free_derived_frames(struct bGPdata *gpd);
 void BKE_gpencil_free(struct bGPdata *gpd, bool free_all);
 
 void BKE_gpencil_batch_cache_dirty_tag(struct bGPdata *gpd);
@@ -128,7 +120,7 @@ typedef enum eGP_GetFrame_Mode {
 	/* Add a new empty/blank frame */
 	GP_GETFRAME_ADD_NEW   = 1,
 	/* Make a copy of the active frame */
-	GP_GETFRAME_ADD_COPY  = 2
+	GP_GETFRAME_ADD_COPY  = 2,
 } eGP_GetFrame_Mode;
 
 struct bGPDframe *BKE_gpencil_layer_getframe(struct bGPDlayer *gpl, int cframe, eGP_GetFrame_Mode addnew);
@@ -140,18 +132,35 @@ void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
 
 struct Material *BKE_gpencil_get_material_from_brush(struct Brush *brush);
+void BKE_gpencil_brush_set_material(struct Brush *brush, struct Material *material);
+
+struct Material *BKE_gpencil_handle_brush_material(struct Main *bmain, struct Object *ob, struct Brush *brush);
+int BKE_gpencil_handle_material(struct Main *bmain, struct Object *ob, struct Material *material);
+
+struct Material *BKE_gpencil_handle_new_material(struct Main *bmain, struct Object *ob, const char *name, int *r_index);
+
+struct Material *BKE_gpencil_get_material_for_brush(struct Object *ob, struct Brush *brush);
+int BKE_gpencil_get_material_index_for_brush(struct Object *ob, struct Brush *brush);
+
+struct Material *BKE_gpencil_current_input_toolsettings_material(struct Main *bmain, struct Object *ob, struct ToolSettings *ts);
+struct Material *BKE_gpencil_current_input_brush_material(struct Main *bmain, struct Object *ob, struct Brush *brush);
+struct Material *BKE_gpencil_current_input_material(struct Main *bmain, struct Object *ob);
+
+
 struct Material *BKE_gpencil_material_ensure(struct Main *bmain, struct Object *ob);
 
 /* object boundbox */
 bool BKE_gpencil_data_minmax(
-	struct Object *ob, const struct bGPdata *gpd,
-	float r_min[3], float r_max[3]);
+        const struct bGPdata *gpd,
+        float r_min[3], float r_max[3]);
 bool BKE_gpencil_stroke_minmax(
-	const struct bGPDstroke *gps, const bool use_select,
-	float r_min[3], float r_max[3]);
+        const struct bGPDstroke *gps, const bool use_select,
+        float r_min[3], float r_max[3]);
+bool BKE_gpencil_stroke_select_check(
+        const struct bGPDstroke *gps);
 
 struct BoundBox *BKE_gpencil_boundbox_get(struct Object *ob);
-void BKE_gpencil_centroid_3D(struct bGPdata *gpd, float r_centroid[3]);
+void BKE_gpencil_centroid_3d(struct bGPdata *gpd, float r_centroid[3]);
 
 /* vertex groups */
 void BKE_gpencil_dvert_ensure(struct bGPDstroke *gps);
@@ -166,6 +175,14 @@ void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
 void BKE_gpencil_simplify_stroke(struct bGPDstroke *gps, float factor);
 void BKE_gpencil_simplify_fixed(struct bGPDstroke *gps);
 void BKE_gpencil_subdivide(struct bGPDstroke *gps, int level, int flag);
+bool BKE_gpencil_trim_stroke(struct bGPDstroke *gps);
+
+void BKE_gpencil_stroke_2d_flat(
+	const struct bGPDspoint *points, int totpoints, float(*points2d)[2], int *r_direction);
+void BKE_gpencil_stroke_2d_flat_ref(
+	const struct bGPDspoint *ref_points, int ref_totpoints,
+	const struct bGPDspoint *points, int totpoints,
+	float(*points2d)[2], const float scale, int *r_direction);
 
 void BKE_gpencil_transform(struct bGPdata *gpd, float mat[4][4]);
 
@@ -176,5 +193,8 @@ bool BKE_gpencil_smooth_stroke_uv(struct bGPDstroke *gps, int point_index, float
 
 void BKE_gpencil_get_range_selected(struct bGPDlayer *gpl, int *r_initframe, int *r_endframe);
 float BKE_gpencil_multiframe_falloff_calc(struct bGPDframe *gpf, int actnum, int f_init, int f_end, struct CurveMapping *cur_falloff);
+
+extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
+extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);
 
 #endif /*  __BKE_GPENCIL_H__ */

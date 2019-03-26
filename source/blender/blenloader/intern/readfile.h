@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  * blenloader readfile private function prototypes
  */
 
-/** \file blender/blenloader/intern/readfile.h
- *  \ingroup blenloader
+/** \file
+ * \ingroup blenloader
  */
 
 #ifndef __READFILE_H__
@@ -38,52 +30,78 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"  /* for ReportType */
 
-struct OldNewMap;
-struct MemFile;
-struct ReportList;
-struct Object;
-struct PartEff;
-struct View3D;
 struct Key;
+struct MemFile;
+struct Object;
+struct OldNewMap;
+struct PartEff;
+struct ReportList;
+struct View3D;
+
+enum eFileDataFlag {
+	FD_FLAGS_SWITCH_ENDIAN         = 1 << 0,
+	FD_FLAGS_FILE_POINTSIZE_IS_4   = 1 << 1,
+	FD_FLAGS_POINTSIZE_DIFFERS     = 1 << 2,
+	FD_FLAGS_FILE_OK               = 1 << 3,
+	FD_FLAGS_NOT_MY_BUFFER         = 1 << 4,
+	/* XXX Unused in practice (checked once but never set). */
+	FD_FLAGS_NOT_MY_LIBMAP         = 1 << 5,
+};
+
+/* Disallow since it's 32bit on ms-windows. */
+#ifdef __GNUC__
+#  pragma GCC poison off_t
+#endif
+
+#if defined(_MSC_VER) || defined(__APPLE__)
+typedef int64_t off64_t;
+#endif
+
+typedef int (FileDataReadFn)(struct FileData *filedata, void *buffer, unsigned int size);
+typedef off64_t (FileDataSeekFn)(struct FileData *filedata, off64_t offset, int whence);
 
 typedef struct FileData {
-	// linked list of BHeadN's
-	ListBase listbase;
-	int flags;
-	int eof;
+	/** Linked list of BHeadN's. */
+	ListBase bhead_list;
+	enum eFileDataFlag flags;
+	bool is_eof;
 	int buffersize;
-	int seek;
-	int (*read)(struct FileData *filedata, void *buffer, unsigned int size);
+	int64_t file_offset;
 
-	// variables needed for reading from memory / stream
+	FileDataReadFn *read;
+	FileDataSeekFn *seek;
+
+	/** Regular file reading. */
+	int filedes;
+
+	/** Variables needed for reading from memory / stream. */
 	const char *buffer;
-	// variables needed for reading from memfile (undo)
+	/** Variables needed for reading from memfile (undo). */
 	struct MemFile *memfile;
 
-	// variables needed for reading from file
-	int filedes;
+	/** Variables needed for reading from file. */
 	gzFile gzfiledes;
-
-	// now only in use for library appending
-	char relabase[FILE_MAX];
-
-	// variables needed for reading from stream
-	char headerdone;
-	int inbuffer;
-
-	// gzip stream for memory decompression
+	/** Gzip stream for memory decompression. */
 	z_stream strm;
 
-	// general reading variables
+	/** Now only in use for library appending. */
+	char relabase[FILE_MAX];
+
+
+	/** General reading variables. */
 	struct SDNA *filesdna;
 	const struct SDNA *memsdna;
-	const char *compflags;  /* array of eSDNA_StructCompare */
+	/** Array of #eSDNA_StructCompare. */
+	const char *compflags;
 
 	int fileversion;
-	int id_name_offs;       /* used to retrieve ID names from (bhead+1) */
-	int globalf, fileflags; /* for do_versions patching */
+	/** Used to retrieve ID names from (bhead+1). */
+	int id_name_offs;
+	/** For do_versions patching. */
+	int globalf, fileflags;
 
-	eBLOReadSkip skip_flags;  /* skip some data-blocks */
+	/** Optionally skip some data-blocks when they're not needed. */
+	eBLOReadSkip skip_flags;
 
 	struct OldNewMap *datamap;
 	struct OldNewMap *globmap;
@@ -97,33 +115,15 @@ typedef struct FileData {
 	struct BHeadSort *bheadmap;
 	int tot_bheadmap;
 
-	/* see: USE_GHASH_BHEAD */
+	/** See: #USE_GHASH_BHEAD. */
 	struct GHash *bhead_idname_hash;
 
 	ListBase *mainlist;
-	ListBase *old_mainlist;  /* Used for undo. */
+	/** Used for undo. */
+	ListBase *old_mainlist;
 
-	/* ick ick, used to return
-	 * data through streamglue.
-	 */
-	BlendFileData **bfd_r;
 	struct ReportList *reports;
 } FileData;
-
-typedef struct BHeadN {
-	struct BHeadN *next, *prev;
-	struct BHead bhead;
-} BHeadN;
-
-/* FileData->flags */
-enum {
-	FD_FLAGS_SWITCH_ENDIAN         = 1 << 0,
-	FD_FLAGS_FILE_POINTSIZE_IS_4   = 1 << 1,
-	FD_FLAGS_POINTSIZE_DIFFERS     = 1 << 2,
-	FD_FLAGS_FILE_OK               = 1 << 3,
-	FD_FLAGS_NOT_MY_BUFFER         = 1 << 4,
-	FD_FLAGS_NOT_MY_LIBMAP         = 1 << 5,  /* XXX Unused in practice (checked once but never set). */
-};
 
 #define SIZEOFBLENDERHEADER 12
 
@@ -134,34 +134,36 @@ void blo_split_main(ListBase *mainlist, struct Main *main);
 
 BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath);
 
-FileData *blo_openblenderfile(const char *filepath, struct ReportList *reports);
-FileData *blo_openblendermemory(const void *buffer, int buffersize, struct ReportList *reports);
-FileData *blo_openblendermemfile(struct MemFile *memfile, struct ReportList *reports);
+FileData *blo_filedata_from_file(const char *filepath, struct ReportList *reports);
+FileData *blo_filedata_from_memory(const void *buffer, int buffersize, struct ReportList *reports);
+FileData *blo_filedata_from_memfile(struct MemFile *memfile, struct ReportList *reports);
 
-void blo_clear_proxy_pointers_from_lib(Main *oldmain);
-void blo_make_image_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_image_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_scene_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_scene_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_movieclip_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_movieclip_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_sound_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_sound_pointer_map(FileData *fd, Main *oldmain);
-void blo_make_packed_pointer_map(FileData *fd, Main *oldmain);
-void blo_end_packed_pointer_map(FileData *fd, Main *oldmain);
+void blo_clear_proxy_pointers_from_lib(struct Main *oldmain);
+void blo_make_image_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_image_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_scene_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_scene_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_movieclip_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_movieclip_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_sound_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_sound_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_make_packed_pointer_map(FileData *fd, struct Main *oldmain);
+void blo_end_packed_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_add_library_pointer_map(ListBase *old_mainlist, FileData *fd);
 
-void blo_freefiledata(FileData *fd);
+void blo_filedata_free(FileData *fd);
 
-BHead *blo_firstbhead(FileData *fd);
-BHead *blo_nextbhead(FileData *fd, BHead *thisblock);
-BHead *blo_prevbhead(FileData *fd, BHead *thisblock);
+BHead *blo_bhead_first(FileData *fd);
+BHead *blo_bhead_next(FileData *fd, BHead *thisblock);
+BHead *blo_bhead_prev(FileData *fd, BHead *thisblock);
 
-const char *bhead_id_name(const FileData *fd, const BHead *bhead);
+const char *blo_bhead_id_name(const FileData *fd, const BHead *bhead);
 
 /* do versions stuff */
 
 void blo_reportf_wrap(struct ReportList *reports, ReportType type, const char *format, ...) ATTR_PRINTF_FORMAT(3, 4);
+
+void blo_do_versions_dna(struct SDNA *sdna, const int versionfile, const int subversionfile);
 
 void blo_do_versions_oldnewmap_insert(struct OldNewMap *onm, const void *oldaddr, void *newaddr, int nr);
 void *blo_do_versions_newlibadr(struct FileData *fd, const void *lib, const void *adr);

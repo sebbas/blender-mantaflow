@@ -167,8 +167,11 @@ class RandomizeLocRotSize(Operator):
         min=-100.0,
         max=100.0,
         default=(1.0, 1.0, 1.0),
-        subtype='TRANSLATION',
     )
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
 
     def execute(self, context):
         seed = self.random_seed

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_view3d/view3d_gizmo_camera.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 
@@ -47,11 +43,12 @@
 #include "WM_types.h"
 #include "WM_message.h"
 
+#include "DEG_depsgraph.h"
+
 #include "view3d_intern.h"  /* own include */
 
 
 /* -------------------------------------------------------------------- */
-
 /** \name Camera Gizmos
  * \{ */
 
@@ -64,18 +61,22 @@ struct CameraWidgetGroup {
 static bool WIDGETGROUP_camera_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	if ((v3d->flag2 & V3D_RENDER_OVERRIDE) ||
+	if ((v3d->flag2 & V3D_HIDE_OVERLAYS) ||
 	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)))
 	{
 		return false;
 	}
 
-	Object *ob = CTX_data_active_object(C);
-	if (ob && ob->type == OB_CAMERA) {
-		Camera *camera = ob->data;
-		/* TODO: support overrides. */
-		if (camera->id.lib == NULL) {
-			return true;
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Base *base = BASACT(view_layer);
+	if (base && BASE_SELECTABLE(v3d, base)) {
+		Object *ob = base->object;
+		if (ob->type == OB_CAMERA) {
+			Camera *camera = ob->data;
+			/* TODO: support overrides. */
+			if (camera->id.lib == NULL) {
+				return true;
+			}
 		}
 	}
 	return false;
@@ -83,7 +84,8 @@ static bool WIDGETGROUP_camera_poll(const bContext *C, wmGizmoGroupType *UNUSED(
 
 static void WIDGETGROUP_camera_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	float dir[3];
 
 	const wmGizmoType *gzt_arrow = WM_gizmotype_find("GIZMO_GT_arrow_3d", true);
@@ -128,21 +130,16 @@ static void WIDGETGROUP_camera_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
 static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
-	if (!gzgroup->customdata)
+	if (!gzgroup->customdata) {
 		return;
+	}
 
 	struct CameraWidgetGroup *cagzgroup = gzgroup->customdata;
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	Camera *ca = ob->data;
 	PointerRNA camera_ptr;
 	float dir[3];
-
-	const float ob_scale_inv[3] = {
-		1.0f / len_v3(ob->obmat[0]),
-		1.0f / len_v3(ob->obmat[1]),
-		1.0f / len_v3(ob->obmat[2]),
-	};
-	const float ob_scale_uniform_inv = (ob_scale_inv[0] + ob_scale_inv[1] + ob_scale_inv[2]) / 3.0f;
 
 	RNA_pointer_create(&ca->id, &RNA_Camera, ca, &camera_ptr);
 
@@ -167,6 +164,8 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 	const float aspy = (float)scene->r.ysch * scene->r.yasp;
 	const bool is_ortho = (ca->type == CAM_ORTHO);
 	const int sensor_fit = BKE_camera_sensor_fit(ca->sensor_fit, aspx, aspy);
+	/* Important to use camera value, not calculated fit since 'AUTO' uses width always. */
+	const float sensor_size = BKE_camera_sensor_size(ca->sensor_fit, ca->sensor_x, ca->sensor_y);
 	wmGizmo *widget = is_ortho ? cagzgroup->ortho_scale : cagzgroup->focal_len;
 	float scale_matrix;
 	if (true) {
@@ -178,7 +177,7 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
 
 		/* account for lens shifting */
-		offset[0] = ((ob->size[0] > 0.0f) ? -2.0f : 2.0f) * ca->shiftx;
+		offset[0] = ((ob->scale[0] > 0.0f) ? -2.0f : 2.0f) * ca->shiftx;
 		offset[1] = 2.0f * ca->shifty;
 		offset[2] = 0.0f;
 
@@ -194,7 +193,13 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 			scale_matrix = ca->ortho_scale * 0.5f;
 		}
 		else {
-			scale_matrix = ca->drawsize / ob_scale_uniform_inv;
+			const float ob_scale_inv[3] = {
+				1.0f / len_v3(ob->obmat[0]),
+				1.0f / len_v3(ob->obmat[1]),
+				1.0f / len_v3(ob->obmat[2]),
+			};
+			const float ob_scale_uniform_inv = (ob_scale_inv[0] + ob_scale_inv[1] + ob_scale_inv[2]) / 3.0f;
+			scale_matrix = (ca->drawsize * 0.5f) / ob_scale_uniform_inv;
 		}
 		mul_v3_fl(widget->matrix_basis[0], scale_matrix);
 		mul_v3_fl(widget->matrix_basis[1], scale_matrix);
@@ -221,10 +226,10 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
 		ED_gizmo_arrow3d_set_range_fac(
 		        widget, is_ortho ?
-		        (ca->drawsize * range) :
+		        ((range / ca->ortho_scale) * ca->drawsize) :
 		        (scale_matrix * range /
 		         /* Half sensor, intentionally use sensor from camera and not calculated above. */
-		         (0.5f * ((ca->sensor_fit == CAMERA_SENSOR_FIT_HOR) ? ca->sensor_x : ca->sensor_x))));
+		         (0.5f * sensor_size)));
 
 		WM_gizmo_target_property_def_rna_ptr(widget, gz_prop_type, &camera_ptr, prop, -1);
 	}
@@ -235,7 +240,8 @@ static void WIDGETGROUP_camera_message_subscribe(
         const bContext *C, wmGizmoGroup *gzgroup, struct wmMsgBus *mbus)
 {
 	ARegion *ar = CTX_wm_region(C);
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	Camera *ca = ob->data;
 
 	wmMsgSubscribeValue msg_sub_value_gz_tag_refresh = {
@@ -250,6 +256,7 @@ static void WIDGETGROUP_camera_message_subscribe(
 		extern PropertyRNA rna_Camera_ortho_scale;
 		extern PropertyRNA rna_Camera_sensor_fit;
 		extern PropertyRNA rna_Camera_sensor_width;
+		extern PropertyRNA rna_Camera_sensor_height;
 		extern PropertyRNA rna_Camera_shift_x;
 		extern PropertyRNA rna_Camera_shift_y;
 		extern PropertyRNA rna_Camera_type;
@@ -260,6 +267,7 @@ static void WIDGETGROUP_camera_message_subscribe(
 			&rna_Camera_ortho_scale,
 			&rna_Camera_sensor_fit,
 			&rna_Camera_sensor_width,
+			&rna_Camera_sensor_height,
 			&rna_Camera_shift_x,
 			&rna_Camera_shift_y,
 			&rna_Camera_type,
@@ -301,11 +309,13 @@ void VIEW3D_GGT_camera(wmGizmoGroupType *gzgt)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-
 /** \name CameraView Gizmos
  * \{ */
 
 struct CameraViewWidgetGroup {
+	Scene *scene;
+	bool is_camera;
+
 	wmGizmo *border;
 
 	struct {
@@ -342,7 +352,11 @@ static void gizmo_render_border_prop_matrix_set(
 
 	BLI_rctf_resize(border, len_v3(matrix[0]), len_v3(matrix[1]));
 	BLI_rctf_recenter(border, matrix[3][0], matrix[3][1]);
-	BLI_rctf_isect(&(rctf){.xmin = 0, .ymin = 0, .xmax = 1, .ymax = 1}, border, border);
+	BLI_rctf_isect(&(rctf){ .xmin = 0, .ymin = 0, .xmax = 1, .ymax = 1, }, border, border);
+
+	if (viewgroup->is_camera) {
+		DEG_id_tag_update(&viewgroup->scene->id, ID_RECALC_COPY_ON_WRITE);
+	}
 }
 
 static bool WIDGETGROUP_camera_view_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
@@ -360,7 +374,7 @@ static bool WIDGETGROUP_camera_view_poll(const bContext *C, wmGizmoGroupType *UN
 	}
 
 	View3D *v3d = CTX_wm_view3d(C);
-	if ((v3d->flag2 & V3D_RENDER_OVERRIDE) ||
+	if ((v3d->flag2 & V3D_HIDE_OVERLAYS) ||
 	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)))
 	{
 		return false;
@@ -410,7 +424,7 @@ static void WIDGETGROUP_camera_view_draw_prepare(const bContext *C, wmGizmoGroup
 		ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &viewgroup->state.view_border, false);
 	}
 	else {
-		viewgroup->state.view_border = (rctf){.xmin = 0, .ymin = 0, .xmax = ar->winx, .ymax = ar->winy};
+		viewgroup->state.view_border = (rctf){ .xmin = 0, .ymin = 0, .xmax = ar->winx, .ymax = ar->winy, };
 	}
 
 	wmGizmo *gz = viewgroup->border;
@@ -430,6 +444,8 @@ static void WIDGETGROUP_camera_view_refresh(const bContext *C, wmGizmoGroup *gzg
 	RegionView3D *rv3d = ar->regiondata;
 	Scene *scene = CTX_data_scene(C);
 
+	viewgroup->scene = scene;
+
 	{
 		wmGizmo *gz = viewgroup->border;
 		WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
@@ -439,9 +455,11 @@ static void WIDGETGROUP_camera_view_refresh(const bContext *C, wmGizmoGroup *gzg
 
 		if (rv3d->persp == RV3D_CAMOB) {
 			viewgroup->state.edit_border = &scene->r.border;
+			viewgroup->is_camera = true;
 		}
 		else {
 			viewgroup->state.edit_border = &v3d->render_border;
+			viewgroup->is_camera = false;
 		}
 
 		WM_gizmo_target_property_def_func(

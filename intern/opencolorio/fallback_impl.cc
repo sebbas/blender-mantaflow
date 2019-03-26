@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,10 +15,6 @@
  *
  * The Original Code is Copyright (C) 2012 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Brecht van Lommel
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include <algorithm>
@@ -331,6 +325,13 @@ void FallbackImpl::configGetDefaultLumaCoefs(OCIO_ConstConfigRcPtr * /*config*/,
 	rgb[0] = 0.2126f;
 	rgb[1] = 0.7152f;
 	rgb[2] = 0.0722f;
+}
+
+void FallbackImpl::configGetXYZtoRGB(OCIO_ConstConfigRcPtr * /*config*/,
+                                     float xyz_to_rgb[3][3])
+{
+	/* Default to ITU-BT.709. */
+	memcpy(xyz_to_rgb, OCIO_XYZ_TO_LINEAR_SRGB, sizeof(OCIO_XYZ_TO_LINEAR_SRGB));
 }
 
 int FallbackImpl::configGetNumLooks(OCIO_ConstConfigRcPtr * /*config*/)

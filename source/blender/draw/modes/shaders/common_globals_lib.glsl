@@ -5,10 +5,12 @@ layout(std140) uniform globalsBlock {
 	vec4 colorWireEdit;
 	vec4 colorActive;
 	vec4 colorSelect;
-	vec4 colorTransform;
+	vec4 colorDupliSelect;
+	vec4 colorDupli;
 	vec4 colorLibrarySelect;
 	vec4 colorLibrary;
-	vec4 colorLamp;
+	vec4 colorTransform;
+	vec4 colorLight;
 	vec4 colorSpeaker;
 	vec4 colorCamera;
 	vec4 colorEmpty;
@@ -33,9 +35,10 @@ layout(std140) uniform globalsBlock {
 	vec4 colorFaceDot;
 	vec4 colorDeselect;
 	vec4 colorOutline;
-	vec4 colorLampNoAlpha;
+	vec4 colorLightNoAlpha;
 
 	vec4 colorBackground;
+	vec4 colorEditMeshMiddle;
 
 	vec4 colorHandleFree;
 	vec4 colorHandleAuto;
@@ -63,9 +66,9 @@ layout(std140) uniform globalsBlock {
 	vec4 colorGridAxisY;
 	vec4 colorGridAxisZ;
 
-	float sizeLampCenter;
-	float sizeLampCircle;
-	float sizeLampCircleShadow;
+	float sizeLightCenter;
+	float sizeLightCircle;
+	float sizeLightCircleShadow;
 	float sizeVertex;
 	float sizeEdge;
 	float sizeEdgeFix;
@@ -78,3 +81,21 @@ layout(std140) uniform globalsBlock {
 
 	float pad_globalsBlock;
 };
+
+/* data[0] (1nd byte flags) */
+#define FACE_ACTIVE     (1 << 0)
+#define FACE_SELECTED   (1 << 1)
+#define FACE_FREESTYLE  (1 << 2)
+#define VERT_UV_SELECT  (1 << 3)
+#define VERT_UV_PINNED  (1 << 4)
+#define EDGE_UV_SELECT  (1 << 5)
+#define FACE_UV_ACTIVE  (1 << 6)
+#define FACE_UV_SELECT  (1 << 7)
+/* data[1] (2st byte flags) */
+#define VERT_ACTIVE     (1 << 0)
+#define VERT_SELECTED   (1 << 1)
+#define EDGE_ACTIVE     (1 << 2)
+#define EDGE_SELECTED   (1 << 3)
+#define EDGE_SEAM       (1 << 4)
+#define EDGE_SHARP      (1 << 5)
+#define EDGE_FREESTYLE  (1 << 6)

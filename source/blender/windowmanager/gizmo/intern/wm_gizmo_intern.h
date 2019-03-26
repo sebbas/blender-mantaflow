@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,24 +12,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/windowmanager/gizmo/intern/wm_gizmo_intern.h
- *  \ingroup wm
+/** \file
+ * \ingroup wm
  */
 
 
 #ifndef __WM_GIZMO_INTERN_H__
 #define __WM_GIZMO_INTERN_H__
 
-struct wmKeyConfig;
-struct wmGizmoMap;
-struct GizmoGeomInfo;
 struct GHashIterator;
+struct GizmoGeomInfo;
+struct wmGizmoMap;
+struct wmKeyConfig;
 
 #include "wm_gizmo_fn.h"
 
@@ -74,7 +68,6 @@ struct wmGizmo *wm_gizmogroup_find_intersected_gizmo(
         int *r_part);
 void wm_gizmogroup_intersectable_gizmos_to_list(
         const struct wmGizmoGroup *gzgroup, struct ListBase *listbase);
-void wm_gizmogroup_ensure_initialized(struct wmGizmoGroup *gzgroup, const struct bContext *C);
 bool wm_gizmogroup_is_visible_in_drawstep(
         const struct wmGizmoGroup *gzgroup, const eWM_GizmoFlagMapDrawStep drawstep);
 
@@ -97,6 +90,9 @@ struct wmGizmoMap {
 
 	/* private, update tagging (enum defined in C source). */
 	char update_flag[WM_GIZMOMAP_DRAWSTEP_MAX];
+
+	/** Private, true when not yet used. */
+	bool is_init;
 
 	/**
 	 * \brief Gizmo map runtime context

@@ -1,7 +1,4 @@
-/*
- * Copyright 2014, Blender Foundation.
- *
- * This program is free software; you can redistribute it and/or
+/* This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
@@ -15,8 +12,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor:
- *		Lukas Toenne
+ * Copyright 2014, Blender Foundation.
  */
 
 #include "MEM_guardedalloc.h"
@@ -105,9 +101,9 @@ struct BufferLineAccumulator {
 	 * at dist_min from the target pt. This way the loop can be canceled as soon as it runs
 	 * out of the buffer rect, because no pixels further along the line can contribute.
 	 *
-	 * \param x, y  Start location in the buffer
-	 * \param num  Total steps in the loop
-	 * \param v, dv  Vertical offset in sector space, for line offset perpendicular to the loop axis
+	 * \param x, y: Start location in the buffer
+	 * \param num: Total steps in the loop
+	 * \param v, dv: Vertical offset in sector space, for line offset perpendicular to the loop axis
 	 */
 	static float *init_buffer_iterator(MemoryBuffer *input, const float source[2], const float co[2],
 	                                   float dist_min, float dist_max,

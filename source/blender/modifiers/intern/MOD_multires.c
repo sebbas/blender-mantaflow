@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,35 +15,26 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_multires.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
 #include <stddef.h>
 
+#include "BLI_utildefines.h"
+
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_utildefines.h"
-
 #include "BKE_cdderivedmesh.h"
-#include "BKE_global.h"
 #include "BKE_mesh.h"
 #include "BKE_multires.h"
 #include "BKE_modifier.h"
+#include "BKE_paint.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subdiv_mesh.h"
@@ -67,90 +56,34 @@ static void initData(ModifierData *md)
 	mmd->quality = 3;
 }
 
-#ifndef WITH_OPENSUBDIV_MODIFIER
-
-static DerivedMesh *applyModifier_DM(
-        ModifierData *md, const ModifierEvalContext *ctx,
-        DerivedMesh *dm)
+static void copyData(const ModifierData *md_src, ModifierData *md_dst, const int flag)
 {
-	MultiresModifierData *mmd = (MultiresModifierData *)md;
-	struct Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-	DerivedMesh *result;
-	Mesh *me = (Mesh *)ctx->object->data;
-	const bool useRenderParams = (ctx->flag & MOD_APPLY_RENDER) != 0;
-	const bool ignore_simplify = (ctx->flag & MOD_APPLY_IGNORE_SIMPLIFY) != 0;
-	MultiresFlags flags = 0;
-	const bool has_mask = CustomData_has_layer(&me->ldata, CD_GRID_PAINT_MASK);
+	MultiresModifierData *mmd_dst = (MultiresModifierData *)md_dst;
 
-	if (mmd->totlvl) {
-		if (!CustomData_get_layer(&me->ldata, CD_MDISPS)) {
-			/* multires always needs a displacement layer */
-			CustomData_add_layer(&me->ldata, CD_MDISPS, CD_CALLOC, NULL, me->totloop);
-		}
-	}
+	modifier_copyData_generic(md_src, md_dst, flag);
 
-	if (has_mask)
-		flags |= MULTIRES_ALLOC_PAINT_MASK;
-
-	if (useRenderParams)
-		flags |= MULTIRES_USE_RENDER_PARAMS;
-
-	if (ignore_simplify)
-		flags |= MULTIRES_IGNORE_SIMPLIFY;
-
-	result = multires_make_derived_from_derived(dm, mmd, scene, ctx->object, flags);
-
-	if (result == dm)
-		return dm;
-
-	if (useRenderParams || !(ctx->flag & MOD_APPLY_USECACHE)) {
-		DerivedMesh *cddm;
-
-		cddm = CDDM_copy(result);
-
-		/* copy hidden/masks to vertices */
-		if (!useRenderParams) {
-			struct MDisps *mdisps;
-			struct GridPaintMask *grid_paint_mask;
-
-			mdisps = CustomData_get_layer(&me->ldata, CD_MDISPS);
-			grid_paint_mask = CustomData_get_layer(&me->ldata, CD_GRID_PAINT_MASK);
-
-			if (mdisps) {
-				subsurf_copy_grid_hidden(result, me->mpoly,
-				                         cddm->getVertArray(cddm),
-				                         mdisps);
-
-				BKE_mesh_flush_hidden_from_verts_ex(cddm->getVertArray(cddm),
-				                                    cddm->getLoopArray(cddm),
-				                                    cddm->getEdgeArray(cddm),
-				                                    cddm->getNumEdges(cddm),
-				                                    cddm->getPolyArray(cddm),
-				                                    cddm->getNumPolys(cddm));
-			}
-			if (grid_paint_mask) {
-				float *paint_mask = CustomData_add_layer(&cddm->vertData,
-				                                         CD_PAINT_MASK,
-				                                         CD_CALLOC, NULL,
-				                                         cddm->getNumVerts(cddm));
-
-				subsurf_copy_grid_paint_mask(result, me->mpoly,
-				                             paint_mask, grid_paint_mask);
-			}
-		}
-
-		result->release(result);
-		result = cddm;
-	}
-
-	return result;
+	mmd_dst->subdiv = NULL;
 }
 
-applyModifier_DM_wrapper(applyModifier, applyModifier_DM)
+static void freeData(ModifierData *md)
+{
+	MultiresModifierData *mmd = (MultiresModifierData *) md;
+	if (mmd->subdiv != NULL) {
+		BKE_subdiv_free(mmd->subdiv);
+	}
+}
 
-#endif
-
-#ifdef WITH_OPENSUBDIV_MODIFIER
+/* Main goal of this function is to give usable subdivision surface descriptor
+ * which matches settings and topology. */
+static Subdiv *subdiv_descriptor_ensure(MultiresModifierData *mmd,
+                                        const SubdivSettings *subdiv_settings,
+                                        const Mesh *mesh)
+{
+	Subdiv *subdiv = BKE_subdiv_update_from_mesh(
+	        mmd->subdiv, subdiv_settings, mesh);
+	mmd->subdiv = subdiv;
+	return subdiv;
+}
 
 /* Subdivide into fully qualified mesh. */
 
@@ -166,7 +99,7 @@ static Mesh *multires_as_mesh(MultiresModifierData *mmd,
 	Object *object = ctx->object;
 	SubdivToMeshSettings mesh_settings;
 	BKE_multires_subdiv_mesh_settings_init(
-        &mesh_settings, scene, object, mmd, use_render_params, ignore_simplify);
+	        &mesh_settings, scene, object, mmd, use_render_params, ignore_simplify);
 	if (mesh_settings.resolution < 3) {
 		return result;
 	}
@@ -211,9 +144,9 @@ static Mesh *multires_as_ccg(MultiresModifierData *mmd,
 	return result;
 }
 
-static Mesh *applyModifier_subdiv(ModifierData *md,
-                                  const ModifierEvalContext *ctx,
-                                  Mesh *mesh)
+static Mesh *applyModifier(ModifierData *md,
+                           const ModifierEvalContext *ctx,
+                           Mesh *mesh)
 {
 	Mesh *result = mesh;
 	MultiresModifierData *mmd = (MultiresModifierData *)md;
@@ -222,32 +155,43 @@ static Mesh *applyModifier_subdiv(ModifierData *md,
 	if (subdiv_settings.level == 0) {
 		return result;
 	}
-	/* TODO(sergey): Try to re-use subdiv when possible. */
-	Subdiv *subdiv = BKE_subdiv_new_from_mesh(&subdiv_settings, mesh);
+	BKE_subdiv_settings_validate_for_mesh(&subdiv_settings, mesh);
+	Subdiv *subdiv = subdiv_descriptor_ensure(mmd, &subdiv_settings, mesh);
 	if (subdiv == NULL) {
 		/* Happens on bad topology, ut also on empty input mesh. */
 		return result;
 	}
 	/* NOTE: Orco needs final coordinates on CPU side, which are expected to be
 	 * accessible via MVert. For this reason we do not evaluate multires to
-	 * grids when orco is requested.
-	 */
+	 * grids when orco is requested. */
 	const bool for_orco = (ctx->flag & MOD_APPLY_ORCO) != 0;
 	if ((ctx->object->mode & OB_MODE_SCULPT) && !for_orco) {
 		/* NOTE: CCG takes ownership over Subdiv. */
 		result = multires_as_ccg(mmd, ctx, mesh, subdiv);
 		result->runtime.subdiv_ccg_tot_level = mmd->totlvl;
+		/* TODO(sergey): Usually it is sculpt stroke's update variants which
+		 * takes care of this, but is possible that we need this before the
+		 * stroke: i.e. when exiting blender right after stroke is done.
+		 * Annoying and not so much black-boxed as far as sculpting goes, and
+		 * surely there is a better way of solving this. */
+		if (ctx->object->sculpt != NULL) {
+			ctx->object->sculpt->subdiv_ccg = result->runtime.subdiv_ccg;
+		}
+		/* NOTE: CCG becomes an owner of Subdiv descriptor, so can not share
+		 * this pointer. Not sure if it's needed, but might have a second look
+		 * on the ownership model here. */
+		mmd->subdiv = NULL;
 		// BKE_subdiv_stats_print(&subdiv->stats);
 	}
 	else {
 		result = multires_as_mesh(mmd, ctx, mesh, subdiv);
-		/* TODO(sergey): Cache subdiv somehow. */
 		// BKE_subdiv_stats_print(&subdiv->stats);
-		BKE_subdiv_free(subdiv);
+		if (subdiv != mmd->subdiv) {
+			BKE_subdiv_free(subdiv);
+		}
 	}
 	return result;
 }
-#endif
 
 ModifierTypeInfo modifierType_Multires = {
 	/* name */              "Multires",
@@ -258,7 +202,7 @@ ModifierTypeInfo modifierType_Multires = {
 	                        eModifierTypeFlag_SupportsMapping |
 	                        eModifierTypeFlag_RequiresOriginalData,
 
-	/* copyData */          modifier_copyData_generic,
+	/* copyData */          copyData,
 
 	/* deformVerts_DM */    NULL,
 	/* deformMatrices_DM */ NULL,
@@ -270,15 +214,11 @@ ModifierTypeInfo modifierType_Multires = {
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
 	/* deformMatricesEM */  NULL,
-#ifdef WITH_OPENSUBDIV_MODIFIER
-	/* applyModifier */     applyModifier_subdiv,
-#else
 	/* applyModifier */     applyModifier,
-#endif
 
 	/* initData */          initData,
 	/* requiredDataMask */  NULL,
-	/* freeData */          NULL,
+	/* freeData */          freeData,
 	/* isDisabled */        NULL,
 	/* updateDepsgraph */   NULL,
 	/* dependsOnTime */     NULL,
@@ -286,4 +226,5 @@ ModifierTypeInfo modifierType_Multires = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

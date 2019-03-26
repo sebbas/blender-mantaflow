@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,17 +13,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2017, Blender Foundation, Joshua Leung
+ * The Original Code is Copyright (C) 2017, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Antonio Vazquez, Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
- /** \file blender/editors/gpencil/gpencil_fill.c
-  *  \ingroup edgpencil
-  */
+/** \file
+ * \ingroup edgpencil
+ */
 
 #include <stdio.h>
 
@@ -70,6 +64,7 @@
 #include "GPU_draw.h"
 #include "GPU_matrix.h"
 #include "GPU_framebuffer.h"
+#include "GPU_state.h"
 
 #include "UI_interface.h"
 
@@ -87,41 +82,79 @@
 
   /* Temporary fill operation data (op->customdata) */
 typedef struct tGPDfill {
+	bContext *C;
 	struct Main *bmain;
 	struct Depsgraph *depsgraph;
-	struct wmWindow *win;               /* window where painting originated */
-	struct Scene *scene;                /* current scene from context */
-	struct Object *ob;                  /* current active gp object */
-	struct ScrArea *sa;                 /* area where painting originated */
-	struct RegionView3D *rv3d;          /* region where painting originated */
-	struct View3D *v3d;                 /* view3 where painting originated */
-	struct ARegion *ar;                 /* region where painting originated */
-	struct bGPdata *gpd;                /* current GP datablock */
-	struct Material *mat;               /* current material */
-	struct bGPDlayer *gpl;              /* layer */
-	struct bGPDframe *gpf;              /* frame */
+	/** window where painting originated */
+	struct wmWindow *win;
+	/** current scene from context */
+	struct Scene *scene;
+	/** current active gp object */
+	struct Object *ob;
+	/** area where painting originated */
+	struct ScrArea *sa;
+	/** region where painting originated */
+	struct RegionView3D *rv3d;
+	/** view3 where painting originated */
+	struct View3D *v3d;
+	/** region where painting originated */
+	struct ARegion *ar;
+	/** current GP datablock */
+	struct bGPdata *gpd;
+	/** current material */
+	struct Material *mat;
+	/** layer */
+	struct bGPDlayer *gpl;
+	/** frame */
+	struct bGPDframe *gpf;
 
-	short flag;                         /* flags */
-	short oldkey;                       /* avoid too fast events */
-	bool on_back;                       /* send to back stroke */
+	/** flags */
+	short flag;
+	/** avoid too fast events */
+	short oldkey;
+	/** send to back stroke */
+	bool on_back;
 
-	int center[2];                      /* mouse fill center position */
-	int sizex;                          /* windows width */
-	int sizey;                          /* window height */
-	int lock_axis;                      /* lock to viewport axis */
+	/** mouse fill center position */
+	int center[2];
+	/** windows width */
+	int sizex;
+	/** window height */
+	int sizey;
+	/** lock to viewport axis */
+	int lock_axis;
 
-	short fill_leak;                    /* number of pixel to consider the leak is too small (x 2) */
-	float fill_threshold;               /* factor for transparency */
-	int fill_simplylvl;                 /* number of simplify steps */
-	int fill_draw_mode;                 /* boundary limits drawing mode */
+	/** number of pixel to consider the leak is too small (x 2) */
+	short fill_leak;
+	/** factor for transparency */
+	float fill_threshold;
+	/** number of simplify steps */
+	int fill_simplylvl;
+	/** boundary limits drawing mode */
+	int fill_draw_mode;
+	/* scaling factor */
+	short fill_factor;
 
-	short sbuffer_size;                 /* number of elements currently in cache */
-	void *sbuffer;                      /* temporary points */
-	float *depth_arr;                   /* depth array for reproject */
+	/** number of elements currently in cache */
+	short sbuffer_size;
+	/** temporary points */
+	void *sbuffer;
+	/** depth array for reproject */
+	float *depth_arr;
 
-	Image *ima;                         /* temp image */
-	BLI_Stack *stack;                   /* temp points data */
-	void *draw_handle_3d;               /* handle for drawing strokes while operator is running 3d stuff */
+	/** temp image */
+	Image *ima;
+	/** temp points data */
+	BLI_Stack *stack;
+	/** handle for drawing strokes while operator is running 3d stuff */
+	void *draw_handle_3d;
+
+	/* tmp size x */
+	int bwinx;
+	/* tmp size y */
+	int bwiny;
+	rcti brect;
+
 } tGPDfill;
 
 
@@ -151,7 +184,7 @@ static void gp_draw_basic_stroke(
 	immBindBuiltinProgram(GPU_SHADER_3D_FLAT_COLOR);
 
 	/* draw stroke curve */
-	glLineWidth(1.0f);
+	GPU_line_width(1.0f);
 	immBeginAtMost(GPU_PRIM_LINE_STRIP, totpoints + cyclic_add);
 	const bGPDspoint *pt = points;
 
@@ -208,7 +241,7 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 	tgpw.disable_fill = 1;
 	tgpw.dflag |= (GP_DRAWFILLS_ONLY3D | GP_DRAWFILLS_NOSTATUS);
 
-	glEnable(GL_BLEND);
+	GPU_blend(true);
 
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 		/* calculate parent position */
@@ -217,6 +250,13 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 		/* do not draw layer if hidden */
 		if (gpl->flag & GP_LAYER_HIDE)
 			continue;
+
+		/* if active layer and no keyframe, create a new one */
+		if (gpl == tgpf->gpl) {
+			if ((gpl->actframe == NULL) || (gpl->actframe->framenum != cfra_eval)) {
+				BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_ADD_NEW);
+			}
+		}
 
 		/* get frame to draw */
 		bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
@@ -240,23 +280,27 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 			tgpw.t_gpf = gpf;
 
 			/* reduce thickness to avoid gaps */
-			tgpw.lthick = gpl->line_change - 4;
+			tgpw.is_fill_stroke = (tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ? false : true ;
+			tgpw.lthick = gpl->line_change;
 			tgpw.opacity = 1.0;
 			copy_v4_v4(tgpw.tintcolor, ink);
 			tgpw.onion = true;
 			tgpw.custonion = true;
 
+			bool textured_stroke = (gp_style->stroke_style == GP_STYLE_STROKE_STYLE_TEXTURE);
+
 			/* normal strokes */
-			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
-			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH))
+			if (((tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE) ||
+			     (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH)) &&
+			    !textured_stroke)
 			{
 				ED_gp_draw_fill(&tgpw);
-
 			}
 
 			/* 3D Lines with basic shapes and invisible lines */
 			if ((tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ||
-			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH))
+			    (tgpf->fill_draw_mode == GP_FILL_DMODE_BOTH) ||
+			    textured_stroke)
 			{
 				gp_draw_basic_stroke(
 				        tgpf, gps, tgpw.diff_mat, gps->flag & GP_STROKE_CYCLIC, ink,
@@ -265,47 +309,65 @@ static void gp_draw_datablock(tGPDfill *tgpf, const float ink[4])
 		}
 	}
 
-	glDisable(GL_BLEND);
+	GPU_blend(false);
 }
 
 /* draw strokes in offscreen buffer */
-static void gp_render_offscreen(tGPDfill *tgpf)
+static bool gp_render_offscreen(tGPDfill *tgpf)
 {
 	bool is_ortho = false;
 	float winmat[4][4];
 
 	if (!tgpf->gpd) {
-		return;
+		return false;
 	}
+
+	/* set temporary new size */
+	tgpf->bwinx = tgpf->ar->winx;
+	tgpf->bwiny = tgpf->ar->winy;
+	tgpf->brect = tgpf->ar->winrct;
+
+	/* resize ar */
+	tgpf->ar->winrct.xmin = 0;
+	tgpf->ar->winrct.ymin = 0;
+	tgpf->ar->winrct.xmax = (int)tgpf->ar->winx * tgpf->fill_factor;
+	tgpf->ar->winrct.ymax = (int)tgpf->ar->winy * tgpf->fill_factor;
+	tgpf->ar->winx = (short)abs(tgpf->ar->winrct.xmax - tgpf->ar->winrct.xmin);
+	tgpf->ar->winy = (short)abs(tgpf->ar->winrct.ymax - tgpf->ar->winrct.ymin);
+
+	/* save new size */
+	tgpf->sizex = (int)tgpf->ar->winx;
+	tgpf->sizey = (int)tgpf->ar->winy;
+
+	/* adjust center */
+	float center[2];
+	center[0] = (float)tgpf->center[0] * ((float)tgpf->ar->winx / (float)tgpf->bwinx);
+	center[1] = (float)tgpf->center[1] * ((float)tgpf->ar->winy / (float)tgpf->bwiny);
+	round_v2i_v2fl(tgpf->center, center);
 
 	char err_out[256] = "unknown";
 	GPUOffScreen *offscreen = GPU_offscreen_create(tgpf->sizex, tgpf->sizey, 0, true, false, err_out);
+	if (offscreen == NULL) {
+		printf("GPencil - Fill - Unable to create fill buffer\n");
+		return false;
+	}
+
 	GPU_offscreen_bind(offscreen, true);
 	uint flag = IB_rect | IB_rectfloat;
 	ImBuf *ibuf = IMB_allocImBuf(tgpf->sizex, tgpf->sizey, 32, flag);
 
 	rctf viewplane;
-	float clipsta, clipend;
+	float clip_start, clip_end;
 
-	is_ortho = ED_view3d_viewplane_get(tgpf->depsgraph, tgpf->v3d, tgpf->rv3d, tgpf->sizex, tgpf->sizey, &viewplane, &clipsta, &clipend, NULL);
+	is_ortho = ED_view3d_viewplane_get(
+	        tgpf->depsgraph, tgpf->v3d, tgpf->rv3d, tgpf->sizex, tgpf->sizey,
+	        &viewplane, &clip_start, &clip_end, NULL);
 	if (is_ortho) {
-		orthographic_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, -clipend, clipend);
+		orthographic_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, -clip_end, clip_end);
 	}
 	else {
-		perspective_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, clipsta, clipend);
+		perspective_m4(winmat, viewplane.xmin, viewplane.xmax, viewplane.ymin, viewplane.ymax, clip_start, clip_end);
 	}
-
-	/* set temporary new size */
-	int bwinx = tgpf->ar->winx;
-	int bwiny = tgpf->ar->winy;
-	rcti brect = tgpf->ar->winrct;
-
-	tgpf->ar->winx = (short)tgpf->sizex;
-	tgpf->ar->winy = (short)tgpf->sizey;
-	tgpf->ar->winrct.xmin = 0;
-	tgpf->ar->winrct.ymin = 0;
-	tgpf->ar->winrct.xmax = tgpf->sizex;
-	tgpf->ar->winrct.ymax = tgpf->sizey;
 
 	GPU_matrix_push_projection();
 	GPU_matrix_identity_set();
@@ -316,8 +378,8 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	ED_view3d_update_viewmat(
-		tgpf->depsgraph, tgpf->scene, tgpf->v3d, tgpf->ar,
-		NULL, winmat, NULL);
+	        tgpf->depsgraph, tgpf->scene, tgpf->v3d, tgpf->ar,
+	        NULL, winmat, NULL);
 	/* set for opengl */
 	GPU_matrix_projection_set(tgpf->rv3d->winmat);
 	GPU_matrix_set(tgpf->rv3d->viewmat);
@@ -325,11 +387,6 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	/* draw strokes */
 	float ink[4] = {1.0f, 0.0f, 0.0f, 1.0f};
 	gp_draw_datablock(tgpf, ink);
-
-	/* restore size */
-	tgpf->ar->winx = (short)bwinx;
-	tgpf->ar->winy = (short)bwiny;
-	tgpf->ar->winrct = brect;
 
 	GPU_matrix_pop_projection();
 	GPU_matrix_pop();
@@ -353,6 +410,8 @@ static void gp_render_offscreen(tGPDfill *tgpf)
 	/* switch back to window-system-provided framebuffer */
 	GPU_offscreen_unbind(offscreen, true);
 	GPU_offscreen_free(offscreen);
+
+	return true;
 }
 
 /* return pixel data (rgba) at index */
@@ -393,11 +452,11 @@ static void set_pixel(ImBuf *ibuf, int idx, const float col[4])
  * this is used for strokes with small gaps between them to get a full fill
  * and do not get a full screen fill.
  *
- * \param ibuf      Image pixel data
- * \param maxpixel  Maximum index
- * \param limit     Limit of pixels to analyze
- * \param index     Index of current pixel
- * \param type      0-Horizontal 1-Vertical
+ * \param ibuf: Image pixel data
+ * \param maxpixel: Maximum index
+ * \param limit: Limit of pixels to analyze
+ * \param index: Index of current pixel
+ * \param type: 0-Horizontal 1-Vertical
  */
 static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index, int type)
 {
@@ -408,11 +467,11 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
 	bool t_b = false;
 
 	/* Horizontal leak (check vertical pixels)
-	 *     X
-	 *	   X
-	 *	   xB7
-	 *	   X
-	 *	   X
+	 * X
+	 * X
+	 * xB7
+	 * X
+	 * X
 	 */
 	if (type == LEAK_HORZ) {
 		/* pixels on top */
@@ -426,7 +485,8 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
 				}
 			}
 			else {
-				t_a = true; /* edge of image*/
+				/* edge of image*/
+				t_a = true;
 				break;
 			}
 		}
@@ -441,7 +501,8 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
 				}
 			}
 			else {
-				t_b = true; /* edge of image*/
+				/* edge of image*/
+				t_b = true;
 				break;
 			}
 		}
@@ -495,7 +556,7 @@ static bool is_leak_narrow(ImBuf *ibuf, const int maxpixel, int limit, int index
  * Fills the space created by a set of strokes using the stroke color as the boundary
  * of the shape to fill.
  *
- * \param tgpf       Temporary fill data
+ * \param tgpf: Temporary fill data
  */
 static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 {
@@ -510,7 +571,7 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 
 	/* calculate index of the seed point using the position of the mouse */
 	int index = (tgpf->sizex * tgpf->center[1]) + tgpf->center[0];
-	if ((index >= 0) && (index < maxpixel)) {
+	if ((index >= 0) && (index <= maxpixel)) {
 		BLI_stack_push(stack, &index);
 	}
 
@@ -528,6 +589,7 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 	 */
 	while (!BLI_stack_is_empty(stack)) {
 		int v;
+
 		BLI_stack_pop(stack, &v);
 
 		get_pixel(ibuf, v, rgba);
@@ -535,7 +597,7 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 		if (true) { /* Was: 'rgba' */
 			/* check if no border(red) or already filled color(green) */
 			if ((rgba[0] != 1.0f) && (rgba[1] != 1.0f)) {
-				/* fill current pixel */
+				/* fill current pixel with green */
 				set_pixel(ibuf, v, fill_col);
 
 				/* add contact pixels */
@@ -547,22 +609,22 @@ static void gpencil_boundaryfill_area(tGPDfill *tgpf)
 					}
 				}
 				/* pixel right */
-				if (v + 1 < maxpixel) {
+				if (v + 1 <= maxpixel) {
 					index = v + 1;
 					if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_HORZ)) {
 						BLI_stack_push(stack, &index);
 					}
 				}
 				/* pixel top */
-				if (v + tgpf->sizex < maxpixel) {
-					index = v + tgpf->sizex;
+				if (v + ibuf->x <= maxpixel) {
+					index = v + ibuf->x;
 					if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
 						BLI_stack_push(stack, &index);
 					}
 				}
 				/* pixel bottom */
-				if (v - tgpf->sizex >= 0) {
-					index = v - tgpf->sizex;
+				if (v - ibuf->x >= 0) {
+					index = v - ibuf->x;
 					if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
 						BLI_stack_push(stack, &index);
 					}
@@ -592,7 +654,7 @@ static void gpencil_clean_borders(tGPDfill *tgpf)
 	int pixel = 0;
 
 	/* horizontal lines */
-	for (idx = 0; idx < ibuf->x - 1; idx++) {
+	for (idx = 0; idx < ibuf->x; idx++) {
 		/* bottom line */
 		set_pixel(ibuf, idx, fill_col);
 		/* top line */
@@ -616,12 +678,117 @@ static void gpencil_clean_borders(tGPDfill *tgpf)
 	tgpf->ima->id.tag |= LIB_TAG_DOIT;
 }
 
+/* Naive dilate
+ *
+ * Expand green areas into enclosing red areas.
+ * Using stack prevents creep when replacing colors directly.
+ * -----------
+ *  XXXXXXX
+ *  XoooooX
+ *  XXooXXX
+ *   XXXX
+ * -----------
+ */
+static void dilate(ImBuf *ibuf)
+{
+	BLI_Stack *stack = BLI_stack_new(sizeof(int), __func__);
+	const float green[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+	const int maxpixel = (ibuf->x * ibuf->y) - 1;
+	/* detect pixels and expand into red areas */
+	for (int v = maxpixel; v != 0; v--) {
+		float color[4];
+		int index;
+		int tp = 0;
+		int bm = 0;
+		int lt = 0;
+		int rt = 0;
+		get_pixel(ibuf, v, color);
+		if (color[1] == 1.0f) {
+			/* pixel left */
+			if (v - 1 >= 0) {
+				index = v - 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+					lt = index;
+				}
+			}
+			/* pixel right */
+			if (v + 1 <= maxpixel) {
+				index = v + 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+					rt = index;
+				}
+			}
+			/* pixel top */
+			if (v + ibuf->x <= maxpixel) {
+				index = v + ibuf->x;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+					tp = index;
+				}
+			}
+			/* pixel bottom */
+			if (v - ibuf->x >= 0) {
+				index = v - ibuf->x;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+					bm = index;
+				}
+			}
+			/* pixel top-left */
+			if (tp && lt) {
+				index = tp - 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel top-right */
+			if (tp && rt) {
+				index = tp + 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel bottom-left */
+			if (bm && lt) {
+				index = bm - 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+			/* pixel bottom-right */
+			if (bm && rt) {
+				index = bm + 1;
+				get_pixel(ibuf, index, color);
+				if (color[0] == 1.0f) {
+					BLI_stack_push(stack, &index);
+				}
+			}
+		}
+	}
+	/* set dilated pixels */
+	while (!BLI_stack_is_empty(stack)) {
+		int v;
+		BLI_stack_pop(stack, &v);
+		set_pixel(ibuf, v, green);
+	}
+	BLI_stack_free(stack);
+}
+
 /* Get the outline points of a shape using Moore Neighborhood algorithm
  *
  * This is a Blender customized version of the general algorithm described
  * in https://en.wikipedia.org/wiki/Moore_neighborhood
  */
-static  void gpencil_get_outline_points(tGPDfill *tgpf)
+static void gpencil_get_outline_points(tGPDfill *tgpf)
 {
 	ImBuf *ibuf;
 	float rgba[4];
@@ -645,13 +812,16 @@ static  void gpencil_get_outline_points(tGPDfill *tgpf)
 		{1, 1},
 		{0, 1},
 		{-1, 1},
-		{-1, 0}
+		{-1, 0},
 	};
 
 	tgpf->stack = BLI_stack_new(sizeof(int[2]), __func__);
 
 	ibuf = BKE_image_acquire_ibuf(tgpf->ima, NULL, &lock);
 	int imagesize = ibuf->x * ibuf->y;
+
+	/* dilate */
+	dilate(ibuf);
 
 	/* find the initial point to start outline analysis */
 	for (int idx = imagesize - 1; idx != 0; idx--) {
@@ -748,19 +918,21 @@ static void gpencil_get_depth_array(tGPDfill *tgpf)
 		int depth_margin = 0;
 
 		/* get an array of depths, far depths are blended */
-		int mval[2], mval_prev[2] = { 0 };
+		int mval_prev[2] = { 0 };
 		int interp_depth = 0;
 		int found_depth = 0;
 
 		tgpf->depth_arr = MEM_mallocN(sizeof(float) * totpoints, "depth_points");
 
 		for (i = 0, ptc = tgpf->sbuffer; i < totpoints; i++, ptc++) {
-			copy_v2_v2_int(mval, &ptc->x);
+
+			int mval_i[2];
+			round_v2i_v2fl(mval_i, &ptc->x);
 
 			if ((ED_view3d_autodist_depth(
-			             tgpf->ar, mval, depth_margin, tgpf->depth_arr + i) == 0) &&
+			             tgpf->ar, mval_i, depth_margin, tgpf->depth_arr + i) == 0) &&
 			    (i && (ED_view3d_autodist_depth_seg(
-			                   tgpf->ar, mval, mval_prev, depth_margin + 1, tgpf->depth_arr + i) == 0)))
+			                   tgpf->ar, mval_i, mval_prev, depth_margin + 1, tgpf->depth_arr + i) == 0)))
 			{
 				interp_depth = true;
 			}
@@ -768,7 +940,7 @@ static void gpencil_get_depth_array(tGPDfill *tgpf)
 				found_depth = true;
 			}
 
-			copy_v2_v2_int(mval_prev, mval);
+			copy_v2_v2_int(mval_prev, mval_i);
 		}
 
 		if (found_depth == false) {
@@ -800,9 +972,9 @@ static void gpencil_points_from_stack(tGPDfill *tgpf)
 	while (!BLI_stack_is_empty(tgpf->stack)) {
 		int v[2];
 		BLI_stack_pop(tgpf->stack, &v);
-		point2D->x = v[0];
-		point2D->y = v[1];
-
+		copy_v2fl_v2i(&point2D->x, v);
+		/* shift points to center of pixel */
+		add_v2_fl(&point2D->x, 0.5f);
 		point2D->pressure = 1.0f;
 		point2D->strength = 1.0f;
 		point2D->time = 0.0f;
@@ -813,11 +985,14 @@ static void gpencil_points_from_stack(tGPDfill *tgpf)
 /* create a grease pencil stroke using points in buffer */
 static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 {
-	ToolSettings *ts = tgpf->scene->toolsettings;
-	int cfra_eval = (int)DEG_get_ctime(tgpf->depsgraph);
+	const int cfra_eval = (int)DEG_get_ctime(tgpf->depsgraph);
 
-	Brush *brush;
-	brush = BKE_brush_getactive_gpencil(ts);
+	ToolSettings *ts = tgpf->scene->toolsettings;
+	const char *align_flag = &ts->gpencil_v3d_align;
+	const bool is_depth = (bool)(*align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
+	const bool is_camera = (bool)(ts->gp_sculpt.lock_axis == 0) &&
+		(tgpf->rv3d->persp == RV3D_CAMOB) && (!is_depth);
+	Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
 	if (brush == NULL) {
 		return;
 	}
@@ -842,12 +1017,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	gps->flag |= GP_STROKE_CYCLIC;
 	gps->flag |= GP_STROKE_3DSPACE;
 
-	gps->mat_nr = BKE_gpencil_get_material_index(tgpf->ob, tgpf->mat) - 1;
-	if (gps->mat_nr < 0) {
-		BKE_object_material_slot_add(tgpf->bmain, tgpf->ob);
-		assign_material(tgpf->bmain, tgpf->ob, tgpf->mat, tgpf->ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-		gps->mat_nr = tgpf->ob->totcol - 1;
-	}
+	gps->mat_nr = BKE_gpencil_handle_material(tgpf->bmain, tgpf->ob, tgpf->mat);
 
 	/* allocate memory for storage points */
 	gps->totpoints = tgpf->sbuffer_size;
@@ -856,7 +1026,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	/* initialize triangle memory to dummy data */
 	gps->tot_triangles = 0;
 	gps->triangles = NULL;
-	gps->flag |= GP_STROKE_RECALC_CACHES;
+	gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 	/* add stroke to frame */
 	if ((ts->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) || (tgpf->on_back == true)) {
@@ -881,10 +1051,10 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	for (int i = 0; i < tgpf->sbuffer_size && point2D; i++, point2D++, pt++) {
 		/* convert screen-coordinates to 3D coordinates */
 		gp_stroke_convertcoords_tpoint(
-			tgpf->scene, tgpf->ar, tgpf->v3d, tgpf->ob,
-			tgpf->gpl, point2D,
-			tgpf->depth_arr ? tgpf->depth_arr + i : NULL,
-			&pt->x);
+		        tgpf->scene, tgpf->ar, tgpf->ob,
+		        tgpf->gpl, point2D,
+		        tgpf->depth_arr ? tgpf->depth_arr + i : NULL,
+		        &pt->x);
 
 		pt->pressure = 1.0f;
 		pt->strength = 1.0f;
@@ -918,13 +1088,13 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	}
 
 	/* if axis locked, reproject to plane locked */
-	if ((tgpf->lock_axis > GP_LOCKAXIS_NONE) && ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_VIEW) == 0)) {
+	if ((tgpf->lock_axis > GP_LOCKAXIS_VIEW) && ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_VIEW) == 0)) {
 		float origin[3];
 		ED_gp_get_drawing_reference(
-		        tgpf->v3d, tgpf->scene, tgpf->ob, tgpf->gpl,
+		        tgpf->scene, tgpf->ob, tgpf->gpl,
 		        ts->gpencil_v3d_align, origin);
 		ED_gp_project_stroke_to_plane(
-		        tgpf->ob, tgpf->rv3d, gps, origin,
+		        tgpf->scene, tgpf->ob, tgpf->rv3d, gps, origin,
 		        tgpf->lock_axis - 1);
 	}
 
@@ -932,6 +1102,11 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	for (int a = 0; a < tgpf->sbuffer_size; a++) {
 		pt = &gps->points[a];
 		gp_apply_parent_point(tgpf->depsgraph, tgpf->ob, tgpf->gpd, tgpf->gpl, pt);
+	}
+
+	/* if camera view, reproject flat to view to avoid perspective effect */
+	if (is_camera) {
+		ED_gpencil_project_stroke_to_view(tgpf->C, tgpf->gpl, gps);
 	}
 
 	/* simplify stroke */
@@ -1002,6 +1177,7 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	Main *bmain = CTX_data_main(C);
 
 	/* set current scene and window info */
+	tgpf->C = C;
 	tgpf->bmain = CTX_data_main(C);
 	tgpf->scene = CTX_data_scene(C);
 	tgpf->ob = CTX_data_active_object(C);
@@ -1026,23 +1202,25 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	tgpf->depth_arr = NULL;
 
 	/* save filling parameters */
-	Brush *brush = BKE_brush_getactive_gpencil(ts);
+	Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
 	tgpf->flag = brush->gpencil_settings->flag;
 	tgpf->fill_leak = brush->gpencil_settings->fill_leak;
 	tgpf->fill_threshold = brush->gpencil_settings->fill_threshold;
 	tgpf->fill_simplylvl = brush->gpencil_settings->fill_simplylvl;
 	tgpf->fill_draw_mode = brush->gpencil_settings->fill_draw_mode;
+	tgpf->fill_factor = (short)max_ii(1, min_ii((int)brush->gpencil_settings->fill_factor, 8));
+
+	int totcol = tgpf->ob->totcol;
 
 	/* get color info */
-	Material *ma = BKE_gpencil_get_material_from_brush(brush);
-	/* if no brush defaults, get material and color info */
-	if ((ma == NULL) || (ma->gp_style == NULL)) {
-		ma = BKE_gpencil_material_ensure(bmain, tgpf->ob);
-		/* assign always the first material to the brush */
-		brush->gpencil_settings->material = give_current_material(tgpf->ob, 1);
-	}
+	Material *ma = BKE_gpencil_current_input_brush_material(bmain, tgpf->ob, brush);
 
 	tgpf->mat = ma;
+
+	/* check whether the material was newly added */
+	if (totcol != tgpf->ob->totcol) {
+		WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, NULL);
+	}
 
 	/* init undo */
 	gpencil_undo_init(tgpf->gpd);
@@ -1080,9 +1258,9 @@ static void gpencil_fill_exit(bContext *C, wmOperator *op)
 
 		/* delete temp image */
 		if (tgpf->ima) {
-			for (Image *ima = bmain->image.first; ima; ima = ima->id.next) {
+			for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
 				if (ima == tgpf->ima) {
-					BLI_remlink(&bmain->image, ima);
+					BLI_remlink(&bmain->images, ima);
 					BKE_image_free(tgpf->ima);
 					MEM_SAFE_FREE(tgpf->ima);
 					break;
@@ -1100,7 +1278,7 @@ static void gpencil_fill_exit(bContext *C, wmOperator *op)
 	/* drawing batch cache is dirty now */
 	if ((ob) && (ob->type == OB_GPENCIL) && (ob->data)) {
 		bGPdata *gpd2 = ob->data;
-		DEG_id_tag_update(&gpd2->id, OB_RECALC_OB | OB_RECALC_DATA);
+		DEG_id_tag_update(&gpd2->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 		gpd2->flag |= GP_DATA_CACHE_IS_DIRTY;
 	}
 
@@ -1161,7 +1339,7 @@ static int gpencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
 
 	gpencil_fill_status_indicators(C, tgpf);
 
-	DEG_id_tag_update(&tgpf->gpd->id, OB_RECALC_OB | OB_RECALC_DATA);
+	DEG_id_tag_update(&tgpf->gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 	WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, NULL);
 
 	/* add a modal handler for this operator*/
@@ -1198,30 +1376,33 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 						tgpf->center[0] = event->mval[0];
 						tgpf->center[1] = event->mval[1];
 
-						/* save size */
-						tgpf->sizex = ar->winx;
-						tgpf->sizey = ar->winy;
-
 						/* render screen to temp image */
-						gp_render_offscreen(tgpf);
+						if ( gp_render_offscreen(tgpf) ) {
 
-						/* apply boundary fill */
-						gpencil_boundaryfill_area(tgpf);
+							/* apply boundary fill */
+							gpencil_boundaryfill_area(tgpf);
 
-						/* clean borders to avoid infinite loops */
-						gpencil_clean_borders(tgpf);
+							/* clean borders to avoid infinite loops */
+							gpencil_clean_borders(tgpf);
 
-						/* analyze outline */
-						gpencil_get_outline_points(tgpf);
+							/* analyze outline */
+							gpencil_get_outline_points(tgpf);
 
-						/* create array of points from stack */
-						gpencil_points_from_stack(tgpf);
+							/* create array of points from stack */
+							gpencil_points_from_stack(tgpf);
 
-						/* create z-depth array for reproject */
-						gpencil_get_depth_array(tgpf);
+							/* create z-depth array for reproject */
+							gpencil_get_depth_array(tgpf);
 
-						/* create stroke and reproject */
-						gpencil_stroke_from_buffer(tgpf);
+							/* create stroke and reproject */
+							gpencil_stroke_from_buffer(tgpf);
+
+						}
+
+						/* restore size */
+						tgpf->ar->winx = (short)tgpf->bwinx;
+						tgpf->ar->winy = (short)tgpf->bwiny;
+						tgpf->ar->winrct = tgpf->brect;
 
 						/* free temp stack data */
 						if (tgpf->stack) {

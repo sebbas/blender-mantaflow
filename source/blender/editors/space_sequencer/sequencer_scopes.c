@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,13 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * Author: Peter Schlaile < peter [at] schlaile [dot] de >
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/editors/space_sequencer/sequencer_scopes.c
- *  \ingroup spseq
+/** \file
+ * \ingroup spseq
  */
 
 
@@ -503,7 +498,7 @@ static ImBuf *make_histogram_view_from_ibuf_byte(ImBuf *ibuf)
 
 	memset(bins, 0, sizeof(bins));
 
-	MakeHistogramViewData data = {.ibuf = ibuf, .bins = bins};
+	MakeHistogramViewData data = { .ibuf = ibuf, .bins = bins, };
 	ParallelRangeSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
 	settings.use_threading = (ibuf->y >= 256);
@@ -518,12 +513,15 @@ static ImBuf *make_histogram_view_from_ibuf_byte(ImBuf *ibuf)
 
 	nr = nb = ng = 0;
 	for (x = 0; x < HIS_STEPS; x++) {
-		if (bins[0][x] > nr)
+		if (bins[0][x] > nr) {
 			nr = bins[0][x];
-		if (bins[1][x] > ng)
+		}
+		if (bins[1][x] > ng) {
 			ng = bins[1][x];
-		if (bins[2][x] > nb)
+		}
+		if (bins[2][x] > nb) {
 			nb = bins[2][x];
+		}
 	}
 
 	for (x = 0; x < HIS_STEPS; x++) {
@@ -588,7 +586,7 @@ static ImBuf *make_histogram_view_from_ibuf_float(ImBuf *ibuf)
 
 	memset(bins, 0, sizeof(bins));
 
-	MakeHistogramViewData data = {.ibuf = ibuf, .bins = bins};
+	MakeHistogramViewData data = { .ibuf = ibuf, .bins = bins, };
 	ParallelRangeSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
 	settings.use_threading = (ibuf->y >= 256);
@@ -603,12 +601,15 @@ static ImBuf *make_histogram_view_from_ibuf_float(ImBuf *ibuf)
 
 	nr = nb = ng = 0;
 	for (x = 0; x < HIS_STEPS; x++) {
-		if (bins[0][x] > nr)
+		if (bins[0][x] > nr) {
 			nr = bins[0][x];
-		if (bins[1][x] > ng)
+		}
+		if (bins[1][x] > ng) {
 			ng = bins[1][x];
-		if (bins[2][x] > nb)
+		}
+		if (bins[2][x] > nb) {
 			nb = bins[2][x];
+		}
 	}
 
 	for (x = 0; x < HIS_STEPS; x++) {

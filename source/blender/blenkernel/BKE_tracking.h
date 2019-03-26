@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,37 +15,31 @@
  *
  * The Original Code is Copyright (C) 2011 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_TRACKING_H__
 #define __BKE_TRACKING_H__
 
-/** \file BKE_tracking.h
- *  \ingroup bke
- *  \author Sergey Sharybin
+/** \file
+ * \ingroup bke
  */
 
+struct Camera;
 struct Depsgraph;
-struct bGPDlayer;
 struct ImBuf;
 struct ListBase;
-struct MovieReconstructContext;
-struct MovieTrackingTrack;
-struct MovieTrackingMarker;
-struct MovieTrackingPlaneTrack;
-struct MovieTrackingPlaneMarker;
-struct MovieTracking;
-struct MovieTrackingObject;
 struct MovieClipUser;
 struct MovieDistortion;
-struct Camera;
+struct MovieReconstructContext;
+struct MovieTracking;
+struct MovieTrackingMarker;
+struct MovieTrackingObject;
+struct MovieTrackingPlaneMarker;
+struct MovieTrackingPlaneTrack;
+struct MovieTrackingTrack;
 struct Object;
 struct Scene;
+struct bGPDlayer;
 struct rcti;
 
 /* **** Common functions **** */
@@ -63,7 +55,7 @@ struct MovieTrackingReconstruction *BKE_tracking_get_active_reconstruction(struc
 
 /* matrices for constraints and drawing */
 void BKE_tracking_get_camera_object_matrix(
-        struct Depsgraph *depsgraph, struct Scene *scene, struct Object *ob, float mat[4][4]);
+        struct Scene *scene, struct Object *ob, float mat[4][4]);
 void BKE_tracking_get_projection_matrix(struct MovieTracking *tracking, struct MovieTrackingObject *object,
                                         int framenr, int winx, int winy, float mat[4][4]);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/object/object_facemap_ops.c
- *  \ingroup edobj
+/** \file
+ * \ingroup edobj
  */
 
 #include <string.h>
@@ -33,8 +26,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
-#include "BLI_path_util.h"
-#include "BLI_string.h"
 #include "BLI_listbase.h"
 
 #include "DNA_object_types.h"
@@ -109,8 +100,8 @@ static void object_fmap_swap_edit_mode(Object *ob, int num1, int num2)
 	if (ob->type == OB_MESH) {
 		Mesh *me = ob->data;
 
-		if (me->edit_btmesh) {
-			BMEditMesh *em = me->edit_btmesh;
+		if (me->edit_mesh) {
+			BMEditMesh *em = me->edit_mesh;
 			const int cd_fmap_offset = CustomData_get_offset(&em->bm->pdata, CD_FACEMAP);
 
 			if (cd_fmap_offset != -1) {
@@ -190,7 +181,7 @@ static int face_map_add_exec(bContext *C, wmOperator *UNUSED(op))
 	Object *ob = ED_object_context(C);
 
 	BKE_object_facemap_add(ob);
-	DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 	WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
@@ -219,7 +210,7 @@ static int face_map_remove_exec(bContext *C, wmOperator *UNUSED(op))
 
 	if (fmap) {
 		BKE_object_facemap_remove(ob, fmap);
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	}
@@ -248,7 +239,7 @@ static int face_map_assign_exec(bContext *C, wmOperator *UNUSED(op))
 
 	if (fmap) {
 		Mesh *me = ob->data;
-		BMEditMesh *em = me->edit_btmesh;
+		BMEditMesh *em = me->edit_mesh;
 		BMFace *efa;
 		BMIter iter;
 		int *map;
@@ -267,7 +258,7 @@ static int face_map_assign_exec(bContext *C, wmOperator *UNUSED(op))
 			}
 		}
 
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	}
@@ -296,7 +287,7 @@ static int face_map_remove_from_exec(bContext *C, wmOperator *UNUSED(op))
 
 	if (fmap) {
 		Mesh *me = ob->data;
-		BMEditMesh *em = me->edit_btmesh;
+		BMEditMesh *em = me->edit_mesh;
 		BMFace *efa;
 		BMIter iter;
 		int *map;
@@ -316,7 +307,7 @@ static int face_map_remove_from_exec(bContext *C, wmOperator *UNUSED(op))
 			}
 		}
 
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	}
@@ -341,7 +332,7 @@ void OBJECT_OT_face_map_remove_from(struct wmOperatorType *ot)
 static void fmap_select(Object *ob, bool select)
 {
 	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
+	BMEditMesh *em = me->edit_mesh;
 	BMFace *efa;
 	BMIter iter;
 	int *map;
@@ -370,7 +361,7 @@ static int face_map_select_exec(bContext *C, wmOperator *UNUSED(op))
 	if (fmap) {
 		fmap_select(ob, true);
 
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	}
@@ -400,7 +391,7 @@ static int face_map_deselect_exec(bContext *C, wmOperator *UNUSED(op))
 	if (fmap) {
 		fmap_select(ob, false);
 
-		DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 		WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 	}
@@ -470,7 +461,7 @@ static int face_map_move_exec(bContext *C, wmOperator *op)
 
 	ob->actfmap = pos2 + 1;
 
-	DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 	WM_event_add_notifier(C, NC_GEOM | ND_VERTEX_GROUP, ob);
 
 	return OPERATOR_FINISHED;
@@ -482,7 +473,7 @@ void OBJECT_OT_face_map_move(wmOperatorType *ot)
 	static EnumPropertyItem fmap_slot_move[] = {
 		{1, "UP", 0, "Up", ""},
 		{-1, "DOWN", 0, "Down", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	/* identifiers */

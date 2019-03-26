@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,17 @@
  *
  * The Original Code is Copyright (C) 2018 by Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Sergey Sharybin.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file BKE_subdiv_ccg.h
- *  \ingroup bke
- *  \since July 2018
- *  \author Sergey Sharybin
+/** \file
+ * \ingroup bke
  */
 
 #ifndef __BKE_SUBDIV_CCG_H__
 #define __BKE_SUBDIV_CCG_H__
 
 #include "BKE_customdata.h"
+#include "BKE_DerivedMesh.h"
 #include "BLI_bitmap.h"
 #include "BLI_sys_types.h"
 
@@ -48,20 +41,41 @@ struct Subdiv;
  */
 
 /* Functor which evaluates mask value at a given (u, v) of given ptex face. */
-typedef struct SubdivCCGMask {
-	float (*eval_mask)(struct SubdivCCGMask *mask,
+typedef struct SubdivCCGMaskEvaluator {
+	float (*eval_mask)(struct SubdivCCGMaskEvaluator *mask_evaluator,
 	                   const int ptex_face_index,
 	                   const float u, const float v);
 
 	/* Free the data, not the evaluator itself. */
-	void (*free)(struct SubdivCCGMask *mask);
+	void (*free)(struct SubdivCCGMaskEvaluator *mask_evaluator);
 
 	void *user_data;
-} SubdivCCGMask;
+} SubdivCCGMaskEvaluator;
 
 /* Return true if mesh has mask and evaluator can be used. */
 bool BKE_subdiv_ccg_mask_init_from_paint(
-        SubdivCCGMask *mask_evaluator,
+        SubdivCCGMaskEvaluator *mask_evaluator,
+        const struct Mesh *mesh);
+
+/* =============================================================================
+ * Materials.
+ */
+
+/* Functor which evaluates material and flags of a given coarse face. */
+typedef struct SubdivCCGMaterialFlagsEvaluator {
+	DMFlagMat (*eval_material_flags)(
+	        struct SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator,
+	        const int coarse_face_index);
+
+	/* Free the data, not the evaluator itself. */
+	void (*free)(
+	        struct SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator);
+
+	void *user_data;
+} SubdivCCGMaterialFlagsEvaluator;
+
+void BKE_subdiv_ccg_material_flags_init_from_mesh(
+        SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator,
         const struct Mesh *mesh);
 
 /* =============================================================================
@@ -73,8 +87,7 @@ typedef struct SubdivToCCGSettings {
 	 * evaluated. This defines how many vertices final mesh will have: every
 	 * regular ptex has resolution^2 vertices. Special (irregular, or ptex
 	 * created for a corner of non-quad polygon) will have resolution of
-	 * `resolution - 1`.
-	 */
+	 * `resolution - 1`. */
 	int resolution;
 	/* Denotes which extra layers to be added to CCG elements. */
 	bool need_normal;
@@ -86,8 +99,7 @@ typedef struct SubdivCCGFace {
 	/* Total number of grids in this face.
 	 *
 	 * This 1:1 corresponds to a number of corners (or loops) from a coarse
-	 * face.
-	 */
+	 * face. */
 	int num_grids;
 	/* Index of first grid from this face in SubdivCCG->grids array. */
 	int start_grid_index;
@@ -99,8 +111,7 @@ typedef struct SubdivCCGAdjacentEdge {
 	/* Indexed by adjacent face index. */
 	SubdivCCGFace **faces;
 	/* Indexed by adjacent face index, then by point index on the edge.
-	 * points to a grid element.
-	 */
+	 * points to a grid element. */
 	struct CCGElem ***boundary_elements;
 } SubdivCCGAdjacentEdge;
 
@@ -109,8 +120,7 @@ typedef struct SubdivCCGAdjacentVertex {
 	int num_adjacent_faces;
 	/* Indexed by adjacent face index. */
 	SubdivCCGFace **faces;
-	/* Indexed by adjacent face index, points to a grid element.
-	 */
+	/* Indexed by adjacent face index, points to a grid element. */
 	struct CCGElem **corner_elements;
 } SubdivCCGAdjacentVertex;
 
@@ -119,37 +129,31 @@ typedef struct SubdivCCG {
 	/* This is a subdivision surface this CCG was created for.
 	 *
 	 * TODO(sergey): Make sure the whole descriptor is valid, including all the
-	 * displacement attached to the surface.
-	 */
+	 * displacement attached to the surface. */
 	struct Subdiv *subdiv;
 	/* A level at which geometry was subdivided. This is what defines grid
-	 * resolution. It is NOT the topology refinement level.
-	 */
+	 * resolution. It is NOT the topology refinement level. */
 	int level;
 	/* Resolution of grid. All grids have matching resolution, and resolution
-	 * is same as ptex created for non-quad polygons.
-	 */
+	 * is same as ptex created for non-quad polygons. */
 	int grid_size;
 	/* Grids represent limit surface, with displacement applied. Grids are
 	 * corresponding to face-corners of coarse mesh, each grid has
 	 * grid_size^2 elements.
 	 */
 	/* Indexed by a grid index, points to a grid data which is stored in
-	 * grids_storage.
-	 */
+	 * grids_storage. */
 	struct CCGElem **grids;
 	/* Flat array of all grids' data. */
 	unsigned char *grids_storage;
 	int num_grids;
 	/* Loose edges, each array element contains grid_size elements
-	 * corresponding to vertices created by subdividing coarse edges.
-	 */
+	 * corresponding to vertices created by subdividing coarse edges. */
 	struct CCGElem **edges;
 	int num_edges;
 	/* Loose vertices. Every element corresponds to a loose vertex from a coarse
 	 * mesh, every coarse loose vertex corresponds to a single sundivided
-	 * element.
-	 */
+	 * element. */
 	struct CCGElem *vertices;
 	int num_vertices;
 	/* Denotes which layers present in the elements.
@@ -194,8 +198,7 @@ typedef struct SubdivCCG {
 
 	/* Integration with sculpting. */
 	/* TODO(sergey): Is this really best way to go? Kind of annoying to have
-	 * such use-related flags in a more or less generic structure.
-	 */
+	 * such use-related flags in a more or less generic structure. */
 	struct {
 		/* Corresponds to MULTIRES_COORDS_MODIFIED. */
 		bool coords;
@@ -211,12 +214,12 @@ typedef struct SubdivCCG {
  *
  * TODO(sergey): Allow some user-counter or more explicit control over who owns
  * the Subdiv. The goal should be to allow viewport GL Mesh and CCG to share
- * same Subsurf without conflicts.
- */
+ * same Subsurf without conflicts. */
 struct SubdivCCG *BKE_subdiv_to_ccg(
         struct Subdiv *subdiv,
         const SubdivToCCGSettings *settings,
-        SubdivCCGMask *mask_evaluator);
+        SubdivCCGMaskEvaluator *mask_evaluator,
+        SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator);
 
 /* Destroy CCG representation of subdivision surface. */
 void BKE_subdiv_ccg_destroy(SubdivCCG *subdiv_ccg);
@@ -238,6 +241,11 @@ void BKE_subdiv_ccg_key_top_level(
 /* Recalculate all normals based on grid element coordinates. */
 void BKE_subdiv_ccg_recalc_normals(SubdivCCG *subdiv_ccg);
 
+/* Update normals of affected faces. */
+void BKE_subdiv_ccg_update_normals(SubdivCCG *subdiv_ccg,
+                                   struct CCGFace **effected_faces,
+                                   int num_effected_faces);
+
 /* Average grid coordinates and normals along the grid boundatries. */
 void BKE_subdiv_ccg_average_grids(SubdivCCG *subdiv_ccg);
 
@@ -245,5 +253,11 @@ void BKE_subdiv_ccg_average_grids(SubdivCCG *subdiv_ccg);
 void BKE_subdiv_ccg_average_stitch_faces(SubdivCCG *subdiv_ccg,
                                          struct CCGFace **effected_faces,
                                          int num_effected_faces);
+
+/* Get geometry counters at the current subdivision level. */
+void BKE_subdiv_ccg_topology_counters(
+        const SubdivCCG *subdiv_ccg,
+        int *r_num_vertices, int *r_num_edges,
+        int *r_num_faces, int *r_num_loops);
 
 #endif  /* __BKE_SUBDIV_CCG_H__ */

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,27 +15,22 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Jack Simpson,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_correctivesmooth.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  *
  * Method of smoothing deformation, also known as 'delta-mush'.
  */
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_scene_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_mesh_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -112,15 +105,14 @@ static void freeData(ModifierData *md)
 }
 
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
-	CustomDataMask dataMask = 0;
+
 	/* ask for vertex groups if we need them */
-	if (csmd->defgrp_name[0]) {
-		dataMask |= CD_MASK_MDEFORMVERT;
+	if (csmd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 	}
-	return dataMask;
 }
 
 
@@ -575,7 +567,7 @@ static void correctivesmooth_modifier_do(
 	const bool force_delta_cache_update =
 	        /* XXX, take care! if mesh data its self changes we need to forcefully recalculate deltas */
 	        ((csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_ORCO) &&
-	         (((ID *)ob->data)->recalc & ID_RECALC));
+	         (((ID *)ob->data)->recalc & ID_RECALC_ALL));
 
 	bool use_only_smooth = (csmd->flag & MOD_CORRECTIVESMOOTH_ONLY_SMOOTH) != 0;
 	MDeformVert *dvert = NULL;
@@ -717,7 +709,7 @@ static void deformVerts(
         ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh,
         float (*vertexCos)[3], int numVerts)
 {
-	Mesh *mesh_src = MOD_get_mesh_eval(ctx->object, NULL, mesh, NULL, false, false);
+	Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, mesh, NULL, numVerts, false, false);
 
 	correctivesmooth_modifier_do(md, ctx->object, mesh_src, vertexCos, (unsigned int)numVerts, NULL);
 
@@ -731,7 +723,7 @@ static void deformVertsEM(
         ModifierData *md, const ModifierEvalContext *ctx, struct BMEditMesh *editData,
         Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
-	Mesh *mesh_src = MOD_get_mesh_eval(ctx->object, editData, mesh, NULL, false, false);
+	Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, NULL, numVerts, false, false);
 
 	correctivesmooth_modifier_do(md, ctx->object, mesh_src, vertexCos, (unsigned int)numVerts, editData);
 
@@ -773,4 +765,5 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

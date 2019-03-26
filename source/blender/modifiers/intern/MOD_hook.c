@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,28 +15,20 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_hook.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
 
 #include "BKE_action.h"
 #include "BKE_editmesh.h"
@@ -48,6 +38,8 @@
 #include "BKE_modifier.h"
 #include "BKE_deform.h"
 #include "BKE_colortools.h"
+
+#include "DEG_depsgraph_query.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -75,16 +67,20 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 	thmd->indexar = MEM_dupallocN(hmd->indexar);
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	HookModifierData *hmd = (HookModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (hmd->name[0]) dataMask |= CD_MASK_MDEFORMVERT;
-	if (hmd->indexar) dataMask |= CD_MASK_ORIGINDEX;
-
-	return dataMask;
+	if (hmd->name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
+	if (hmd->indexar != NULL) {
+		/* TODO check which origindex are actually needed? */
+		r_cddata_masks->vmask |= CD_MASK_ORIGINDEX;
+		r_cddata_masks->emask |= CD_MASK_ORIGINDEX;
+		r_cddata_masks->pmask |= CD_MASK_ORIGINDEX;
+	}
 }
 
 static void freeData(ModifierData *md)
@@ -122,7 +118,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		DEG_add_object_relation(ctx->node, hmd->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
 	}
 	/* We need own transformation as well. */
-	DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
+	DEG_add_modifier_to_transform_relation(ctx->node, "Hook Modifier");
 }
 
 struct HookData_cb {
@@ -252,10 +248,12 @@ static void hook_co_apply(struct HookData_cb *hd, const int j)
 }
 
 static void deformVerts_do(
-        HookModifierData *hmd, Object *ob, Mesh *mesh,
+        HookModifierData *hmd, const ModifierEvalContext *ctx,
+        Object *ob, Mesh *mesh,
         float (*vertexCos)[3], int numVerts)
 {
-	bPoseChannel *pchan = BKE_pose_channel_find_name(hmd->object->pose, hmd->subtarget);
+	Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, hmd->object);
+	bPoseChannel *pchan = BKE_pose_channel_find_name(ob_target->pose, hmd->subtarget);
 	float dmat[4][4];
 	int i, *index_pt;
 	struct HookData_cb hd;
@@ -295,11 +293,11 @@ static void deformVerts_do(
 	/* get world-space matrix of target, corrected for the space the verts are in */
 	if (hmd->subtarget[0] && pchan) {
 		/* bone target if there's a matching pose-channel */
-		mul_m4_m4m4(dmat, hmd->object->obmat, pchan->pose_mat);
+		mul_m4_m4m4(dmat, ob_target->obmat, pchan->pose_mat);
 	}
 	else {
 		/* just object target */
-		copy_m4_m4(dmat, hmd->object->obmat);
+		copy_m4_m4(dmat, ob_target->obmat);
 	}
 	invert_m4_m4(ob->imat, ob->obmat);
 	mul_m4_series(hd.mat, ob->imat, dmat, hmd->parentinv);
@@ -354,11 +352,11 @@ static void deformVerts(
         float (*vertexCos)[3], int numVerts)
 {
 	HookModifierData *hmd = (HookModifierData *)md;
-	Mesh *mesh_src = MOD_get_mesh_eval(ctx->object, NULL, mesh, NULL, false, false);
+	Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, mesh, NULL, numVerts, false, false);
 
-	deformVerts_do(hmd, ctx->object, mesh_src, vertexCos, numVerts);
+	deformVerts_do(hmd, ctx, ctx->object, mesh_src, vertexCos, numVerts);
 
-	if (mesh_src != mesh) {
+	if (!ELEM(mesh_src, NULL, mesh)) {
 		BKE_id_free(NULL, mesh_src);
 	}
 }
@@ -369,11 +367,11 @@ static void deformVertsEM(
         struct Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
 	HookModifierData *hmd = (HookModifierData *)md;
-	Mesh *mesh_src = MOD_get_mesh_eval(ctx->object, editData, mesh, NULL, false, false);
+	Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, NULL, numVerts, false, false);
 
-	deformVerts_do(hmd, ctx->object, mesh_src, vertexCos, numVerts);
+	deformVerts_do(hmd, ctx, ctx->object, mesh_src, vertexCos, numVerts);
 
-	if (mesh_src != mesh) {
+	if (!ELEM(mesh_src, NULL, mesh)) {
 		BKE_id_free(NULL, mesh_src);
 	}
 }
@@ -410,4 +408,5 @@ ModifierTypeInfo modifierType_Hook = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

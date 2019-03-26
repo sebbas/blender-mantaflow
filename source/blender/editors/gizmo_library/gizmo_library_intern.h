@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2016 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file gizmo_library_intern.h
- *  \ingroup edgizmolib
+/** \file
+ * \ingroup edgizmolib
  */
 
 #ifndef __GIZMO_LIBRARY_INTERN_H__
@@ -37,8 +31,6 @@
  * Data for common interactions. Used in gizmo_library_utils.c functions.
  */
 typedef struct GizmoCommonData {
-	int flag;
-
 	float range_fac;      /* factor for arrow min/max distance */
 	float offset;
 
@@ -46,6 +38,8 @@ typedef struct GizmoCommonData {
 	float range;
 	/* min/max value for constrained gizmos */
 	float min, max;
+
+	uint is_custom_range_set : 1;
 } GizmoCommonData;
 
 typedef struct GizmoInteraction {
@@ -61,12 +55,6 @@ typedef struct GizmoInteraction {
 	 * Needed to allow toggling precision on/off without causing jumps */
 	float precision_offset;
 } GizmoInteraction;
-
-/* GizmoCommonData->flag  */
-enum {
-	GIZMO_CUSTOM_RANGE_SET = (1 << 0),
-};
-
 
 float gizmo_offset_from_value(
         GizmoCommonData *data, const float value,

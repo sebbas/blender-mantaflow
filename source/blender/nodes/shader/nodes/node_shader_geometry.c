@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,6 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include "../node_shader_util.h"
@@ -38,15 +30,20 @@ static bNodeSocketTemplate sh_node_geometry_out[] = {
 	{	SOCK_VECTOR, 0, N_("Parametric"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
 	{	SOCK_FLOAT,  0, N_("Backfacing"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
 	{	SOCK_FLOAT,  0, N_("Pointiness"),		0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
-	{	-1, 0, ""	}
+	{	-1, 0, ""	},
 };
 
 static int node_shader_gpu_geometry(GPUMaterial *mat, bNode *node, bNodeExecData *UNUSED(execdata), GPUNodeStack *in, GPUNodeStack *out)
 {
+	/* HACK: Don't request GPU_BARYCENTRIC_TEXCO if not used because it will
+	 * trigger the use of geometry shader (and the performance penalty it implies). */
+	float val[2] = {0.0f, 0.0f};
+	GPUNodeLink *bary_link = (!out[5].hasoutput) ? GPU_constant(val) : GPU_builtin(GPU_BARYCENTRIC_TEXCO);
+
 	return GPU_stack_link(mat, node, "node_geometry", in, out,
 	                      GPU_builtin(GPU_VIEW_POSITION), GPU_builtin(GPU_VIEW_NORMAL),
 	                      GPU_attribute(CD_ORCO, ""), GPU_builtin(GPU_OBJECT_MATRIX),
-	                      GPU_builtin(GPU_INVERSE_VIEW_MATRIX), GPU_builtin(GPU_BARYCENTRIC_TEXCO));
+	                      GPU_builtin(GPU_INVERSE_VIEW_MATRIX), bary_link);
 }
 
 /* node type definition */

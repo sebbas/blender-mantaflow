@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,21 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Julien Enche.
- *
- * ***** END GPL LICENSE BLOCK *****
- * cineon.c
- * contributors: joeedh, Julien Enche
- * I hearby donate this code and all rights to the Blender Foundation.
+ * The Original Code is Copyright (C) 2006 Blender Foundation.
  */
 
-/** \file blender/imbuf/intern/cineon/cineon_dpx.c
- *  \ingroup imbcineon
+/** \file
+ * \ingroup imbcineon
  */
 
 

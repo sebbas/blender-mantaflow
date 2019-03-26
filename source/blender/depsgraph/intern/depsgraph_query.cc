@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2013 Blender Foundation.
  * All rights reserved.
- *
- * Original Author: Joshua Leung
- * Contributor(s): None Yet
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/intern/depsgraph_query.cc
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Implementation of Querying API
  */
@@ -36,6 +29,7 @@ extern "C" {
 #include <string.h> // XXX: memcpy
 
 #include "BLI_utildefines.h"
+#include "BKE_customdata.h"
 #include "BKE_idcode.h"
 #include "BKE_main.h"
 #include "BLI_listbase.h"
@@ -51,9 +45,9 @@ extern "C" {
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "intern/depsgraph.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
-#include "intern/depsgraph_intern.h"
-#include "intern/nodes/deg_node_id.h"
+#include "intern/node/deg_node_id.h"
 
 struct Scene *DEG_get_input_scene(const Depsgraph *graph)
 {
@@ -107,19 +101,43 @@ uint32_t DEG_get_eval_flags_for_id(const Depsgraph *graph, ID *id)
 		 * after modifying scene graph.
 		 *
 		 * Currently harmless because it's only called for temporary
-		 * objects which are out of the DAG anyway.
-		 */
+		 * objects which are out of the DAG anyway. */
 		return 0;
 	}
 
 	const DEG::Depsgraph *deg_graph = reinterpret_cast<const DEG::Depsgraph *>(graph);
-	const DEG::IDDepsNode *id_node = deg_graph->find_id_node(DEG_get_original_id(id));
+	const DEG::IDNode *id_node = deg_graph->find_id_node(DEG_get_original_id(id));
 	if (id_node == NULL) {
 		/* TODO(sergey): Does it mean we need to check set scene? */
 		return 0;
 	}
 
 	return id_node->eval_flags;
+}
+
+void DEG_get_customdata_mask_for_object(const Depsgraph *graph, Object *ob, CustomData_MeshMasks *r_mask)
+{
+	if (graph == NULL) {
+		/* Happens when converting objects to mesh from a python script
+		 * after modifying scene graph.
+		 *
+		 * Currently harmless because it's only called for temporary
+		 * objects which are out of the DAG anyway. */
+		return;
+	}
+
+	const DEG::Depsgraph *deg_graph = reinterpret_cast<const DEG::Depsgraph *>(graph);
+	const DEG::IDNode *id_node = deg_graph->find_id_node(DEG_get_original_id(&ob->id));
+	if (id_node == NULL) {
+		/* TODO(sergey): Does it mean we need to check set scene? */
+		return;
+	}
+
+	r_mask->vmask |= id_node->customdata_masks.vert_mask;
+	r_mask->emask |= id_node->customdata_masks.edge_mask;
+	r_mask->fmask |= id_node->customdata_masks.face_mask;
+	r_mask->lmask |= id_node->customdata_masks.loop_mask;
+	r_mask->pmask |= id_node->customdata_masks.poly_mask;
 }
 
 Scene *DEG_get_evaluated_scene(const Depsgraph *graph)
@@ -129,8 +147,7 @@ Scene *DEG_get_evaluated_scene(const Depsgraph *graph)
 	Scene *scene_cow = deg_graph->scene_cow;
 	/* TODO(sergey): Shall we expand datablock here? Or is it OK to assume
 	 * that calleer is OK with just a pointer in case scene is not updated
-	 * yet?
-	 */
+	 * yet? */
 	BLI_assert(scene_cow != NULL && DEG::deg_copy_on_write_is_expanded(&scene_cow->id));
 	return scene_cow;
 }
@@ -166,10 +183,9 @@ ID *DEG_get_evaluated_id(const Depsgraph *depsgraph, ID *id)
 	}
 	/* TODO(sergey): This is a duplicate of Depsgraph::get_cow_id(),
 	 * but here we never do assert, since we don't know nature of the
-	 * incoming ID datablock.
-	 */
+	 * incoming ID datablock. */
 	const DEG::Depsgraph *deg_graph = (const DEG::Depsgraph *)depsgraph;
-	const DEG::IDDepsNode *id_node = deg_graph->find_id_node(id);
+	const DEG::IDNode *id_node = deg_graph->find_id_node(id);
 	if (id_node == NULL) {
 		return id;
 	}
@@ -193,8 +209,7 @@ void DEG_get_evaluated_rna_pointer(const Depsgraph *depsgraph, PointerRNA *ptr, 
 	else if (ptr->type == &RNA_PoseBone) {
 		/* HACK: Since bone keyframing is quite commonly used,
 		 * speed things up for this case by doing a special lookup
-		 * for bones
-		 */
+		 * for bones */
 		const Object *ob_eval = (Object *)cow_id;
 		bPoseChannel *pchan = (bPoseChannel *)ptr->data;
 		const bPoseChannel *pchan_eval = BKE_pose_channel_find_name(ob_eval->pose, pchan->name);
@@ -205,11 +220,9 @@ void DEG_get_evaluated_rna_pointer(const Depsgraph *depsgraph, PointerRNA *ptr, 
 	else {
 		/* For everything else, try to get RNA Path of the BMain-pointer,
 		 * then use that to look up what the COW-domain one should be
-		 * given the COW ID pointer as the new lookup point
-		 */
+		 * given the COW ID pointer as the new lookup point */
 		/* TODO: Find a faster alternative, or implement support for other
-		 * common types too above (e.g. modifiers)
-		 */
+		 * common types too above (e.g. modifiers) */
 		char *path = RNA_path_from_ID_to_struct(ptr);
 		if (path) {
 			PointerRNA cow_id_ptr;
