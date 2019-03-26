@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file eevee_temporal_sampling.c
- *  \ingroup draw_engine
+/** \file
+ * \ingroup draw_engine
  *
  * Temporal super sampling technique
  */
@@ -30,7 +27,6 @@
 #include "ED_screen.h"
 
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -40,32 +36,14 @@
 #define FILTER_CDF_TABLE_SIZE 512
 
 static struct {
-	/* Temporal Anti Aliasing */
-	struct GPUShader *taa_resolve_sh;
-	struct GPUShader *taa_resolve_reproject_sh;
-
 	/* Pixel filter table: Only blackman-harris for now. */
+	bool inited;
 	float inverted_cdf[FILTER_CDF_TABLE_SIZE];
-} e_data = {NULL}; /* Engine data */
+} e_data = {false}; /* Engine data */
 
 extern char datatoc_common_uniforms_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_bsdf_common_lib_glsl[];
-extern char datatoc_effect_temporal_aa_glsl[];
-
-static void eevee_create_shader_temporal_sampling(void)
-{
-	char *frag_str = BLI_string_joinN(
-	        datatoc_common_uniforms_lib_glsl,
-	        datatoc_common_view_lib_glsl,
-	        datatoc_bsdf_common_lib_glsl,
-	        datatoc_effect_temporal_aa_glsl);
-
-	e_data.taa_resolve_sh = DRW_shader_create_fullscreen(frag_str, NULL);
-	e_data.taa_resolve_reproject_sh = DRW_shader_create_fullscreen(frag_str, "#define USE_REPROJECTION\n");
-
-	MEM_freeN(frag_str);
-}
 
 static float UNUSED_FUNCTION(filter_box)(float UNUSED(x))
 {
@@ -149,6 +127,7 @@ static void eevee_create_cdf_table_temporal_sampling(void)
 	}
 
 	MEM_freeN(cdf_table);
+	e_data.inited = true;
 }
 
 void EEVEE_temporal_sampling_matrices_calc(
@@ -187,8 +166,7 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
 	EEVEE_EffectsInfo *effects = stl->effects;
 	int repro_flag = 0;
 
-	if (!e_data.taa_resolve_sh) {
-		eevee_create_shader_temporal_sampling();
+	if (!e_data.inited) {
 		eevee_create_cdf_table_temporal_sampling();
 	}
 
@@ -201,10 +179,7 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
 	const DRWContextState *draw_ctx = DRW_context_state_get();
 	const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-	if (((scene_eval->eevee.taa_samples != 1) &&
-	    /* FIXME the motion blur camera evaluation is tagging view_updated
-	     * thus making the TAA always reset and never stopping rendering. */
-	    (effects->enabled_effects & EFFECT_MOTION_BLUR) == 0) ||
+	if ((scene_eval->eevee.taa_samples != 1) ||
 	    DRW_state_is_image_render())
 	{
 		float persmat[4][4], viewmat[4][4];
@@ -256,7 +231,7 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
 					double ht_offset[2] = {0.0, 0.0};
 					uint ht_primes[2] = {2, 3};
 
-					BLI_halton_2D(ht_primes, ht_offset, effects->taa_current_sample - 1, ht_point);
+					BLI_halton_2d(ht_primes, ht_offset, effects->taa_current_sample - 1, ht_point);
 
 					EEVEE_temporal_sampling_matrices_calc(effects, viewmat, persmat, ht_point);
 
@@ -290,9 +265,7 @@ void EEVEE_temporal_sampling_cache_init(EEVEE_ViewLayerData *sldata, EEVEE_Data 
 	EEVEE_EffectsInfo *effects = stl->effects;
 
 	if ((effects->enabled_effects & (EFFECT_TAA | EFFECT_TAA_REPROJECT)) != 0) {
-		struct GPUShader *sh = (effects->enabled_effects & EFFECT_TAA_REPROJECT)
-		                        ? e_data.taa_resolve_reproject_sh
-		                        : e_data.taa_resolve_sh;
+		struct GPUShader *sh = EEVEE_shaders_taa_resolve_sh_get(effects->enabled_effects);
 
 		psl->taa_resolve = DRW_pass_create("Temporal AA Resolve", DRW_STATE_WRITE_COLOR);
 		DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->taa_resolve);
@@ -377,10 +350,4 @@ void EEVEE_temporal_sampling_draw(EEVEE_Data *vedata)
 			}
 		}
 	}
-}
-
-void EEVEE_temporal_sampling_free(void)
-{
-	DRW_SHADER_FREE_SAFE(e_data.taa_resolve_sh);
-	DRW_SHADER_FREE_SAFE(e_data.taa_resolve_reproject_sh);
 }

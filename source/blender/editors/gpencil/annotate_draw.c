@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,14 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung, Antonio Vazquez
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/gpencil/annotate_draw.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 
@@ -41,7 +35,6 @@
 
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
-#include "BLI_polyfill_2d.h"
 
 #include "BLF_api.h"
 #include "BLT_translation.h"
@@ -80,13 +73,20 @@
 /* ----- General Defines ------ */
 /* flags for sflag */
 typedef enum eDrawStrokeFlags {
-	GP_DRAWDATA_NOSTATUS    = (1 << 0),   /* don't draw status info */
-	GP_DRAWDATA_ONLY3D      = (1 << 1),   /* only draw 3d-strokes */
-	GP_DRAWDATA_ONLYV2D     = (1 << 2),   /* only draw 'canvas' strokes */
-	GP_DRAWDATA_ONLYI2D     = (1 << 3),   /* only draw 'image' strokes */
-	GP_DRAWDATA_IEDITHACK   = (1 << 4),   /* special hack for drawing strokes in Image Editor (weird coordinates) */
-	GP_DRAWDATA_NO_XRAY     = (1 << 5),   /* don't draw xray in 3D view (which is default) */
-	GP_DRAWDATA_NO_ONIONS   = (1 << 6),	  /* no onionskins should be drawn (for animation playback) */
+	/** don't draw status info */
+	GP_DRAWDATA_NOSTATUS    = (1 << 0),
+	/** only draw 3d-strokes */
+	GP_DRAWDATA_ONLY3D      = (1 << 1),
+	/** only draw 'canvas' strokes */
+	GP_DRAWDATA_ONLYV2D     = (1 << 2),
+	/** only draw 'image' strokes */
+	GP_DRAWDATA_ONLYI2D     = (1 << 3),
+	/** special hack for drawing strokes in Image Editor (weird coordinates) */
+	GP_DRAWDATA_IEDITHACK   = (1 << 4),
+	/** don't draw xray in 3D view (which is default) */
+	GP_DRAWDATA_NO_XRAY     = (1 << 5),
+	/** no onionskins should be drawn (for animation playback) */
+	GP_DRAWDATA_NO_ONIONS   = (1 << 6),
 } eDrawStrokeFlags;
 
 
@@ -113,7 +113,7 @@ static void gp_draw_stroke_buffer(
 	}
 
 	GPUVertFormat *format = immVertexFormat();
-	uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+	uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
 	const tGPspoint *pt = points;
 
@@ -123,7 +123,7 @@ static void gp_draw_stroke_buffer(
 		immBindBuiltinProgram(GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
 		immUniformColor3fvAlpha(ink, ink[3]);
 		immBegin(GPU_PRIM_POINTS, 1);
-		immVertex2iv(pos, &pt->x);
+		immVertex2fv(pos, &pt->x);
 	}
 	else {
 		float oldpressure = points[0].pressure;
@@ -134,7 +134,6 @@ static void gp_draw_stroke_buffer(
 		immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 		immUniformColor3fvAlpha(ink, ink[3]);
 
-		/* TODO: implement this with a geometry shader to draw one continuous tapered stroke */
 		immBeginAtMost(GPU_PRIM_LINE_STRIP, totpoints);
 
 		for (int i = 0; i < totpoints; i++, pt++) {
@@ -144,7 +143,7 @@ static void gp_draw_stroke_buffer(
 			if (fabsf(pt->pressure - oldpressure) > 0.2f) {
 				/* need to have 2 points to avoid immEnd assert error */
 				if (draw_points < 2) {
-					immVertex2iv(pos, &(pt - 1)->x);
+					immVertex2fv(pos, &(pt - 1)->x);
 				}
 
 				immEnd();
@@ -155,7 +154,7 @@ static void gp_draw_stroke_buffer(
 
 				/* need to roll-back one point to ensure that there are no gaps in the stroke */
 				if (i != 0) {
-					immVertex2iv(pos, &(pt - 1)->x);
+					immVertex2fv(pos, &(pt - 1)->x);
 					draw_points++;
 				}
 
@@ -163,12 +162,12 @@ static void gp_draw_stroke_buffer(
 			}
 
 			/* now the point we want */
-			immVertex2iv(pos, &pt->x);
+			immVertex2fv(pos, &pt->x);
 			draw_points++;
 		}
 		/* need to have 2 points to avoid immEnd assert error */
 		if (draw_points < 2) {
-			immVertex2iv(pos, &(pt - 1)->x);
+			immVertex2fv(pos, &(pt - 1)->x);
 		}
 	}
 
@@ -243,7 +242,7 @@ static void gp_draw_stroke_point(
 
 /* draw a given stroke in 3d (i.e. in 3d-space), using simple ogl lines */
 static void gp_draw_stroke_3d(
-        const bGPDspoint *points, int totpoints, short thickness, bool UNUSED(debug),
+        const bGPDspoint *points, int totpoints, short thickness,
         short UNUSED(sflag), const float ink[4], bool cyclic)
 {
 	float curpressure = points[0].pressure;
@@ -263,8 +262,6 @@ static void gp_draw_stroke_3d(
 	immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 	immUniformColor3fvAlpha(ink, ink[3]);
 
-	/* TODO: implement this with a geometry shader to draw one continuous tapered stroke */
-
 	/* draw stroke curve */
 	GPU_line_width(max_ff(curpressure * thickness, 1.0f));
 	immBeginAtMost(GPU_PRIM_LINE_STRIP, totpoints + cyclic_add);
@@ -275,7 +272,8 @@ static void gp_draw_stroke_3d(
 		 * Note: we want more visible levels of pressures when thickness is bigger.
 		 */
 		if (fabsf(pt->pressure - curpressure) > 0.2f / (float)thickness) {
-			/* if the pressure changes before get at least 2 vertices, need to repeat last point to avoid assert in immEnd() */
+			/* if the pressure changes before get at least 2 vertices,
+			 * need to repeat last point to avoid assert in immEnd() */
 			if (draw_points < 2) {
 				const bGPDspoint *pt2 = pt - 1;
 				immVertex3fv(pos, &pt2->x);
@@ -326,7 +324,7 @@ static void gp_draw_stroke_3d(
 /* draw a given stroke in 2d */
 static void gp_draw_stroke_2d(
         const bGPDspoint *points, int totpoints, short thickness_s, short dflag, short sflag,
-        bool UNUSED(debug), int offsx, int offsy, int winx, int winy, const float ink[4])
+        int offsx, int offsy, int winx, int winy, const float ink[4])
 {
 	/* otherwise thickness is twice that of the 3D view */
 	float thickness = (float)thickness_s * 0.5f;
@@ -336,8 +334,6 @@ static void gp_draw_stroke_2d(
 	if ((dflag & GP_DRAWDATA_IEDITHACK) && (dflag & GP_DRAWDATA_ONLYV2D)) {
 		scalefac = 0.001f;
 	}
-
-	/* TODO: fancy++ with the magic of shaders */
 
 	/* tessellation code - draw stroke as series of connected quads (triangle strips in fact) with connection
 	 * edges rotated to minimize shrinking artifacts, and rounded endcaps
@@ -380,7 +376,7 @@ static void gp_draw_stroke_2d(
 			/* if the first segment, start of segment is segment's normal */
 			if (i == 0) {
 				/* draw start cap first
-				 *	- make points slightly closer to center (about halfway across)
+				 * - make points slightly closer to center (about halfway across)
 				 */
 				mt[0] = m2[0] * pthick * 0.5f;
 				mt[1] = m2[1] * pthick * 0.5f;
@@ -421,7 +417,7 @@ static void gp_draw_stroke_2d(
 
 				/* calculate gradient to apply
 				 *  - as basis, use just pthick * bisector gradient
-				 *	- if cross-section not as thick as it should be, add extra padding to fix it
+				 * - if cross-section not as thick as it should be, add extra padding to fix it
 				 */
 				mt[0] = mb[0] * pthick;
 				mt[1] = mb[1] * pthick;
@@ -463,7 +459,7 @@ static void gp_draw_stroke_2d(
 				immVertex2fv(pos, t1);
 
 				/* draw end cap as last step
-				 *	- make points slightly closer to center (about halfway across)
+				 * - make points slightly closer to center (about halfway across)
 				 */
 				mt[0] = m2[0] * pthick * 0.5f;
 				mt[1] = m2[1] * pthick * 0.5f;
@@ -526,7 +522,7 @@ static bool gp_can_draw_stroke(const bGPDstroke *gps, const int dflag)
 /* draw a set of strokes */
 static void gp_draw_strokes(
         bGPdata *UNUSED(gpd), bGPDlayer *UNUSED(gpl), const bGPDframe *gpf, int offsx, int offsy, int winx, int winy,
-        int dflag, bool debug, short lthick, const float color[4])
+        int dflag, short lthick, const float color[4])
 {
 	GPU_enable_program_point_size();
 
@@ -557,7 +553,7 @@ static void gp_draw_strokes(
 			}
 			else {
 				gp_draw_stroke_3d(
-				        gps->points, gps->totpoints, lthick, debug, gps->flag,
+				        gps->points, gps->totpoints, lthick, gps->flag,
 				        color, gps->flag & GP_STROKE_CYCLIC);
 			}
 
@@ -575,7 +571,7 @@ static void gp_draw_strokes(
 			}
 			else {
 				gp_draw_stroke_2d(
-				        gps->points, gps->totpoints, lthick, dflag, gps->flag, debug,
+				        gps->points, gps->totpoints, lthick, dflag, gps->flag,
 				        offsx, offsy, winx, winy, color);
 			}
 		}
@@ -719,6 +715,86 @@ static void gp_draw_strokes_edit(
 }
 
 /* ----- General Drawing ------ */
+/* draw onion-skinning for a layer */
+static void gp_draw_onionskins(
+        bGPdata *gpd, bGPDlayer *gpl, bGPDframe *gpf, int offsx, int offsy, int winx, int winy,
+        int UNUSED(cfra), int dflag)
+{
+	const float alpha = 1.0f;
+	float color[4];
+
+	/* 1) Draw Previous Frames First */
+	copy_v3_v3(color, gpl->gcolor_prev);
+
+	if (gpl->gstep > 0) {
+		bGPDframe *gf;
+		float fac;
+
+		/* draw previous frames first */
+		for (gf = gpf->prev; gf; gf = gf->prev) {
+			/* check if frame is drawable */
+			if ((gpf->framenum - gf->framenum) <= gpl->gstep) {
+				/* alpha decreases with distance from curframe index */
+				fac = 1.0f - ((float)(gpf->framenum - gf->framenum) / (float)(gpl->gstep + 1));
+				color[3] = alpha * fac * 0.66f;
+				gp_draw_strokes(
+				        gpd, gpl, gf, offsx, offsy, winx, winy, dflag,
+				        gpl->thickness, color);
+			}
+			else
+				break;
+		}
+	}
+	else if (gpl->gstep == 0) {
+		/* draw the strokes for the ghost frames (at half of the alpha set by user) */
+		if (gpf->prev) {
+			color[3] = (alpha / 7);
+			gp_draw_strokes(
+			        gpd, gpl, gpf->prev, offsx, offsy, winx, winy, dflag,
+			        gpl->thickness, color);
+		}
+	}
+	else {
+		/* don't draw - disabled */
+	}
+
+
+	/* 2) Now draw next frames */
+	copy_v3_v3(color, gpl->gcolor_next);
+
+	if (gpl->gstep_next > 0) {
+		bGPDframe *gf;
+		float fac;
+
+		/* now draw next frames */
+		for (gf = gpf->next; gf; gf = gf->next) {
+			/* check if frame is drawable */
+			if ((gf->framenum - gpf->framenum) <= gpl->gstep_next) {
+				/* alpha decreases with distance from curframe index */
+				fac = 1.0f - ((float)(gf->framenum - gpf->framenum) / (float)(gpl->gstep_next + 1));
+				color[3] = alpha * fac * 0.66f;
+				gp_draw_strokes(
+				        gpd, gpl, gf, offsx, offsy, winx, winy, dflag,
+				        gpl->thickness, color);
+			}
+			else
+				break;
+		}
+	}
+	else if (gpl->gstep_next == 0) {
+		/* draw the strokes for the ghost frames (at half of the alpha set by user) */
+		if (gpf->next) {
+			color[3] = (alpha / 4);
+			gp_draw_strokes(
+			        gpd, gpl, gpf->next, offsx, offsy, winx, winy, dflag,
+			        gpl->thickness, color);
+		}
+	}
+	else {
+		/* don't draw - disabled */
+	}
+
+}
 
 /* loop over gpencil data layers, drawing them */
 static void gp_draw_data_layers(
@@ -728,7 +804,8 @@ static void gp_draw_data_layers(
 	float ink[4];
 
 	for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-		bool debug = (gpl->flag & GP_LAYER_DRAWDEBUG);
+		/* verify never thickness is less than 1 */
+		CLAMP_MIN(gpl->thickness, 1.0f);
 		short lthick = gpl->thickness;
 
 		/* apply layer opacity */
@@ -755,8 +832,13 @@ static void gp_draw_data_layers(
 		/* xray... */
 		SET_FLAG_FROM_TEST(dflag, gpl->flag & GP_LAYER_NO_XRAY, GP_DRAWDATA_NO_XRAY);
 
+		/* Draw 'onionskins' (frame left + right) */
+		if (gpl->onion_flag & GP_LAYER_ONIONSKIN) {
+			gp_draw_onionskins(gpd, gpl, gpf, offsx, offsy, winx, winy, cfra, dflag);
+		}
+
 		/* draw the strokes already in active frame */
-		gp_draw_strokes(gpd, gpl, gpf, offsx, offsy, winx, winy, dflag, debug, lthick, ink);
+		gp_draw_strokes(gpd, gpl, gpf, offsx, offsy, winx, winy, dflag, lthick, ink);
 
 		/* Draw verts of selected strokes
 		 *  - when doing OpenGL renders, we don't want to be showing these, as that ends up flickering
@@ -766,7 +848,7 @@ static void gp_draw_data_layers(
 		 *    (NOTE: doing it this way means that the toggling editmode shows visible change immediately)
 		 */
 		/* XXX: perhaps we don't want to show these when users are drawing... */
-		if ((G.f & G_RENDER_OGL) == 0 &&
+		if ((G.f & G_FLAG_RENDER_VIEWPORT) == 0 &&
 		    (gpl->flag & GP_LAYER_LOCKED) == 0 &&
 		    (gpd->flag & GP_DATA_STROKE_EDITMODE))
 		{
@@ -799,7 +881,7 @@ static void gp_draw_status_text(const bGPdata *gpd, ARegion *ar)
 	rcti rect;
 
 	/* Cannot draw any status text when drawing OpenGL Renders */
-	if (G.f & G_RENDER_OGL)
+	if (G.f & G_FLAG_RENDER_VIEWPORT)
 		return;
 
 	/* Get bounds of region - Necessary to avoid problems with region overlap */
@@ -873,7 +955,8 @@ static void gp_draw_data_all(
 			gpd_source = (scene->gpd ? scene->gpd : NULL);
 		}
 		else if (spacetype == SPACE_CLIP && scene->clip) {
-			/* currently drawing only gpencil data from either clip or track, but not both - XXX fix logic behind */
+			/* currently drawing only gpencil data from either clip or track,
+			 * but not both - XXX fix logic behind */
 			gpd_source = (scene->clip->gpd ? scene->clip->gpd : NULL);
 		}
 
@@ -893,12 +976,12 @@ static void gp_draw_data_all(
 
 /* ............................
  * XXX
- *	We need to review the calls below, since they may be/are not that suitable for
- *	the new ways that we intend to be drawing data...
+ * We need to review the calls below, since they may be/are not that suitable for
+ * the new ways that we intend to be drawing data...
  * ............................ */
 
 /* draw grease-pencil sketches to specified 2d-view that uses ibuf corrections */
-void ED_gpencil_draw_2dimage(const bContext *C)
+void ED_annotation_draw_2dimage(const bContext *C)
 {
 	wmWindowManager *wm = CTX_wm_manager(C);
 	ScrArea *sa = CTX_wm_area(C);
@@ -966,7 +1049,7 @@ void ED_gpencil_draw_2dimage(const bContext *C)
 /* draw grease-pencil sketches to specified 2d-view assuming that matrices are already set correctly
  * Note: this gets called twice - first time with onlyv2d=true to draw 'canvas' strokes,
  * second time with onlyv2d=false for screen-aligned strokes */
-void ED_gpencil_draw_view2d(const bContext *C, bool onlyv2d)
+void ED_annotation_draw_view2d(const bContext *C, bool onlyv2d)
 {
 	wmWindowManager *wm = CTX_wm_manager(C);
 	ScrArea *sa = CTX_wm_area(C);
@@ -1000,7 +1083,7 @@ void ED_gpencil_draw_view2d(const bContext *C, bool onlyv2d)
 /* draw annotations sketches to specified 3d-view assuming that matrices are already set correctly
  * Note: this gets called twice - first time with only3d=true to draw 3d-strokes,
  * second time with only3d=false for screen-aligned strokes */
-void ED_gpencil_draw_view3d_annotations(
+void ED_annotation_draw_view3d(
         Scene *scene, struct Depsgraph *depsgraph,
         View3D *v3d, ARegion *ar,
         bool only3d)
@@ -1016,7 +1099,7 @@ void ED_gpencil_draw_view3d_annotations(
 
 	/* when rendering to the offscreen buffer we don't want to
 	 * deal with the camera border, otherwise map the coords to the camera border. */
-	if ((rv3d->persp == RV3D_CAMOB) && !(G.f & G_RENDER_OGL)) {
+	if ((rv3d->persp == RV3D_CAMOB) && !(G.f & G_FLAG_RENDER_VIEWPORT)) {
 		rctf rectf;
 		ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &rectf, true); /* no shift */
 
@@ -1041,7 +1124,7 @@ void ED_gpencil_draw_view3d_annotations(
 		dflag |= (GP_DRAWDATA_ONLY3D | GP_DRAWDATA_NOSTATUS);
 	}
 
-	if (v3d->flag2 & V3D_RENDER_OVERRIDE) {
+	if (v3d->flag2 & V3D_HIDE_OVERLAYS) {
 		/* don't draw status text when "only render" flag is set */
 		dflag |= GP_DRAWDATA_NOSTATUS;
 	}
@@ -1050,15 +1133,13 @@ void ED_gpencil_draw_view3d_annotations(
 	gp_draw_data_all(scene, gpd, offsx, offsy, winx, winy, CFRA, dflag, v3d->spacetype);
 }
 
-#if 0 // XXX: Reinstate, after renaming the functions
-
-void ED_gpencil_draw_ex(Scene *scene, bGPdata *gpd, int winx, int winy, const int cfra, const char spacetype)
+void ED_annotation_draw_ex(
+	Scene *scene, bGPdata *gpd,
+	int winx, int winy, const int cfra, const char spacetype)
 {
 	int dflag = GP_DRAWDATA_NOSTATUS | GP_DRAWDATA_ONLYV2D;
 
 	gp_draw_data_all(scene, gpd, 0, 0, winx, winy, cfra, dflag, spacetype);
 }
-
-#endif
 
 /* ************************************************** */

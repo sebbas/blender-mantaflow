@@ -262,7 +262,7 @@ ccl_device void svm_node_closure_bsdf(KernelGlobals *kg, ShaderData *sd, float *
 					        ? (MicrofacetExtra*)closure_alloc_extra(sd, sizeof(MicrofacetExtra))
 					        : NULL;
 
-					if (bsdf && extra) {
+					if(bsdf && extra) {
 						bsdf->N = N;
 						bsdf->ior = (2.0f / (1.0f - safe_sqrtf(0.08f * specular))) - 1.0f;
 						bsdf->T = T;
@@ -285,7 +285,7 @@ ccl_device void svm_node_closure_bsdf(KernelGlobals *kg, ShaderData *sd, float *
 						/* setup bsdf */
 						if(distribution == CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID || roughness <= 0.075f) /* use single-scatter GGX */
 							sd->flag |= bsdf_microfacet_ggx_aniso_fresnel_setup(bsdf, sd);
-						else /* use multi-scatter GGX */
+						else  /* use multi-scatter GGX */
 							sd->flag |= bsdf_microfacet_multi_ggx_aniso_fresnel_setup(bsdf, sd);
 					}
 				}
@@ -314,7 +314,7 @@ ccl_device void svm_node_closure_bsdf(KernelGlobals *kg, ShaderData *sd, float *
 							        ? (MicrofacetExtra*)closure_alloc_extra(sd, sizeof(MicrofacetExtra))
 							        : NULL;
 
-							if (bsdf && extra) {
+							if(bsdf && extra) {
 								bsdf->N = N;
 								bsdf->T = make_float3(0.0f, 0.0f, 0.0f);
 								bsdf->extra = extra;
@@ -744,7 +744,7 @@ ccl_device void svm_node_closure_bsdf(KernelGlobals *kg, ShaderData *sd, float *
 			const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node4.y);
 			float random = 0.0f;
 			if(attr_descr_random.offset != ATTR_STD_NOT_FOUND) {
-				random = primitive_attribute_float(kg, sd, attr_descr_random, NULL, NULL);
+				random = primitive_surface_attribute_float(kg, sd, attr_descr_random, NULL, NULL);
 			}
 			else {
 				random = stack_load_float_default(stack, random_ofs, data_node3.y);
@@ -974,7 +974,7 @@ ccl_device void svm_node_principled_volume(KernelGlobals *kg, ShaderData *sd, fl
 		/* Density and color attribute lookup if available. */
 		const AttributeDescriptor attr_density = find_attribute(kg, sd, attr_node.x);
 		if(attr_density.offset != ATTR_STD_NOT_FOUND) {
-			primitive_density = primitive_attribute_float(kg, sd, attr_density, NULL, NULL);
+			primitive_density = primitive_volume_attribute_float(kg, sd, attr_density);
 			density = fmaxf(density * primitive_density, 0.0f);
 		}
 	}
@@ -985,7 +985,7 @@ ccl_device void svm_node_principled_volume(KernelGlobals *kg, ShaderData *sd, fl
 
 		const AttributeDescriptor attr_color = find_attribute(kg, sd, attr_node.y);
 		if(attr_color.offset != ATTR_STD_NOT_FOUND) {
-			color *= primitive_attribute_float3(kg, sd, attr_color, NULL, NULL);
+			color *= primitive_volume_attribute_float3(kg, sd, attr_color);
 		}
 
 		/* Add closure for volume scattering. */
@@ -1026,7 +1026,7 @@ ccl_device void svm_node_principled_volume(KernelGlobals *kg, ShaderData *sd, fl
 		/* Add flame temperature from attribute if available. */
 		const AttributeDescriptor attr_temperature = find_attribute(kg, sd, attr_node.z);
 		if(attr_temperature.offset != ATTR_STD_NOT_FOUND) {
-			float temperature = primitive_attribute_float(kg, sd, attr_temperature, NULL, NULL);
+			float temperature = primitive_volume_attribute_float(kg, sd, attr_temperature);
 			T *= fmaxf(temperature, 0.0f);
 		}
 

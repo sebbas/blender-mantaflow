@@ -1,5 +1,5 @@
-/** \file smoke/intern/tnt/tnt_array2d.h
- *  \ingroup smoke
+/** \file
+ * \ingroup smoke
  */
 /*
 *

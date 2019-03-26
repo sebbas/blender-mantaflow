@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_script/script_ops.c
- *  \ingroup spscript
+/** \file
+ * \ingroup spscript
  */
 
 
@@ -44,7 +37,6 @@ void script_operatortypes(void)
 {
 	WM_operatortype_append(SCRIPT_OT_python_file_run);
 	WM_operatortype_append(SCRIPT_OT_reload);
-	WM_operatortype_append(SCRIPT_OT_autoexec_warn_clear);
 }
 
 void script_keymap(wmKeyConfig *UNUSED(keyconf))

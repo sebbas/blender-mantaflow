@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 by Nicholas Bishop
  * All rights reserved.
- *
- * Contributor(s): Jason Wilkins, Tom Musgrove.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/editors/sculpt_paint/paint_cursor.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include "MEM_guardedalloc.h"
@@ -261,8 +254,8 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
 	bool refresh;
 	eOverlayControlFlags invalid = (
 	        (primary) ?
-	        (overlay_flags & PAINT_INVALID_OVERLAY_TEXTURE_PRIMARY) :
-	        (overlay_flags & PAINT_INVALID_OVERLAY_TEXTURE_SECONDARY));
+	        (overlay_flags & PAINT_OVERLAY_INVALID_TEXTURE_PRIMARY) :
+	        (overlay_flags & PAINT_OVERLAY_INVALID_TEXTURE_SECONDARY));
 	target = (primary) ? &primary_snap : &secondary_snap;
 
 	refresh =
@@ -316,8 +309,10 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
 
 		pool = BKE_image_pool_new();
 
-		if (mtex->tex && mtex->tex->nodetree)
-			ntreeTexBeginExecTree(mtex->tex->nodetree);  /* has internal flag to detect it only does it once */
+		if (mtex->tex && mtex->tex->nodetree) {
+			/* has internal flag to detect it only does it once */
+			ntreeTexBeginExecTree(mtex->tex->nodetree);
+		}
 
 		LoadTexData data = {
 		    .br = br, .vc = vc, .mtex = mtex, .buffer = buffer, .col = col,
@@ -415,7 +410,7 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
 	int size;
 	const bool refresh =
 	    !cursor_snap.overlay_texture ||
-	    (overlay_flags & PAINT_INVALID_OVERLAY_CURVE) ||
+	    (overlay_flags & PAINT_OVERLAY_INVALID_CURVE) ||
 	    cursor_snap.zoom != zoom;
 
 	init = (cursor_snap.overlay_texture != 0);
@@ -489,7 +484,7 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
-	BKE_paint_reset_overlay_invalid(PAINT_INVALID_OVERLAY_CURVE);
+	BKE_paint_reset_overlay_invalid(PAINT_OVERLAY_INVALID_CURVE);
 
 	return 1;
 }
@@ -527,7 +522,7 @@ static int project_brush_radius(
 	cross_v3_v3v3(ortho, nonortho, view);
 	normalize_v3(ortho);
 
-	/* make a point on the surface of the brush tagent to the view */
+	/* make a point on the surface of the brush tangent to the view */
 	mul_v3_fl(ortho, radius);
 	add_v3_v3v3(offset, location, ortho);
 
@@ -692,7 +687,7 @@ static void paint_draw_tex_overlay(
 		}
 
 		/* draw textured quad */
-		immUniform1i("image", GL_TEXTURE0);
+		immUniform1i("image", 0);
 
 		immBegin(GPU_PRIM_TRI_FAN, 4);
 		immAttr2f(texCoord, 0.0f, 0.0f);
@@ -801,10 +796,11 @@ static void paint_draw_alpha_overlay(
         UnifiedPaintSettings *ups, Brush *brush,
         ViewContext *vc, int x, int y, float zoom, ePaintMode mode)
 {
-	/* color means that primary brush texture is colured and secondary is used for alpha/mask control */
-	bool col = ELEM(mode, ePaintTextureProjective, ePaintTexture2D, ePaintVertex) ? true : false;
+	/* color means that primary brush texture is colured and
+	 * secondary is used for alpha/mask control */
+	bool col = ELEM(mode, PAINT_MODE_TEXTURE_3D, PAINT_MODE_TEXTURE_2D, PAINT_MODE_VERTEX) ? true : false;
 	eOverlayControlFlags flags = BKE_paint_get_overlay_flags();
-	gpuPushAttrib(GPU_DEPTH_BUFFER_BIT | GPU_BLEND_BIT);
+	gpuPushAttr(GPU_DEPTH_BUFFER_BIT | GPU_BLEND_BIT);
 
 	/* Translate to region. */
 	GPU_matrix_push();
@@ -822,14 +818,14 @@ static void paint_draw_alpha_overlay(
 			paint_draw_cursor_overlay(ups, brush, vc, x, y, zoom);
 	}
 	else {
-		if (!(flags & PAINT_OVERLAY_OVERRIDE_PRIMARY) && (mode != ePaintWeight))
+		if (!(flags & PAINT_OVERLAY_OVERRIDE_PRIMARY) && (mode != PAINT_MODE_WEIGHT))
 			paint_draw_tex_overlay(ups, brush, vc, x, y, zoom, false, true);
 		if (!(flags & PAINT_OVERLAY_OVERRIDE_CURSOR))
 			paint_draw_cursor_overlay(ups, brush, vc, x, y, zoom);
 	}
 
 	GPU_matrix_pop();
-	gpuPopAttrib();
+	gpuPopAttr();
 }
 
 
@@ -1033,7 +1029,7 @@ static void paint_cursor_on_hit(
 static bool ommit_cursor_drawing(Paint *paint, ePaintMode mode, Brush *brush)
 {
 	if (paint->flags & PAINT_SHOW_BRUSH) {
-		if (ELEM(mode, ePaintTexture2D, ePaintTextureProjective) && brush->imagepaint_tool == PAINT_TOOL_FILL) {
+		if (ELEM(mode, PAINT_MODE_TEXTURE_2D, PAINT_MODE_TEXTURE_3D) && brush->imagepaint_tool == PAINT_TOOL_FILL) {
 			return true;
 		}
 		return false;
@@ -1079,8 +1075,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 	float translation[2] = { x, y };
 	float final_radius = (BKE_brush_size_get(scene, brush) * zoomx);
 
-	/* don't calculate rake angles while a stroke is active because the rake variables are global and
-	 * we may get interference with the stroke itself. For line strokes, such interference is visible */
+	/* don't calculate rake angles while a stroke is active because the rake variables are global
+	 * and we may get interference with the stroke itself.
+	 * For line strokes, such interference is visible */
 	if (!ups->stroke_active) {
 		paint_calculate_rake_rotation(ups, brush, translation);
 	}
@@ -1090,7 +1087,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
 	/* TODO: as sculpt and other paint modes are unified, this
 	 * special mode of drawing will go away */
-	if ((mode == ePaintSculpt) && vc.obact->sculpt) {
+	if ((mode == PAINT_MODE_SCULPT) && vc.obact->sculpt) {
 		float location[3];
 		int pixel_radius;
 

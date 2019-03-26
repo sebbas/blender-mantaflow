@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,44 +15,35 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_boolean.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 // #ifdef DEBUG_TIME
 
 #include <stdio.h>
 
-#include "DNA_object_types.h"
-
 #include "BLI_utildefines.h"
-#include "BLI_math_matrix.h"
-
-#include "BKE_library_query.h"
-#include "BKE_modifier.h"
-
-#include "MOD_util.h"
 
 #include "BLI_alloca.h"
 #include "BLI_math_geom.h"
-#include "BKE_material.h"
-#include "BKE_global.h"  /* only to check G.debug */
-#include "BKE_mesh.h"
-#include "BKE_library.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
+
+#include "BKE_global.h"  /* only to check G.debug */
+#include "BKE_library.h"
+#include "BKE_library_query.h"
+#include "BKE_material.h"
+#include "BKE_mesh.h"
+#include "BKE_modifier.h"
+
+
+#include "MOD_util.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -74,6 +63,7 @@ static void initData(ModifierData *md)
 	BooleanModifierData *bmd = (BooleanModifierData *)md;
 
 	bmd->double_threshold = 1e-6f;
+	bmd->operation = eBooleanModifierOp_Difference;
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene), ModifierData *md, bool UNUSED(useRenderParams))
@@ -100,7 +90,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 		DEG_add_object_relation(ctx->node, bmd->object, DEG_OB_COMP_GEOMETRY, "Boolean Modifier");
 	}
 	/* We need own transformation as well. */
-	DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Boolean Modifier");
+	DEG_add_modifier_to_transform_relation(ctx->node, "Boolean Modifier");
 }
 
 static Mesh *get_quick_mesh(
@@ -121,12 +111,7 @@ static Mesh *get_quick_mesh(
 					result = mesh_self;
 				}
 				else {
-					BKE_id_copy_ex(NULL, &mesh_other->id, (ID **)&result,
-					               LIB_ID_CREATE_NO_MAIN |
-					               LIB_ID_CREATE_NO_USER_REFCOUNT |
-					               LIB_ID_CREATE_NO_DEG_TAG |
-					               LIB_ID_COPY_NO_PREVIEW,
-					               false);
+					BKE_id_copy_ex(NULL, &mesh_other->id, (ID **)&result, LIB_ID_COPY_LOCALIZE);
 
 					float imat[4][4];
 					float omat[4][4];
@@ -173,17 +158,15 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	Mesh *result = mesh;
 
 	Mesh *mesh_other;
-	bool mesh_other_free;
 
-	if (!bmd->object) {
+	if (bmd->object == NULL) {
 		return result;
 	}
 
-	Object *ob_eval = DEG_get_evaluated_object(ctx->depsgraph, bmd->object);
-	mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_eval, &mesh_other_free);
+	Object *other = DEG_get_evaluated_object(ctx->depsgraph, bmd->object);
+	mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(other, false);
 	if (mesh_other) {
 		Object *object = ctx->object;
-		Object *other = bmd->object;
 
 		/* when one of objects is empty (has got no faces) we could speed up
 		 * calculation a bit returning one of objects' derived meshes (or empty one)
@@ -265,6 +248,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 						short *material_remap = BLI_array_alloca(material_remap, ob_src_totcol ? ob_src_totcol : 1);
 
 						/* Using original (not evaluated) object here since we are writing to it. */
+						/* XXX Pretty sure comment above is fully wrong now with CoW & co ? */
 						BKE_material_remap_object_calc(ctx->object, other, material_remap);
 
 						BMFace *efa;
@@ -317,7 +301,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 				MEM_freeN(looptris);
 			}
 
-			result = BKE_mesh_from_bmesh_for_eval_nomain(bm, 0);
+			result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
 
 			BM_mesh_free(bm);
 
@@ -334,20 +318,14 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 			modifier_setError(md, "Cannot execute boolean operation");
 	}
 
-	if (mesh_other != NULL && mesh_other_free) {
-		BKE_id_free(NULL, mesh_other);
-	}
-
 	return result;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md))
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *UNUSED(md), CustomData_MeshMasks *r_cddata_masks)
 {
-	CustomDataMask dataMask = CD_MASK_MTFACE | CD_MASK_MEDGE;
-
-	dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	r_cddata_masks->emask |= CD_MASK_MEDGE;
+	r_cddata_masks->fmask |= CD_MASK_MTFACE;
 }
 
 ModifierTypeInfo modifierType_Boolean = {
@@ -382,4 +360,5 @@ ModifierTypeInfo modifierType_Boolean = {
 	/* foreachObjectLink */ foreachObjectLink,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

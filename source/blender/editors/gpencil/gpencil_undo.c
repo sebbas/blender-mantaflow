@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2011 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/gpencil/gpencil_undo.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 
@@ -44,7 +36,6 @@
 
 #include "BKE_blender_undo.h"
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_gpencil.h"
 
 #include "ED_gpencil.h"
@@ -115,7 +106,7 @@ int ED_undo_gpencil_step(bContext *C, int step, const char *name)
 			}
 		}
 		/* drawing batch cache is dirty now */
-		DEG_id_tag_update(&new_gpd->id, OB_RECALC_OB | OB_RECALC_DATA);
+		DEG_id_tag_update(&new_gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 		new_gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
 	}
 
@@ -161,8 +152,8 @@ void gpencil_undo_push(bGPdata *gpd)
 	}
 
 	/* limit number of undo steps to the maximum undo steps
-	 *  - to prevent running out of memory during **really**
-	 *    long drawing sessions (triggering swapping)
+	 * - to prevent running out of memory during **really**
+	 *   long drawing sessions (triggering swapping)
 	 */
 	/* TODO: Undo-memory constraint is not respected yet, but can be added if we have any need for it */
 	if (U.undosteps && !BLI_listbase_is_empty(&undo_nodes)) {

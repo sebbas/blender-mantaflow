@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation, full recode and added functions
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_view3d/view3d_iterators.c
- *  \ingroup spview3d
+/** \file
+ * \ingroup spview3d
  */
 
 #include "DNA_curve_types.h"
@@ -42,7 +36,6 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
-#include "BKE_context.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_iterators.h"
 
@@ -119,7 +112,10 @@ void meshobject_foreachScreenVert(
 	foreachScreenObjectVert_userData data;
 	Mesh *me;
 
-	me = mesh_get_eval_deform(vc->depsgraph, vc->scene, vc->obact, CD_MASK_BAREMESH);
+	Scene *scene_eval = DEG_get_evaluated_scene(vc->depsgraph);
+	Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
+
+	me = mesh_get_eval_deform(vc->depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
 	ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -159,7 +155,7 @@ void mesh_foreachScreenVert(
 {
 	foreachScreenVert_userData data;
 
-	Mesh *me = editbmesh_get_eval_cage(vc->depsgraph, vc->scene, vc->obedit, vc->em, CD_MASK_BAREMESH);
+	Mesh *me = editbmesh_get_eval_cage_from_orig(vc->depsgraph, vc->scene, vc->obedit, vc->em, &CD_MASK_BAREMESH);
 
 	ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -212,7 +208,7 @@ void mesh_foreachScreenEdge(
 {
 	foreachScreenEdge_userData data;
 
-	Mesh *me = editbmesh_get_eval_cage(vc->depsgraph, vc->scene, vc->obedit, vc->em, CD_MASK_BAREMESH);
+	Mesh *me = editbmesh_get_eval_cage_from_orig(vc->depsgraph, vc->scene, vc->obedit, vc->em, &CD_MASK_BAREMESH);
 
 	ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -257,7 +253,7 @@ void mesh_foreachScreenFace(
 {
 	foreachScreenFace_userData data;
 
-	Mesh *me = editbmesh_get_eval_cage(vc->depsgraph, vc->scene, vc->obedit, vc->em, CD_MASK_BAREMESH);
+	Mesh *me = editbmesh_get_eval_cage_from_orig(vc->depsgraph, vc->scene, vc->obedit, vc->em, &CD_MASK_BAREMESH);
 	ED_view3d_check_mats_rv3d(vc->rv3d);
 
 	data.vc = *vc;

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Blender Foundation,
- *                 Sergey Sharybin
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/makesrna/intern/rna_mask.c
- *  \ingroup RNA
+/** \file
+ * \ingroup RNA
  */
 
 
@@ -32,7 +25,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_mask_types.h"
-#include "DNA_object_types.h"	/* SELECT */
+#include "DNA_object_types.h"  /* SELECT */
 #include "DNA_scene_types.h"
 
 #include "BLT_translation.h"
@@ -449,7 +442,7 @@ static void rna_MaskLayer_spline_remove(ID *id, MaskLayer *mask_layer, ReportLis
 
 	RNA_POINTER_INVALIDATE(spline_ptr);
 
-	DEG_id_tag_update(&mask->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&mask->id, ID_RECALC_GEOMETRY);
 }
 
 static void rna_Mask_start_frame_set(PointerRNA *ptr, int value)
@@ -596,12 +589,14 @@ static void rna_def_maskParent(BlenderRNA *brna)
 
 	static const EnumPropertyItem mask_id_type_items[] = {
 		{ID_MC, "MOVIECLIP", ICON_SEQUENCE, "Movie Clip", ""},
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	static const EnumPropertyItem parent_type_items[] = {
 		{MASK_PARENT_POINT_TRACK, "POINT_TRACK", 0, "Point Track", ""},
 		{MASK_PARENT_PLANE_TRACK, "PLANE_TRACK", 0, "Plane Track", ""},
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	srna = RNA_def_struct(brna, "MaskParent", NULL);
 	RNA_def_struct_ui_text(srna, "Mask Parent", "Parenting settings for masking element");
@@ -684,7 +679,8 @@ static void rna_def_maskSplinePoint(BlenderRNA *brna)
 		{HD_ALIGN, "ALIGNED", 0, "Aligned Single", ""},
 		{HD_ALIGN_DOUBLESIDE, "ALIGNED_DOUBLESIDE", 0, "Aligned", ""},
 		{HD_FREE, "FREE", 0, "Free", ""},
-		{0, NULL, 0, NULL, NULL}};
+		{0, NULL, 0, NULL, NULL},
+	};
 
 	rna_def_maskSplinePointUW(brna);
 
@@ -829,13 +825,13 @@ static void rna_def_maskSpline(BlenderRNA *brna)
 	static const EnumPropertyItem spline_interpolation_items[] = {
 		{MASK_SPLINE_INTERP_LINEAR, "LINEAR", 0, "Linear", ""},
 		{MASK_SPLINE_INTERP_EASE, "EASE", 0, "Ease", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	static const EnumPropertyItem spline_offset_mode_items[] = {
 		{MASK_SPLINE_OFFSET_EVEN, "EVEN", 0, "Even", "Calculate even feather offset"},
 		{MASK_SPLINE_OFFSET_SMOOTH, "SMOOTH", 0, "Smooth", "Calculate feather offset as a second curve"},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	StructRNA *srna;
@@ -900,7 +896,7 @@ static void rna_def_mask_layer(BlenderRNA *brna)
 		{MASK_BLEND_MUL, "MUL", 0, "Multiply", ""},
 		{MASK_BLEND_REPLACE, "REPLACE", 0, "Replace", ""},
 		{MASK_BLEND_DIFFERENCE, "DIFFERENCE", 0, "Difference", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	StructRNA *srna;
@@ -933,19 +929,19 @@ static void rna_def_mask_layer(BlenderRNA *brna)
 	prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "restrictflag", MASK_RESTRICT_VIEW);
 	RNA_def_property_ui_text(prop, "Restrict View", "Restrict visibility in the viewport");
-	RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, 1);
+	RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
 	RNA_def_property_update(prop, NC_MASK | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "hide_select", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "restrictflag", MASK_RESTRICT_SELECT);
 	RNA_def_property_ui_text(prop, "Restrict Select", "Restrict selection in the viewport");
-	RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, 1);
+	RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, -1);
 	RNA_def_property_update(prop, NC_MASK | ND_DRAW, NULL);
 
 	prop = RNA_def_property(srna, "hide_render", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "restrictflag", MASK_RESTRICT_RENDER);
 	RNA_def_property_ui_text(prop, "Restrict Render", "Restrict renderability");
-	RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, 1);
+	RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
 	RNA_def_property_update(prop, NC_MASK | NA_EDITED, NULL);
 
 	/* select (for dopesheet)*/

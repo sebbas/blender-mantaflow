@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/imbuf/intern/anim_movie.c
- *  \ingroup imbuf
+/** \file
+ * \ingroup imbuf
  */
 
 
@@ -114,9 +106,9 @@ static void free_anim_movie(struct anim *UNUSED(anim))
 
 
 #if defined(_WIN32)
-# define PATHSEPARATOR '\\'
+#  define PATHSEPARATOR '\\'
 #else
-# define PATHSEPARATOR '/'
+#  define PATHSEPARATOR '/'
 #endif
 
 static int an_stringdec(const char *string, char *head, char *tail, unsigned short *numlen)
@@ -433,7 +425,7 @@ static ImBuf *avi_fetchibuf(struct anim *anim, int position)
 		if (anim->pgf) {
 			lpbi = AVIStreamGetFrame(anim->pgf, position + AVIStreamStart(anim->pavi[anim->firstvideo]));
 			if (lpbi) {
-				ibuf = IMB_ibImageFromMemory((unsigned char *) lpbi, 100, IB_rect, anim->colorspace, "<avi_fetchibuf>");
+				ibuf = IMB_ibImageFromMemory((const unsigned char *) lpbi, 100, IB_rect, anim->colorspace, "<avi_fetchibuf>");
 //Oh brother...
 			}
 		}
@@ -795,8 +787,7 @@ static void ffmpeg_postprocess(struct anim *anim)
 		int *dstStride   = anim->pFrameRGB->linesize;
 		uint8_t **dst     = anim->pFrameRGB->data;
 		int dstStride2[4] = { -dstStride[0], 0, 0, 0 };
-		uint8_t *dst2[4]  = { dst[0] + (anim->y - 1) * dstStride[0],
-			                  0, 0, 0 };
+		uint8_t *dst2[4]  = { dst[0] + (anim->y - 1) * dstStride[0], 0, 0, 0 };
 
 		sws_scale(anim->img_convert_ctx,
 		          (const uint8_t *const *)input->data,
@@ -893,13 +884,13 @@ static int ffmpeg_decode_video_frame(struct anim *anim)
 		anim->pFrameComplete = 0;
 
 		avcodec_decode_video2(
-			anim->pCodecCtx,
-			anim->pFrame, &anim->pFrameComplete,
-			&anim->next_packet);
+		        anim->pCodecCtx,
+		        anim->pFrame, &anim->pFrameComplete,
+		        &anim->next_packet);
 
 		if (anim->pFrameComplete) {
 			anim->next_pts = av_get_pts_from_frame(
-				anim->pFormatCtx, anim->pFrame);
+			        anim->pFormatCtx, anim->pFrame);
 
 			av_log(anim->pFormatCtx,
 			       AV_LOG_DEBUG,

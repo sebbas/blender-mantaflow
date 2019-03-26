@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Ben Batt
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/modifiers/intern/MOD_util.h
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
 
@@ -33,17 +27,18 @@
 
 #include "DEG_depsgraph_build.h"
 
-struct Depsgraph;
 struct MDeformVert;
 struct Mesh;
 struct ModifierData;
+struct ModifierEvalContext;
 struct Object;
 struct Scene;
 struct Tex;
 
-void MOD_init_texture(const struct Depsgraph *depsgraph, struct Tex *texture);
+void MOD_init_texture(struct MappingInfoModifierData *dmd, const struct ModifierEvalContext *ctx);
 void MOD_get_texture_coords(
         struct MappingInfoModifierData *dmd,
+        const struct ModifierEvalContext *ctx,
         struct Object *ob,
         struct Mesh *mesh,
         float (*cos)[3],
@@ -51,9 +46,10 @@ void MOD_get_texture_coords(
 
 void MOD_previous_vcos_store(struct ModifierData *md, float (*vertexCos)[3]);
 
-struct Mesh *MOD_get_mesh_eval(
+struct Mesh *MOD_deform_mesh_eval_get(
         struct Object *ob, struct BMEditMesh *em, struct Mesh *mesh,
-        float (*vertexCos)[3], bool use_normals, bool use_orco);
+        float (*vertexCos)[3], const int num_verts,
+        const bool use_normals, const bool use_orco);
 
 void MOD_get_vgroup(
         struct Object *ob, struct Mesh *mesh,

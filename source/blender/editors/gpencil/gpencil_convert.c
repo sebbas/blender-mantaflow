@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2008, Blender Foundation
  * This is a new part of Blender
- *
- * Contributor(s): Joshua Leung
- *                 Bastien Montagne
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Operator for converting Grease Pencil data to geometry
  */
 
-/** \file blender/editors/gpencil/gpencil_convert.c
- *  \ingroup edgpencil
+/** \file
+ * \ingroup edgpencil
  */
 
 
@@ -64,12 +56,10 @@
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_layer.h"
-#include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_screen.h"
 #include "BKE_tracking.h"
 
 #include "DEG_depsgraph.h"
@@ -116,7 +106,7 @@ static const EnumPropertyItem prop_gpencil_convertmodes[] = {
 	{GP_STROKECONVERT_PATH, "PATH", ICON_CURVE_PATH, "Path", "Animation path"},
 	{GP_STROKECONVERT_CURVE, "CURVE", ICON_CURVE_BEZCURVE, "Bezier Curve", "Smooth Bezier curve"},
 	{GP_STROKECONVERT_POLY, "POLY", ICON_MESH_DATA, "Polygon Curve", "Bezier curve with straight-line segments (vector handles)"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static const EnumPropertyItem prop_gpencil_convert_timingmodes_restricted[] = {
@@ -147,7 +137,7 @@ static const EnumPropertyItem *rna_GPConvert_mode_items(
 /* --- */
 
 /* convert the coordinates from the given stroke point into 3d-coordinates
- *	- assumes that the active space is the 3D-View
+ * - assumes that the active space is the 3D-View
  */
 static void gp_strokepoint_convertcoords(
         bContext *C, bGPdata *gpd, bGPDlayer *gpl, bGPDstroke *gps, bGPDspoint *source_pt,
@@ -175,7 +165,7 @@ static void gp_strokepoint_convertcoords(
 		copy_v3_v3(p3d, &pt->x);
 	}
 	else {
-		const float *fp = ED_view3d_cursor3d_get(scene, v3d)->location;
+		const float *fp = scene->cursor.location;
 		float mvalf[2];
 
 		/* get screen coordinate */
@@ -424,7 +414,7 @@ static void gp_stroke_path_animation_add_keyframes(
 				if ((cfra - last_valid_time) < MIN_TIME_DELTA) {
 					cfra = last_valid_time + MIN_TIME_DELTA;
 				}
-				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 				last_valid_time = cfra;
 			}
 			else if (G.debug & G_DEBUG) {
@@ -436,7 +426,7 @@ static void gp_stroke_path_animation_add_keyframes(
 			if ((cfra - last_valid_time) < MIN_TIME_DELTA) {
 				cfra = last_valid_time + MIN_TIME_DELTA;
 			}
-			insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+			insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 			last_valid_time = cfra;
 		}
 		else {
@@ -444,7 +434,7 @@ static void gp_stroke_path_animation_add_keyframes(
 			 * and also far enough from (not yet added!) end_stroke keyframe!
 			 */
 			if ((cfra - last_valid_time) > MIN_TIME_DELTA && (end_stroke_time - cfra) > MIN_TIME_DELTA) {
-				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_BREAKDOWN, INSERTKEY_FAST);
+				insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_BREAKDOWN, NULL, INSERTKEY_FAST);
 				last_valid_time = cfra;
 			}
 			else if (G.debug & G_DEBUG) {
@@ -500,7 +490,7 @@ static void gp_stroke_path_animation(bContext *C, ReportList *reports, Curve *cu
 
 		cu->ctime = 0.0f;
 		cfra = (float)gtd->start_frame;
-		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 
 		cu->ctime = cu->pathlen;
 		if (gtd->realtime) {
@@ -509,7 +499,7 @@ static void gp_stroke_path_animation(bContext *C, ReportList *reports, Curve *cu
 		else {
 			cfra = (float)gtd->end_frame;
 		}
-		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
+		insert_keyframe_direct(depsgraph, reports, ptr, prop, fcu, cfra, BEZT_KEYTYPE_KEYFRAME, NULL, INSERTKEY_FAST);
 	}
 	else {
 		/* Use actual recorded timing! */
@@ -1130,7 +1120,7 @@ static int gp_camera_view_subrect(bContext *C, rctf *subrect)
 		if (rv3d->persp == RV3D_CAMOB) {
 			Scene *scene = CTX_data_scene(C);
 			Depsgraph *depsgraph = CTX_data_depsgraph(C);
-			ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, subrect, true); /* no shift */
+			ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, subrect, true);
 			return 1;
 		}
 	}
@@ -1138,7 +1128,8 @@ static int gp_camera_view_subrect(bContext *C, rctf *subrect)
 	return 0;
 }
 
-/* convert a given grease-pencil layer to a 3d-curve representation (using current view if appropriate) */
+/* convert a given grease-pencil layer to a 3d-curve representation
+ * (using current view if appropriate) */
 static void gp_layer_to_curve(
         bContext *C, ReportList *reports, bGPdata *gpd, bGPDlayer *gpl, const int mode,
         const bool norm_weights, const float rad_fac, const bool link_strokes, tGpTimingData *gtd)
@@ -1174,12 +1165,13 @@ static void gp_layer_to_curve(
 	}
 
 	/* init the curve object (remove rotation and get curve data from it)
-	 *	- must clear transforms set on object, as those skew our results
+	 * - must clear transforms set on object, as those skew our results
 	 */
 	ob = BKE_object_add_only_object(bmain, OB_CURVE, gpl->info);
 	cu = ob->data = BKE_curve_add(bmain, gpl->info, OB_CURVE);
 	BKE_collection_object_add(bmain, collection, ob);
 	base_new = BKE_view_layer_base_find(view_layer, ob);
+	DEG_relations_tag_update(bmain); /* added object */
 
 	cu->flag |= CU_3D;
 
@@ -1190,7 +1182,8 @@ static void gp_layer_to_curve(
 		const bool add_start_point = (link_strokes && !(prev_gps));
 		const bool add_end_point = (link_strokes && !(gps->next));
 
-		/* Detect new strokes created because of GP_STROKE_BUFFER_MAX reached, and stitch them to previous one. */
+		/* Detect new strokes created because of GP_STROKE_BUFFER_MAX reached,
+		 * and stitch them to previous one. */
 		bool stitch = false;
 		if (prev_gps) {
 			bGPDspoint *pt1 = &prev_gps->points[prev_gps->totpoints - 1];
@@ -1313,14 +1306,18 @@ static void gp_convert_set_end_frame(struct Main *UNUSED(main), struct Scene *UN
 
 static bool gp_convert_poll(bContext *C)
 {
-	bGPdata *gpd = ED_gpencil_data_get_active(C);
+	Object *ob = CTX_data_active_object(C);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
+	if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+		return false;
+	}
+
+	bGPdata *gpd = (bGPdata *)ob->data;
 	bGPDlayer *gpl = NULL;
 	bGPDframe *gpf = NULL;
 	ScrArea *sa = CTX_wm_area(C);
-	ViewLayer *view_layer = CTX_data_view_layer(C);
 
 	/* only if the current view is 3D View, if there's valid data (i.e. at least one stroke!),
 	 * and if we are not in edit mode!
@@ -1329,13 +1326,15 @@ static bool gp_convert_poll(bContext *C)
 	        (gpl = BKE_gpencil_layer_getactive(gpd)) &&
 	        (gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV)) &&
 	        (gpf->strokes.first) &&
-	        (OBEDIT_FROM_VIEW_LAYER(view_layer) == NULL));
+	        (!GPENCIL_ANY_EDIT_MODE(gpd)));
 }
 
 static int gp_convert_layer_exec(bContext *C, wmOperator *op)
 {
 	PropertyRNA *prop = RNA_struct_find_property(op->ptr, "use_timing_data");
-	bGPdata *gpd = ED_gpencil_data_get_active(C);
+	Object *ob = CTX_data_active_object(C);
+	bGPdata *gpd = (bGPdata *)ob->data;
+
 	bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
 	Scene *scene = CTX_data_scene(C);
 	const int mode = RNA_enum_get(op->ptr, "type");
@@ -1396,7 +1395,7 @@ static int gp_convert_layer_exec(bContext *C, wmOperator *op)
 	}
 
 	/* notifiers */
-	DEG_id_tag_update(&scene->id, DEG_TAG_SELECT_UPDATE);
+	DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
 	WM_event_add_notifier(C, NC_OBJECT | NA_ADDED, NULL);
 	WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
 
@@ -1494,7 +1493,7 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
 	                "Normalize weight (set from stroke width)");
 	RNA_def_float(ot->srna, "radius_multiplier", 1.0f, 0.0f, 1000.0f, "Radius Fac",
 	              "Multiplier for the points' radii (set from stroke width)", 0.0f, 10.0f);
-	RNA_def_boolean(ot->srna, "use_link_strokes", true, "Link Strokes",
+	RNA_def_boolean(ot->srna, "use_link_strokes", false, "Link Strokes",
 	                "Whether to link strokes with zero-radius sections of curves");
 
 	prop = RNA_def_enum(ot->srna, "timing_mode", prop_gpencil_convert_timingmodes, GP_STROKECONVERT_TIMING_FULL,

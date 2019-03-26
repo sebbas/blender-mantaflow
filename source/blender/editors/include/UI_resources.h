@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL/BL DUAL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,22 +15,16 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL/BL DUAL LICENSE BLOCK *****
  */
 
-/** \file UI_resources.h
- *  \ingroup editorui
+/** \file
+ * \ingroup editorui
  */
-
-#include "BLI_sys_types.h"
 
 #ifndef __UI_RESOURCES_H__
 #define __UI_RESOURCES_H__
+
+#include "BLI_sys_types.h"
 
 /* Define icon enum. */
 #define DEF_ICON(name) ICON_##name,
@@ -58,6 +50,8 @@ typedef enum ThemeColorID {
 // common colors among spaces
 
 	TH_BACK,
+	/** Use when 'TH_SHOW_BACK_GRAD' is set (the lower, darker color). */
+	TH_BACK_GRAD,
 	TH_TEXT,
 	TH_TEXT_HI,
 	TH_TITLE,
@@ -162,7 +156,7 @@ typedef enum ThemeColorID {
 	TH_KEYBORDER,
 	TH_KEYBORDER_SELECT,
 
-	TH_LAMP,
+	TH_LIGHT,
 	TH_SPEAKER,
 	TH_CAMERA,
 	TH_EMPTY,
@@ -217,6 +211,7 @@ typedef enum ThemeColorID {
 
 	TH_DOPESHEET_CHANNELOB,
 	TH_DOPESHEET_CHANNELSUBOB,
+	TH_DOPESHEET_IPOLINE,
 
 	TH_PREVIEW_BACK,
 
@@ -295,8 +290,6 @@ typedef enum ThemeColorID {
 	TH_GIZMO_A,
 	TH_GIZMO_B,
 
-	TH_LOW_GRAD,
-	TH_HIGH_GRAD,
 	TH_SHOW_BACK_GRAD,
 
 	TH_INFO_SELECTED,
@@ -342,6 +335,7 @@ int     UI_GetThemeValueType(int colorid, int spacetype);
 void    UI_GetThemeColor3fv(int colorid, float col[3]);
 void    UI_GetThemeColorBlend3ubv(int colorid1, int colorid2, float fac, unsigned char col[3]);
 void    UI_GetThemeColorBlend3f(int colorid1, int colorid2, float fac, float r_col[3]);
+void    UI_GetThemeColorBlend4f(int colorid1, int colorid2, float fac, float r_col[4]);
 // get the color, range 0.0-1.0, complete with shading offset
 void    UI_GetThemeColorShade3fv(int colorid, int offset, float col[3]);
 void    UI_GetThemeColorShade3ubv(int colorid, int offset, unsigned char col[3]);
@@ -352,6 +346,10 @@ void	UI_GetThemeColorBlendShade3ubv(int colorid1, int colorid2, float fac, int o
 
 // get four color values, scaled to 0.0-1.0 range
 void    UI_GetThemeColor4fv(int colorid, float col[4]);
+
+/* get four color values from specified space type, scaled to 0.0-1.0 range */
+void	UI_GetThemeColorType4fv(int colorid, int spacetype, float col[4]);
+
 // get four color values, range 0.0-1.0, complete with shading offset for the RGB components
 void    UI_GetThemeColorShade4fv(int colorid, int offset, float col[4]);
 void	UI_GetThemeColorShadeAlpha4fv(int colorid, int coloffset, int alphaoffset, float col[4]);
@@ -368,7 +366,8 @@ void UI_GetThemeColor3ubv(int colorid, unsigned char col[3]);
 void UI_GetThemeColor4ubv(int colorid, unsigned char col[4]);
 
 // get a theme color from specified space type
-void UI_GetThemeColorType4ubv(int colorid, int spacetype, char col[4]);
+void UI_GetThemeColorType3ubv(int colorid, int spacetype, unsigned char col[3]);
+void UI_GetThemeColorType4ubv(int colorid, int spacetype, unsigned char col[4]);
 
 // get theme color for coloring monochrome icons
 bool    UI_GetIconThemeColor4fv(int colorid, float col[4]);

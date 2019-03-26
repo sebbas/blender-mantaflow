@@ -22,6 +22,7 @@
 #include "render/attribute.h"
 #include "render/shader.h"
 
+#include "util/util_array.h"
 #include "util/util_boundbox.h"
 #include "util/util_list.h"
 #include "util/util_map.h"
@@ -273,7 +274,6 @@ public:
 	void add_curve_key(float3 loc, float radius);
 	void add_curve(int first_key, int shader);
 	void add_subd_face(int* corners, int num_corners, int shader_, bool smooth_);
-	int split_vertex(int vertex);
 
 	void compute_bounds();
 	void add_face_normals();
@@ -390,4 +390,4 @@ protected:
 
 CCL_NAMESPACE_END
 
-#endif /* __MESH_H__ */
+#endif  /* __MESH_H__ */

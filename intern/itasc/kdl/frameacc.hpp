@@ -12,16 +12,15 @@
  *
  *      It also contains the 2nd derivative <-> RFrames.h
  *
- *  \author
  *      Erwin Aertbelien, Div. PMA, Dep. of Mech. Eng., K.U.Leuven
  *
- *  \version
+ * \version
  *      ORO_Geometry V0.2
  *
- *  \par History
+ * \par History
  *      - $log$
  *
- *  \par Release
+ * \par Release
  *      $Name:  $
  ****************************************************************************/
 

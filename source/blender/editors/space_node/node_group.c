@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): David Millan Escriva, Juho Vepsäläinen, Nathan Letwory
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_node/node_group.c
- *  \ingroup spnode
+/** \file
+ * \ingroup spnode
  */
 
 #include <stdlib.h>
@@ -45,7 +37,6 @@
 #include "BKE_action.h"
 #include "BKE_animsys.h"
 #include "BKE_context.h"
-#include "BKE_global.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -115,12 +106,15 @@ static const char *group_node_idname(bContext *C)
 {
 	SpaceNode *snode = CTX_wm_space_node(C);
 
-	if (ED_node_is_shader(snode))
+	if (ED_node_is_shader(snode)) {
 		return "ShaderNodeGroup";
-	else if (ED_node_is_compositor(snode))
+	}
+	else if (ED_node_is_compositor(snode)) {
 		return "CompositorNodeGroup";
-	else if (ED_node_is_texture(snode))
+	}
+	else if (ED_node_is_texture(snode)) {
 		return "TextureNodeGroup";
+	}
 
 	return "";
 }
@@ -130,10 +124,12 @@ static bNode *node_group_get_active(bContext *C, const char *node_idname)
 	SpaceNode *snode = CTX_wm_space_node(C);
 	bNode *node = nodeGetActive(snode->edittree);
 
-	if (node && STREQ(node->idname, node_idname))
+	if (node && STREQ(node->idname, node_idname)) {
 		return node;
-	else
+	}
+	else {
 		return NULL;
+	}
 }
 
 /* ***************** Edit Group operator ************* */
@@ -152,11 +148,13 @@ static int node_group_edit_exec(bContext *C, wmOperator *op)
 	if (gnode && !exit) {
 		bNodeTree *ngroup = (bNodeTree *)gnode->id;
 
-		if (ngroup)
+		if (ngroup) {
 			ED_node_tree_push(snode, ngroup, gnode);
+		}
 	}
-	else
+	else {
 		ED_node_tree_pop(snode);
+	}
 
 	WM_event_add_notifier(C, NC_SCENE | ND_NODES, NULL);
 
@@ -194,8 +192,9 @@ static int node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 	ngroup = (bNodeTree *)gnode->id;
 
 	/* clear new pointers, set in copytree */
-	for (node = ntree->nodes.first; node; node = node->next)
+	for (node = ntree->nodes.first; node; node = node->next) {
 		node->new_node = NULL;
+	}
 
 	/* wgroup is a temporary copy of the NodeTree we're merging in
 	 * - all of wgroup's nodes are transferred across to their new home
@@ -226,8 +225,9 @@ static int node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 			RNA_pointer_create(&wgroup->id, &RNA_Node, node, &ptr);
 			path = RNA_path_from_ID_to_struct(&ptr);
 
-			if (path)
+			if (path) {
 				BLI_addtail(&anim_basepaths, BLI_genericNodeN(path));
+			}
 		}
 
 		/* migrate node */
@@ -258,7 +258,8 @@ static int node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 		LinkData *ld, *ldn = NULL;
 		bAction *waction;
 
-		/* firstly, wgroup needs to temporary dummy action that can be destroyed, as it shares copies */
+		/* firstly, wgroup needs to temporary dummy action
+		 * that can be destroyed, as it shares copies */
 		waction = wgroup->adt->action = BKE_action_copy(bmain, wgroup->adt->action);
 
 		/* now perform the moving */
@@ -274,13 +275,13 @@ static int node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 
 		/* free temp action too */
 		if (waction) {
-			BKE_libblock_free(bmain, waction);
+			BKE_id_free(bmain, waction);
 			wgroup->adt->action = NULL;
 		}
 	}
 
 	/* free the group tree (takes care of user count) */
-	BKE_libblock_free(bmain, wgroup);
+	BKE_id_free(bmain, wgroup);
 
 	/* restore external links to and from the gnode */
 	/* note: the nodes have been copied to intermediate wgroup first (so need to use new_node),
@@ -307,7 +308,9 @@ static int node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 				/* XXX TODO bNodeSocket *sock = node_group_find_input_socket(gnode, identifier);
 				BLI_assert(sock);*/
 
-				/* XXX TODO nodeSocketCopy(ntree, link->tosock->new_sock, link->tonode->new_node, ntree, sock, gnode);*/
+				/* XXX TODO
+				 * nodeSocketCopy(ntree, link->tosock->new_sock, link->tonode->new_node,
+				 *                ntree, sock, gnode);*/
 			}
 		}
 	}
@@ -335,18 +338,19 @@ static int node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 				/* XXX TODO bNodeSocket *sock = node_group_find_output_socket(gnode, identifier);
 				BLI_assert(sock);*/
 
-				/* XXX TODO nodeSocketCopy(ntree, link->tosock, link->tonode, ntree, sock, gnode); */
+				/* XXX TODO
+				 * nodeSocketCopy(ntree, link->tosock, link->tonode, ntree, sock, gnode); */
 			}
 		}
 	}
 
 	while (nodes_delayed_free) {
 		node = BLI_linklist_pop(&nodes_delayed_free);
-		nodeFreeNode(ntree, node);
+		nodeRemoveNode(bmain, ntree, node, false);
 	}
 
 	/* delete the group instance */
-	nodeFreeNode(ntree, gnode);
+	nodeRemoveNode(bmain, ntree, gnode, false);
 
 	ntree->update |= NTREE_UPDATE_NODES | NTREE_UPDATE_LINKS;
 
@@ -364,8 +368,9 @@ static int node_group_ungroup_exec(bContext *C, wmOperator *op)
 	ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
 	gnode = node_group_get_active(C, node_idname);
-	if (!gnode)
+	if (!gnode) {
 		return OPERATOR_CANCELLED;
+	}
 
 	if (gnode->id && node_group_ungroup(bmain, snode->edittree, gnode)) {
 		ntreeUpdateTree(bmain, snode->nodetree);
@@ -407,18 +412,21 @@ static int node_group_separate_selected(
 	ListBase anim_basepaths = {NULL, NULL};
 
 	/* deselect all nodes in the target tree */
-	for (node = ntree->nodes.first; node; node = node->next)
+	for (node = ntree->nodes.first; node; node = node->next) {
 		nodeSetSelected(node, false);
+	}
 
-	/* clear new pointers, set in nodeCopyNode */
-	for (node = ngroup->nodes.first; node; node = node->next)
+	/* clear new pointers, set in BKE_node_copy_ex(). */
+	for (node = ngroup->nodes.first; node; node = node->next) {
 		node->new_node = NULL;
+	}
 
 	/* add selected nodes into the ntree */
 	for (node = ngroup->nodes.first; node; node = node_next) {
 		node_next = node->next;
-		if (!(node->flag & NODE_SELECT))
+		if (!(node->flag & NODE_SELECT)) {
 			continue;
+		}
 
 		/* ignore interface nodes */
 		if (ELEM(node->type, NODE_GROUP_INPUT, NODE_GROUP_OUTPUT)) {
@@ -428,7 +436,7 @@ static int node_group_separate_selected(
 
 		if (make_copy) {
 			/* make a copy */
-			newnode = nodeCopyNode(ngroup, node);
+			newnode = BKE_node_copy_ex(ngroup, node, LIB_ID_COPY_DEFAULT);
 		}
 		else {
 			/* use the existing node */
@@ -445,13 +453,15 @@ static int node_group_separate_selected(
 			RNA_pointer_create(&ngroup->id, &RNA_Node, newnode, &ptr);
 			path = RNA_path_from_ID_to_struct(&ptr);
 
-			if (path)
+			if (path) {
 				BLI_addtail(&anim_basepaths, BLI_genericNodeN(path));
+			}
 		}
 
 		/* ensure valid parent pointers, detach if parent stays inside the group */
-		if (newnode->parent && !(newnode->parent->flag & NODE_SELECT))
+		if (newnode->parent && !(newnode->parent->flag & NODE_SELECT)) {
 			nodeDetachNode(newnode);
+		}
 
 		/* migrate node */
 		BLI_remlink(&ngroup->nodes, newnode);
@@ -474,8 +484,9 @@ static int node_group_separate_selected(
 
 		if (make_copy) {
 			/* make a copy of internal links */
-			if (fromselect && toselect)
+			if (fromselect && toselect) {
 				nodeAddLink(ntree, link->fromnode->new_node, link->fromsock->new_sock, link->tonode->new_node, link->tosock->new_sock);
+			}
 		}
 		else {
 			/* move valid links over, delete broken links */
@@ -507,8 +518,9 @@ static int node_group_separate_selected(
 	}
 
 	ntree->update |= NTREE_UPDATE_NODES | NTREE_UPDATE_LINKS;
-	if (!make_copy)
+	if (!make_copy) {
 		ngroup->update |= NTREE_UPDATE_NODES | NTREE_UPDATE_LINKS;
+	}
 
 	return 1;
 }
@@ -522,7 +534,7 @@ typedef enum eNodeGroupSeparateType {
 static const EnumPropertyItem node_group_separate_types[] = {
 	{NODE_GS_COPY, "COPY", 0, "Copy", "Copy to parent node tree, keep group intact"},
 	{NODE_GS_MOVE, "MOVE", 0, "Move", "Move to parent node tree, remove from group"},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int node_group_separate_exec(bContext *C, wmOperator *op)
@@ -547,13 +559,13 @@ static int node_group_separate_exec(bContext *C, wmOperator *op)
 
 	switch (type) {
 		case NODE_GS_COPY:
-			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, 1)) {
+			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, true)) {
 				BKE_report(op->reports, RPT_WARNING, "Cannot separate nodes");
 				return OPERATOR_CANCELLED;
 			}
 			break;
 		case NODE_GS_MOVE:
-			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, 0)) {
+			if (!node_group_separate_selected(bmain, nparent, ngroup, offx, offy, false)) {
 				BKE_report(op->reports, RPT_WARNING, "Cannot separate nodes");
 				return OPERATOR_CANCELLED;
 			}
@@ -638,16 +650,19 @@ static bool node_group_make_test_selected(bNodeTree *ntree, bNode *gnode, const 
 	/* free local pseudo node tree again */
 	ntreeFreeTree(ngroup);
 	MEM_freeN(ngroup);
-	if (!ok)
+	if (!ok) {
 		return false;
+	}
 
 	/* check if all connections are OK, no unselected node has both
 	 * inputs and outputs to a selection */
 	for (link = ntree->links.first; link; link = link->next) {
-		if (node_group_make_use_node(link->fromnode, gnode))
+		if (node_group_make_use_node(link->fromnode, gnode)) {
 			link->tonode->done |= 1;
-		if (node_group_make_use_node(link->tonode, gnode))
+		}
+		if (node_group_make_use_node(link->tonode, gnode)) {
 			link->fromnode->done |= 2;
+		}
 	}
 	for (node = ntree->nodes.first; node; node = node->next) {
 		if (!(node->flag & NODE_SELECT) &&
@@ -701,16 +716,18 @@ static void node_group_make_insert_selected(const bContext *C, bNodeTree *ntree,
 	static const float offsety = 0.0f;
 
 	/* deselect all nodes in the target tree */
-	for (node = ngroup->nodes.first; node; node = node->next)
+	for (node = ngroup->nodes.first; node; node = node->next) {
 		nodeSetSelected(node, false);
+	}
 
 	totselect = node_get_selected_minmax(ntree, gnode, min, max);
 	add_v2_v2v2(center, min, max);
 	mul_v2_fl(center, 0.5f);
 
 	/* auto-add interface for "solo" nodes */
-	if (totselect == 1)
+	if (totselect == 1) {
 		expose_all = true;
+	}
 
 	/* move nodes over */
 	for (node = ntree->nodes.first; node; node = nextn) {
@@ -726,13 +743,15 @@ static void node_group_make_insert_selected(const bContext *C, bNodeTree *ntree,
 				RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
 				path = RNA_path_from_ID_to_struct(&ptr);
 
-				if (path)
+				if (path) {
 					BLI_addtail(&anim_basepaths, BLI_genericNodeN(path));
+				}
 			}
 
 			/* ensure valid parent pointers, detach if parent stays outside the group */
-			if (node->parent && !(node->parent->flag & NODE_SELECT))
+			if (node->parent && !(node->parent->flag & NODE_SELECT)) {
 				nodeDetachNode(node);
+			}
 
 			/* change node-collection membership */
 			BLI_remlink(&ntree->nodes, node);
@@ -862,8 +881,9 @@ static void node_group_make_insert_selected(const bContext *C, bNodeTree *ntree,
 							break;
 						}
 					}
-					if (skip)
+					if (skip) {
 						continue;
+					}
 
 					iosock = ntreeAddSocketInterfaceFromSocket(ngroup, node, sock);
 
@@ -877,11 +897,14 @@ static void node_group_make_insert_selected(const bContext *C, bNodeTree *ntree,
 				for (sock = node->outputs.first; sock; sock = sock->next) {
 					bNodeSocket *iosock, *output_sock;
 					bool skip = false;
-					for (link = ngroup->links.first; link; link = link->next)
-						if (link->fromsock == sock)
+					for (link = ngroup->links.first; link; link = link->next) {
+						if (link->fromsock == sock) {
 							skip = true;
-					if (skip)
+						}
+					}
+					if (skip) {
 						continue;
+					}
 
 					iosock = ntreeAddSocketInterfaceFromSocket(ngroup, node, sock);
 
@@ -911,8 +934,9 @@ static bNode *node_group_make_from_selected(const bContext *C, bNodeTree *ntree,
 
 	totselect = node_get_selected_minmax(ntree, NULL, min, max);
 	/* don't make empty group */
-	if (totselect == 0)
+	if (totselect == 0) {
 		return NULL;
+	}
 
 	/* new nodetree */
 	ngroup = ntreeAddTree(bmain, "NodeGroup", ntreetype);
@@ -944,8 +968,9 @@ static int node_group_make_exec(bContext *C, wmOperator *op)
 
 	ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
-	if (!node_group_make_test_selected(ntree, NULL, ntree_idname, op->reports))
+	if (!node_group_make_test_selected(ntree, NULL, ntree_idname, op->reports)) {
 		return OPERATOR_CANCELLED;
+	}
 
 	gnode = node_group_make_from_selected(C, ntree, node_idname, ntree_idname);
 
@@ -963,7 +988,9 @@ static int node_group_make_exec(bContext *C, wmOperator *op)
 
 	snode_notify(C, snode);
 	snode_dag_update(C, snode);
-	DEG_relations_tag_update(bmain);  /* We broke relations in node tree, need to rebuild them in the grahes. */
+
+	/* We broke relations in node tree, need to rebuild them in the grahes. */
+	DEG_relations_tag_update(bmain);
 
 	return OPERATOR_FINISHED;
 }
@@ -998,12 +1025,14 @@ static int node_group_insert_exec(bContext *C, wmOperator *op)
 
 	gnode = node_group_get_active(C, node_idname);
 
-	if (!gnode || !gnode->id)
+	if (!gnode || !gnode->id) {
 		return OPERATOR_CANCELLED;
+	}
 
 	ngroup = (bNodeTree *)gnode->id;
-	if (!node_group_make_test_selected(ntree, gnode, ngroup->idname, op->reports))
+	if (!node_group_make_test_selected(ntree, gnode, ngroup->idname, op->reports)) {
 		return OPERATOR_CANCELLED;
+	}
 
 	node_group_make_insert_selected(C, ntree, gnode);
 

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,15 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
-
- * The Original Code is: some of this file.
  *
- * ***** END GPL LICENSE BLOCK *****
+ * The Original Code is: some of this file.
  * */
 
 #ifndef __BLI_MATH_MATRIX_H__
 #define __BLI_MATH_MATRIX_H__
 
-/** \file BLI_math_matrix.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus

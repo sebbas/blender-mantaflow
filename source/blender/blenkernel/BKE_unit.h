@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,17 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BKE_UNIT_H__
 #define __BKE_UNIT_H__
 
-/** \file BKE_unit.h
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  */
 
 #ifdef __cplusplus
@@ -43,10 +37,10 @@ size_t bUnit_AsString2(char *str, int len_max, double value, int prec, int type,
 bool bUnit_ReplaceString(char *str, int len_max, const char *str_prev, double scale_pref, int system, int type);
 
 /* return true if the string contains any valid unit for the given type */
-bool bUnit_ContainsUnit(const char *str, int system, int type);
+bool bUnit_ContainsUnit(const char *str, int type);
 
 /* if user does not specify a unit, multiply with this value */
-double bUnit_PreferredUnitScalar(const struct UnitSettings *settings, int type);
+double bUnit_PreferredInputUnitScalar(const struct UnitSettings *settings, int type);
 
 /* make string keyboard-friendly: 10µm --> 10um */
 void bUnit_ToUnitAltName(char *str, int len_max, const char *orig_str, int system, int type);
@@ -68,6 +62,7 @@ int         bUnit_GetBaseUnit(const void *usys_pt);
 int         bUnit_GetBaseUnitOfType(int system, int type);
 const char *bUnit_GetName(const void *usys_pt, int index);
 const char *bUnit_GetNameDisplay(const void *usys_pt, int index);
+const char *bUnit_GetIdentifier(const void *usys_pt, int index);
 double      bUnit_GetScaler(const void *usys_pt, int index);
 bool        bUnit_IsSuppressed(const void *usys_pt, int index);
 
@@ -83,7 +78,8 @@ enum {
 	B_UNIT_VELOCITY         = 7,
 	B_UNIT_ACCELERATION     = 8,
 	B_UNIT_CAMERA           = 9,
-	B_UNIT_TYPE_TOT         = 10,
+	B_UNIT_POWER            = 10,
+	B_UNIT_TYPE_TOT         = 11,
 };
 
 #ifdef __cplusplus

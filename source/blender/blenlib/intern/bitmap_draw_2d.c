@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -20,11 +18,10 @@
  *
  * The Original Code is: some of this file.
  *
- * ***** END GPL LICENSE BLOCK *****
  * */
 
-/** \file blender/blenlib/intern/bitmap_draw_2d.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  *
  * Utility functions for primitive drawing operations.
  */
@@ -168,7 +165,7 @@ static float inv_slope(const int a[2], const int b[2])
 /**
  * <pre>
  * *---*
- *  \ /
+ * \ /
  *   *
  * </pre>
  */

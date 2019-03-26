@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ExportSettings.h
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 #ifndef __EXPORTSETTINGS_H__
@@ -44,6 +38,19 @@ typedef enum BC_export_transformation_type {
 } BC_export_transformation_type;
 
 
+typedef enum BC_export_animation_type {
+	BC_ANIMATION_EXPORT_SAMPLES,
+	BC_ANIMATION_EXPORT_KEYS
+} BC_export_animation_type;
+
+typedef enum BC_ui_export_section {
+	BC_UI_SECTION_MAIN,
+	BC_UI_SECTION_GEOMETRY,
+	BC_UI_SECTION_ARMATURE,
+	BC_UI_SECTION_ANIMATION,
+	BC_UI_SECTION_COLLADA
+} BC_ui_export_section;
+
 typedef struct ExportSettings {
 	bool apply_modifiers;
 	BC_export_mesh_type export_mesh_type;
@@ -54,10 +61,14 @@ typedef struct ExportSettings {
 	bool include_shapekeys;
 	bool deform_bones_only;
 	bool include_animations;
+	bool include_all_actions;
 	int sampling_rate;
+	bool keep_smooth_curves;
+	bool keep_keyframes;
+	bool keep_flat_curves;
 
 	bool active_uv_only;
-	bool include_material_textures;
+	BC_export_animation_type export_animation_type;
 	bool use_texture_copies;
 
 	bool triangulate;

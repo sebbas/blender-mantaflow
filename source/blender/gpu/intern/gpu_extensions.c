@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,16 +15,10 @@
  *
  * The Original Code is Copyright (C) 2005 Blender Foundation.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): Brecht Van Lommel.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/gpu/intern/gpu_extensions.c
- *  \ingroup gpu
+/** \file
+ * \ingroup gpu
  *
  * Wrap OpenGL features such as textures, shaders and GLSL
  * with checks for drivers and GPU support.
@@ -75,11 +67,11 @@ static struct GPUGlobal {
 	GLint maxtexturesvert;
 	GLint maxubosize;
 	GLint maxubobinds;
-	int colordepth;
 	int samples_color_texture_max;
-	GPUDeviceType device;
-	GPUOSType os;
-	GPUDriverType driver;
+	eGPUDeviceType device;
+	eGPUOSType os;
+	eGPUDriverType driver;
+	float line_width_range[2];
 	/* workaround for different calculation of dfdy factors on GPUs. Some GPUs/drivers
 	 * calculate dfdy in shader differently when drawing to an offscreen buffer. First
 	 * number is factor on screen and second is off-screen */
@@ -94,6 +86,9 @@ static struct GPUGlobal {
 	 * GPU_DEPTH32F_STENCIL8. Then Blitting depth will work but blitting stencil will
 	 * still be broken. */
 	bool depth_blitting_workaround;
+	/* Crappy driver don't know how to map framebuffer slot to output vars...
+	 * We need to have no "holes" in the output buffer slots. */
+	bool unused_fb_slot_workaround;
 } GG = {1, 0};
 
 
@@ -128,7 +123,7 @@ static void gpu_detect_mip_render_workaround(void)
 
 /* GPU Types */
 
-bool GPU_type_matches(GPUDeviceType device, GPUOSType os, GPUDriverType driver)
+bool GPU_type_matches(eGPUDeviceType device, eGPUOSType os, eGPUDriverType driver)
 {
 	return (GG.device & device) && (GG.os & os) && (GG.driver & driver);
 }
@@ -190,6 +185,11 @@ int GPU_max_ubo_size(void)
 	return GG.maxubosize;
 }
 
+float GPU_max_line_width(void)
+{
+	return GG.line_width_range[1];
+}
+
 void GPU_get_dfdy_factors(float fac[2])
 {
 	copy_v2_v2(fac, GG.dfdyfactors);
@@ -203,6 +203,17 @@ bool GPU_mip_render_workaround(void)
 bool GPU_depth_blitting_workaround(void)
 {
 	return GG.depth_blitting_workaround;
+}
+
+bool GPU_unused_fb_slot_workaround(void)
+{
+	return GG.unused_fb_slot_workaround;
+}
+
+bool GPU_crappy_amd_driver(void)
+{
+	/* Currently are the same drivers with the `unused_fb_slot` problem. */
+	return GPU_unused_fb_slot_workaround();
 }
 
 void gpu_extensions_init(void)
@@ -230,6 +241,8 @@ void gpu_extensions_init(void)
 	glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_BLOCKS, &GG.maxubobinds);
 	glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &GG.maxubosize);
 
+	glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, GG.line_width_range);
+
 #ifndef NDEBUG
 	GLint ret;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -237,12 +250,6 @@ void gpu_extensions_init(void)
 	/* We expect FRONT_LEFT to be the default buffer. */
 	BLI_assert(ret == GL_FRAMEBUFFER_DEFAULT);
 #endif
-
-	GLint r, g, b;
-	glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_FRONT_LEFT, GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, &r);
-	glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_FRONT_LEFT, GL_FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, &g);
-	glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_FRONT_LEFT, GL_FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, &b);
-	GG.colordepth = r + g + b; /* Assumes same depth for RGB. */
 
 	glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &GG.samples_color_texture_max);
 
@@ -254,8 +261,27 @@ void gpu_extensions_init(void)
 		GG.device = GPU_DEVICE_ATI;
 		GG.driver = GPU_DRIVER_OFFICIAL;
 
+#ifdef _WIN32
+		if (strstr(version, "4.5.13399") ||
+		    strstr(version, "4.5.13417") ||
+		    strstr(version, "4.5.13422"))
+		{
+			/* The renderers include:
+			 *   Mobility Radeon HD 5000;
+			 *   Radeon HD 7500M;
+			 *   Radeon HD 7570M;
+			 *   Radeon HD 7600M;
+			 * And many others... */
+
+			GG.unused_fb_slot_workaround = true;
+		}
+#endif
+
 #if defined(__APPLE__)
-		if (strstr(vendor, "AMD Radeon Pro")) {
+		if (strstr(renderer, "AMD Radeon Pro") ||
+		    strstr(renderer, "AMD Radeon R9") ||
+		    strstr(renderer, "AMD Radeon RX"))
+		{
 			GG.depth_blitting_workaround = true;
 		}
 #endif
@@ -271,6 +297,14 @@ void gpu_extensions_init(void)
 	{
 		GG.device = GPU_DEVICE_INTEL;
 		GG.driver = GPU_DRIVER_OFFICIAL;
+
+		if (strstr(renderer, "UHD Graphics") ||
+		    /* Not UHD but affected by the same bugs. */
+		    strstr(renderer, "HD Graphics 530") ||
+		    strstr(renderer, "Kaby Lake GT2"))
+		{
+			GG.device |= GPU_DEVICE_INTEL_UHD;
+		}
 	}
 	else if ((strstr(renderer, "Mesa DRI R")) ||
 	         (strstr(renderer, "Radeon") && strstr(vendor, "X.Org")) ||
@@ -296,8 +330,15 @@ void gpu_extensions_init(void)
 		GG.device = GPU_DEVICE_SOFTWARE;
 		GG.driver = GPU_DRIVER_SOFTWARE;
 	}
+	else if (strstr(renderer, "llvmpipe")) {
+		GG.device = GPU_DEVICE_SOFTWARE;
+		GG.driver = GPU_DRIVER_SOFTWARE;
+	}
 	else {
 		printf("Warning: Could not find a matching GPU name. Things may not behave as expected.\n");
+		printf("Detected OpenGL configuration:\n");
+		printf("Vendor: %s\n", vendor);
+		printf("Renderer: %s\n", renderer);
 		GG.device = GPU_DEVICE_ANY;
 		GG.driver = GPU_DRIVER_ANY;
 	}
@@ -311,6 +352,18 @@ void gpu_extensions_init(void)
 #endif
 
 	gpu_detect_mip_render_workaround();
+
+	if (G.debug & G_DEBUG_GPU_FORCE_WORKAROUNDS) {
+		printf("\n");
+		printf("GPU: Bypassing workaround detection.\n");
+		printf("GPU: OpenGL identification strings\n");
+		printf("GPU: vendor: %s\n", vendor);
+		printf("GPU: renderer: %s\n", renderer);
+		printf("GPU: version: %s\n\n", version);
+		GG.mip_render_workaround = true;
+		GG.depth_blitting_workaround = true;
+		GG.unused_fb_slot_workaround = true;
+	}
 
 	/* df/dy calculation factors, those are dependent on driver */
 	if ((strstr(vendor, "ATI") && strstr(version, "3.3.10750"))) {
@@ -340,11 +393,6 @@ void gpu_extensions_init(void)
 void gpu_extensions_exit(void)
 {
 	GPU_invalid_tex_free();
-}
-
-int GPU_color_depth(void)
-{
-	return GG.colordepth;
 }
 
 bool GPU_mem_stats_supported(void)

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,29 +15,21 @@
  *
  * The Original Code is Copyright (C) 2005 by the Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Daniel Dunbar
- *                 Ton Roosendaal,
- *                 Ben Batt,
- *                 Brecht Van Lommel,
- *                 Campbell Barton
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  */
 
-/** \file blender/modifiers/intern/MOD_smooth.c
- *  \ingroup modifiers
+/** \file
+ * \ingroup modifiers
  */
 
+
+#include "MEM_guardedalloc.h"
+
+#include "BLI_utildefines.h"
+
+#include "BLI_math.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-
-#include "BLI_math.h"
-#include "BLI_utildefines.h"
-
-#include "MEM_guardedalloc.h"
 
 #include "BKE_editmesh.h"
 #include "BKE_library.h"
@@ -74,15 +64,14 @@ static bool isDisabled(const struct Scene *UNUSED(scene), ModifierData *md, bool
 	return 0;
 }
 
-static CustomDataMask requiredDataMask(Object *UNUSED(ob), ModifierData *md)
+static void requiredDataMask(Object *UNUSED(ob), ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
 	SmoothModifierData *smd = (SmoothModifierData *)md;
-	CustomDataMask dataMask = 0;
 
 	/* ask for vertexgroups if we need them */
-	if (smd->defgrp_name[0]) dataMask |= CD_MASK_MDEFORMVERT;
-
-	return dataMask;
+	if (smd->defgrp_name[0] != '\0') {
+		r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
+	}
 }
 
 static void smoothModifier_do(
@@ -109,7 +98,7 @@ static void smoothModifier_do(
 	fac = smd->fac;
 	facm = 1 - fac;
 
-	if (mesh->totvert == numVerts) {
+	if (mesh != NULL) {
 		medges = mesh->medge;
 		numDMEdges = mesh->totedge;
 	}
@@ -213,34 +202,32 @@ static void deformVerts(
         ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh,
         float (*vertexCos)[3], int numVerts)
 {
-	Mesh *mesh_src = mesh;
+	SmoothModifierData *smd = (SmoothModifierData *)md;
+	Mesh *mesh_src = NULL;
 
-	if (mesh_src == NULL) {
-		mesh_src = ctx->object->data;
+	/* mesh_src is needed for vgroups, and taking edges into account. */
+	mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, mesh, NULL, numVerts, false, false);
+
+	smoothModifier_do(smd, ctx->object, mesh_src, vertexCos, numVerts);
+
+	if (!ELEM(mesh_src, NULL, mesh)) {
+		BKE_id_free(NULL, mesh_src);
 	}
-
-	BLI_assert(mesh_src->totvert == numVerts);
-
-	smoothModifier_do((SmoothModifierData *)md, ctx->object, mesh_src,
-	                  vertexCos, numVerts);
 }
 
 static void deformVertsEM(
         ModifierData *md, const ModifierEvalContext *ctx, struct BMEditMesh *editData,
         Mesh *mesh, float (*vertexCos)[3], int numVerts)
 {
-	Mesh *mesh_src = mesh;
+	SmoothModifierData *smd = (SmoothModifierData *)md;
+	Mesh *mesh_src = NULL;
 
-	if (mesh_src == NULL) {
-		mesh_src = BKE_mesh_from_bmesh_for_eval_nomain(editData->bm, 0);
-	}
+	/* mesh_src is needed for vgroups, and taking edges into account. */
+	mesh_src = MOD_deform_mesh_eval_get(ctx->object, editData, mesh, NULL, numVerts, false, false);
 
-	BLI_assert(mesh_src->totvert == numVerts);
+	smoothModifier_do(smd, ctx->object, mesh_src, vertexCos, numVerts);
 
-	smoothModifier_do((SmoothModifierData *)md, ctx->object, mesh_src,
-	                  vertexCos, numVerts);
-
-	if (!mesh) {
+	if (!ELEM(mesh_src, NULL, mesh)) {
 		BKE_id_free(NULL, mesh_src);
 	}
 }
@@ -279,4 +266,5 @@ ModifierTypeInfo modifierType_Smooth = {
 	/* foreachObjectLink */ NULL,
 	/* foreachIDLink */     NULL,
 	/* foreachTexLink */    NULL,
+	/* freeRuntimeData */   NULL,
 };

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- *
- * Contributor(s): Joshua Leung (major recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_nla/nla_select.c
- *  \ingroup spnla
+/** \file
+ * \ingroup spnla
  */
 
 
@@ -80,9 +73,9 @@ static short selmodes_to_flagmodes(short sel)
 
 /* ******************** Deselect All Operator ***************************** */
 /* This operator works in one of three ways:
- *	1) (de)select all (AKEY) - test if select all or deselect all
- *	2) invert all (CTRL-IKEY) - invert selection of all keyframes
- *	3) (de)select all - no testing is done; only for use internal tools as normal function...
+ * 1) (de)select all (AKEY) - test if select all or deselect all
+ * 2) invert all (CTRL-IKEY) - invert selection of all keyframes
+ * 3) (de)select all - no testing is done; only for use internal tools as normal function...
  */
 
 enum {
@@ -92,13 +85,13 @@ enum {
 } /*eDeselectNlaStrips*/;
 
 /* Deselects strips in the NLA Editor
- *	- This is called by the deselect all operator, as well as other ones!
+ * - This is called by the deselect all operator, as well as other ones!
  *
- *  - test: check if select or deselect all (1) or clear all active (2)
- *	- sel: how to select keyframes
- *		0 = deselect
- *		1 = select
- *		2 = invert
+ * - test: check if select or deselect all (1) or clear all active (2)
+ * - sel: how to select keyframes
+ * 0 = deselect
+ * 1 = select
+ * 2 = invert
  */
 static void deselect_nla_strips(bAnimContext *ac, short test, short sel)
 {
@@ -291,35 +284,27 @@ static int nlaedit_box_select_exec(bContext *C, wmOperator *op)
 {
 	bAnimContext ac;
 	rcti rect;
-	short mode = 0, selectmode = 0;
-	const bool select = !RNA_boolean_get(op->ptr, "deselect");
-	const bool extend = RNA_boolean_get(op->ptr, "extend");
+	short mode = 0;
 
 	/* get editor data */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
 		return OPERATOR_CANCELLED;
 
-	/* clear all selection if not extending selection */
-	if (!extend) {
+	const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+	const int selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
 		deselect_nla_strips(&ac, DESELECT_STRIPS_TEST, SELECT_SUBTRACT);
 	}
 
 	/* get settings from operator */
 	WM_operator_properties_border_to_rcti(op, &rect);
 
-	if (select) {
-		selectmode = SELECT_ADD;
-	}
-	else {
-		selectmode = SELECT_SUBTRACT;
-	}
-
 	/* selection 'mode' depends on whether box_select region only matters on one axis */
 	if (RNA_boolean_get(op->ptr, "axis_range")) {
 		/* mode depends on which axis of the range is larger to determine which axis to use
-		 *	- checking this in region-space is fine, as it's fundamentally still going to be a different rect size
-		 *	- the frame-range select option is favored over the channel one (x over y), as frame-range one is often
-		 *	  used for tweaking timing when "blocking", while channels is not that useful...
+		 * - checking this in region-space is fine, as it's fundamentally still going to be a different rect size
+		 * - the frame-range select option is favored over the channel one (x over y), as frame-range one is often
+		 *   used for tweaking timing when "blocking", while channels is not that useful...
 		 */
 		if (BLI_rcti_size_x(&rect) >= BLI_rcti_size_y(&rect))
 			mode = NLA_BOXSEL_FRAMERANGE;
@@ -356,10 +341,11 @@ void NLA_OT_select_box(wmOperatorType *ot)
 	/* flags */
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-	/* rna */
-	WM_operator_properties_gesture_box_select(ot);
-
+	/* properties */
 	RNA_def_boolean(ot->srna, "axis_range", 0, "Axis Range", "");
+
+	WM_operator_properties_gesture_box(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ******************** Select Left/Right Operator ************************* */
@@ -370,7 +356,7 @@ static const EnumPropertyItem prop_nlaedit_leftright_select_types[] = {
 	{NLAEDIT_LRSEL_TEST, "CHECK", 0, "Check if Select Left or Right", ""},
 	{NLAEDIT_LRSEL_LEFT, "LEFT", 0, "Before current frame", ""},
 	{NLAEDIT_LRSEL_RIGHT, "RIGHT", 0, "After current frame", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* ------------------- */
@@ -536,7 +522,8 @@ static void mouse_nla_strips(bContext *C, bAnimContext *ac, const int mval[2], s
 	float x, y;
 
 
-	/* use View2D to determine the index of the channel (i.e a row in the list) where keyframe was */
+	/* use View2D to determine the index of the channel
+	 * (i.e a row in the list) where keyframe was */
 	UI_view2d_region_to_view(v2d, mval[0], mval[1], &x, &y);
 	UI_view2d_listview_view_to_cell(v2d, 0, NLACHANNEL_STEP(snla), 0, (float)NLACHANNEL_HEIGHT_HALF(snla), x, y, NULL, &channel_index);
 
@@ -563,14 +550,16 @@ static void mouse_nla_strips(bContext *C, bAnimContext *ac, const int mval[2], s
 		if (ale->type == ANIMTYPE_NLATRACK) {
 			NlaTrack *nlt = (NlaTrack *)ale->data;
 
-			/* loop over NLA-strips in this track, trying to find one which occurs in the necessary bounds */
+			/* loop over NLA-strips in this track,
+			 * trying to find one which occurs in the necessary bounds */
 			for (strip = nlt->strips.first; strip; strip = strip->next) {
 				if (BKE_nlastrip_within_bounds(strip, xmin, xmax))
 					break;
 			}
 		}
 
-		/* remove active channel from list of channels for separate treatment (since it's needed later on) */
+		/* remove active channel from list of channels for separate treatment
+		 * (since it's needed later on) */
 		BLI_remlink(&anim_data, ale);
 
 		/* free list of channels, since it's not used anymore */
@@ -603,8 +592,8 @@ static void mouse_nla_strips(bContext *C, bAnimContext *ac, const int mval[2], s
 			ACHANNEL_SET_FLAG(strip, select_mode, NLASTRIP_FLAG_SELECT);
 
 			/* if we selected it, we can make it active too
-			 *	- we always need to clear the active strip flag though...
-			 *  - as well as selecting its track...
+			 * - we always need to clear the active strip flag though...
+			 * - as well as selecting its track...
 			 */
 			deselect_nla_strips(ac, DESELECT_STRIPS_CLEARACTIVE, 0);
 

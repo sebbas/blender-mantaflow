@@ -1,5 +1,5 @@
-/** \file elbeem/intern/mvmcoords.cpp
- *  \ingroup elbeem
+/** \file
+ * \ingroup elbeem
  */
 /******************************************************************************
  *

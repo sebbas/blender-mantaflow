@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,11 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file DNA_object_types.h
- *  \ingroup DNA
- *  \brief Object is a sort of wrapper for general info.
+/** \file
+ * \ingroup DNA
+ * \brief Object is a sort of wrapper for general info.
  */
 
 #ifndef __DNA_OBJECT_TYPES_H__
@@ -36,6 +28,7 @@
 #include "DNA_object_enums.h"
 
 #include "DNA_defs.h"
+#include "DNA_customdata_types.h"
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 #include "DNA_action_types.h" /* bAnimVizSettings */
@@ -44,36 +37,38 @@
 extern "C" {
 #endif
 
-struct Object;
 struct AnimData;
-struct Ipo;
 struct BoundBox;
-struct Path;
-struct Material;
-struct PartDeflect;
-struct SoftBody;
-struct FluidsimSettings;
-struct ParticleSystem;
 struct DerivedMesh;
-struct SculptSession;
-struct bGPdata;
-struct RigidBodyOb;
+struct FluidsimSettings;
 struct GpencilBatchCache;
+struct Ipo;
+struct Material;
+struct Object;
+struct PartDeflect;
+struct ParticleSystem;
+struct Path;
+struct RigidBodyOb;
+struct SculptSession;
+struct SoftBody;
+struct bGPdata;
 
 /* Vertex Groups - Name Info */
 typedef struct bDeformGroup {
 	struct bDeformGroup *next, *prev;
-	char name[64];	/* MAX_VGROUP_NAME */
+	/** MAX_VGROUP_NAME. */
+	char name[64];
 	/* need this flag for locking weights */
-	char flag, pad[7];
+	char flag, _pad0[7];
 } bDeformGroup;
 
 /* Face Maps*/
 typedef struct bFaceMap {
 	struct bFaceMap *next, *prev;
-	char name[64];  /* MAX_VGROUP_NAME */
+	/** MAX_VGROUP_NAME. */
+	char name[64];
 	char flag;
-	char pad[7];
+	char _pad0[7];
 } bFaceMap;
 
 #define MAX_VGROUP_NAME 64
@@ -91,8 +86,6 @@ typedef struct bFaceMap {
  * | /
  * |/
  * .-----X
- *
- *
  *     2----------6
  *    /|         /|
  *   / |        / |
@@ -106,7 +99,8 @@ typedef struct bFaceMap {
  */
 typedef struct BoundBox {
 	float vec[8][3];
-	int flag, pad;
+	int flag;
+	char _pad0[4];
 } BoundBox;
 
 /* boundbox flag */
@@ -119,99 +113,160 @@ typedef struct LodLevel {
 	struct LodLevel *next, *prev;
 	struct Object *source;
 	int flags;
-	float distance, pad;
+	float distance;
+	char _pad0[4];
 	int obhysteresis;
 } LodLevel;
 
-typedef struct ObjectDisplay {
-	int flag;
-} ObjectDisplay;
+/* Forward declaration for cache bbone deformation information.
+ *
+ * TODO(sergey): Consider moving it to more appropriate place. */
+struct ObjectBBoneDeform;
+
+struct CustomData_MeshMasks;
 
 /* Not saved in file! */
 typedef struct Object_Runtime {
-	/* Original mesh pointer, before object->data was changed to point
+	/**
+	 * The custom data layer mask that was last used
+	 * to calculate mesh_eval and mesh_deform_eval.
+	 */
+	CustomData_MeshMasks last_data_mask;
+
+	/** Did last modifier stack generation need mapping support? */
+	char last_need_mapping;
+
+	char _pad0[3];
+
+	/** Only used for drawing the parent/child help-line. */
+	float parent_display_origin[3];
+
+
+	/** Axis aligned boundbox (in localspace). */
+	struct BoundBox *bb;
+
+	/**
+	 * Original mesh pointer, before object->data was changed to point
 	 * to mesh_eval.
 	 * Is assigned by dependency graph's copy-on-write evaluation.
 	 */
 	struct Mesh *mesh_orig;
-	/* Mesh structure created during object evaluation.
+	/**
+	 * Mesh structure created during object evaluation.
 	 * It has all modifiers applied.
 	 */
 	struct Mesh *mesh_eval;
-	/* Mesh structure created during object evaluation.
+	/**
+	 * Mesh structure created during object evaluation.
 	 * It has deforemation only modifiers applied on it.
 	 */
 	struct Mesh *mesh_deform_eval;
 
-
-	/* Runtime evaluated curve-specific data, not stored in the file. */
+	/** Runtime evaluated curve-specific data, not stored in the file. */
 	struct CurveCache *curve_cache;
 
-	/* Runtime grease pencil drawing data */
+	/** Runtime grease pencil drawing data */
 	struct GpencilBatchCache *gpencil_cache;
+
+	struct ObjectBBoneDeform *cached_bbone_deformation;
+
 } Object_Runtime;
 
 typedef struct Object {
 	ID id;
-	struct AnimData *adt;		/* animation data (must be immediately after id for utilities to use it) */
-	struct DrawDataList drawdata; /* runtime (must be immediately after id for utilities to use it). */
+	/** Animation data (must be immediately after id for utilities to use it). */
+	struct AnimData *adt;
+	/** Runtime (must be immediately after id for utilities to use it). */
+	struct DrawDataList drawdata;
 
 	struct SculptSession *sculpt;
 
 	short type, partype;
-	int par1, par2, par3;	/* can be vertexnrs */
-	char parsubstr[64];	/* String describing subobject info, MAX_ID_NAME-2 */
+	/** Can be vertexnrs. */
+	int par1, par2, par3;
+	/** String describing subobject info, MAX_ID_NAME-2. */
+	char parsubstr[64];
 	struct Object *parent, *track;
 	/* if ob->proxy (or proxy_group), this object is proxy for object ob->proxy */
 	/* proxy_from is set in target back to the proxy. */
 	struct Object *proxy, *proxy_group, *proxy_from;
-	struct Ipo *ipo  DNA_DEPRECATED;  /* old animation system, deprecated for 2.5 */
+	/** Old animation system, deprecated for 2.5. */
+	struct Ipo *ipo  DNA_DEPRECATED;
 	/* struct Path *path; */
-	struct BoundBox *bb;  /* axis aligned boundbox (in localspace) */
 	struct bAction *action  DNA_DEPRECATED;	 // XXX deprecated... old animation system
 	struct bAction *poselib;
-	struct bPose *pose;  /* pose data, armature objects only */
-	void *data;  /* pointer to objects data - an 'ID' or NULL */
+	/** Pose data, armature objects only. */
+	struct bPose *pose;
+	/** Pointer to objects data - an 'ID' or NULL. */
+	void *data;
 
-	struct bGPdata *gpd;	/* Grease Pencil data */
+	/** Grease Pencil data. */
+	struct bGPdata *gpd;
 
-	bAnimVizSettings avs;	/* settings for visualization of object-transform animation */
-	bMotionPath *mpath;		/* motion path cache for this object */
-	void *pad1;
+	/** Settings for visualization of object-transform animation. */
+	bAnimVizSettings avs;
+	/** Motion path cache for this object. */
+	bMotionPath *mpath;
+	void *_pad0;
 
 	ListBase constraintChannels  DNA_DEPRECATED; // XXX deprecated... old animation system
 	ListBase effect  DNA_DEPRECATED;             // XXX deprecated... keep for readfile
-	ListBase defbase;   /* list of bDeformGroup (vertex groups) names and flag only */
-	ListBase modifiers; /* list of ModifierData structures */
-	ListBase greasepencil_modifiers; /* list of GpencilModifierData structures */
-	ListBase fmaps;     /* list of facemaps */
-	ListBase shader_fx; /* list of viewport effects. Actually only used by grease pencil */
+	/** List of bDeformGroup (vertex groups) names and flag only. */
+	ListBase defbase;
+	/** List of ModifierData structures. */
+	ListBase modifiers;
+	/** List of GpencilModifierData structures. */
+	ListBase greasepencil_modifiers;
+	/** List of facemaps. */
+	ListBase fmaps;
+	/** List of viewport effects. Actually only used by grease pencil. */
+	ListBase shader_fx;
 
-	int mode;           /* Local object mode */
+	/** Local object mode. */
+	int mode;
 	int restore_mode;
 
 	/* materials */
-	struct Material **mat;	/* material slots */
-	char *matbits;			/* a boolean field, with each byte 1 if corresponding material is linked to object */
-	int totcol;				/* copy of mesh, curve & meta struct member of same name (keep in sync) */
-	int actcol;				/* currently selected material in the UI */
+	/** Material slots. */
+	struct Material **mat;
+	/** A boolean field, with each byte 1 if corresponding material is linked to object. */
+	char *matbits;
+	/** Copy of mesh, curve & meta struct member of same name (keep in sync). */
+	int totcol;
+	/** Currently selected material in the UI. */
+	int actcol;
 
 	/* rot en drot have to be together! (transform('r' en 's')) */
-	float loc[3], dloc[3], orig[3];
-	float size[3];              /* scale in fact */
-	float dsize[3] DNA_DEPRECATED ; /* DEPRECATED, 2.60 and older only */
-	float dscale[3];            /* ack!, changing */
-	float rot[3], drot[3];		/* euler rotation */
-	float quat[4], dquat[4];	/* quaternion rotation */
-	float rotAxis[3], drotAxis[3];	/* axis angle rotation - axis part */
-	float rotAngle, drotAngle;	/* axis angle rotation - angle part */
-	float obmat[4][4];		/* final worldspace matrix with constraints & animsys applied */
-	float parentinv[4][4]; /* inverse result of parent, so that object doesn't 'stick' to parent */
-	float constinv[4][4]; /* inverse result of constraints. doesn't include effect of parent or object local transform */
-	float imat[4][4];	/* inverse matrix of 'obmat' for any other use than rendering! */
-	                    /* note: this isn't assured to be valid as with 'obmat',
-	                     *       before using this value you should do...
-	                     *       invert_m4_m4(ob->imat, ob->obmat); */
+	float loc[3], dloc[3];
+	/** Scale (can be negative). */
+	float scale[3];
+	/** DEPRECATED, 2.60 and older only. */
+	float dsize[3] DNA_DEPRECATED ;
+	/** Ack!, changing. */
+	float dscale[3];
+	/** Euler rotation. */
+	float rot[3], drot[3];
+	/** Quaternion rotation. */
+	float quat[4], dquat[4];
+	/** Axis angle rotation - axis part. */
+	float rotAxis[3], drotAxis[3];
+	/** Axis angle rotation - angle part. */
+	float rotAngle, drotAngle;
+	/** Final worldspace matrix with constraints & animsys applied. */
+	float obmat[4][4];
+	/** Inverse result of parent, so that object doesn't 'stick' to parent. */
+	float parentinv[4][4];
+	/** Inverse result of constraints.
+	 * doesn't include effect of parent or object local transform. */
+	float constinv[4][4];
+	/**
+	 * Inverse matrix of 'obmat' for any other use than rendering!
+	 *
+	 * \note this isn't assured to be valid as with 'obmat',
+	 * before using this value you should do...
+	 * invert_m4_m4(ob->imat, ob->obmat);
+	 */
+	float imat[4][4];
 
 	/* Previously 'imat' was used at render time, but as other places use it too
 	 * the interactive ui of 2.5 creates problems. So now only 'imat_ren' should
@@ -219,98 +274,117 @@ typedef struct Object {
 	 */
 	float imat_ren[4][4];
 
-	unsigned int lay DNA_DEPRECATED;	/* copy of Base's layer in the scene */
+	/** Copy of Base's layer in the scene. */
+	unsigned int lay DNA_DEPRECATED;
 
-	short flag;			/* copy of Base */
-	short colbits DNA_DEPRECATED;		/* deprecated, use 'matbits' */
+	/** Copy of Base. */
+	short flag;
+	/** Deprecated, use 'matbits'. */
+	short colbits DNA_DEPRECATED;
 
-	short transflag, protectflag;	/* transformation settings and transform locks  */
+	/** Transformation settings and transform locks . */
+	short transflag, protectflag;
 	short trackflag, upflag;
-	short nlaflag;				/* used for DopeSheet filtering settings (expanded/collapsed) */
-	short pad[2];
+	/** Used for DopeSheet filtering settings (expanded/collapsed). */
+	short nlaflag;
 
-	/* did last modifier stack generation need mapping support? */
-	char lastNeedMapping;  /* bool */
+	char _pad1;
 	char duplicator_visibility_flag;
 
-	/* dupli-frame settings */
-	int dupon, dupoff, dupsta, dupend;
-
 	/* Depsgraph */
-	short base_flag; /* used by depsgraph, flushed from base */
-	short pad8;
+	/** Used by depsgraph, flushed from base. */
+	short base_flag;
+	/** Used by viewport, synced from base. */
+	unsigned short base_local_view_bits;
 
 	/** Collision mask settings */
 	unsigned short col_group, col_mask;
 
-	short rotmode;		/* rotation mode - uses defines set out in DNA_action_types.h for PoseChannel rotations... */
+	/** Rotation mode - uses defines set out in DNA_action_types.h for PoseChannel rotations.... */
+	short rotmode;
 
-	char boundtype;            /* bounding box use for drawing */
-	char collision_boundtype;  /* bounding box type used for collision */
+	/** Bounding box use for drawing. */
+	char boundtype;
+	/** Bounding box type used for collision. */
+	char collision_boundtype;
 
-	short dtx;			/* viewport draw extra settings */
-	char dt;			/* viewport draw type */
+	/** Viewport draw extra settings. */
+	short dtx;
+	/** Viewport draw type. */
+	char dt;
 	char empty_drawtype;
 	float empty_drawsize;
-	float dupfacesca;	/* dupliface scale */
+	/** Dupliface scale. */
+	float instance_faces_scale;
 
-	float sf; /* sf is time-offset */
+	/** Custom index, for renderpasses. */
+	short index;
+	/** Current deformation group, note: index starts at 1. */
+	unsigned short actdef;
+	/** Current face map, note: index starts at 1. */
+	unsigned short actfmap;
+	char _pad2[2];
+	/** Object color (in most cases the material color is used for drawing). */
+	float color[4];
 
-	short index;			/* custom index, for renderpasses */
-	unsigned short actdef;	/* current deformation group, note: index starts at 1 */
-	unsigned short actfmap;	/* current face map, note: index starts at 1 */
-	unsigned char pad5[6];
-	float col[4];			/* object color */
+	/** Softbody settings. */
+	short softflag;
 
-	char restrictflag;		/* for restricting view, select, render etc. accessible in outliner */
-	char pad3;
-	short softflag;			/* softbody settings */
-	int pad2;
+	/** For restricting view, select, render etc. accessible in outliner. */
+	char restrictflag;
 
-	ListBase constraints;		/* object constraints */
+	/** Flag for pinning. */
+	char  shapeflag;
+	/** Current shape key for menu or pinned. */
+	short shapenr;
+
+	char _pad3[2];
+
+	/** Object constraints. */
+	ListBase constraints;
 	ListBase nlastrips  DNA_DEPRECATED;			// XXX deprecated... old animation system
 	ListBase hooks  DNA_DEPRECATED;				// XXX deprecated... old animation system
-	ListBase particlesystem;	/* particle systems */
+	/** Particle systems. */
+	ListBase particlesystem;
 
-	struct PartDeflect *pd;		/* particle deflector/attractor/collision data */
-	struct SoftBody *soft;		/* if exists, saved in file */
-	struct Collection *dup_group;	/* object duplicator for group */
-	void *pad10;
+	/** Particle deflector/attractor/collision data. */
+	struct PartDeflect *pd;
+	/** If exists, saved in file. */
+	struct SoftBody *soft;
+	/** Object duplicator for group. */
+	struct Collection *instance_collection;
 
-	char  pad4;
-	char  shapeflag;			/* flag for pinning */
-	short shapenr;				/* current shape key for menu or pinned */
-	float smoothresh;			/* smoothresh is phong interpolation ray_shadow correction in render */
-
-	struct FluidsimSettings *fluidsimSettings; /* if fluidsim enabled, store additional settings */
+	/** If fluidsim enabled, store additional settings. */
+	struct FluidsimSettings *fluidsimSettings;
 
 	struct DerivedMesh *derivedDeform, *derivedFinal;
-	void *pad7;
-	uint64_t lastDataMask;   /* the custom data layer mask that was last used to calculate derivedDeform and derivedFinal */
-	uint64_t customdata_mask; /* (extra) custom data layer mask to use for creating derivedmesh, set by depsgraph */
 
 	ListBase pc_ids;
 
-	struct RigidBodyOb *rigidbody_object;		/* settings for Bullet rigid body */
-	struct RigidBodyCon *rigidbody_constraint;	/* settings for Bullet constraint */
+	/** Settings for Bullet rigid body. */
+	struct RigidBodyOb *rigidbody_object;
+	/** Settings for Bullet constraint. */
+	struct RigidBodyCon *rigidbody_constraint;
 
-	float ima_ofs[2];		/* offset for image empties */
-	ImageUser *iuser;		/* must be non-null when object is an empty image */
+	/** Offset for image empties. */
+	float ima_ofs[2];
+	/** Must be non-null when object is an empty image. */
+	ImageUser *iuser;
+	char empty_image_visibility_flag;
+	char empty_image_depth;
+	char empty_image_flag;
+	char _pad8[1];
 
-	ListBase lodlevels;		/* contains data for levels of detail */
+	int select_id;
+
+	/** Contains data for levels of detail. */
+	ListBase lodlevels;
 	LodLevel *currentlod;
 
 	struct PreviewImage *preview;
 
-	int pad6;
-	int select_color;
-
-	/* Runtime evaluation data. */
+	/** Runtime evaluation data (keep last). */
 	Object_Runtime runtime;
-
-	/* Object Display */
-	struct ObjectDisplay display;
-	int pad9;
 } Object;
 
 /* Warning, this is not used anymore because hooks are now modifiers */
@@ -318,16 +392,23 @@ typedef struct ObHook {
 	struct ObHook *next, *prev;
 
 	struct Object *parent;
-	float parentinv[4][4];	/* matrix making current transform unmodified */
-	float mat[4][4];		/* temp matrix while hooking */
-	float cent[3];			/* visualization of hook */
-	float falloff;			/* if not zero, falloff is distance where influence zero */
+	/** Matrix making current transform unmodified. */
+	float parentinv[4][4];
+	/** Temp matrix while hooking. */
+	float mat[4][4];
+	/** Visualization of hook. */
+	float cent[3];
+	/** If not zero, falloff is distance where influence zero. */
+	float falloff;
 
-	char name[64];	/* MAX_NAME */
+	/** MAX_NAME. */
+	char name[64];
 
 	int *indexar;
-	int totindex, curindex; /* curindex is cache for fast lookup */
-	short type, active;		/* active is only first hook, for button menu */
+	/** Curindex is cache for fast lookup. */
+	int totindex, curindex;
+	/** Active is only first hook, for button menu. */
+	short type, active;
 	float force;
 } ObHook;
 
@@ -351,20 +432,14 @@ enum {
 	OB_SPEAKER    = 12,
 	OB_LIGHTPROBE = 13,
 
-/*	OB_WAVE       = 21, */
 	OB_LATTICE    = 22,
 
-/* 23 and 24 are for life and sector (old file compat.) */
 	OB_ARMATURE   = 25,
-/* Grease Pencil object used in 3D view but not used for annotation in 2D */
+
+	/** Grease Pencil object used in 3D view but not used for annotation in 2D. */
 	OB_GPENCIL  = 26,
 
 	OB_TYPE_MAX,
-};
-
-/* ObjectDisplay.flag */
-enum {
-	OB_SHOW_SHADOW = (1 << 0),
 };
 
 /* check if the object type supports materials */
@@ -392,38 +467,35 @@ enum {
 enum {
 	PARTYPE       = (1 << 4) - 1,
 	PAROBJECT     = 0,
-#ifdef DNA_DEPRECATED
-	PARCURVE      = 1,  /* Deprecated. */
-#endif
-	PARKEY        = 2,  /* XXX Unused, deprecated? */
-
 	PARSKEL       = 4,
 	PARVERT1      = 5,
 	PARVERT3      = 6,
 	PARBONE       = 7,
 
-	/* slow parenting - is not threadsafe and/or may give errors after jumping  */
-	PARSLOW       = 16,
 };
 
 /* (short) transflag */
-/* flags 1 and 2 were unused or relics from past features */
 enum {
+	OB_TRANSFLAG_UNUSED_0 = 1 << 0,  /* cleared */
+	OB_TRANSFLAG_UNUSED_1 = 1 << 1,  /* cleared */
 	OB_NEG_SCALE        = 1 << 2,
-	OB_DUPLIFRAMES      = 1 << 3,
+	OB_TRANSFLAG_UNUSED_3 = 1 << 3,  /* cleared */
 	OB_DUPLIVERTS       = 1 << 4,
 	OB_DUPLIROT         = 1 << 5,
-	OB_DUPLINOSPEED     = 1 << 6,
-	OB_DUPLICALCDERIVED = 1 << 7, /* runtime, calculate derivedmesh for dupli before it's used */
+	OB_TRANSFLAG_UNUSED_6 = 1 << 6,  /* cleared */
+	/* runtime, calculate derivedmesh for dupli before it's used */
+	OB_DUPLICALCDERIVED = 1 << 7,
 	OB_DUPLICOLLECTION  = 1 << 8,
 	OB_DUPLIFACES       = 1 << 9,
 	OB_DUPLIFACES_SCALE = 1 << 10,
 	OB_DUPLIPARTS       = 1 << 11,
-	OB_RENDER_DUPLI     = 1 << 12,
-	OB_NO_CONSTRAINTS   = 1 << 13,  /* runtime constraints disable */
-	OB_NO_PSYS_UPDATE   = 1 << 14,  /* hack to work around particle issue */
+	OB_TRANSFLAG_UNUSED_12 = 1 << 12,  /* cleared */
+	/* runtime constraints disable */
+	OB_NO_CONSTRAINTS   = 1 << 13,
+	/* hack to work around particle issue */
+	OB_NO_PSYS_UPDATE   = 1 << 14,
 
-	OB_DUPLI            = OB_DUPLIFRAMES | OB_DUPLIVERTS | OB_DUPLICOLLECTION | OB_DUPLIFACES | OB_DUPLIPARTS,
+	OB_DUPLI = OB_DUPLIVERTS | OB_DUPLICOLLECTION | OB_DUPLIFACES | OB_DUPLIPARTS,
 };
 
 /* (short) trackflag / upflag */
@@ -460,6 +532,7 @@ enum {
 	/* enable transparent draw */
 	OB_DRAWTRANSP     = 1 << 7,
 	OB_DRAW_ALL_EDGES = 1 << 8,  /* only for meshes currently */
+	OB_DRAW_NO_SHADOW_CAST = 1 << 9,
 };
 
 /* empty_drawtype: no flags */
@@ -478,7 +551,7 @@ enum {
 enum {
 	GP_EMPTY = 0,
 	GP_STROKE = 1,
-	GP_MONKEY = 2
+	GP_MONKEY = 2,
 };
 
 /* boundtype */
@@ -510,7 +583,8 @@ enum {
 	/* NOTE: BA_HAS_RECALC_DATA can be re-used later if freed in readfile.c. */
 	// BA_HAS_RECALC_OB = (1 << 2),  /* DEPRECATED */
 	// BA_HAS_RECALC_DATA =  (1 << 3),  /* DEPRECATED */
-	BA_SNAP_FIX_DEPS_FIASCO = (1 << 2),  /* Yes, re-use deprecated bit, all fine since it's runtime only. */
+	/** DEPRECATED, was runtime only, but was reusing an older flag. */
+	BA_SNAP_FIX_DEPS_FIASCO = (1 << 2),
 };
 
 	/* NOTE: this was used as a proper setting in past, so nullify before using */
@@ -523,25 +597,10 @@ enum {
 
 #define OB_FROMDUPLI        (1 << 9)
 #define OB_DONE             (1 << 10)  /* unknown state, clear before use */
-/* #define OB_RADIO            (1 << 11) */  /* deprecated */
-/* #define OB_FROMGROUP        (1 << 12) */  /* deprecated */
-
-/* WARNING - when adding flags check on PSYS_RECALC */
-/* ob->recalc (flag bits!) */
-enum {
-	OB_RECALC_OB        = 1 << 0,
-	OB_RECALC_DATA      = 1 << 1,
-/* time flag is set when time changes need recalc, so baked systems can ignore it */
-	OB_RECALC_TIME      = 1 << 2,
-/* only use for matching any flag, NOT as an argument since more flags may be added. */
-	OB_RECALC_ALL       = OB_RECALC_OB | OB_RECALC_DATA | OB_RECALC_TIME,
-};
-
-/* controller state */
-#define OB_MAX_STATES       30
-
-/* collision masks */
-#define OB_MAX_COL_MASKS    16
+#ifdef DNA_DEPRECATED_ALLOW
+#  define OB_FLAG_UNUSED_11        (1 << 11)  /* cleared */
+#  define OB_FLAG_UNUSED_12        (1 << 12)  /* cleared */
+#endif
 
 /* ob->restrictflag */
 enum {
@@ -553,13 +612,16 @@ enum {
 /* ob->shapeflag */
 enum {
 	OB_SHAPE_LOCK       = 1 << 0,
-	// OB_SHAPE_TEMPLOCK   = 1 << 1,  /* deprecated */
+#ifdef DNA_DEPRECATED_ALLOW
+	OB_SHAPE_FLAG_UNUSED_1   = 1 << 1,  /* cleared */
+#endif
 	OB_SHAPE_EDIT_MODE  = 1 << 2,
 };
 
 /* ob->nlaflag */
 enum {
-	/* WARNING: flags (1 << 0) and (1 << 1) were from old animsys */
+	OB_ADS_UNUSED_1    = 1 << 0,  /* cleared */
+	OB_ADS_UNUSED_2    = 1 << 1,  /* cleared */
 	/* object-channel expanded status */
 	OB_ADS_COLLAPSED    = 1 << 10,
 	/* object's ipo-block */
@@ -594,6 +656,24 @@ enum {
 enum {
 	OB_DUPLI_FLAG_VIEWPORT = 1 << 0,
 	OB_DUPLI_FLAG_RENDER   = 1 << 1,
+};
+
+/* ob->empty_image_depth */
+#define OB_EMPTY_IMAGE_DEPTH_DEFAULT 0
+#define OB_EMPTY_IMAGE_DEPTH_FRONT 1
+#define OB_EMPTY_IMAGE_DEPTH_BACK 2
+
+/** #Object.empty_image_visibility_flag */
+enum {
+	OB_EMPTY_IMAGE_HIDE_PERSPECTIVE  = 1 << 0,
+	OB_EMPTY_IMAGE_HIDE_ORTHOGRAPHIC = 1 << 1,
+	OB_EMPTY_IMAGE_HIDE_BACK         = 1 << 2,
+	OB_EMPTY_IMAGE_HIDE_FRONT        = 1 << 3,
+};
+
+/** #Object.empty_image_flag */
+enum {
+	OB_EMPTY_IMAGE_USE_ALPHA_BLEND   = 1 << 0,
 };
 
 #define MAX_DUPLI_RECUR 8

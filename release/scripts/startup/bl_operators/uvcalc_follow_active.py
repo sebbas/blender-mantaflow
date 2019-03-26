@@ -34,14 +34,14 @@ STATUS_ERR_NOT_QUAD = (1 << 3)
 def extend(obj, operator, EXTEND_MODE):
     import bmesh
     me = obj.data
-    # script will fail without UVs
-    if not me.uv_layers:
-        me.uv_layers.new()
 
     bm = bmesh.from_edit_mesh(me)
 
+    faces = [f for f in bm.faces if f.select and len(f.verts) == 4]
+    if not faces:
+        return 0
+
     f_act = bm.faces.active
-    uv_act = bm.loops.layers.uv.active
 
     if f_act is None:
         return STATUS_ERR_ACTIVE_FACE
@@ -50,7 +50,11 @@ def extend(obj, operator, EXTEND_MODE):
     elif len(f_act.verts) != 4:
         return STATUS_ERR_NOT_QUAD
 
-    faces = [f for f in bm.faces if f.select and len(f.verts) == 4]
+    # Script will fail without UVs.
+    if not me.uv_layers:
+        me.uv_layers.new()
+
+    uv_act = bm.loops.layers.uv.active
 
     # our own local walker
     def walk_face_init(faces, f_act):
@@ -107,9 +111,11 @@ def extend(obj, operator, EXTEND_MODE):
             else:
                 break
 
-    def extrapolate_uv(fac,
-                       l_a_outer, l_a_inner,
-                       l_b_outer, l_b_inner):
+    def extrapolate_uv(
+            fac,
+            l_a_outer, l_a_inner,
+            l_b_outer, l_b_inner,
+    ):
         l_b_inner[:] = l_a_inner
         l_b_outer[:] = l_a_inner + ((l_a_inner - l_a_outer) * fac)
 
@@ -222,16 +228,9 @@ def main(context, operator):
     num_errors = 0
     status = 0
 
-    ob_list = [ob for ob in context.selected_objects if ob and ob.type == 'MESH']
+    ob_list = context.objects_in_mode_unique_data
     for ob in ob_list:
-        ob.data.tag = False
-
-    for ob in ob_list:
-        if ob.data.tag:
-            continue
-
         num_meshes += 1
-        ob.data.tag = True
 
         ret = extend(ob, operator, operator.properties.mode)
         if ret != STATUS_OK:
@@ -257,17 +256,17 @@ class FollowActiveQuads(Operator):
     mode: bpy.props.EnumProperty(
         name="Edge Length Mode",
         description="Method to space UV edge loops",
-        items=(('EVEN', "Even", "Space all UVs evenly"),
-               ('LENGTH', "Length", "Average space UVs edge length of each loop"),
-               ('LENGTH_AVERAGE', "Length Average", "Average space UVs edge length of each loop"),
-               ),
+        items=(
+            ('EVEN', "Even", "Space all UVs evenly"),
+            ('LENGTH', "Length", "Average space UVs edge length of each loop"),
+            ('LENGTH_AVERAGE', "Length Average", "Average space UVs edge length of each loop"),
+        ),
         default='LENGTH_AVERAGE',
     )
 
     @classmethod
     def poll(cls, context):
-        obj = context.active_object
-        return (obj is not None and obj.type == 'MESH')
+        return context.mode == 'EDIT_MESH'
 
     def execute(self, context):
         main(context, self)

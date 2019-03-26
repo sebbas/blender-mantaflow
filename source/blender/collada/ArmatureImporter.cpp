@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,14 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Contributor(s): Chingiz Dyussenov, Arystanbek Dyussenov, Nathan Letwory, Sukhitha jayathilake.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/collada/ArmatureImporter.cpp
- *  \ingroup collada
+/** \file
+ * \ingroup collada
  */
 
 
@@ -172,7 +166,7 @@ int ArmatureImporter::create_bone(SkinInfo *skin, COLLADAFW::Node *node, EditBon
 	}
 	copy_v3_v3(bone->head, mat[3]);
 
-	if (bone_is_skinned)
+	if (bone_is_skinned && this->import_settings->keep_bind_info)
 	{
 		float rest_mat[4][4];
 		get_node_mat(rest_mat, node, NULL, NULL, NULL);
@@ -214,11 +208,11 @@ int ArmatureImporter::create_bone(SkinInfo *skin, COLLADAFW::Node *node, EditBon
 }
 
 /**
-  * Collada only knows Joints, hence bones at the end of a bone chain
-  * don't have a defined length. This function guesses reasonable
-  * tail locations for the affected bones (nodes which don't have any connected child)
-  * Hint: The extended_bones set gets populated in ArmatureImporter::create_bone
-**/
+ * Collada only knows Joints, hence bones at the end of a bone chain
+ * don't have a defined length. This function guesses reasonable
+ * tail locations for the affected bones (nodes which don't have any connected child)
+ * Hint: The extended_bones set gets populated in ArmatureImporter::create_bone
+ */
 void ArmatureImporter::fix_leaf_bone_hierarchy(bArmature *armature, Bone *bone, bool fix_orientation)
 {
 	if (bone == NULL)
@@ -499,7 +493,7 @@ void ArmatureImporter::create_armature_bones(Main *bmain, std::vector<Object *> 
 			ob_arms.push_back(ob_arm);
 		}
 
-		DEG_id_tag_update(&ob_arm->id, OB_RECALC_OB | OB_RECALC_DATA);
+		DEG_id_tag_update(&ob_arm->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 	}
 }
 
@@ -632,7 +626,7 @@ Object *ArmatureImporter::create_armature_bones(Main *bmain, SkinInfo& skin)
 	ED_armature_from_edit(bmain, armature);
 	ED_armature_edit_free(armature);
 
-	DEG_id_tag_update(&ob_arm->id, OB_RECALC_OB | OB_RECALC_DATA);
+	DEG_id_tag_update(&ob_arm->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
 	return ob_arm;
 }
@@ -680,10 +674,10 @@ void ArmatureImporter::set_pose(Object *ob_arm,  COLLADAFW::Node *root_node, con
 }
 
 /**
-  * root - if this joint is the top joint in hierarchy, if a joint
-  * is a child of a node (not joint), root should be true since
-  * this is where we build armature bones from
-  **/
+ * root - if this joint is the top joint in hierarchy, if a joint
+ * is a child of a node (not joint), root should be true since
+ * this is where we build armature bones from
+ */
 void ArmatureImporter::add_root_joint(COLLADAFW::Node *node, Object *parent)
 {
 	root_joints.push_back(node);

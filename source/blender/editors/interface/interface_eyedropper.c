@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,21 +15,16 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Blender Foundation, Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/interface/interface_eyedropper.c
- *  \ingroup edinterface
+/** \file
+ * \ingroup edinterface
  */
 
 #include "DNA_space_types.h"
 #include "DNA_screen_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -59,30 +52,21 @@ wmKeyMap *eyedropper_modal_keymap(wmKeyConfig *keyconf)
 		{EYE_MODAL_SAMPLE_CONFIRM, "SAMPLE_CONFIRM", 0, "Confirm Sampling", ""},
 		{EYE_MODAL_SAMPLE_BEGIN, "SAMPLE_BEGIN", 0, "Start Sampling", ""},
 		{EYE_MODAL_SAMPLE_RESET, "SAMPLE_RESET", 0, "Reset Sampling", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
 	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Eyedropper Modal Map");
 
 	/* this function is called for each spacetype, only needs to add map once */
-	if (keymap && keymap->modal_items)
+	if (keymap && keymap->modal_items) {
 		return NULL;
+	}
 
 	keymap = WM_modalkeymap_add(keyconf, "Eyedropper Modal Map", modal_items);
 
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY, KM_PRESS, KM_ANY, 0, EYE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_PRESS, KM_ANY, 0, EYE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, RETKEY, KM_RELEASE, KM_ANY, 0, EYE_MODAL_SAMPLE_CONFIRM);
-	WM_modalkeymap_add_item(keymap, PADENTER, KM_RELEASE, KM_ANY, 0, EYE_MODAL_SAMPLE_CONFIRM);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_RELEASE, KM_ANY, 0, EYE_MODAL_SAMPLE_CONFIRM);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, KM_ANY, 0, EYE_MODAL_SAMPLE_BEGIN);
-	WM_modalkeymap_add_item(keymap, SPACEKEY, KM_RELEASE, KM_ANY, 0, EYE_MODAL_SAMPLE_RESET);
-
 	/* assign to operators */
-	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_colorband");
+	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_colorramp");
 	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_color");
-	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_color_crypto");
 	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_id");
 	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_depth");
 	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_driver");
@@ -97,26 +81,18 @@ wmKeyMap *eyedropper_colorband_modal_keymap(wmKeyConfig *keyconf)
 		{EYE_MODAL_POINT_SAMPLE, "SAMPLE_SAMPLE", 0, "Sample a point", ""},
 		{EYE_MODAL_POINT_CONFIRM, "SAMPLE_CONFIRM", 0, "Confirm Sampling", ""},
 		{EYE_MODAL_POINT_RESET, "SAMPLE_RESET", 0, "Reset Sampling", ""},
-		{0, NULL, 0, NULL, NULL}
+		{0, NULL, 0, NULL, NULL},
 	};
 
-	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Eyedropper ColorBand PointSampling Map");
-	if (keymap && keymap->modal_items)
+	wmKeyMap *keymap = WM_modalkeymap_get(keyconf, "Eyedropper ColorRamp PointSampling Map");
+	if (keymap && keymap->modal_items) {
 		return keymap;
+	}
 
-	keymap = WM_modalkeymap_add(keyconf, "Eyedropper ColorBand PointSampling Map", modal_items_point);
-
-	/* items for modal map */
-	WM_modalkeymap_add_item(keymap, ESCKEY, KM_PRESS, KM_ANY, 0, EYE_MODAL_CANCEL);
-	WM_modalkeymap_add_item(keymap, BACKSPACEKEY, KM_PRESS, KM_ANY, 0, EYE_MODAL_POINT_REMOVE_LAST);
-	WM_modalkeymap_add_item(keymap, RIGHTMOUSE, KM_PRESS, KM_ANY, 0, EYE_MODAL_POINT_CONFIRM);
-	WM_modalkeymap_add_item(keymap, RETKEY, KM_RELEASE, KM_ANY, 0, EYE_MODAL_POINT_CONFIRM);
-	WM_modalkeymap_add_item(keymap, PADENTER, KM_RELEASE, KM_ANY, 0, EYE_MODAL_POINT_CONFIRM);
-	WM_modalkeymap_add_item(keymap, LEFTMOUSE, KM_PRESS, KM_ANY, 0, EYE_MODAL_POINT_SAMPLE);
-	WM_modalkeymap_add_item(keymap, SPACEKEY, KM_RELEASE, KM_ANY, 0, EYE_MODAL_POINT_RESET);
+	keymap = WM_modalkeymap_add(keyconf, "Eyedropper ColorRamp PointSampling Map", modal_items_point);
 
 	/* assign to operators */
-	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_colorband_point");
+	WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_colorramp_point");
 
 	return keymap;
 }

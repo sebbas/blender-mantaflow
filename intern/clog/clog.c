@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,12 +12,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file clog/clog.c
- *  \ingroup clog
+/** \file
+ * \ingroup clog
  */
 
 #include <stdarg.h>
@@ -28,14 +24,29 @@
 #include <stdint.h>
 #include <assert.h>
 
+/* Disable for small single threaded programs
+ * to avoid having to link with pthreads. */
+#ifdef WITH_CLOG_PTHREADS
+#  include <pthread.h>
+#  include "atomic_ops.h"
+#endif
+
 /* For 'isatty' to check for color. */
-#if defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__) || defined(__HAIKU__)
 #  include <unistd.h>
+#  include <sys/time.h>
 #endif
 
 #if defined(_MSC_VER)
 #  include <io.h>
+#  include <windows.h>
 #endif
+
+/* For printing timestamp. */
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
+
 /* Only other dependency (could use regular malloc too). */
 #include "MEM_guardedalloc.h"
 
@@ -65,14 +76,22 @@ typedef struct CLG_IDFilter {
 typedef struct CLogContext {
 	/** Single linked list of types.  */
 	CLG_LogType *types;
+#ifdef WITH_CLOG_PTHREADS
+	pthread_mutex_t types_lock;
+#endif
+
 	/* exclude, include filters.  */
 	CLG_IDFilter *filters[2];
 	bool use_color;
 	bool use_basename;
+	bool use_timestamp;
 
 	/** Borrowed, not owned. */
 	int output;
 	FILE *output_file;
+
+	/** For timer (use_timestamp). */
+	uint64_t timestamp_tick_start;
 
 	/** For new types. */
 	struct {
@@ -346,11 +365,34 @@ static void clg_ctx_backtrace(CLogContext *ctx)
 	fflush(ctx->output_file);
 }
 
+static uint64_t clg_timestamp_ticks_get(void)
+{
+	uint64_t tick;
+#if defined(_MSC_VER)
+	tick = GetTickCount64();
+#else
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	tick = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+#endif
+	return tick;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Logging API
  * \{ */
+
+static void write_timestamp(CLogStringBuf *cstr, const uint64_t timestamp_tick_start)
+{
+	char timestamp_str[64];
+	const uint64_t timestamp = clg_timestamp_ticks_get() - timestamp_tick_start;
+	const uint timestamp_len = snprintf(
+	        timestamp_str, sizeof(timestamp_str), "%" PRIu64 ".%03u ",
+	        timestamp / 1000, (uint)(timestamp % 1000));
+	clg_str_append_with_len(cstr, timestamp_str, timestamp_len);
+}
 
 static void write_severity(CLogStringBuf *cstr, enum CLG_Severity severity, bool use_color)
 {
@@ -403,6 +445,10 @@ void CLG_log_str(
 	char cstr_stack_buf[CLOG_BUF_LEN_INIT];
 	clg_str_init(&cstr, cstr_stack_buf, sizeof(cstr_stack_buf));
 
+	if (lg->ctx->use_timestamp) {
+		write_timestamp(&cstr, lg->ctx->timestamp_tick_start);
+	}
+
 	write_severity(&cstr, severity, lg->ctx->use_color);
 	write_type(&cstr, lg);
 
@@ -434,6 +480,10 @@ void CLG_logf(
 	CLogStringBuf cstr;
 	char cstr_stack_buf[CLOG_BUF_LEN_INIT];
 	clg_str_init(&cstr, cstr_stack_buf, sizeof(cstr_stack_buf));
+
+	if (lg->ctx->use_timestamp) {
+		write_timestamp(&cstr, lg->ctx->timestamp_tick_start);
+	}
 
 	write_severity(&cstr, severity, lg->ctx->use_color);
 	write_type(&cstr, lg);
@@ -483,6 +533,14 @@ static void CLG_ctx_output_use_basename_set(CLogContext *ctx, int value)
 	ctx->use_basename = (bool)value;
 }
 
+static void CLG_ctx_output_use_timestamp_set(CLogContext *ctx, int value)
+{
+	ctx->use_timestamp = (bool)value;
+	if (ctx->use_timestamp) {
+		ctx->timestamp_tick_start = clg_timestamp_ticks_get();
+	}
+}
+
 /** Action on fatal severity. */
 static void CLG_ctx_fatal_fn_set(CLogContext *ctx, void (*fatal_fn)(void *file_handle))
 {
@@ -527,6 +585,9 @@ static void CLG_ctx_level_set(CLogContext *ctx, int level)
 static CLogContext *CLG_ctx_init(void)
 {
 	CLogContext *ctx = MEM_callocN(sizeof(*ctx), __func__);
+#ifdef WITH_CLOG_PTHREADS
+	pthread_mutex_init(&ctx->types_lock, NULL);
+#endif
 	ctx->use_color = true;
 	ctx->default_type.level = 1;
 	CLG_ctx_output_set(ctx, stdout);
@@ -549,6 +610,9 @@ static void CLG_ctx_free(CLogContext *ctx)
 			MEM_freeN(item);
 		}
 	}
+#ifdef WITH_CLOG_PTHREADS
+	pthread_mutex_destroy(&ctx->types_lock);
+#endif
 	MEM_freeN(ctx);
 }
 
@@ -585,6 +649,10 @@ void CLG_output_use_basename_set(int value)
 	CLG_ctx_output_use_basename_set(g_ctx, value);
 }
 
+void CLG_output_use_timestamp_set(int value)
+{
+	CLG_ctx_output_use_timestamp_set(g_ctx, value);
+}
 
 void CLG_fatal_fn_set(void (*fatal_fn)(void *file_handle))
 {
@@ -621,9 +689,24 @@ void CLG_level_set(int level)
 
 void CLG_logref_init(CLG_LogRef *clg_ref)
 {
-	assert(clg_ref->type == NULL);
-	CLG_LogType *clg_ty = clg_ctx_type_find_by_name(g_ctx, clg_ref->identifier);
-	clg_ref->type = clg_ty ? clg_ty : clg_ctx_type_register(g_ctx, clg_ref->identifier);
+#ifdef WITH_CLOG_PTHREADS
+	/* Only runs once when initializing a static type in most cases. */
+	pthread_mutex_lock(&g_ctx->types_lock);
+#endif
+	if (clg_ref->type == NULL) {
+		CLG_LogType *clg_ty = clg_ctx_type_find_by_name(g_ctx, clg_ref->identifier);
+		if (clg_ty == NULL) {
+			clg_ty = clg_ctx_type_register(g_ctx, clg_ref->identifier);
+		}
+#ifdef WITH_CLOG_PTHREADS
+		atomic_cas_ptr((void **)&clg_ref->type, clg_ref->type, clg_ty);
+#else
+		clg_ref->type = clg_ty;
+#endif
+	}
+#ifdef WITH_CLOG_PTHREADS
+	pthread_mutex_unlock(&g_ctx->types_lock);
+#endif
 }
 
 /** \} */

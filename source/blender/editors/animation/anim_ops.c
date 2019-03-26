@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- *
- * Contributor(s): Blender Foundation, Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/animation/anim_ops.c
- *  \ingroup edanimation
+/** \file
+ * \ingroup edanimation
  */
 
 
@@ -79,7 +72,7 @@ static bool change_frame_poll(bContext *C)
 		if (ELEM(sa->spacetype, SPACE_ACTION, SPACE_NLA, SPACE_SEQ, SPACE_CLIP)) {
 			return true;
 		}
-		else if (sa->spacetype == SPACE_IPO) {
+		else if (sa->spacetype == SPACE_GRAPH) {
 			/* NOTE: Graph Editor has special version which does some extra stuff.
 			 * No need to show the generic error message for that case though!
 			 */
@@ -231,9 +224,7 @@ static int change_frame_modal(bContext *C, wmOperator *op, const wmEvent *event)
 		case LEFTMOUSE:
 		case RIGHTMOUSE:
 		case MIDDLEMOUSE:
-			/* we check for either mouse-button to end, as checking for ACTIONMOUSE (which is used to init
-			 * the modal op) doesn't work for some reason
-			 */
+			/* We check for either mouse-button to end, to work with all user keymaps. */
 			if (event->val == KM_RELEASE)
 				ret = OPERATOR_FINISHED;
 			break;
@@ -296,7 +287,7 @@ static bool anim_set_end_frames_poll(bContext *C)
 	 * this shouldn't show up in 3D editor (or others without 2D timeline view) via search
 	 */
 	if (sa) {
-		if (ELEM(sa->spacetype, SPACE_ACTION, SPACE_IPO, SPACE_NLA, SPACE_SEQ, SPACE_CLIP)) {
+		if (ELEM(sa->spacetype, SPACE_ACTION, SPACE_GRAPH, SPACE_NLA, SPACE_SEQ, SPACE_CLIP)) {
 			return true;
 		}
 	}
@@ -409,8 +400,8 @@ static int previewrange_define_exec(bContext *C, wmOperator *op)
 	efra = UI_view2d_region_to_view_x(&ar->v2d, rect.xmax);
 
 	/* set start/end frames for preview-range
-	 *	- must clamp within allowable limits
-	 *	- end must not be before start (though this won't occur most of the time)
+	 * - must clamp within allowable limits
+	 * - end must not be before start (though this won't occur most of the time)
 	 */
 	FRAMENUMBER_MIN_CLAMP(sfra);
 	FRAMENUMBER_MIN_CLAMP(efra);
@@ -536,17 +527,5 @@ void ED_operatortypes_anim(void)
 
 void ED_keymap_anim(wmKeyConfig *keyconf)
 {
-	wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Animation", 0, 0);
-	wmKeyMapItem *kmi;
-
-	/* frame management */
-	/* NOTE: 'ACTIONMOUSE' not 'LEFTMOUSE', as user may have swapped mouse-buttons */
-	WM_keymap_add_item(keymap, "ANIM_OT_change_frame", ACTIONMOUSE, KM_PRESS, 0, 0);
-
-	kmi = WM_keymap_add_item(keymap, "WM_OT_context_toggle", TKEY, KM_PRESS, KM_CTRL, 0);
-	RNA_string_set(kmi->ptr, "data_path", "space_data.show_seconds");
-
-	/* preview range */
-	WM_keymap_verify_item(keymap, "ANIM_OT_previewrange_set", PKEY, KM_PRESS, 0, 0);
-	WM_keymap_verify_item(keymap, "ANIM_OT_previewrange_clear", PKEY, KM_PRESS, KM_ALT, 0);
+	WM_keymap_ensure(keyconf, "Animation", 0, 0);
 }

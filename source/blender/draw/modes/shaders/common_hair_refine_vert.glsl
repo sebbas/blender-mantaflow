@@ -1,7 +1,7 @@
 
 /* To be compiled with common_hair_lib.glsl */
 
-out vec4 outData;
+out vec4 finalColor;
 
 vec4 get_weights_cardinal(float t)
 {
@@ -44,12 +44,28 @@ vec4 interp_data(vec4 v0, vec4 v1, vec4 v2, vec4 v3, vec4 w)
 	return v0 * w.x + v1 * w.y + v2 * w.z + v3 * w.w;
 }
 
+#ifdef TF_WORKAROUND
+uniform int targetWidth;
+uniform int targetHeight;
+uniform int idOffset;
+#endif
+
 void main(void)
 {
 	float interp_time;
 	vec4 data0, data1, data2, data3;
-	hair_get_interp_attribs(data0, data1, data2, data3, interp_time);
+	hair_get_interp_attrs(data0, data1, data2, data3, interp_time);
 
 	vec4 weights = get_weights_cardinal(interp_time);
-	outData = interp_data(data0, data1, data2, data3, weights);
+	finalColor = interp_data(data0, data1, data2, data3, weights);
+
+#ifdef TF_WORKAROUND
+	int id = gl_VertexID - idOffset;
+	gl_Position.x = ((float(id % targetWidth) + 0.5) / float(targetWidth)) * 2.0 - 1.0;
+	gl_Position.y = ((float(id / targetWidth) + 0.5) / float(targetHeight)) * 2.0 - 1.0;
+	gl_Position.z = 0.0;
+	gl_Position.w = 1.0;
+
+	gl_PointSize = 1.0;
+#endif
 }

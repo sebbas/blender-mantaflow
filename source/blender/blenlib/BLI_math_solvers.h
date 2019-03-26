@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,17 +15,13 @@
  *
  * The Original Code is Copyright (C) 2015 by Blender Foundation
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * ***** END GPL LICENSE BLOCK *****
  * */
 
 #ifndef __BLI_MATH_SOLVERS_H__
 #define __BLI_MATH_SOLVERS_H__
 
-/** \file BLI_math_solvers.h
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #ifdef __cplusplus
@@ -52,6 +46,15 @@ void BLI_svd_m3(const float m3[3][3], float r_U[3][3], float r_S[], float r_V[3]
 
 bool BLI_tridiagonal_solve(const float *a, const float *b, const float *c, const float *d, float *r_x, const int count);
 bool BLI_tridiagonal_solve_cyclic(const float *a, const float *b, const float *c, const float *d, float *r_x, const int count);
+
+/* Generic 3 variable Newton's method solver. */
+typedef void (*Newton3D_DeltaFunc)(void *userdata, const float x[3], float r_delta[3]);
+typedef void (*Newton3D_JacobianFunc)(void *userdata, const float x[3], float r_jacobian[3][3]);
+typedef bool (*Newton3D_CorrectionFunc)(void *userdata, const float x[3], float step[3], float x_next[3]);
+
+bool BLI_newton3d_solve(
+        Newton3D_DeltaFunc func_delta, Newton3D_JacobianFunc func_jacobian, Newton3D_CorrectionFunc func_correction, void *userdata,
+        float epsilon, int max_iterations, bool trace, const float x_init[3], float result[3]);
 
 #ifdef BLI_MATH_GCC_WARN_PRAGMA
 #  pragma GCC diagnostic pop

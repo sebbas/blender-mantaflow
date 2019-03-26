@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,33 +15,29 @@
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation.
  * All rights reserved.
- *
- * Contributor(s): Nicholas Bishop
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file ED_sculpt.h
- *  \ingroup editors
+/** \file
+ * \ingroup editors
  */
 
 #ifndef __ED_SCULPT_H__
 #define __ED_SCULPT_H__
 
 struct ARegion;
-struct bContext;
+struct ListBase;
 struct Object;
 struct RegionView3D;
-struct ViewContext;
-struct rcti;
 struct UndoStep;
 struct UndoType;
-struct ListBase;
+struct ViewContext;
+struct bContext;
+struct rcti;
 
 /* sculpt.c */
 void ED_operatortypes_sculpt(void);
 void ED_sculpt_redraw_planes_get(float planes[4][4], struct ARegion *ar, struct Object *ob);
-int  ED_sculpt_mask_box_select(struct bContext *C, struct ViewContext *vc, const struct rcti *rect, bool select);
+bool ED_sculpt_mask_box_select(struct bContext *C, struct ViewContext *vc, const struct rcti *rect, bool select);
 
 /* sculpt_undo.c */
 void ED_sculpt_undosys_type(struct UndoType *ut);

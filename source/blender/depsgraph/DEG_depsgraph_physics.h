@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2018 Blender Foundation.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/depsgraph/DEG_depsgraph_physics.h
- *  \ingroup depsgraph
+/** \file
+ * \ingroup depsgraph
  *
  * Physics utilities for effectors and collision.
  */
@@ -32,9 +28,8 @@
 
 #include "DEG_depsgraph.h"
 
-struct Colllection;
-struct Depsgraph;
 struct DepsNodeHandle;
+struct Depsgraph;
 struct EffectorWeights;
 struct ListBase;
 struct Object;
@@ -48,7 +43,7 @@ typedef enum ePhysicsRelationType {
 	DEG_PHYSICS_COLLISION       = 1,
 	DEG_PHYSICS_SMOKE_COLLISION = 2,
 	DEG_PHYSICS_DYNAMIC_BRUSH   = 3,
-	DEG_PHYSICS_RELATIONS_NUM   = 4
+	DEG_PHYSICS_RELATIONS_NUM   = 4,
 } ePhysicsRelationType;
 
 /* Get collision/effector relations from collection or entire scene. These
@@ -69,7 +64,7 @@ void DEG_add_collision_relations(struct DepsNodeHandle *handle,
                                  struct Object *object,
                                  struct Collection *collection,
                                  unsigned int modifier_type,
-                                 DEG_CollobjFilterFunction fn,
+                                 DEG_CollobjFilterFunction filter_function,
                                  const char *name);
 void DEG_add_forcefield_relations(struct DepsNodeHandle *handle,
                                   struct Object *object,

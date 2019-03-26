@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,15 +12,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #ifndef __BLENDER_STROKE_RENDERER_H__
 #define __BLENDER_STROKE_RENDERER_H__
 
-/** \file blender/freestyle/intern/blender_interface/BlenderStrokeRenderer.h
- *  \ingroup freestyle
+/** \file
+ * \ingroup freestyle
  */
 
 #include "../stroke/StrokeRenderer.h"
@@ -71,7 +67,7 @@ public:
 
 	Render *RenderScene(Render *re, bool render);
 
-	static Material* GetStrokeShader(Main *bmain, bNodeTree *iNodeTree, bool do_id_user);
+	static Material *GetStrokeShader(Main *bmain, bNodeTree *iNodeTree, bool do_id_user);
 
 protected:
 	Main *freestyle_bmain;
@@ -91,8 +87,9 @@ protected:
 	float get_stroke_vertex_z(void) const;
 	unsigned int get_stroke_mesh_id(void) const;
 	bool test_triangle_visibility(StrokeVertexRep *svRep[3]) const;
-	void test_strip_visibility(Strip::vertex_container& strip_vertices,
-		int *visible_faces, int *visible_segments) const;
+	void test_strip_visibility(
+	        Strip::vertex_container& strip_vertices,
+	        int *visible_faces, int *visible_segments) const;
 
 	vector<StrokeRep *> _strokeReps;
 

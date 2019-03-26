@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 setup_libdirs()
@@ -479,6 +474,7 @@ if(UNIX AND NOT APPLE)
 			FILES
 				${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
 				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
+				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/blender-symbolic.svg
 			DESTINATION "."
 		)
 
@@ -509,19 +505,12 @@ if(UNIX AND NOT APPLE)
 			DESTINATION share/applications
 		)
 		install(
-			DIRECTORY
-				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/16x16
-				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/22x22
-				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/24x24
-				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/32x32
-				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/48x48
-				${CMAKE_SOURCE_DIR}/release/freedesktop/icons/256x256
-			DESTINATION share/icons/hicolor
-			PATTERN "*.svg" EXCLUDE
-		)
-		install(
 			FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
 			DESTINATION share/icons/hicolor/scalable/apps
+		)
+		install(
+			FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/blender-symbolic.svg
+			DESTINATION share/icons/hicolor/symbolic/apps
 		)
 		install(
 			PROGRAMS ${CMAKE_SOURCE_DIR}/release/bin/blender-thumbnailer.py
@@ -777,13 +766,6 @@ elseif(WIN32)
 		endif()
 	endif()
 
-	if(MSVC)
-		install(
-			FILES ${LIBDIR}/pthreads/lib/pthreadVC2.dll
-			DESTINATION "."
-		)
-	endif()
-
 	if(WITH_CODEC_FFMPEG)
 		install(
 			FILES
@@ -838,6 +820,15 @@ elseif(WIN32)
 
 	install( # x86 builds can run on x64 Windows, so this is required at all times
 		FILES ${LIBDIR}/thumbhandler/lib/BlendThumb64.dll
+		DESTINATION "."
+	)
+
+	install(
+		FILES
+			${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu.cmd
+			${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu_glitchworkaround.cmd
+			${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_log.cmd
+			${CMAKE_SOURCE_DIR}/release/windows/batch/blender_factory_startup.cmd
 		DESTINATION "."
 	)
 
@@ -907,6 +898,13 @@ elseif(APPLE)
 		${OSX_APP_SOURCEDIR}/Contents/Resources
 		blender.app/Contents/
 	)
+
+	if(WITH_OPENMP AND OPENMP_CUSTOM)
+		install(
+			FILES ${LIBDIR}/openmp/lib/libomp.dylib
+			DESTINATION blender.app/Contents/Resources/lib
+		)
+	endif()
 
 	if(WITH_LLVM AND NOT LLVM_STATIC)
 		install(

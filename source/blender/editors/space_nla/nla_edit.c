@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,15 +15,10 @@
  *
  * The Original Code is Copyright (C) 2009 Blender Foundation, Joshua Leung
  * All rights reserved.
- *
- *
- * Contributor(s): Joshua Leung (major recode)
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_nla/nla_edit.c
- *  \ingroup spnla
+/** \file
+ * \ingroup spnla
  */
 
 
@@ -46,11 +39,11 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
-#include "BKE_fcurve.h"
-#include "BKE_nla.h"
 #include "BKE_context.h"
+#include "BKE_fcurve.h"
 #include "BKE_library.h"
 #include "BKE_main.h"
+#include "BKE_nla.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
 
@@ -66,6 +59,8 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+
+#include "DEG_depsgraph_build.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -90,9 +85,12 @@ void ED_nla_postop_refresh(bAnimContext *ac)
 	for (ale = anim_data.first; ale; ale = ale->next) {
 		/* performing auto-blending, extend-mode validation, etc. */
 		BKE_nla_validate_state(ale->data);
+
+		ale->update |= ANIM_UPDATE_DEPS;
 	}
 
 	/* free temp memory */
+	ANIM_animdata_update(ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 }
 
@@ -144,9 +142,12 @@ static int nlaedit_enable_tweakmode_exec(bContext *C, wmOperator *op)
 				BKE_nlatrack_solo_toggle(adt, nlt);
 			}
 		}
+
+		ale->update |= ANIM_UPDATE_DEPS;
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 
 	/* if we managed to enter tweakmode on at least one AnimData block,
@@ -223,9 +224,12 @@ bool nlaedit_disable_tweakmode(bAnimContext *ac, bool do_solo)
 
 		/* to be sure that we're doing everything right, just exit tweakmode... */
 		BKE_nla_tweakmode_exit(adt);
+
+		ale->update |= ANIM_UPDATE_DEPS;
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 
 	/* if we managed to enter tweakmode on at least one AnimData block,
@@ -407,7 +411,8 @@ static bool nla_channels_get_selected_extents(bAnimContext *ac, float *min, floa
 
 	SpaceNla *snla = (SpaceNla *)ac->sl;
 	const float half_height = NLACHANNEL_HEIGHT_HALF(snla);
-	short found = 0; /* NOTE: not bool, since we want prioritise individual channels over expanders */
+	/* NOTE: not bool, since we want prioritise individual channels over expanders */
+	short found = 0;
 	float y;
 
 	/* get all items - we need to do it this way */
@@ -469,7 +474,8 @@ static int nlaedit_viewall(bContext *C, const bool only_sel)
 
 	/* set vertical range */
 	if (only_sel == false) {
-		/* view all -> the summary channel is usually the shows everything, and resides right at the top... */
+		/* view all -> the summary channel is usually the shows everything,
+		 * and resides right at the top... */
 		v2d->cur.ymax = 0.0f;
 		v2d->cur.ymin = (float)-BLI_rcti_size_y(&v2d->mask);
 	}
@@ -569,7 +575,8 @@ void NLA_OT_view_frame(wmOperatorType *ot)
 /* NLA Editing Operations (Constructive/Destructive) */
 
 /* ******************** Add Action-Clip Operator ***************************** */
-/* Add a new Action-Clip strip to the active track (or the active block if no space in the track) */
+/* Add a new Action-Clip strip to the active track
+ * (or the active block if no space in the track) */
 
 
 /* add the specified action as new strip */
@@ -595,7 +602,7 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 	cfra = (float)CFRA;
 
 	/* get action to use */
-	act = BLI_findlink(&CTX_data_main(C)->action, RNA_enum_get(op->ptr, "action"));
+	act = BLI_findlink(&CTX_data_main(C)->actions, RNA_enum_get(op->ptr, "action"));
 
 	if (act == NULL) {
 		BKE_report(op->reports, RPT_ERROR, "No valid action to add");
@@ -603,7 +610,8 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 	else if (act->idroot == 0) {
-		/* hopefully in this case (i.e. library of userless actions), the user knows what they're doing... */
+		/* hopefully in this case (i.e. library of userless actions),
+		 * the user knows what they're doing... */
 		BKE_reportf(op->reports, RPT_WARNING,
 		            "Action '%s' does not specify what data-blocks it can be used on "
 		            "(try setting the 'ID Root Type' setting from the data-blocks editor "
@@ -617,7 +625,7 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 	nlaedit_add_tracks_empty(&ac);
 
 	/* get a list of the editable tracks being shown in the NLA
-	 *	- this is limited to active ones for now, but could be expanded to
+	 * - this is limited to active ones for now, but could be expanded to
 	 */
 	filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ACTIVE | ANIMFILTER_FOREDIT);
 	items = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
@@ -628,7 +636,8 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 		return OPERATOR_CANCELLED;
 	}
 
-	/* for every active track, try to add strip to free space in track or to the top of the stack if no space */
+	/* for every active track,
+	 * try to add strip to free space in track or to the top of the stack if no space */
 	for (ale = anim_data.first; ale; ale = ale->next) {
 		NlaTrack *nlt = (NlaTrack *)ale->data;
 		AnimData *adt = ale->adt;
@@ -668,6 +677,8 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
 
 	/* refresh auto strip properties */
 	ED_nla_postop_refresh(&ac);
+
+	DEG_relations_tag_update(ac.bmain);
 
 	/* set notifier that things have changed */
 	WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
@@ -745,8 +756,8 @@ static int nlaedit_add_transition_exec(bContext *C, wmOperator *op)
 			if (IS_EQF(s1->end, s2->start))
 				continue;
 			/* make sure neither one is a transition
-			 *	- although this is impossible to create with the standard tools,
-			 *    the user may have altered the settings
+			 * - although this is impossible to create with the standard tools,
+			 *   the user may have altered the settings
 			 */
 			if (ELEM(NLASTRIP_TYPE_TRANSITION, s1->type, s2->type))
 				continue;
@@ -762,9 +773,9 @@ static int nlaedit_add_transition_exec(bContext *C, wmOperator *op)
 			strip->type = NLASTRIP_TYPE_TRANSITION;
 
 			/* generic settings
-			 *	- selected flag to highlight this to the user
-			 *	- auto-blends to ensure that blend in/out values are automatically
-			 *	  determined by overlaps of strips
+			 * - selected flag to highlight this to the user
+			 * - auto-blends to ensure that blend in/out values are automatically
+			 *   determined by overlaps of strips
 			 */
 			strip->flag = NLASTRIP_FLAG_SELECT | NLASTRIP_FLAG_AUTO_BLENDS;
 
@@ -939,9 +950,12 @@ static int nlaedit_add_meta_exec(bContext *C, wmOperator *UNUSED(op))
 			if (strip->flag & NLASTRIP_FLAG_SELECT)
 				BKE_nlastrip_validate_name(adt, strip);
 		}
+
+		ale->update |= ANIM_UPDATE_DEPS;
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 
 	/* set notifier that things have changed */
@@ -991,9 +1005,12 @@ static int nlaedit_remove_meta_exec(bContext *C, wmOperator *UNUSED(op))
 
 		/* clear all selected meta-strips, regardless of whether they are temporary or not */
 		BKE_nlastrips_clear_metas(&nlt->strips, 1, 0);
+
+		ale->update |= ANIM_UPDATE_DEPS;
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 
 	/* set notifier that things have changed */
@@ -1057,13 +1074,14 @@ static int nlaedit_duplicate_exec(bContext *C, wmOperator *op)
 			/* if selected, split the strip at its midpoint */
 			if (strip->flag & NLASTRIP_FLAG_SELECT) {
 				/* make a copy (assume that this is possible) */
-				nstrip = BKE_nlastrip_copy(ac.bmain, strip, linked);
+				nstrip = BKE_nlastrip_copy(ac.bmain, strip, linked, 0);
 
-				/* in case there's no space in the track above, or we haven't got a reference to it yet, try adding */
+				/* in case there's no space in the track above,
+				 * or we haven't got a reference to it yet, try adding */
 				if (BKE_nlatrack_add_strip(nlt->next, nstrip) == 0) {
 					/* need to add a new track above the one above the current one
-					 *	- if the current one is the last one, nlt->next will be NULL, which defaults to adding
-					 *	  at the top of the stack anyway...
+					 * - if the current one is the last one, nlt->next will be NULL, which defaults to adding
+					 *   at the top of the stack anyway...
 					 */
 					track = BKE_nlatrack_add(adt, nlt->next);
 					BKE_nlatrack_add_strip(track, nstrip);
@@ -1086,6 +1104,10 @@ static int nlaedit_duplicate_exec(bContext *C, wmOperator *op)
 	if (done) {
 		/* refresh auto strip properties */
 		ED_nla_postop_refresh(&ac);
+
+		if (!linked) {
+			DEG_relations_tag_update(ac.bmain);
+		}
 
 		/* set notifier that things have changed */
 		WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
@@ -1160,14 +1182,14 @@ static int nlaedit_delete_exec(bContext *C, wmOperator *UNUSED(op))
 			if (strip->flag & NLASTRIP_FLAG_SELECT) {
 				/* if a strip either side of this was a transition, delete those too */
 				if ((strip->prev) && (strip->prev->type == NLASTRIP_TYPE_TRANSITION))
-					BKE_nlastrip_free(&nlt->strips, strip->prev);
+					BKE_nlastrip_free(&nlt->strips, strip->prev, true);
 				if ((nstrip) && (nstrip->type == NLASTRIP_TYPE_TRANSITION)) {
 					nstrip = nstrip->next;
-					BKE_nlastrip_free(&nlt->strips, strip->next);
+					BKE_nlastrip_free(&nlt->strips, strip->next, true);
 				}
 
 				/* finally, delete this strip */
-				BKE_nlastrip_free(&nlt->strips, strip);
+				BKE_nlastrip_free(&nlt->strips, strip, true);
 			}
 		}
 	}
@@ -1177,6 +1199,8 @@ static int nlaedit_delete_exec(bContext *C, wmOperator *UNUSED(op))
 
 	/* refresh auto strip properties */
 	ED_nla_postop_refresh(&ac);
+
+	DEG_relations_tag_update(ac.bmain);
 
 	/* set notifier that things have changed */
 	WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
@@ -1213,7 +1237,7 @@ static void nlaedit_split_strip_actclip(Main *bmain, AnimData *adt, NlaTrack *nl
 	float splitframe, splitaframe;
 
 	/* calculate the frames to do the splitting at
-	 *	- use current frame if within extents of strip
+	 * - use current frame if within extents of strip
 	 */
 	if ((cfra > strip->start) && (cfra < strip->end)) {
 		/* use the current frame */
@@ -1242,7 +1266,7 @@ static void nlaedit_split_strip_actclip(Main *bmain, AnimData *adt, NlaTrack *nl
 	/* make a copy (assume that this is possible) and append
 	 * it immediately after the current strip
 	 */
-	nstrip = BKE_nlastrip_copy(bmain, strip, true);
+	nstrip = BKE_nlastrip_copy(bmain, strip, true, 0);
 	BLI_insertlinkafter(&nlt->strips, strip, nstrip);
 
 	/* set the endpoint of the first strip and the start of the new strip
@@ -1455,7 +1479,7 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
 		}
 
 		/* get two selected strips only (these will be metas due to prev step) to operate on
-		 *  - only allow swapping 2, as with more the context becomes unclear
+		 * - only allow swapping 2, as with more the context becomes unclear
 		 */
 		for (strip = nlt->strips.first; strip; strip = stripN) {
 			stripN = strip->next;
@@ -1484,7 +1508,8 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
 			            nlt->name);
 		}
 		else if (sa == NULL) {
-			/* no warning as this is just a common case, and it may get annoying when doing multiple tracks */
+			/* no warning as this is just a common case,
+			 * and it may get annoying when doing multiple tracks */
 		}
 		else if (sb == NULL) {
 			/* too few selected warning */
@@ -1495,7 +1520,8 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
 		else {
 			float nsa[2], nsb[2];
 
-			/* remove these strips from the track, so that we can test if they can fit in the proposed places */
+			/* remove these strips from the track,
+			 * so that we can test if they can fit in the proposed places */
 			BLI_remlink(&nlt->strips, sa);
 			BLI_remlink(&nlt->strips, sb);
 
@@ -1608,7 +1634,8 @@ static int nlaedit_move_up_exec(bContext *C, wmOperator *UNUSED(op))
 			if (strip->flag & NLASTRIP_FLAG_SELECT) {
 				/* check if the track above has room for this strip */
 				if (BKE_nlatrack_has_space(nltn, strip->start, strip->end)) {
-					/* remove from its current track, and add to the one above (it 'should' work, so no need to worry) */
+					/* remove from its current track, and add to the one above
+					 * (it 'should' work, so no need to worry) */
 					BLI_remlink(&nlt->strips, strip);
 					BKE_nlatrack_add_strip(nltn, strip);
 				}
@@ -1682,7 +1709,8 @@ static int nlaedit_move_down_exec(bContext *C, wmOperator *UNUSED(op))
 			if (strip->flag & NLASTRIP_FLAG_SELECT) {
 				/* check if the track below has room for this strip */
 				if (BKE_nlatrack_has_space(nltp, strip->start, strip->end)) {
-					/* remove from its current track, and add to the one above (it 'should' work, so no need to worry) */
+					/* remove from its current track, and add to the one above
+					 * (it 'should' work, so no need to worry) */
 					BLI_remlink(&nlt->strips, strip);
 					BKE_nlatrack_add_strip(nltp, strip);
 				}
@@ -1765,11 +1793,14 @@ static int nlaedit_sync_actlen_exec(bContext *C, wmOperator *op)
 
 				/* adjust the strip extents in response to this */
 				BKE_nlastrip_recalculate_bounds(strip);
+
+				ale->update |= ANIM_UPDATE_DEPS;
 			}
 		}
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
 
 	/* set notifier that things have changed */
@@ -1808,6 +1839,7 @@ static int nlaedit_make_single_user_exec(bContext *C, wmOperator *UNUSED(op))
 	ListBase anim_data = {NULL, NULL};
 	bAnimListElem *ale;
 	int filter;
+	bool copied = false;
 
 	/* get editor data */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
@@ -1841,13 +1873,21 @@ static int nlaedit_make_single_user_exec(bContext *C, wmOperator *UNUSED(op))
 
 					/* switch to the new copy */
 					strip->act = new_action;
+
+					ale->update |= ANIM_UPDATE_DEPS;
+					copied = true;
 				}
 			}
 		}
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
+
+	if (copied) {
+		DEG_relations_tag_update(ac.bmain);
+	}
 
 	/* set notifier that things have changed */
 	WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
@@ -1898,6 +1938,7 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator *UNUSED(op))
 	ListBase anim_data = {NULL, NULL};
 	bAnimListElem *ale;
 	int filter;
+	bool copied = false;
 
 	KeyframeEditData ked = {{NULL}};
 
@@ -1915,21 +1956,27 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator *UNUSED(op))
 		NlaStrip *strip;
 
 		for (strip = nlt->strips.first; strip; strip = strip->next) {
-			/* strip must be selected, and must be action-clip only (transitions don't have scale) */
+			/* strip must be selected, and must be action-clip only
+			 * (transitions don't have scale) */
 			if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
-				/* if the referenced action is used by other strips, make this strip use its own copy */
+				/* if the referenced action is used by other strips,
+				 * make this strip use its own copy */
 				if (strip->act == NULL)
 					continue;
 				if (strip->act->id.us > 1) {
 					/* make a copy of the Action to work on */
 					bAction *act = BKE_action_copy(bmain, strip->act);
 
-					/* set this as the new referenced action, decrementing the users of the old one */
+					/* set this as the new referenced action,
+					 * decrementing the users of the old one */
 					id_us_min(&strip->act->id);
 					strip->act = act;
+
+					copied = true;
 				}
 
-				/* setup iterator, and iterate over all the keyframes in the action, applying this scaling */
+				/* setup iterator, and iterate over all the keyframes in the action,
+				 * applying this scaling */
 				ked.data = strip;
 				ANIM_animchanneldata_keyframes_loop(&ked, ac.ads, strip->act, ALE_ACT, NULL, bezt_apply_nlamapping, calchandles_fcurve);
 
@@ -1939,12 +1986,19 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator *UNUSED(op))
 				 */
 				strip->scale = 1.0f;
 				calc_action_range(strip->act, &strip->actstart, &strip->actend, 0);
+
+				ale->update |= ANIM_UPDATE_DEPS;
 			}
 		}
 	}
 
 	/* free temp data */
+	ANIM_animdata_update(&ac, &anim_data);
 	ANIM_animdata_freelist(&anim_data);
+
+	if (copied) {
+		DEG_relations_tag_update(ac.bmain);
+	}
 
 	/* set notifier that things have changed */
 	WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
@@ -1993,7 +2047,8 @@ static int nlaedit_clear_scale_exec(bContext *C, wmOperator *UNUSED(op))
 		NlaStrip *strip;
 
 		for (strip = nlt->strips.first; strip; strip = strip->next) {
-			/* strip must be selected, and must be action-clip only (transitions don't have scale) */
+			/* strip must be selected, and must be action-clip only
+			 * (transitions don't have scale) */
 			if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
 				PointerRNA strip_ptr;
 
@@ -2040,7 +2095,7 @@ static const EnumPropertyItem prop_nlaedit_snap_types[] = {
 	{NLAEDIT_SNAP_NEAREST_FRAME, "NEAREST_FRAME", 0, "Nearest Frame", ""}, // XXX as single entry?
 	{NLAEDIT_SNAP_NEAREST_SECOND, "NEAREST_SECOND", 0, "Nearest Second", ""}, // XXX as single entry?
 	{NLAEDIT_SNAP_NEAREST_MARKER, "NEAREST_MARKER", 0, "Nearest Marker", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 static int nlaedit_snap_exec(bContext *C, wmOperator *op)
@@ -2135,7 +2190,8 @@ static int nlaedit_snap_exec(bContext *C, wmOperator *op)
 				track = BKE_nlatrack_add(adt, nlt);
 				BKE_nlatrack_add_strip(track, strip);
 
-				/* clear temp meta-strips on this new track, as we may not be able to get back to it */
+				/* clear temp meta-strips on this new track,
+				 * as we may not be able to get back to it */
 				BKE_nlastrips_clear_metas(&track->strips, 0, 1);
 			}
 		}

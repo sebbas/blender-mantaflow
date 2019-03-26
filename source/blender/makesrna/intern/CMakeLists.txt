@@ -16,11 +16,6 @@
 #
 # The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
-#
-# The Original Code is: all of this file.
-#
-# Contributor(s): Jacques Beaurain.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 if(CMAKE_COMPILER_IS_GNUCC)
@@ -53,9 +48,9 @@ set(DEFSRC
 	rna_gpencil_modifier.c
 	rna_image.c
 	rna_key.c
-	rna_lamp.c
 	rna_lattice.c
 	rna_layer.c
+	rna_light.c
 	rna_lightprobe.c
 	rna_linestyle.c
 	rna_main.c
@@ -112,7 +107,6 @@ set(APISRC
 	rna_material_api.c
 	rna_mesh_api.c
 	rna_meta_api.c
-	rna_texture_api.c
 	rna_object_api.c
 	rna_pose_api.c
 	rna_scene_api.c
@@ -120,6 +114,7 @@ set(APISRC
 	rna_sound_api.c
 	rna_space_api.c
 	rna_text_api.c
+	rna_texture_api.c
 	rna_ui_api.c
 	rna_vfont_api.c
 	rna_wm_api.c
@@ -164,6 +159,7 @@ set(SRC
 	rna_define.c
 	${DEFSRC}
 	${APISRC}
+	../../../../intern/clog/clog.c
 	../../../../intern/guardedalloc/intern/mallocn.c
 	../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
 	../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
@@ -171,7 +167,7 @@ set(SRC
 )
 
 set(INC
-
+    ../../../../intern/clog
 )
 
 set(INC_SYS
@@ -303,10 +299,6 @@ if(WITH_OPENSUBDIV)
 		../../../../intern/opensubdiv
 	)
 	add_definitions(-DWITH_OPENSUBDIV)
-endif()
-
-if(WITH_OPENSUBDIV_MODIFIER)
-	add_definitions(-DWITH_OPENSUBDIV_MODIFIER)
 endif()
 
 if(WITH_OPENVDB)

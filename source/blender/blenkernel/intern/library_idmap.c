@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -14,8 +12,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
 #include <string.h>
@@ -30,11 +26,11 @@
 #include "DNA_ID.h"
 
 #include "BKE_idcode.h"
-#include "BKE_library.h"
 #include "BKE_library_idmap.h"  /* own include */
+#include "BKE_main.h"
 
-/** \file blender/blenkernel/intern/library_idmap.c
- *  \ingroup bke
+/** \file
+ * \ingroup bke
  *
  * Utility functions for faster ID lookups.
  */
@@ -70,6 +66,7 @@ struct IDNameLib_TypeMap {
 struct IDNameLib_Map {
 	struct IDNameLib_TypeMap type_maps[MAX_LIBARRAY];
 	struct Main *bmain;
+	struct GSet *valid_id_pointers;
 };
 
 static struct IDNameLib_TypeMap *main_idmap_from_idcode(struct IDNameLib_Map *id_map, short id_type)
@@ -82,7 +79,20 @@ static struct IDNameLib_TypeMap *main_idmap_from_idcode(struct IDNameLib_Map *id
 	return NULL;
 }
 
-struct IDNameLib_Map *BKE_main_idmap_create(struct Main *bmain)
+/**
+ * Generate mapping from ID type/name to ID pointer for given \a bmain.
+ *
+ * \note When used during undo/redo, there is no guaranty that ID pointers from UI area
+ *       are not pointing to freed memory (when some IDs have been deleted). To avoid crashes
+ *       in those cases, one can provide the 'old' (aka current) Main databse as reference.
+ *       #BKE_main_idmap_lookup_id will then check that given ID does exist in \a old_bmain
+ *       before trying to use it.
+ *
+ * \param create_valid_ids_set: If \a true, generate a reference to prevent freed memory accesses.
+ * \param old_bmain: If not NULL, its IDs will be added the valid references set.
+ */
+struct IDNameLib_Map *BKE_main_idmap_create(
+        struct Main *bmain, const bool create_valid_ids_set, struct Main *old_bmain)
 {
 	struct IDNameLib_Map *id_map = MEM_mallocN(sizeof(*id_map), __func__);
 
@@ -96,6 +106,16 @@ struct IDNameLib_Map *BKE_main_idmap_create(struct Main *bmain)
 	BLI_assert(index == MAX_LIBARRAY);
 
 	id_map->bmain = bmain;
+
+	if (create_valid_ids_set) {
+		id_map->valid_id_pointers = BKE_main_gset_create(bmain, NULL);
+		if (old_bmain != NULL) {
+			id_map->valid_id_pointers = BKE_main_gset_create(old_bmain, id_map->valid_id_pointers);
+		}
+	}
+	else {
+		id_map->valid_id_pointers = NULL;
+	}
 
 	return id_map;
 }
@@ -156,7 +176,15 @@ ID *BKE_main_idmap_lookup(struct IDNameLib_Map *id_map, short id_type, const cha
 
 ID *BKE_main_idmap_lookup_id(struct IDNameLib_Map *id_map, const ID *id)
 {
-	return BKE_main_idmap_lookup(id_map, GS(id->name), id->name + 2, id->lib);
+	/* When used during undo/redo, this function cannot assume that given id points to valid memory
+	 * (i.e. has not been freed), so it has to check that it does exist in 'old' (aka current) Main database.
+	 * Otherwise, we cannot provide new ID pointer that way (would crash accessing freed memory
+	 * when trying to get ID name).
+	 */
+	if (id_map->valid_id_pointers == NULL || BLI_gset_haskey(id_map->valid_id_pointers, id)) {
+		return BKE_main_idmap_lookup(id_map, GS(id->name), id->name + 2, id->lib);
+	}
+	return NULL;
 }
 
 void BKE_main_idmap_destroy(struct IDNameLib_Map *id_map)
@@ -168,6 +196,10 @@ void BKE_main_idmap_destroy(struct IDNameLib_Map *id_map)
 			type_map->map = NULL;
 			MEM_freeN(type_map->keys);
 		}
+	}
+
+	if (id_map->valid_id_pointers != NULL) {
+		BLI_gset_free(id_map->valid_id_pointers, NULL);
 	}
 
 	MEM_freeN(id_map);

@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -16,14 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  * The Original Code is Copyright (C) 2008 Blender Foundation
- *
- * Contributor(s): Joshua Leung
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/space_action/action_select.c
- *  \ingroup spaction
+/** \file
+ * \ingroup spaction
  */
 
 
@@ -75,16 +69,16 @@
 
 /* ******************** Deselect All Operator ***************************** */
 /* This operator works in one of three ways:
- *	1) (de)select all (AKEY) - test if select all or deselect all
- *	2) invert all (CTRL-IKEY) - invert selection of all keyframes
- *	3) (de)select all - no testing is done; only for use internal tools as normal function...
+ * 1) (de)select all (AKEY) - test if select all or deselect all
+ * 2) invert all (CTRL-IKEY) - invert selection of all keyframes
+ * 3) (de)select all - no testing is done; only for use internal tools as normal function...
  */
 
 /* Deselects keyframes in the action editor
- *	- This is called by the deselect all operator, as well as other ones!
+ * - This is called by the deselect all operator, as well as other ones!
  *
- *  - test: check if select or deselect all
- *	- sel: how to select keyframes (SELECT_*)
+ * - test: check if select or deselect all
+ * - sel: how to select keyframes (SELECT_*)
  */
 static void deselect_action_keys(bAnimContext *ac, short test, short sel)
 {
@@ -96,10 +90,12 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
 	KeyframeEditFunc test_cb, sel_cb;
 
 	/* determine type-based settings */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
+	}
 
 	/* filter data */
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
@@ -209,10 +205,10 @@ void ACTION_OT_select_all(wmOperatorType *ot)
 
 /* ******************** Box Select Operator **************************** */
 /* This operator currently works in one of three ways:
- *	-> BKEY     - 1) all keyframes within region are selected (ACTKEYS_BORDERSEL_ALLKEYS)
- *	-> ALT-BKEY - depending on which axis of the region was larger...
- *		-> 2) x-axis, so select all frames within frame range (ACTKEYS_BORDERSEL_FRAMERANGE)
- *		-> 3) y-axis, so select all frames within channels that region included (ACTKEYS_BORDERSEL_CHANNELS)
+ * -> BKEY     - 1) all keyframes within region are selected (ACTKEYS_BORDERSEL_ALLKEYS)
+ * -> ALT-BKEY - depending on which axis of the region was larger...
+ *  -> 2) x-axis, so select all frames within frame range (ACTKEYS_BORDERSEL_FRAMERANGE)
+ *  -> 3) y-axis, so select all frames within channels that region included (ACTKEYS_BORDERSEL_CHANNELS)
  */
 
 /* defines for box_select mode */
@@ -310,11 +306,15 @@ static void box_select_action(bAnimContext *ac, const rcti rect, short mode, sho
 					break;
 				}
 				case ANIMTYPE_MASKLAYER:
+				{
 					ED_masklayer_frames_select_box(ale->data, rectf.xmin, rectf.xmax, selectmode);
 					break;
+				}
 				default:
+				{
 					ANIM_animchannel_keyframes_loop(&ked, ac->ads, ale, ok_cb, select_cb, NULL);
 					break;
+				}
 			}
 		}
 
@@ -333,35 +333,28 @@ static int actkeys_box_select_exec(bContext *C, wmOperator *op)
 {
 	bAnimContext ac;
 	rcti rect;
-	short mode = 0, selectmode = 0;
-	const bool select = !RNA_boolean_get(op->ptr, "deselect");
-	const bool extend = RNA_boolean_get(op->ptr, "extend");
+	short mode = 0;
 
 	/* get editor data */
-	if (ANIM_animdata_get_context(C, &ac) == 0)
+	if (ANIM_animdata_get_context(C, &ac) == 0) {
 		return OPERATOR_CANCELLED;
+	}
 
-	/* clear all selection if not extending selection */
-	if (!extend) {
+	const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+	const int selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
 		deselect_action_keys(&ac, 1, SELECT_SUBTRACT);
 	}
 
 	/* get settings from operator */
 	WM_operator_properties_border_to_rcti(op, &rect);
 
-	if (select) {
-		selectmode = SELECT_ADD;
-	}
-	else {
-		selectmode = SELECT_SUBTRACT;
-	}
-
 	/* selection 'mode' depends on whether box_select region only matters on one axis */
 	if (RNA_boolean_get(op->ptr, "axis_range")) {
 		/* mode depends on which axis of the range is larger to determine which axis to use
-		 *	- checking this in region-space is fine, as it's fundamentally still going to be a different rect size
-		 *	- the frame-range select option is favored over the channel one (x over y), as frame-range one is often
-		 *	  used for tweaking timing when "blocking", while channels is not that useful...
+		 * - checking this in region-space is fine, as it's fundamentally still going to be a different rect size
+		 * - the frame-range select option is favored over the channel one (x over y), as frame-range one is often
+		 *   used for tweaking timing when "blocking", while channels is not that useful...
 		 */
 		if (BLI_rcti_size_x(&rect) >= BLI_rcti_size_y(&rect))
 			mode = ACTKEYS_BORDERSEL_FRAMERANGE;
@@ -399,9 +392,11 @@ void ACTION_OT_select_box(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* rna */
-	WM_operator_properties_gesture_box_select(ot);
-
 	ot->prop = RNA_def_boolean(ot->srna, "axis_range", 0, "Axis Range", "");
+
+	/* properties */
+	WM_operator_properties_gesture_box(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ******************** Region Select Operators ***************************** */
@@ -547,9 +542,6 @@ static int actkeys_lassoselect_exec(bContext *C, wmOperator *op)
 	rcti rect;
 	rctf rect_fl;
 
-	short selectmode;
-	bool extend;
-
 	/* get editor data */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
 		return OPERATOR_CANCELLED;
@@ -559,15 +551,11 @@ static int actkeys_lassoselect_exec(bContext *C, wmOperator *op)
 	if (data_lasso.mcords == NULL)
 		return OPERATOR_CANCELLED;
 
-	/* clear all selection if not extending selection */
-	extend = RNA_boolean_get(op->ptr, "extend");
-	if (!extend)
+	const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
+	const int selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
 		deselect_action_keys(&ac, 1, SELECT_SUBTRACT);
-
-	if (!RNA_boolean_get(op->ptr, "deselect"))
-		selectmode = SELECT_ADD;
-	else
-		selectmode = SELECT_SUBTRACT;
+	}
 
 	/* get settings from operator */
 	BLI_lasso_boundbox(&rect, data_lasso.mcords, data_lasso.mcords_tot);
@@ -602,7 +590,8 @@ void ACTION_OT_select_lasso(wmOperatorType *ot)
 	ot->flag = OPTYPE_UNDO;
 
 	/* properties */
-	WM_operator_properties_gesture_lasso_select(ot);
+	WM_operator_properties_gesture_lasso(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ------------------- */
@@ -610,8 +599,6 @@ void ACTION_OT_select_lasso(wmOperatorType *ot)
 static int action_circle_select_exec(bContext *C, wmOperator *op)
 {
 	bAnimContext ac;
-	const bool select = !RNA_boolean_get(op->ptr, "deselect");
-	const short selectmode = select ? SELECT_ADD : SELECT_SUBTRACT;
 
 	KeyframeEdit_CircleData data = {0};
 	rctf rect_fl;
@@ -623,6 +610,13 @@ static int action_circle_select_exec(bContext *C, wmOperator *op)
 	/* get editor data */
 	if (ANIM_animdata_get_context(C, &ac) == 0)
 		return OPERATOR_CANCELLED;
+
+	const eSelectOp sel_op = ED_select_op_modal(
+	        RNA_enum_get(op->ptr, "mode"), WM_gesture_is_modal_first(op->customdata));
+	const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+		deselect_action_keys(&ac, 0, SELECT_SUBTRACT);
+	}
 
 	data.mval[0] = x;
 	data.mval[1] = y;
@@ -659,15 +653,16 @@ void ACTION_OT_select_circle(wmOperatorType *ot)
 	ot->flag = OPTYPE_UNDO;
 
 	/* properties */
-	WM_operator_properties_gesture_circle_select(ot);
+	WM_operator_properties_gesture_circle(ot);
+	WM_operator_properties_select_operation_simple(ot);
 }
 
 /* ******************** Column Select Operator **************************** */
 /* This operator works in one of four ways:
- *	- 1) select all keyframes in the same frame as a selected one  (KKEY)
- *	- 2) select all keyframes in the same frame as the current frame marker (CTRL-KKEY)
- *	- 3) select all keyframes in the same frame as a selected markers (SHIFT-KKEY)
- *	- 4) select all keyframes that occur between selected markers (ALT-KKEY)
+ * - 1) select all keyframes in the same frame as a selected one  (KKEY)
+ * - 2) select all keyframes in the same frame as the current frame marker (CTRL-KKEY)
+ * - 3) select all keyframes in the same frame as a selected markers (SHIFT-KKEY)
+ * - 4) select all keyframes that occur between selected markers (ALT-KKEY)
  */
 
 /* defines for column-select mode */
@@ -676,7 +671,7 @@ static const EnumPropertyItem prop_column_select_types[] = {
 	{ACTKEYS_COLUMNSEL_CFRA, "CFRA", 0, "On Current Frame", ""},
 	{ACTKEYS_COLUMNSEL_MARKERS_COLUMN, "MARKERS_COLUMN", 0, "On Selected Markers", ""},
 	{ACTKEYS_COLUMNSEL_MARKERS_BETWEEN, "MARKERS_BETWEEN", 0, "Between Min/Max Selected Markers", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* ------------------- */
@@ -802,7 +797,7 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
 		AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
 		/* loop over cfraelems (stored in the KeyframeEditData->list)
-		 *	- we need to do this here, as we can apply fewer NLA-mapping conversions
+		 * - we need to do this here, as we can apply fewer NLA-mapping conversions
 		 */
 		for (ce = ked.list.first; ce; ce = ce->next) {
 			/* set frame for validation callback to refer to */
@@ -1049,7 +1044,7 @@ static const EnumPropertyItem prop_actkeys_leftright_select_types[] = {
 	{ACTKEYS_LRSEL_TEST, "CHECK", 0, "Check if Select Left or Right", ""},
 	{ACTKEYS_LRSEL_LEFT, "LEFT", 0, "Before current frame", ""},
 	{ACTKEYS_LRSEL_RIGHT, "RIGHT", 0, "After current frame", ""},
-	{0, NULL, 0, NULL, NULL}
+	{0, NULL, 0, NULL, NULL},
 };
 
 /* --------------------------------- */
@@ -1088,10 +1083,12 @@ static void actkeys_select_leftright(bAnimContext *ac, short leftright, short se
 	}
 
 	/* filter data */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE /*| ANIMFILTER_CURVESONLY*/ | ANIMFILTER_NODUPLIS);
+	}
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
 	/* select keys */
@@ -1228,10 +1225,10 @@ void ACTION_OT_select_leftright(wmOperatorType *ot)
 
 /* ******************** Mouse-Click Select Operator *********************** */
 /* This operator works in one of three ways:
- *	- 1) keyframe under mouse - no special modifiers
- *	- 2) all keyframes on the same side of current frame indicator as mouse - ALT modifier
- *	- 3) column select all keyframes in frame under mouse - CTRL modifier
- *  - 4) all keyframes in channel under mouse - CTRL+ALT modifiers
+ * - 1) keyframe under mouse - no special modifiers
+ * - 2) all keyframes on the same side of current frame indicator as mouse - ALT modifier
+ * - 3) column select all keyframes in frame under mouse - CTRL modifier
+ * - 4) all keyframes in channel under mouse - CTRL+ALT modifiers
  *
  * In addition to these basic options, the SHIFT modifier can be used to toggle the
  * selection mode between replacing the selection (without) and inverting the selection (with).
@@ -1288,7 +1285,8 @@ static void actkeys_mselect_single(bAnimContext *ac, bAnimListElem *ale, short s
 	}
 }
 
-/* Option 2) Selects all the keyframes on either side of the current frame (depends on which side the mouse is on) */
+/* Option 2) Selects all the keyframes on either side of the current frame
+ * (depends on which side the mouse is on) */
 /* (see actkeys_select_leftright) */
 
 /* Option 3) Selects all visible keyframes in the same frame as the mouse click */
@@ -1308,10 +1306,12 @@ static void actkeys_mselect_column(bAnimContext *ac, short select_mode, float se
 	/* loop through all of the keys and select additional keyframes
 	 * based on the keys found to be selected above
 	 */
-	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK))
+	if (ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE /*| ANIMFILTER_CURVESONLY */ | ANIMFILTER_NODUPLIS);
-	else
+	}
+	else {
 		filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+	}
 	ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
 	for (ale = anim_data.first; ale; ale = ale->next) {
@@ -1418,8 +1418,11 @@ static void mouse_action_keys(bAnimContext *ac, const int mval[2], short select_
 	/* x-range to check is +/- 7px for standard keyframe under standard dpi/y-scale (in screen/region-space),
 	 * on either side of mouse click (size of keyframe icon)
 	 */
-	key_hsize = ACHANNEL_HEIGHT(ac) * 0.8f;    /* standard channel height (to allow for some slop) */
-	key_hsize = roundf(key_hsize / 2.0f);      /* half-size (for either side), but rounded up to nearest int (for easier targeting) */
+
+	/* standard channel height (to allow for some slop) */
+	key_hsize = ACHANNEL_HEIGHT(ac) * 0.8f;
+	/* half-size (for either side), but rounded up to nearest int (for easier targeting) */
+	key_hsize = roundf(key_hsize / 2.0f);
 
 	UI_view2d_region_to_view(v2d, mval[0] - (int)key_hsize, mval[1], &rectf.xmin, &rectf.ymin);
 	UI_view2d_region_to_view(v2d, mval[0] + (int)key_hsize, mval[1], &rectf.xmax, &rectf.ymax);
@@ -1449,37 +1452,37 @@ static void mouse_action_keys(bAnimContext *ac, const int mval[2], short select_
 				case ALE_SCE:
 				{
 					Scene *scene = (Scene *)ale->key_data;
-					scene_to_keylist(ads, scene, &anim_keys);
+					scene_to_keylist(ads, scene, &anim_keys, 0);
 					break;
 				}
 				case ALE_OB:
 				{
 					Object *ob = (Object *)ale->key_data;
-					ob_to_keylist(ads, ob, &anim_keys);
+					ob_to_keylist(ads, ob, &anim_keys, 0);
 					break;
 				}
 				case ALE_ACT:
 				{
 					bAction *act = (bAction *)ale->key_data;
-					action_to_keylist(adt, act, &anim_keys);
+					action_to_keylist(adt, act, &anim_keys, 0);
 					break;
 				}
 				case ALE_FCURVE:
 				{
 					FCurve *fcu = (FCurve *)ale->key_data;
-					fcurve_to_keylist(adt, fcu, &anim_keys);
+					fcurve_to_keylist(adt, fcu, &anim_keys, 0);
 					break;
 				}
 			}
 		}
 		else if (ale->type == ANIMTYPE_SUMMARY) {
 			/* dopesheet summary covers everything */
-			summary_to_keylist(ac, &anim_keys);
+			summary_to_keylist(ac, &anim_keys, 0);
 		}
 		else if (ale->type == ANIMTYPE_GROUP) {
 			// TODO: why don't we just give groups key_data too?
 			bActionGroup *agrp = (bActionGroup *)ale->data;
-			agroup_to_keylist(adt, agrp, &anim_keys);
+			agroup_to_keylist(adt, agrp, &anim_keys, 0);
 		}
 		else if (ale->type == ANIMTYPE_GPLAYER) {
 			// TODO: why don't we just give gplayers key_data too?
@@ -1492,7 +1495,8 @@ static void mouse_action_keys(bAnimContext *ac, const int mval[2], short select_
 			mask_to_keylist(ads, masklay, &anim_keys);
 		}
 
-		/* start from keyframe at root of BST, traversing until we find one within the range that was clicked on */
+		/* start from keyframe at root of BST,
+		 * traversing until we find one within the range that was clicked on */
 		for (ak = anim_keys.root; ak; ak = akn) {
 			if (IN_RANGE(ak->cfra, rectf.xmin, rectf.xmax)) {
 				/* set the frame to use, and apply inverse-correction for NLA-mapping

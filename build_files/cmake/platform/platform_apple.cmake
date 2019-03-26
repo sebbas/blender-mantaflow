@@ -16,9 +16,6 @@
 #
 # The Original Code is Copyright (C) 2016, Blender Foundation
 # All rights reserved.
-#
-# Contributor(s): Sergey Sharybin.
-#
 # ***** END GPL LICENSE BLOCK *****
 
 # Libraries configuration for Apple.
@@ -59,7 +56,7 @@ if(WITH_ALEMBIC)
 	set(ALEMBIC_FOUND ON)
 endif()
 
-if(WITH_OPENSUBDIV OR WITH_CYCLES_OPENSUBDIV)
+if(WITH_OPENSUBDIV)
 	set(OPENSUBDIV ${LIBDIR}/opensubdiv)
 	set(OPENSUBDIV_LIBPATH ${OPENSUBDIV}/lib)
 	find_library(OSD_LIB_CPU NAMES osdCPU PATHS ${OPENSUBDIV_LIBPATH})
@@ -380,13 +377,32 @@ if(WITH_CYCLES_OSL)
 	endif()
 endif()
 
+if(WITH_CYCLES_EMBREE)
+	find_package(Embree 3.2.4 REQUIRED)
+	set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} -Xlinker -stack_size -Xlinker 0x100000")
+endif()
+
+# CMake FindOpenMP doesn't know about AppleClang before 3.12, so provide custom flags.
 if(WITH_OPENMP)
-	execute_process(COMMAND ${CMAKE_C_COMPILER} --version OUTPUT_VARIABLE COMPILER_VENDOR)
-	string(SUBSTRING "${COMPILER_VENDOR}" 0 5 VENDOR_NAME) # truncate output
-	if(${VENDOR_NAME} MATCHES "Apple") # Apple does not support OpenMP reliable with gcc and not with clang
-		set(WITH_OPENMP OFF)
-	else() # vanilla gcc or clang_omp support OpenMP
-		message(STATUS "Using special OpenMP enabled compiler !") # letting find_package(OpenMP) module work for gcc
+	if(CMAKE_C_COMPILER_ID MATCHES "AppleClang" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "7.0")
+		# Use OpenMP from our precompiled libraries.
+		message(STATUS "Using ${LIBDIR}/openmp for OpenMP")
+		set(OPENMP_CUSTOM ON)
+		set(OPENMP_FOUND ON)
+		set(OpenMP_C_FLAGS "-Xclang -fopenmp -I'${LIBDIR}/openmp/include'")
+		set(OpenMP_CXX_FLAGS "-Xclang -fopenmp -I'${LIBDIR}/openmp/include'")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L'${LIBDIR}/openmp/lib' -lomp")
+
+		# Copy libomp.dylib to allow executables like datatoc to work.
+		if(CMAKE_MAKE_PROGRAM MATCHES "xcodebuild")
+			set(OPENMP_DYLIB_AUX_PATH "${CMAKE_BINARY_DIR}/bin")
+		else()
+			set(OPENMP_DYLIB_AUX_PATH "${CMAKE_BINARY_DIR}")
+		endif()
+
+		execute_process(
+				COMMAND mkdir -p ${OPENMP_DYLIB_AUX_PATH}/Resources/lib
+				COMMAND cp -p ${LIBDIR}/openmp/lib/libomp.dylib ${OPENMP_DYLIB_AUX_PATH}/Resources/lib/libomp.dylib)
 	endif()
 endif()
 

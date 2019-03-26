@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,12 +15,10 @@
  *
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
- *
- * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file blender/editors/util/ed_transverts.c
- *  \ingroup edutil
+/** \file
+ * \ingroup edutil
  */
 
 #include "MEM_guardedalloc.h"
@@ -114,7 +110,7 @@ void ED_transverts_update_obedit(TransVertStore *tvs, Object *obedit)
 				}
 			}
 
-			BKE_nurb_test2D(nu);
+			BKE_nurb_test_2d(nu);
 			BKE_nurb_handles_test(nu, true); /* test for bezier too */
 			nu = nu->next;
 		}

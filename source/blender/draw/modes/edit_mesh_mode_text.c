@@ -1,6 +1,4 @@
 /*
- * Copyright 2016, Blender Foundation.
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -15,12 +13,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * Contributor(s): Blender Institute
- *
+ * Copyright 2016, Blender Foundation.
  */
 
-/** \file blender/draw/modes/edit_mesh_mode_text.c
- *  \ingroup draw
+/** \file
+ * \ingroup draw
  */
 
 #include "BLI_math.h"
@@ -31,9 +28,6 @@
 #include "BKE_unit.h"
 
 #include "ED_view3d.h"
-
-#include "GPU_shader.h"
-#include "GPU_viewport.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -58,7 +52,7 @@ void DRW_edit_mesh_mode_text_measure_stats(
 	struct DRWTextStore *dt = DRW_text_cache_ensure();
 	const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE | (unit->system ? 0 : DRW_TEXT_CACHE_ASCII);
 	Mesh *me = ob->data;
-	BMEditMesh *em = me->edit_btmesh;
+	BMEditMesh *em = me->edit_mesh;
 	float v1[3], v2[3], v3[3], vmid[3], fvec[3];
 	char numstr[32]; /* Stores the measurement display text here */
 	size_t numstr_len;
@@ -345,7 +339,7 @@ void DRW_edit_mesh_mode_text_measure_stats(
 
 			BM_ITER_MESH_INDEX(f, &iter, em->bm, BM_FACES_OF_MESH, i) {
 				if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
-					BM_face_calc_center_mean(f, v1);
+					BM_face_calc_center_median(f, v1);
 					mul_m4_v3(ob->obmat, v1);
 
 					numstr_len = BLI_snprintf_rlen(numstr, sizeof(numstr), "%d", i);

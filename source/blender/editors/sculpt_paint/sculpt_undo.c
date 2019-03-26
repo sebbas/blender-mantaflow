@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,11 @@
  *
  * The Original Code is Copyright (C) 2006 by Nicholas Bishop
  * All rights reserved.
- *
- * The Original Code is: all of this file.
- *
- * Contributor(s): none yet.
- *
- * ***** END GPL LICENSE BLOCK *****
- *
  * Implements the Sculpt Mode tools
- *
  */
 
-/** \file blender/editors/sculpt_paint/sculpt_undo.c
- *  \ingroup edsculpt
+/** \file
+ * \ingroup edsculpt
  */
 
 #include <stddef.h>
@@ -59,9 +49,12 @@
 #include "BKE_key.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+#include "BKE_scene.h"
 #include "BKE_subsurf.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_undo_system.h"
+#include "BKE_global.h"
+#include "BKE_main.h"
 
 #include "DEG_depsgraph.h"
 
@@ -141,7 +134,8 @@ static bool sculpt_undo_restore_coords(bContext *C, SculptUndoNode *unode)
 {
 	Scene *scene = CTX_data_scene(C);
 	Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	SculptSession *ss = ob->sculpt;
 	SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
@@ -200,7 +194,7 @@ static bool sculpt_undo_restore_coords(bContext *C, SculptUndoNode *unode)
 
 			/* pbvh uses it's own mvert array, so coords should be */
 			/* propagated to pbvh here */
-			BKE_pbvh_apply_vertCos(ss->pbvh, vertCos, unode->totvert);
+			BKE_pbvh_apply_vertCos(ss->pbvh, vertCos, ss->kb->totelem);
 
 			MEM_freeN(vertCos);
 		}
@@ -258,7 +252,8 @@ static bool sculpt_undo_restore_hidden(
         bContext *C,
         SculptUndoNode *unode)
 {
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	SculptSession *ss = ob->sculpt;
 	SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 	int i;
@@ -291,7 +286,8 @@ static bool sculpt_undo_restore_hidden(
 
 static bool sculpt_undo_restore_mask(bContext *C, SculptUndoNode *unode)
 {
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	SculptSession *ss = ob->sculpt;
 	SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 	MVert *mvert;
@@ -477,7 +473,8 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 {
 	Scene *scene = CTX_data_scene(C);
 	Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-	Object *ob = CTX_data_active_object(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	Depsgraph *depsgraph = CTX_data_depsgraph(C);
 	SculptSession *ss = ob->sculpt;
 	SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
@@ -497,7 +494,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 		}
 	}
 
-	DEG_id_tag_update(&ob->id, DEG_TAG_SHADING_UPDATE);
+	DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
 
 	BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, need_mask);
 
@@ -582,7 +579,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 		}
 
 		if (tag_update) {
-			DEG_id_tag_update(&ob->id, OB_RECALC_DATA);
+			DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 		}
 		else {
 			sculpt_update_object_bounding_box(ob);
@@ -640,7 +637,9 @@ static void sculpt_undo_free_list(ListBase *lb)
 #if 0
 static bool sculpt_undo_cleanup(bContext *C, ListBase *lb)
 {
-	Object *ob = CTX_data_active_object(C);
+	Scene *scene = CTX_data_scene(C);
+	ViewLayer *view_layer = CTX_data_view_layer(C);
+	Object *ob = OBACT(view_layer);
 	SculptUndoNode *unode;
 
 	unode = lb->first;
@@ -846,13 +845,13 @@ static SculptUndoNode *sculpt_undo_bmesh_push(Object *ob,
 			 * dynamic-topology immediately does topological edits
 			 * (converting polys to triangles) that the BMLog can't
 			 * fully restore from */
-			CustomData_copy(&me->vdata, &unode->bm_enter_vdata, CD_MASK_MESH,
+			CustomData_copy(&me->vdata, &unode->bm_enter_vdata, CD_MASK_MESH.vmask,
 			                CD_DUPLICATE, me->totvert);
-			CustomData_copy(&me->edata, &unode->bm_enter_edata, CD_MASK_MESH,
+			CustomData_copy(&me->edata, &unode->bm_enter_edata, CD_MASK_MESH.emask,
 			                CD_DUPLICATE, me->totedge);
-			CustomData_copy(&me->ldata, &unode->bm_enter_ldata, CD_MASK_MESH,
+			CustomData_copy(&me->ldata, &unode->bm_enter_ldata, CD_MASK_MESH.lmask,
 			                CD_DUPLICATE, me->totloop);
-			CustomData_copy(&me->pdata, &unode->bm_enter_pdata, CD_MASK_MESH,
+			CustomData_copy(&me->pdata, &unode->bm_enter_pdata, CD_MASK_MESH.pmask,
 			                CD_DUPLICATE, me->totpoly);
 			unode->bm_enter_totvert = me->totvert;
 			unode->bm_enter_totedge = me->totedge;
@@ -1003,8 +1002,12 @@ void sculpt_undo_push_end(void)
 			BKE_pbvh_node_layer_disp_free(unode->node);
 	}
 
-	UndoStack *ustack = ED_undo_stack_get();
-	BKE_undosys_step_push(ustack, NULL, NULL);
+	/* We could remove this and enforce all callers run in an operator using 'OPTYPE_UNDO'. */
+	wmWindowManager *wm = G_MAIN->wm.first;
+	if (wm->op_undo_depth == 0) {
+		UndoStack *ustack = ED_undo_stack_get();
+		BKE_undosys_step_push(ustack, NULL, NULL);
+	}
 }
 
 /* -------------------------------------------------------------------- */
@@ -1019,9 +1022,8 @@ typedef struct SculptUndoStep {
 
 static bool sculpt_undosys_poll(bContext *C)
 {
-	ScrArea *sa = CTX_wm_area(C);
-	if (sa && (sa->spacetype == SPACE_VIEW3D)) {
-		Object *obact = CTX_data_active_object(C);
+	Object *obact = CTX_data_active_object(C);
+	if (obact && obact->type == OB_MESH) {
 		if (obact && (obact->mode & OB_MODE_SCULPT)) {
 			return true;
 		}
@@ -1036,23 +1038,105 @@ static void sculpt_undosys_step_encode_init(struct bContext *UNUSED(C), UndoStep
 	BLI_listbase_clear(&us->data.nodes);
 }
 
-static bool sculpt_undosys_step_encode(struct bContext *UNUSED(C), UndoStep *us_p)
+static bool sculpt_undosys_step_encode(struct bContext *UNUSED(C), struct Main *UNUSED(bmain), UndoStep *us_p)
 {
 	/* dummy, encoding is done along the way by adding tiles
 	 * to the current 'SculptUndoStep' added by encode_init. */
 	SculptUndoStep *us = (SculptUndoStep *)us_p;
 	us->step.data_size = us->data.undo_size;
+
+	SculptUndoNode *unode = us->data.nodes.last;
+	if (unode && unode->type == SCULPT_UNDO_DYNTOPO_END) {
+		us->step.use_memfile_step = true;
+	}
+	us->step.is_applied = true;
 	return true;
 }
 
-static void sculpt_undosys_step_decode(struct bContext *C, UndoStep *us_p, int UNUSED(dir))
+static void sculpt_undosys_step_decode_undo_impl(struct bContext *C, SculptUndoStep *us)
 {
-	/* TODO(campbell): undo_system: use low-level API to set mode. */
-	ED_object_mode_set(C, OB_MODE_SCULPT);
-	BLI_assert(sculpt_undosys_poll(C));
+	BLI_assert(us->step.is_applied == true);
+	sculpt_undo_restore_list(C, &us->data.nodes);
+	us->step.is_applied = false;
+}
+
+static void sculpt_undosys_step_decode_redo_impl(struct bContext *C, SculptUndoStep *us)
+{
+	BLI_assert(us->step.is_applied == false);
+	sculpt_undo_restore_list(C, &us->data.nodes);
+	us->step.is_applied = true;
+}
+
+static void sculpt_undosys_step_decode_undo(struct bContext *C, SculptUndoStep *us)
+{
+	SculptUndoStep *us_iter = us;
+	while (us_iter->step.next && (us_iter->step.next->type == us_iter->step.type)) {
+		if (us_iter->step.next->is_applied == false) {
+			break;
+		}
+		us_iter = (SculptUndoStep *)us_iter->step.next;
+	}
+	while (us_iter != us) {
+		sculpt_undosys_step_decode_undo_impl(C, us_iter);
+		us_iter = (SculptUndoStep *)us_iter->step.prev;
+	}
+}
+
+static void sculpt_undosys_step_decode_redo(struct bContext *C, SculptUndoStep *us)
+{
+	SculptUndoStep *us_iter = us;
+	while (us_iter->step.prev && (us_iter->step.prev->type == us_iter->step.type)) {
+		if (us_iter->step.prev->is_applied == true) {
+			break;
+		}
+		us_iter = (SculptUndoStep *)us_iter->step.prev;
+	}
+	while (us_iter && (us_iter->step.is_applied == false)) {
+		sculpt_undosys_step_decode_redo_impl(C, us_iter);
+		if (us_iter == us) {
+			break;
+		}
+		us_iter = (SculptUndoStep *)us_iter->step.next;
+	}
+}
+
+static void sculpt_undosys_step_decode(struct bContext *C, struct Main *bmain, UndoStep *us_p, int dir)
+{
+	/* Ensure sculpt mode. */
+	{
+		Scene *scene = CTX_data_scene(C);
+		ViewLayer *view_layer = CTX_data_view_layer(C);
+		/* Sculpt needs evaluated state. */
+		BKE_scene_view_layer_graph_evaluated_ensure(bmain, scene, view_layer);
+		Object *ob = OBACT(view_layer);
+		if (ob && (ob->type == OB_MESH)) {
+			Depsgraph *depsgraph = CTX_data_depsgraph(C);
+			if (ob->mode & OB_MODE_SCULPT) {
+				/* pass */
+			}
+			else {
+				ED_object_mode_generic_exit(bmain, depsgraph, scene, ob);
+				Mesh *me = ob->data;
+				/* Don't add sculpt topology undo steps when reading back undo state.
+				 * The undo steps must enter/exit for us. */
+				me->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
+				ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, true, NULL);
+			}
+			BLI_assert(sculpt_undosys_poll(C));
+		}
+		else {
+			BLI_assert(0);
+			return;
+		}
+	}
 
 	SculptUndoStep *us = (SculptUndoStep *)us_p;
-	sculpt_undo_restore_list(C, &us->data.nodes);
+	if (dir < 0) {
+		sculpt_undosys_step_decode_undo(C, us);
+	}
+	else {
+		sculpt_undosys_step_decode_redo(C, us);
+	}
 }
 
 static void sculpt_undosys_step_free(UndoStep *us_p)
@@ -1071,7 +1155,6 @@ void ED_sculpt_undosys_type(UndoType *ut)
 	ut->step_decode = sculpt_undosys_step_decode;
 	ut->step_free = sculpt_undosys_step_free;
 
-	ut->mode = BKE_UNDOTYPE_MODE_ACCUMULATE;
 	ut->use_context = true;
 
 	ut->step_size = sizeof(SculptUndoStep);

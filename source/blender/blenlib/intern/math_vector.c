@@ -1,6 +1,4 @@
 /*
- * ***** BEGIN GPL LICENSE BLOCK *****
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -20,11 +18,10 @@
  *
  * The Original Code is: some of this file.
  *
- * ***** END GPL LICENSE BLOCK *****
  * */
 
-/** \file blender/blenlib/intern/math_vector.c
- *  \ingroup bli
+/** \file
+ * \ingroup bli
  */
 
 #include "BLI_math.h"
@@ -758,7 +755,7 @@ void bisect_v3_v3v3v3(float out[3], const float v1[3], const float v2[3], const 
  * <pre>
  * v
  * +  ^
- *  \ |
+ * \ |
  *   \|
  *    + normal: axis of reflection
  *   /
