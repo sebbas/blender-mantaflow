@@ -80,13 +80,15 @@ float *fluid_get_in_velocity_z(struct FLUID *fluid);
 float *fluid_get_force_x(struct FLUID *fluid);
 float *fluid_get_force_y(struct FLUID *fluid);
 float *fluid_get_force_z(struct FLUID *fluid);
-float *fluid_get_phiguidein(struct FLUID *fluid);
+float *fluid_get_phiguide_in(struct FLUID *fluid);
 int *fluid_get_num_obstacle(struct FLUID *fluid);
 int *fluid_get_num_guide(struct FLUID *fluid);
 int fluid_get_res_x(struct FLUID *fluid);
 int fluid_get_res_y(struct FLUID *fluid);
 int fluid_get_res_z(struct FLUID *fluid);
-
+float *fluid_get_phi_in(struct FLUID *fluid);
+float *fluid_get_phiobs_in(struct FLUID *fluid);
+float *fluid_get_phiout_in(struct FLUID *fluid);
 
 /* Smoke functions */
 void smoke_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
@@ -113,7 +115,13 @@ float *smoke_get_color_r(struct FLUID *smoke);
 float *smoke_get_color_g(struct FLUID *smoke);
 float *smoke_get_color_b(struct FLUID *smoke);
 int *smoke_get_obstacle(struct FLUID *smoke);
-float *smoke_get_emission_in(struct FLUID *fluid);
+float *smoke_get_density_in(struct FLUID* smoke);
+float *smoke_get_heat_in(struct FLUID* smoke);
+float *smoke_get_color_r_in(struct FLUID* smoke);
+float *smoke_get_color_g_in(struct FLUID* smoke);
+float *smoke_get_color_b_in(struct FLUID* smoke);
+float *smoke_get_fuel_in(struct FLUID* smoke);
+float *smoke_get_react_in(struct FLUID* smoke);
 int smoke_has_heat(struct FLUID *smoke);
 int smoke_has_fuel(struct FLUID *smoke);
 int smoke_has_colors(struct FLUID *smoke);
@@ -129,7 +137,6 @@ int smoke_turbulence_has_colors(struct FLUID *smoke);
 void smoke_turbulence_get_res(struct FLUID *smoke, int *res);
 int smoke_turbulence_get_cells(struct FLUID *smoke);
 
-
 /* Liquid functions */
 void liquid_manta_export(struct FLUID* smoke, struct SmokeModifierData *smd);
 void liquid_ensure_sndparts(struct FLUID *fluid, struct SmokeModifierData *smd);
@@ -143,9 +150,6 @@ int liquid_get_mesh_res_y(struct FLUID *fluid);
 int liquid_get_mesh_res_z(struct FLUID *fluid);
 int liquid_get_particle_upres(struct FLUID *fluid);
 int liquid_get_mesh_upres(struct FLUID *fluid);
-float *liquid_get_phiin(struct FLUID *liquid);
-float *liquid_get_phiobsin(struct FLUID *liquid);
-float *liquid_get_phioutin(struct FLUID *liquid);
 int liquid_get_num_verts(struct FLUID *liquid);
 int liquid_get_num_normals(struct FLUID *liquid);
 int liquid_get_num_triangles(struct FLUID *liquid);

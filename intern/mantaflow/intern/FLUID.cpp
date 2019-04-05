@@ -50,7 +50,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(0);
+int FLUID::with_debug(1);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
@@ -89,7 +89,6 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 
 	// Smoke low res grids
 	mDensity        = NULL;
-	mEmissionIn     = NULL;
 	mShadow         = NULL;
 	mHeat           = NULL;
 	mVelocityX      = NULL;
@@ -105,6 +104,13 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mColorG         = NULL;
 	mColorB         = NULL;
 	mObstacle       = NULL;
+	mDensityIn      = NULL;
+	mHeatIn         = NULL;
+	mColorRIn       = NULL;
+	mColorGIn       = NULL;
+	mColorBIn       = NULL;
+	mFuelIn         = NULL;
+	mReactIn        = NULL;
 
 	// Smoke high res grids
 	mDensityHigh    = NULL;
@@ -121,7 +127,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 	mTextureV2      = NULL;
 	mTextureW2      = NULL;
 
-	// Liquid low res grids
+	// Fluid low res grids
 	mPhiIn          = NULL;
 	mPhiOutIn       = NULL;
 	mPhi            = NULL;
@@ -306,6 +312,7 @@ void FLUID::initSmokeNoise(SmokeModifierData *smd)
 	std::vector<std::string> pythonCommands;
 	std::string tmpString = smoke_alloc_noise
 		+ smoke_variables_noise
+		+ smoke_wavelet_noise
 		+ smoke_adaptive_step_noise
 		+ smoke_save_noise
 		+ smoke_load_noise
@@ -1390,6 +1397,7 @@ void FLUID::updateVariables(SmokeModifierData *smd)
 	if (mUsingNoise) {
 		tmpString += fluid_variables_noise;
 		tmpString += smoke_variables_noise;
+		tmpString += smoke_wavelet_noise;
 	}
 	if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
 		tmpString += fluid_variables_particles;
@@ -1435,8 +1443,7 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		+ fluid_variables
 		+ smoke_variables;
 	if (noise) {
-		manta_script += fluid_variables_noise
-			+ smoke_variables_noise;
+		manta_script += fluid_variables_noise;
 	}
 	if (guiding)
 		manta_script += fluid_variables_guiding;
@@ -1472,6 +1479,10 @@ void FLUID::exportSmokeScript(SmokeModifierData *smd)
 		manta_script += fluid_alloc_obstacle;
 	if (invel)
 		manta_script += fluid_alloc_invel;
+
+	// Noise field
+	if (noise)
+		manta_script += smoke_wavelet_noise;
 
 	// Time
 	manta_script += header_time
@@ -2127,6 +2138,7 @@ void FLUID::updatePointers()
 	std::string mesh_ext2  = "_" + mesh2;
 
 	mObstacle  = (int*)   stringToPointer(pyObjectToString(callPythonFunction("flags" + solver_ext, func)));
+	mPhiIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiIn" + solver_ext, func)));
 
 	mVelocityX = (float*) stringToPointer(pyObjectToString(callPythonFunction("x_vel" + solver_ext, func)));
 	mVelocityY = (float*) stringToPointer(pyObjectToString(callPythonFunction("y_vel" + solver_ext, func)));
@@ -2167,7 +2179,6 @@ void FLUID::updatePointers()
 	// Liquid
 	if (mUsingLiquid) {
 		mPhi   = (float*) stringToPointer(pyObjectToString(callPythonFunction("phi"   + solver_ext, func)));
-		mPhiIn = (float*) stringToPointer(pyObjectToString(callPythonFunction("phiIn" + solver_ext, func)));
 
 		mFlipParticleData     = (std::vector<pData>*) stringToPointer(pyObjectToString(callPythonFunction("pp"   + solver_ext, func)));
 		mFlipParticleVelocity = (std::vector<pVel>*)  stringToPointer(pyObjectToString(callPythonFunction("pVel" + parts_ext,  func)));
@@ -2189,21 +2200,29 @@ void FLUID::updatePointers()
 	// Smoke
 	if (mUsingSmoke) {
 		mDensity        = (float*) stringToPointer(pyObjectToString(callPythonFunction("density"    + solver_ext, func)));
-		mEmissionIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("emissionIn" + solver_ext, func)));
+		mDensityIn      = (float*) stringToPointer(pyObjectToString(callPythonFunction("densityIn"  + solver_ext, func)));
 		mShadow         = (float*) stringToPointer(pyObjectToString(callPythonFunction("shadow"     + solver_ext, func)));
 
 		if (mUsingHeat) {
 			mHeat       = (float*) stringToPointer(pyObjectToString(callPythonFunction("heat"   + solver_ext,    func)));
+			mHeatIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("heatIn" + solver_ext, func)));
 		}
 		if (mUsingFire) {
 			mFlame      = (float*) stringToPointer(pyObjectToString(callPythonFunction("flame"  + solver_ext,   func)));
 			mFuel       = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuel"   + solver_ext,   func)));
 			mReact      = (float*) stringToPointer(pyObjectToString(callPythonFunction("react"  + solver_ext,   func)));
+
+			mFuelIn     = (float*) stringToPointer(pyObjectToString(callPythonFunction("fuelIn"  + solver_ext,   func)));
+			mReactIn    = (float*) stringToPointer(pyObjectToString(callPythonFunction("reactIn" + solver_ext,   func)));
 		}
 		if (mUsingColors) {
 			mColorR     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_r"   + solver_ext, func)));
 			mColorG     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_g"   + solver_ext, func)));
 			mColorB     = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_b"   + solver_ext, func)));
+
+			mColorRIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_r_in"   + solver_ext, func)));
+			mColorGIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_g_in"   + solver_ext, func)));
+			mColorBIn   = (float*) stringToPointer(pyObjectToString(callPythonFunction("color_b_in"   + solver_ext, func)));
 		}
 	}
 }

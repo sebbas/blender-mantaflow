@@ -185,7 +185,8 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 col = split.column()
                 col.operator("manta.free_data", text="Free")
             elif domain.cache_baking_data and not domain.cache_baked_data:
-                split.operator("manta.pause_bake", text="Pause Data")
+                split.enabled = False
+                split.operator("manta.pause_bake", text="Baking Data - ESC to pause")
             elif not domain.cache_baked_data and not domain.cache_baking_data:
                 split.operator("manta.bake_data", text="Bake Data")
             else:
@@ -611,7 +612,8 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
             col = split.column()
             col.operator("manta.free_noise", text="Free")
         elif not domain.cache_baked_noise and domain.cache_baking_noise:
-            split.operator("manta.pause_bake", text="Pause Noise")
+            split.enabled = False
+            split.operator("manta.pause_bake", text="Baking Noise - ESC to pause")
         elif not domain.cache_baked_noise and not domain.cache_baking_noise:
             split.operator("manta.bake_noise", text="Bake Noise")
         else:
@@ -686,7 +688,8 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
             col = split.column()
             col.operator("manta.free_mesh", text="Free")
         elif not domain.cache_baked_mesh and domain.cache_baking_mesh:
-            split.operator("manta.pause_bake", text="Pause Mesh")
+            split.enabled = False
+            split.operator("manta.pause_bake", text="Baking Mesh - ESC to pause")
         elif not domain.cache_baked_mesh and not domain.cache_baking_mesh:
             split.operator("manta.bake_mesh", text="Bake Mesh")
         else:
@@ -788,7 +791,8 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
             col = split.column()
             col.operator("manta.free_particles", text="Free")
         elif not domain.cache_baked_particles and domain.cache_baking_particles:
-            split.operator("manta.pause_bake", text="Pause Particles")
+            split.enabled = False
+            split.operator("manta.pause_bake", text="Baking Particles - ESC to pause")
         elif not domain.cache_baked_particles and not domain.cache_baking_particles:
             split.operator("manta.bake_particles", text="Bake Particles")
         else:
