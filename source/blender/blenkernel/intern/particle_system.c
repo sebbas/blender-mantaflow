@@ -3946,9 +3946,9 @@ static void particles_manta_step(
 
 					/* Get size (dimension) but considering scaling */
 					copy_v3_v3(cell_size_scaled, sds->cell_size);
-					mul_v3_v3(cell_size_scaled, ob->size);
-					VECMADD(min, sds->p0, cell_size_scaled, sds->res_min);
-					VECMADD(max, sds->p0, cell_size_scaled, sds->res_max);
+					mul_v3_v3(cell_size_scaled, ob->scale);
+					madd_v3fl_v3fl_v3fl_v3i(min, sds->p0, cell_size_scaled, sds->res_min);
+					madd_v3fl_v3fl_v3fl_v3i(max, sds->p0, cell_size_scaled, sds->res_max);
 					sub_v3_v3v3(size, max, min);
 
 					/* Biggest dimension will be used for upscaling */
@@ -3966,9 +3966,9 @@ static void particles_manta_step(
 					mul_v3_fl(pa->state.co, sds->dx);
 
 					/* Match domain dimension / size */
-					pa->state.co[0] *= max_size / fabsf(ob->size[0]);
-					pa->state.co[1] *= max_size / fabsf(ob->size[1]);
-					pa->state.co[2] *= max_size / fabsf(ob->size[2]);
+					pa->state.co[0] *= max_size / fabsf(ob->scale[0]);
+					pa->state.co[1] *= max_size / fabsf(ob->scale[1]);
+					pa->state.co[2] *= max_size / fabsf(ob->scale[2]);
 
 					/* Match domain scale */
 					mul_m4_v3(ob->obmat, pa->state.co);
@@ -4540,10 +4540,10 @@ void particle_system_update(struct Depsgraph *depsgraph, Scene *scene, Object *o
 				bool free_unexisting = false;
 
 				/* Particles without dynamics haven't been reset yet because they don't use pointcache */
-				if (psys->recalc & PSYS_RECALC_RESET)
+				if (psys->recalc & ID_RECALC_PSYS_RESET)
 					psys_reset(psys, PSYS_RESET_ALL);
 
-				if (emit_particles(&sim, NULL, cfra) || (psys->recalc & PSYS_RECALC_RESET)) {
+				if (emit_particles(&sim, NULL, cfra) || (psys->recalc & ID_RECALC_PSYS_RESET)) {
 					free_keyed_keys(psys);
 					distribute_particles(&sim, part->from);
 					initialize_all_particles(&sim);

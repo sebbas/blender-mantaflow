@@ -239,9 +239,6 @@ static void fluid_manta_bake_endjob(void *customdata)
 	FluidMantaflowJob *job = customdata;
 	SmokeDomainSettings *sds = job->smd->domain;
 
-	G.is_rendering = false;
-	BKE_spacedata_draw_locks(false);
-
 	if (STREQ(job->type, "MANTA_OT_bake_data"))
 	{
 		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_DATA;
@@ -267,7 +264,11 @@ static void fluid_manta_bake_endjob(void *customdata)
 		sds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
 		sds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
 	}
-	DEG_id_tag_update(&job->ob->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
+
+	G.is_rendering = false;
+	BKE_spacedata_draw_locks(false);
+	WM_set_locked_interface(G_MAIN->wm.first, false);
 
 	/* Bake was successful:
 	 *  Report for ended bake and how long it took */
@@ -300,8 +301,6 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 	job->success = 1;
 
 	G.is_break = false;
-
-	/* same annoying hack as in physics_pointcache.c and dynamicpaint_ops.c to prevent data corruption*/
 	G.is_rendering = true;
 	BKE_spacedata_draw_locks(true);
 
@@ -346,12 +345,12 @@ static void fluid_manta_bake_startjob(void *customdata, short *stop, short *do_u
 	else if (STREQ(job->type, "MANTA_OT_bake_guiding"))
 	{
 		BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
-		BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
+		BLI_dir_create_recursive(tmpDir); /* Create 'guiding' subdir if it does not exist already */
 		sds->cache_flag &= ~FLUID_DOMAIN_BAKED_GUIDING;
 		sds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
 		job->pause_frame = &sds->cache_frame_pause_guiding;
 	}
-	DEG_id_tag_update(&job->ob->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
 	fluid_manta_bake_sequence(job);
 
@@ -368,6 +367,7 @@ static void fluid_manta_free_endjob(void *customdata)
 
 	G.is_rendering = false;
 	BKE_spacedata_draw_locks(false);
+	WM_set_locked_interface(G_MAIN->wm.first, false);
 
 	/* Free was successful:
 	 *  Report for ended free job and how long it took */
@@ -401,7 +401,6 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 	job->success = 1;
 
 	G.is_break = false;
-
 	G.is_rendering = true;
 	BKE_spacedata_draw_locks(true);
 
@@ -470,7 +469,7 @@ static void fluid_manta_free_startjob(void *customdata, short *stop, short *do_u
 		/* Reset pause frame */
 		sds->cache_frame_pause_guiding = 0;
 	}
-	DEG_id_tag_update(&job->ob->id, OB_RECALC_DATA);
+	DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
 	*do_update = true;
 	*stop = 0;
@@ -497,7 +496,7 @@ static void fluid_manta_free_endjob(void *UNUSED(customdata)) {}
 
 /***************************** Operators ******************************/
 
-static int fluid_manta_bake_exec(bContext *C, wmOperator *op)
+static int fluid_manta_bake_exec(struct bContext *C, struct wmOperator *op)
 {
 	FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
 	char error_msg[256] = "\0";
@@ -540,6 +539,8 @@ static int fluid_manta_bake_invoke(struct bContext *C, struct wmOperator *op, co
 	WM_jobs_customdata_set(wm_job, job, fluid_manta_bake_free);
 	WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
 	WM_jobs_callbacks(wm_job, fluid_manta_bake_startjob, NULL, NULL, fluid_manta_bake_endjob);
+
+	WM_set_locked_interface(CTX_wm_manager(C), true);
 
 	WM_jobs_start(CTX_wm_manager(C), wm_job);
 	WM_event_add_modal_handler(C, op);
@@ -607,6 +608,8 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 	WM_jobs_customdata_set(wm_job, job, fluid_manta_bake_free);
 	WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
 	WM_jobs_callbacks(wm_job, fluid_manta_free_startjob, NULL, NULL, fluid_manta_free_endjob);
+
+	WM_set_locked_interface(CTX_wm_manager(C), true);
 
 	/*  Free Fluid Geometry	*/
 	WM_jobs_start(CTX_wm_manager(C), wm_job);

@@ -440,7 +440,7 @@ static void rna_Smoke_guiding_parent_set(PointerRNA *ptr, PointerRNA value)
 	}
 }
 
-static EnumPropertyItem *rna_Smoke_cachetype_mesh_itemf(
+static const EnumPropertyItem *rna_Smoke_cachetype_mesh_itemf(
         bContext *UNUSED(C), PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	EnumPropertyItem *item = NULL;
@@ -465,7 +465,7 @@ static EnumPropertyItem *rna_Smoke_cachetype_mesh_itemf(
 	return item;
 }
 
-static EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(
+static const EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(
         bContext *UNUSED(C), PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	EnumPropertyItem *item = NULL;
@@ -498,7 +498,7 @@ static EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(
 	return item;
 }
 
-static EnumPropertyItem *rna_Smoke_cachetype_particle_itemf(
+static const EnumPropertyItem *rna_Smoke_cachetype_particle_itemf(
 		bContext *UNUSED(C), PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	EnumPropertyItem *item = NULL;
@@ -916,7 +916,7 @@ static void rna_Smoke_flowsource_set(struct PointerRNA *ptr, int value)
 	}
 }
 
-static EnumPropertyItem *rna_Smoke_flowsource_itemf(bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
+static const EnumPropertyItem *rna_Smoke_flowsource_itemf(bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
 	SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
 

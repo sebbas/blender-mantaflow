@@ -245,7 +245,7 @@ typedef struct SmokeDomainSettings {
 	int adapt_margin;
 	int adapt_res;
 	float adapt_threshold;
-	char pad_adaptive[4]; /* unused */
+	char _pad1[4]; /* unused */
 
 	/* fluid domain options */
 	int maxres; /* longest axis on the BB gets this resolution assigned */
@@ -255,7 +255,7 @@ typedef struct SmokeDomainSettings {
 	float gravity[3];
 	int active_fields;
 	short type; /* gas, liquid */
-	char pad_fluid[6]; /* unused */
+	char _pad2[6]; /* unused */
 
 	/* smoke domain options */
 	float alpha;
@@ -277,7 +277,7 @@ typedef struct SmokeDomainSettings {
 	int res_noise[3];
 	int noise_scale;
 	short noise_type; /* noise type: wave, curl, anisotropic */
-	char pad_noise[2]; /* unused */
+	char _pad3[2]; /* unused */
 
 	/* liquid domain options */
 	float particle_randomness;
@@ -301,7 +301,7 @@ typedef struct SmokeDomainSettings {
 	int mesh_scale;
 	int totvert;
 	short mesh_generator;
-	char pad_mesh[6]; /* unused */
+	char _pad4[6]; /* unused */
 
 	/* secondary particle options */
 	int particle_type;
@@ -322,7 +322,7 @@ typedef struct SmokeDomainSettings {
 	int sndparticle_update_radius;
 	char sndparticle_boundary;
 	char sndparticle_combined_export;
-	char pad_particle[6]; /* unused */
+	char _pad5[6]; /* unused */
 
 	/* fluid guiding options */
 	float guiding_alpha; /* guiding weight scalar (determines strength) */
@@ -330,7 +330,7 @@ typedef struct SmokeDomainSettings {
 	float guiding_vel_factor; /* multiply guiding velocity by this factor */
 	int *guide_res; /* res for velocity guide grids - independent from base res */
 	short guiding_source;
-	char pad_guiding[6]; /* unused */
+	char _pad6[6]; /* unused */
 
 	/* cache options */
 	int cache_frame_start;
@@ -347,7 +347,7 @@ typedef struct SmokeDomainSettings {
 	char cache_noise_format;
 	char cache_directory[1024];
 	char error[64]; /* Bake error description */
-	char pad_cache[4]; /* unused */
+	char _pad7[4]; /* unused */
 
 	/* time options */
 	float time_scale;
@@ -364,19 +364,19 @@ typedef struct SmokeDomainSettings {
 	char vector_draw_type;
 	char use_coba;
 	char coba_field;  /* simulation field used for the color mapping */
-	char pad_display; /* unused */
+	char interp_method;
 
 	/* -- Deprecated / unsed options (below)-- */
 
 	/* view options */
 	int viewsettings;
-	char pad_view[4]; /* unused */
+	char _pad8[4]; /* unused */
 
 	/* OpenVDB cache options */
 	int openvdb_comp;
 	float clipping;
 	char data_depth;
-	char pad_vdb[7]; /* unused */
+	char _pad9[7]; /* unused */
 
 	/* pointcache options */
 	/* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading old files. */
@@ -428,7 +428,7 @@ typedef struct SmokeFlowSettings {
 	float vel_normal;
 	float vel_random;
 	float vel_coord[3];
-	char pad_initial[4];
+	char _pad1[4];
 
 	/* emission */
 	float density;
@@ -446,7 +446,7 @@ typedef struct SmokeFlowSettings {
 	/* texture control */
 	float texture_size;
 	float texture_offset;
-	char _pad[4];
+	char _pad2[4];
 	/** MAX_CUSTOMDATA_LAYER_NAME. */
 	char uvlayer_name[64];
 	short vgroup_density;
@@ -455,7 +455,7 @@ typedef struct SmokeFlowSettings {
 	short behavior; /* inflow, outflow, static */
 	short source;
 	short texture_type;
-	short pad2[3];
+	short _pad3[3];
 	int flags; /* absolute emission etc*/
 } SmokeFlowSettings;
 
