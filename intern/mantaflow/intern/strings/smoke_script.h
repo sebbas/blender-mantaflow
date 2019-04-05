@@ -50,14 +50,11 @@ wltStrength_s$ID$ = $WLT_STR$\n\
 octaves_s$ID$     = 0\n\
 uvs_s$ID$         = 2\n\
 uv_s$ID$          = [] # list for UV grids\n\
-\n\
-if upres_sn$ID$ == 1:\n\
-    octaves_s$ID$ = int(math.log(upres_sn$ID$+1)/ math.log(2.0) + 0.5)\n\
-elif upres_sn$ID$ > 1:\n\
-    octaves_s$ID$ = int(math.log(upres_sn$ID$)/ math.log(2.0) + 0.5)\n\
-\n\
+octaves_s$ID$     = int(math.log(upres_sn$ID$) / math.log(2.0) + 0.5) if (upres_sn$ID$ > 1) else 1\n";
+
+const std::string smoke_wavelet_noise = "\n\
 # wavelet noise params\n\
-wltnoise_sn$ID$.posScale = vec3(int(1.0*gs_s$ID$.x)) / $NOISE_POSSCALE$\n\
+wltnoise_sn$ID$.posScale = vec3(int(1.0*gs_s$ID$.x)) * (1. / $NOISE_POSSCALE$)\n\
 wltnoise_sn$ID$.timeAnim = $NOISE_TIMEANIM$\n";
 
 const std::string smoke_with_heat = "\n\
@@ -75,27 +72,35 @@ using_fire_s$ID$ = True\n";
 
 const std::string smoke_alloc = "\n\
 mantaMsg('Smoke alloc')\n\
-density_s$ID$    = s$ID$.create(RealGrid)\n\
-emissionIn_s$ID$ = s$ID$.create(RealGrid)\n\
 shadow_s$ID$     = s$ID$.create(RealGrid)\n\
+density_s$ID$    = s$ID$.create(RealGrid)\n\
+densityIn_s$ID$  = s$ID$.create(RealGrid)\n\
 heat_s$ID$       = 0 # allocated dynamically\n\
+heatIn_s$ID$     = 0\n\
 flame_s$ID$      = 0\n\
 fuel_s$ID$       = 0\n\
 react_s$ID$      = 0\n\
+fuelIn_s$ID$     = 0\n\
+reactIn_s$ID$    = 0\n\
 color_r_s$ID$    = 0\n\
 color_g_s$ID$    = 0\n\
 color_b_s$ID$    = 0\n\
+color_r_in_s$ID$ = 0\n\
+color_g_in_s$ID$ = 0\n\
+color_b_in_s$ID$ = 0\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$)\n";
+smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$, densityIn=densityIn_s$ID$)\n";
 
 const std::string smoke_alloc_noise = "\n\
 mantaMsg('Smoke alloc noise')\n\
 vel_sn$ID$       = sn$ID$.create(MACGrid)\n\
 density_sn$ID$   = sn$ID$.create(RealGrid)\n\
+phiIn_sn$ID$     = sn$ID$.create(LevelsetGrid)\n\
 phiOut_sn$ID$    = sn$ID$.create(LevelsetGrid)\n\
 phiObs_sn$ID$    = sn$ID$.create(LevelsetGrid)\n\
 flags_sn$ID$     = sn$ID$.create(FlagGrid)\n\
+tmpIn_sn$ID$     = sn$ID$.create(RealGrid)\n\
 energy_s$ID$     = s$ID$.create(RealGrid)\n\
 tempFlag_s$ID$   = s$ID$.create(FlagGrid)\n\
 texture_u_s$ID$  = s$ID$.create(RealGrid)\n\
@@ -119,12 +124,17 @@ smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_colors = "\n\
 mantaMsg('Allocating colors')\n\
-color_r_s$ID$   = s$ID$.create(RealGrid)\n\
-color_g_s$ID$   = s$ID$.create(RealGrid)\n\
-color_b_s$ID$   = s$ID$.create(RealGrid)\n\
+color_r_s$ID$    = s$ID$.create(RealGrid)\n\
+color_g_s$ID$    = s$ID$.create(RealGrid)\n\
+color_b_s$ID$    = s$ID$.create(RealGrid)\n\
+color_r_in_s$ID$ = s$ID$.create(RealGrid)\n\
+color_g_in_s$ID$ = s$ID$.create(RealGrid)\n\
+color_b_in_s$ID$ = s$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
 tmpDict_s$ID$ = dict(color_r=color_r_s$ID$, color_g=color_g_s$ID$, color_b=color_b_s$ID$)\n\
+smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n\
+tmpDict_s$ID$ = dict(color_r_in=color_r_in_s$ID$, color_g_in=color_g_in_s$ID$, color_b_in=color_b_in_s$ID$)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_colors_noise = "\
@@ -158,6 +168,7 @@ color_b_sn$ID$.multConst($COLOR_B$)\n";
 const std::string smoke_alloc_heat = "\n\
 mantaMsg('Allocating heat')\n\
 heat_s$ID$   = s$ID$.create(RealGrid)\n\
+heatIn_s$ID$ = s$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
 tmpDict_s$ID$ = dict(heat=heat_s$ID$)\n\
@@ -165,12 +176,16 @@ smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_fire = "\n\
 mantaMsg('Allocating fire')\n\
-flame_s$ID$  = s$ID$.create(RealGrid)\n\
-fuel_s$ID$   = s$ID$.create(RealGrid)\n\
-react_s$ID$  = s$ID$.create(RealGrid)\n\
+flame_s$ID$   = s$ID$.create(RealGrid)\n\
+fuel_s$ID$    = s$ID$.create(RealGrid)\n\
+react_s$ID$   = s$ID$.create(RealGrid)\n\
+fuelIn_s$ID$  = s$ID$.create(RealGrid)\n\
+reactIn_s$ID$ = s$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
 tmpDict_s$ID$ = dict(flame=flame_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$,)\n\
+smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n\
+tmpDict_s$ID$ = dict(fuelIn=fuelIn_s$ID$, reactIn=reactIn_s$ID$,)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 const std::string smoke_alloc_fire_noise = "\n\
@@ -180,7 +195,7 @@ fuel_sn$ID$  = sn$ID$.create(RealGrid)\n\
 react_sn$ID$ = sn$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
-tmpDict_s$ID$ = dict(react_noise=react_sn$ID$, fuel_noise=fuel_sn$ID$, flame_noise=flame_sn$ID$)\n\
+tmpDict_s$ID$ = dict(flame_noise=flame_sn$ID$, fuel_noise=fuel_sn$ID$, react_noise=react_sn$ID$)\n\
 smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
@@ -190,10 +205,14 @@ smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 const std::string smoke_pre_step_noise = "\n\
 def smoke_pre_step_noise_$ID$():\n\
     mantaMsg('Smoke pre step noise')\n\
-    # Create interpolated version of original phi grids for later use in (optional) high-res step\n\
-    if using_obstacle_s$ID$:\n\
+    \n\
+    mantaMsg('Interpolating grids')\n\
+    interpolateGrid(target=phiIn_sn$ID$, source=phiIn_s$ID$)\n\
+    if using_outflow_s$ID$:\n\
         interpolateGrid(target=phiOut_sn$ID$, source=phiOut_s$ID$)\n\
+    if using_obstacle_s$ID$:\n\
         interpolateGrid(target=phiObs_sn$ID$, source=phiObs_s$ID$)\n\
+    interpolateMACGrid(source=vel_s$ID$, target=vel_sn$ID$)\n\
     \n\
     global uv_s$ID$\n\
     if len(uv_s$ID$) != 0: # list of uvs already initialized?\n\
@@ -240,11 +259,29 @@ def smoke_adaptive_step_$ID$(framenr):\n\
         extrapolateLsSimple(phi=phiObs_s$ID$, distance=3, inside=True)\n\
         extrapolateLsSimple(phi=phiObs_s$ID$, distance=3, inside=False)\n\
     \n\
+    mantaMsg('Initializing fluid levelset')\n\
+    extrapolateLsSimple(phi=phiIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+    extrapolateLsSimple(phi=phiIn_s$ID$, distance=int(res_s$ID$/2), inside=False)\n\
+    \n\
     if using_outflow_s$ID$:\n\
         phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
-    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)\n\
+    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, phiIn=phiIn_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
+    \n\
+    mantaMsg('Smoke inflow')\n\
+    applyEmission(flags=flags_s$ID$, target=density_s$ID$, source=densityIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+    if using_heat_s$ID$:\n\
+        applyEmission(flags=flags_s$ID$, target=heat_s$ID$, source=heatIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+    \n\
+    if using_colors_s$ID$:\n\
+        applyEmission(flags=flags_s$ID$, target=color_r_s$ID$, source=color_r_in_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=color_g_s$ID$, source=color_g_in_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=color_b_s$ID$, source=color_b_in_s$ID$, type=FlagInflow|FlagOutflow)\n\
+    \n\
+    if using_fire_s$ID$:\n\
+        applyEmission(flags=flags_s$ID$, target=fuel_s$ID$, source=fuelIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=react_s$ID$, source=reactIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
     \n\
     mantaMsg('Smoke step / s$ID$.frame: ' + str(s$ID$.frame))\n\
     if using_fire_s$ID$:\n\
@@ -272,8 +309,26 @@ def smoke_adaptive_step_noise_$ID$(framenr):\n\
         flags_sn$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_sn$ID$, outflow=boundConditions_s$ID$)\n\
         \n\
         mantaMsg('sn.frame is ' + str(sn$ID$.frame))\n\
-        setObstacleFlags(flags=flags_sn$ID$, phiObs=phiObs_sn$ID$, phiOut=phiOut_sn$ID$)\n\
+        setObstacleFlags(flags=flags_sn$ID$, phiObs=phiObs_sn$ID$, phiOut=phiOut_sn$ID$, phiIn=phiIn_sn$ID$)\n\
         flags_sn$ID$.fillGrid()\n\
+        \n\
+        # Interpolate emission grids and apply them to big noise grids\n\
+        interpolateGrid(source=densityIn_s$ID$, target=tmpIn_sn$ID$)\n\
+        applyEmission(flags=flags_sn$ID$, target=density_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+        \n\
+        if using_colors_s$ID$:\n\
+            interpolateGrid(source=color_r_in_s$ID$, target=tmpIn_sn$ID$)\n\
+            applyEmission(flags=flags_sn$ID$, target=color_r_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            interpolateGrid(source=color_g_in_s$ID$, target=tmpIn_sn$ID$)\n\
+            applyEmission(flags=flags_sn$ID$, target=color_g_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            interpolateGrid(source=color_b_in_s$ID$, target=tmpIn_sn$ID$)\n\
+            applyEmission(flags=flags_sn$ID$, target=color_b_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+        \n\
+        if using_fire_s$ID$:\n\
+            interpolateGrid(source=fuelIn_s$ID$, target=tmpIn_sn$ID$)\n\
+            applyEmission(flags=flags_sn$ID$, target=fuel_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            interpolateGrid(source=reactIn_s$ID$, target=tmpIn_sn$ID$)\n\
+            applyEmission(flags=flags_sn$ID$, target=react_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
         \n\
         fluid_adapt_time_step_noise_$ID$()\n\
         mantaMsg('Noise step / sn$ID$.frame: ' + str(sn$ID$.frame))\n\
@@ -362,10 +417,6 @@ const std::string smoke_step_noise = "\n\
 def step_noise_$ID$():\n\
     mantaMsg('Smoke step noise')\n\
     \n\
-    mantaMsg('Interpolating grids')\n\
-    interpolateGrid(source=density_s$ID$, target=density_sn$ID$)\n\
-    interpolateMACGrid(source=vel_s$ID$, target=vel_sn$ID$)\n\
-    \n\
     for i in range(uvs_s$ID$):\n\
         mantaMsg('Advecting UV')\n\
         advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=uv_s$ID$[i], order=2)\n\
@@ -408,7 +459,7 @@ def step_noise_$ID$():\n\
 \n\
 def process_burn_noise_$ID$():\n\
     mantaMsg('Process burn noise')\n\
-    processBurn(fuel=fuel_sn$ID$, density=density_sn$ID$, react=react_sn$ID$, red=color_r_sn$ID$ if using_colors_s$ID$ else 0, green=color_g_sn$ID$ if using_colors_s$ID$ else 0, blue=color_b_sn$ID$ if using_colors_s$ID$ else 0, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, dt=dt0_s$ID$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel_sn$ID$, density=density_sn$ID$, react=react_sn$ID$, red=color_r_sn$ID$ if using_colors_s$ID$ else 0, green=color_g_sn$ID$ if using_colors_s$ID$ else 0, blue=color_b_sn$ID$ if using_colors_s$ID$ else 0, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
 \n\
 def update_flame_noise_$ID$():\n\
     mantaMsg('Update flame noise')\n\
@@ -452,7 +503,7 @@ def load(frame):\n\
     fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
     smoke_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
     if using_noise_s$ID$:\n\
-        smoke_load_noise_$ID$(os.path.join(cache_dir, 'particles'), frame, file_format_noise)\n\
+        smoke_load_noise_$ID$(os.path.join(cache_dir, 'noise'), frame, file_format_noise)\n\
     if using_guiding_s$ID$:\n\
         fluid_load_guiding_$ID$(os.path.join(cache_dir, 'guiding'), frame, file_format_data)\n\
 \n\
