@@ -213,6 +213,7 @@ y_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 z_vel_s$ID$       = s$ID$.create(RealGrid)\n\
 pressure_s$ID$    = s$ID$.create(RealGrid)\n\
 phiObs_s$ID$      = s$ID$.create(LevelsetGrid)\n\
+phiIn_s$ID$       = s$ID$.create(LevelsetGrid)\n\
 phiOut_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
@@ -221,7 +222,7 @@ z_force_s$ID$     = s$ID$.create(RealGrid)\n\
 obvel_s$ID$       = 0\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, flags=flags_s$ID$)\n";
+fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiIn=phiIn_s$ID$, phiOut=phiOut_s$ID$, flags=flags_s$ID$)\n";
 
 const std::string fluid_alloc_obstacle = "\n\
 mantaMsg('Allocating obstacle data')\n\

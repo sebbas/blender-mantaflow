@@ -98,7 +98,6 @@ public:
 	void exportSmokeScript(struct SmokeModifierData *smd);
 	void exportLiquidScript(struct SmokeModifierData *smd);
 
-	// Smoke getters
 	inline size_t getTotalCells() { return mTotalCells; }
 	inline size_t getTotalCellsHigh() { return mTotalCellsHigh; }
 	inline bool usingNoise() { return mUsingNoise; }
@@ -116,7 +115,8 @@ public:
 	inline int getResZHigh() { return mResZNoise; }
 	inline int getMeshUpres() { return mUpresMesh; }
 	inline int getParticleUpres() { return mUpresParticle; }
-	
+
+	// Smoke getters
 	inline float* getDensity() { return mDensity; }
 	inline float* getHeat() { return mHeat; }
 	inline float* getVelocityX() { return mVelocityX; }
@@ -143,8 +143,14 @@ public:
 	inline float* getColorR() { return mColorR; }
 	inline float* getColorG() { return mColorG; }
 	inline float* getColorB() { return mColorB; }
-	inline float* getEmissionIn() { return mEmissionIn; }
 	inline float* getShadow() { return mShadow; }
+	inline float* getDensityIn() { return mDensityIn; }
+	inline float* getHeatIn() { return mHeatIn; }
+	inline float* getColorRIn() { return mColorRIn; }
+	inline float* getColorGIn() { return mColorGIn; }
+	inline float* getColorBIn() { return mColorBIn; }
+	inline float* getFuelIn() { return mFuelIn; }
+	inline float* getReactIn() { return mReactIn; }
 
 	inline float* getDensityHigh() { return mDensityHigh; }
 	inline float* getFlameHigh() { return mFlameHigh; }
@@ -274,9 +280,7 @@ private:
 	float mTempAmb; /* ambient temperature */
 	float mConstantScaling;
 
-	// Smoke grids
-	float* mDensity;
-	float* mHeat;
+	// Fluid grids
 	float* mVelocityX;
 	float* mVelocityY;
 	float* mVelocityZ;
@@ -295,14 +299,24 @@ private:
 	int* mObstacle;
 	int* mNumObstacle;
 	int* mNumGuide;
+
+	// Smoke grids
+	float* mDensity;
+	float* mHeat;
 	float* mFlame;
 	float* mFuel;
 	float* mReact;
 	float* mColorR;
 	float* mColorG;
 	float* mColorB;
-	float* mEmissionIn;
 	float* mShadow;
+	float* mDensityIn;
+	float* mHeatIn;
+	float* mFuelIn;
+	float* mReactIn;
+	float* mColorRIn;
+	float* mColorGIn;
+	float* mColorBIn;
 	float* mDensityHigh;
 	float* mFlameHigh;
 	float* mFuelHigh;
@@ -317,7 +331,7 @@ private:
 	float* mTextureV2;
 	float* mTextureW2;
 
-	// Liquids
+	// Liquid grids
 	float* mPhiIn;
 	float* mPhiObsIn;
 	float* mPhiGuideIn;
@@ -354,7 +368,6 @@ private:
 	void updateParticlesFromUni(const char* filename, bool isSecondarySys, bool isVelData);
 	void updateMeshFromFile(const char* filename);
 	void updateParticlesFromFile(const char* filename, bool isSecondarySys, bool isVelData);
-
 };
 
 #endif
