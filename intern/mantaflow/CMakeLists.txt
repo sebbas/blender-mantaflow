@@ -23,6 +23,8 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
+set(MANTAVERSION "0.12")
+
 if(WITH_OPENMP)
 	set(MANTA_PP
 		intern/manta_pp/omp
