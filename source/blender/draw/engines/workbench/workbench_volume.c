@@ -126,7 +126,6 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata, Scene *scene, Objec
 	}
 
 	wpd->volumes_do = true;
-	const bool show_highres = BKE_smoke_show_highres(scene, sds);
 	if (sds->use_coba) {
 		GPU_create_smoke_coba_field(smd);
 	}
@@ -192,8 +191,8 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata, Scene *scene, Objec
 	}
 	else {
 		static float white[3] = {1.0f, 1.0f, 1.0f};
-		bool use_constant_color = ((sds->active_fields & SM_ACTIVE_COLORS) == 0 &&
-		                           (sds->active_fields & SM_ACTIVE_COLOR_SET) != 0);
+		bool use_constant_color = ((sds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) == 0 &&
+		                           (sds->active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET) != 0);
 		DRW_shgroup_uniform_texture(grp, "densityTexture", sds->tex);
 		DRW_shgroup_uniform_texture(grp, "shadowTexture", sds->tex_shadow);
 		DRW_shgroup_uniform_texture(grp, "flameTexture", (sds->tex_flame) ? sds->tex_flame : e_data.dummy_tex);

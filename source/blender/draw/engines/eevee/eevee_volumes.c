@@ -554,8 +554,8 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata, EEVEE_Data *ved
 
 		/* Constant Volume color. */
 		static float white[3] = {1.0f, 1.0f, 1.0f};
-		bool use_constant_color = ((sds->active_fields & SM_ACTIVE_COLORS) == 0 &&
-		                           (sds->active_fields & SM_ACTIVE_COLOR_SET) != 0);
+		bool use_constant_color = ((sds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) == 0 &&
+		                           (sds->active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET) != 0);
 
 		DRW_shgroup_uniform_vec3(grp, "volumeColor", (use_constant_color) ? sds->active_color : white, 1);
 

@@ -46,6 +46,4 @@ void BKE_smoke_reallocate_highres_fluid(struct SmokeDomainSettings *sds, int res
 float BKE_smoke_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
 int BKE_smoke_get_data_flags(struct SmokeDomainSettings *sds);
 
-bool BKE_smoke_show_highres(struct Scene *scene, struct SmokeDomainSettings *sds);
-
 #endif /* __BKE_SMOKE_H__ */
