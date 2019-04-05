@@ -974,7 +974,7 @@ static GPUTexture *create_flame_texture(SmokeDomainSettings *sds, int highres)
 {
 	float *source = NULL;
 	const bool has_fuel = (highres) ? smoke_turbulence_has_fuel(sds->fluid) : smoke_has_fuel(sds->fluid);
-	int *dim = sds->res;
+	int *dim = (highres) ? sds->res_noise : sds->res;
 
 	if (!has_fuel)
 		return NULL;

@@ -202,7 +202,7 @@ extern "C" float *fluid_get_force_x(FLUID *fluid) { return fluid->getForceX(); }
 extern "C" float *fluid_get_force_y(FLUID *fluid) { return fluid->getForceY(); }
 extern "C" float *fluid_get_force_z(FLUID *fluid) { return fluid->getForceZ(); }
 
-extern "C" float *fluid_get_phiguidein(FLUID *fluid) { return fluid->getPhiGuideIn(); }
+extern "C" float *fluid_get_phiguide_in(FLUID *fluid) { return fluid->getPhiGuideIn(); }
 
 extern "C" int *fluid_get_num_obstacle(FLUID *fluid) { return fluid->getNumObstacle(); }
 extern "C" int *fluid_get_num_guide(FLUID *fluid)    { return fluid->getNumGuide();    }
@@ -211,7 +211,9 @@ extern "C" int fluid_get_res_x(FLUID* fluid) { return fluid->getResX(); }
 extern "C" int fluid_get_res_y(FLUID* fluid) { return fluid->getResY(); }
 extern "C" int fluid_get_res_z(FLUID* fluid) { return fluid->getResZ(); }
 
-
+extern "C" float *fluid_get_phi_in(FLUID *fluid)    { return fluid->getPhiIn();    }
+extern "C" float *fluid_get_phiobs_in(FLUID *fluid) { return fluid->getPhiObsIn(); }
+extern "C" float *fluid_get_phiout_in(FLUID *fluid) { return fluid->getPhiOutIn(); }
 
 /* Smoke functions */
 extern "C" void smoke_manta_export(FLUID* smoke, SmokeModifierData *smd)
@@ -458,7 +460,14 @@ extern "C" float *smoke_get_color_g(FLUID *smoke) { return smoke->getColorG(); }
 extern "C" float *smoke_get_color_b(FLUID *smoke) { return smoke->getColorB(); }
 
 extern "C" int *smoke_get_obstacle(FLUID *smoke) { return smoke->getObstacle(); }
-extern "C" float *smoke_get_emission_in(FLUID* smoke) { return smoke->getEmissionIn(); }
+
+extern "C" float *smoke_get_density_in(FLUID* smoke) { return smoke->getDensityIn(); }
+extern "C" float *smoke_get_heat_in(FLUID* smoke) { return smoke->getHeatIn(); }
+extern "C" float *smoke_get_color_r_in(FLUID* smoke) { return smoke->getColorRIn(); }
+extern "C" float *smoke_get_color_g_in(FLUID* smoke) { return smoke->getColorGIn(); }
+extern "C" float *smoke_get_color_b_in(FLUID* smoke) { return smoke->getColorBIn(); }
+extern "C" float *smoke_get_fuel_in(FLUID* smoke) { return smoke->getFuelIn(); }
+extern "C" float *smoke_get_react_in(FLUID* smoke) { return smoke->getReactIn(); }
 
 extern "C" int smoke_has_heat(FLUID *smoke) { return (smoke->getHeat()) ? 1 : 0; }
 extern "C" int smoke_has_fuel(FLUID *smoke) { return (smoke->getFuel()) ? 1 : 0; }
@@ -515,10 +524,6 @@ extern "C" int liquid_get_mesh_res_z(FLUID* liquid) { return liquid->getMeshResZ
 
 extern "C" int liquid_get_particle_upres(FLUID* liquid) { return liquid->getParticleUpres(); }
 extern "C" int liquid_get_mesh_upres(FLUID* liquid)     { return liquid->getMeshUpres();     }
-
-extern "C" float *liquid_get_phiin(FLUID *liquid)    { return liquid->getPhiIn();    }
-extern "C" float *liquid_get_phiobsin(FLUID *liquid) { return liquid->getPhiObsIn(); }
-extern "C" float *liquid_get_phioutin(FLUID *liquid) { return liquid->getPhiOutIn(); }
 
 extern "C" int liquid_get_num_verts(FLUID *liquid)     { return liquid->getNumVertices();  }
 extern "C" int liquid_get_num_normals(FLUID *liquid)   { return liquid->getNumNormals();   }
