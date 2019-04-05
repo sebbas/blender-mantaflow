@@ -80,7 +80,6 @@ mantaMsg('Liquid alloc')\n\
 phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiTmp_s$ID$     = s$ID$.create(LevelsetGrid)\n\
-phiIn_s$ID$      = s$ID$.create(LevelsetGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
 fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
@@ -95,7 +94,7 @@ pindex_s$ID$     = s$ID$.create(ParticleIndexSystem)\n\
 gpi_s$ID$        = s$ID$.create(IntGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiIn=phiIn_s$ID$, phiTmp=phiTmp_s$ID$)\n\
+liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiTmp=phiTmp_s$ID$)\n\
 liquid_flip_dict_s$ID$ = dict(pp=pp_s$ID$, pVel=pVel_pp$ID$)\n";
 
 const std::string liquid_alloc_mesh = "\n\
