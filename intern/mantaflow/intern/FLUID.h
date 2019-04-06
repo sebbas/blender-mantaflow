@@ -361,7 +361,7 @@ private:
 	void runPythonString(std::vector<std::string> commands);
 	std::string getRealValue(const std::string& varName, SmokeModifierData *smd);
 	std::string parseLine(const std::string& line, SmokeModifierData *smd);
-	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd);
+	std::string parseScript(const std::string& setup_string, SmokeModifierData *smd=NULL);
 	void updateMeshFromBobj(const char* filename);
 	void updateMeshFromObj(const char* filename);
 	void updateMeshFromUni(const char* filename);
