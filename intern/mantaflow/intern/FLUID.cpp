@@ -50,7 +50,7 @@
 
 std::atomic<bool> FLUID::mantaInitialized(false);
 std::atomic<int> FLUID::solverID(0);
-int FLUID::with_debug(1);
+int FLUID::with_debug(0);
 
 FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 {
@@ -192,7 +192,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 			mResXMesh       = mUpresMesh * mResX;
 			mResYMesh       = mUpresMesh * mResY;
 			mResZMesh       = mUpresMesh * mResZ;
-			mTotalCellsMesh	= mResXMesh * mResYMesh * mResZMesh;
+			mTotalCellsMesh = mResXMesh * mResYMesh * mResZMesh;
 
 			// Initialize Mantaflow variables in Python
 			initMesh(smd);
@@ -230,7 +230,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
 			mResXNoise      = amplify * mResX;
 			mResYNoise      = amplify * mResY;
 			mResZNoise      = amplify * mResZ;
-			mTotalCellsHigh	= mResXNoise * mResYNoise * mResZNoise;
+			mTotalCellsHigh = mResXNoise * mResYNoise * mResZNoise;
 			
 			// Initialize Mantaflow variables in Python
 			initNoise(smd);
@@ -548,8 +548,8 @@ FLUID::~FLUID()
 	tmpString += manta_import;
 	tmpString += fluid_delete_all;
 
-	// Safe to pass NULL argument since only looking up IDs
-	std::string finalString = parseScript(tmpString, NULL);
+	// Leave out smd argument in parseScript since only looking up IDs
+	std::string finalString = parseScript(tmpString);
 	pythonCommands.push_back(finalString);
 	runPythonString(pythonCommands);
 }
