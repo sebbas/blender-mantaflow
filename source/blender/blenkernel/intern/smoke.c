@@ -1808,7 +1808,7 @@ static void update_mesh_distances(int index, float *mesh_distances, BVHTreeFromM
 	/* Initialize grid points to -0.5 inside and 0.5 outside mesh.
 	 * Inside mesh: All rays have to hit (no misses) or all face normals have to match ray direction */
 	if (mesh_distances[index] != -0.5f)
-		mesh_distances[index] = (miss_cnt > 1 || dir_cnt == ray_cnt) ? 0.5f : -0.5f;
+		mesh_distances[index] = (miss_cnt > 0 || dir_cnt == ray_cnt) ? 0.5f : -0.5f;
 
 	/* Second pass: Ensure that single planes get initialized. */
 	BVHTreeNearest nearest = {0};
@@ -2527,6 +2527,9 @@ static void update_flowsflags(SmokeDomainSettings *sds, Object **flowobjs, int n
 	{
 		Object *collob = flowobjs[flowIndex];
 		SmokeModifierData *smd2 = (SmokeModifierData *)modifiers_findByType(collob, eModifierType_Smoke);
+
+		// Sanity check
+		if (!smd2) continue;
 
 		if ((smd2->type & MOD_SMOKE_TYPE_FLOW) && smd2->flow) {
 			SmokeFlowSettings *sfs = smd2->flow;
