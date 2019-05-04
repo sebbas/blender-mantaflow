@@ -67,6 +67,7 @@
 #include "WM_types.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "ED_anim_api.h"
 #include "ED_armature.h"
@@ -2431,7 +2432,7 @@ static int area_max_regionsize(ScrArea *sa, ARegion *scalear, AZEdge edge)
 
   /* regions in regions. */
   if (scalear->alignment & RGN_SPLIT_PREV) {
-    const int align = scalear->alignment & RGN_ALIGN_ENUM_MASK;
+    const int align = RGN_ALIGN_ENUM_FROM_MASK(scalear->alignment);
 
     if (ELEM(align, RGN_ALIGN_TOP, RGN_ALIGN_BOTTOM)) {
       ARegion *ar = scalear->prev;
@@ -2770,7 +2771,7 @@ static int frame_offset_exec(bContext *C, wmOperator *op)
 
   areas_do_frame_follow(C, false);
 
-  BKE_sound_seek_scene(bmain, scene);
+  BKE_sound_update_and_seek(bmain, CTX_data_depsgraph(C));
 
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -2832,7 +2833,7 @@ static int frame_jump_exec(bContext *C, wmOperator *op)
 
     areas_do_frame_follow(C, true);
 
-    BKE_sound_seek_scene(bmain, scene);
+    BKE_sound_update_and_seek(bmain, CTX_data_depsgraph(C));
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -2948,7 +2949,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   else {
     areas_do_frame_follow(C, true);
 
-    BKE_sound_seek_scene(bmain, scene);
+    BKE_sound_update_and_seek(bmain, CTX_data_depsgraph(C));
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -3015,7 +3016,7 @@ static int marker_jump_exec(bContext *C, wmOperator *op)
 
     areas_do_frame_follow(C, true);
 
-    BKE_sound_seek_scene(bmain, scene);
+    BKE_sound_update_and_seek(bmain, CTX_data_depsgraph(C));
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 
@@ -4287,7 +4288,8 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
   if (screen->animtimer && screen->animtimer == event->customdata) {
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
-    struct Depsgraph *depsgraph = CTX_data_depsgraph(C);
+    Depsgraph *depsgraph = CTX_data_depsgraph(C);
+    Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
     wmTimer *wt = screen->animtimer;
     ScreenAnimData *sad = wt->customdata;
     wmWindowManager *wm = CTX_wm_manager(C);
@@ -4308,7 +4310,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     if ((scene->audio.flag & AUDIO_SYNC) && (sad->flag & ANIMPLAY_FLAG_REVERSE) == false &&
-        isfinite(time = BKE_sound_sync_scene(scene))) {
+        isfinite(time = BKE_sound_sync_scene(scene_eval))) {
       double newfra = (double)time * FPS;
 
       /* give some space here to avoid jumps */
@@ -4401,7 +4403,7 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     }
 
     if (sad->flag & ANIMPLAY_FLAG_JUMPED) {
-      BKE_sound_seek_scene(bmain, scene);
+      BKE_sound_update_and_seek(bmain, depsgraph);
 #ifdef PROFILE_AUDIO_SYNCH
       old_frame = CFRA;
 #endif
@@ -4523,11 +4525,12 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 {
   bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
+  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_depsgraph(C));
 
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0, 0);
-    BKE_sound_stop_scene(scene);
+    BKE_sound_stop_scene(scene_eval);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -4536,7 +4539,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     int refresh = SPACE_ACTION;
 
     if (mode == 1) { /* XXX only play audio forwards!? */
-      BKE_sound_play_scene(scene);
+      BKE_sound_play_scene(scene_eval);
     }
 
     ED_screen_animation_timer(C, screen->redraws_flag, refresh, sync, mode);

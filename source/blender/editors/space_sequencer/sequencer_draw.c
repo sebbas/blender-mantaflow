@@ -1847,7 +1847,6 @@ static bool draw_cache_view_cb(
         color[2] = 0.2f;
         stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_DPI_FAC * U.pixelsize) -
                     v2d->cur.ymin;
-        ;
         stripe_bot = UI_view2d_region_to_view_y(v2d, V2D_SCROLL_HEIGHT_TEXT);
         stripe_top = stripe_bot + stripe_ht;
         break;
@@ -2093,8 +2092,8 @@ void draw_timeline_seq(const bContext *C, ARegion *ar)
 
   /* scale numbers */
   UI_view2d_draw_scale_x__discrete_frames_or_seconds(
-      ar, v2d, &v2d->hor, scene, !(sseq->flag & SEQ_DRAWFRAMES));
-  UI_view2d_draw_scale_y__block(ar, v2d, &v2d->vert);
+      ar, v2d, &v2d->hor, scene, !(sseq->flag & SEQ_DRAWFRAMES), TH_TEXT);
+  UI_view2d_draw_scale_y__block(ar, v2d, &v2d->vert, TH_TEXT);
 
   /* draw current frame number-indicator on top of scrollers */
   if ((sseq->flag & SEQ_NO_DRAW_CFRANUM) == 0) {

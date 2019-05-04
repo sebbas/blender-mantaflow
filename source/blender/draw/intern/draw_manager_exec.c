@@ -404,13 +404,6 @@ void DRW_state_reset(void)
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-/* NOTE : Make sure to reset after use! */
-void DRW_state_invert_facing(void)
-{
-  SWAP(GLenum, DST.backface, DST.frontface);
-  glFrontFace(DST.frontface);
-}
-
 /**
  * This only works if DRWPasses have been tagged with DRW_STATE_CLIP_PLANES,
  * and if the shaders have support for it (see usage of gl_ClipDistance).
@@ -687,12 +680,16 @@ bool DRW_culling_sphere_test(BoundSphere *bsphere)
 
   /* Do a rough test first: Sphere VS Sphere intersect. */
   BoundSphere *frustum_bsphere = &DST.clipping.frustum_bsphere;
-  float center_dist = len_squared_v3v3(bsphere->center, frustum_bsphere->center);
-  if (center_dist > SQUARE(bsphere->radius + frustum_bsphere->radius)) {
+  float center_dist_sq = len_squared_v3v3(bsphere->center, frustum_bsphere->center);
+  float radius_sum = bsphere->radius + frustum_bsphere->radius;
+  if (center_dist_sq > SQUARE(radius_sum)) {
     return false;
   }
+  /* TODO we could test against the inscribed sphere of the frustum to early out positively. */
 
   /* Test against the 6 frustum planes. */
+  /* TODO order planes with sides first then far then near clip. Should be better culling heuristic
+   * when sculpting. */
   for (int p = 0; p < 6; p++) {
     float dist = plane_point_side_v3(DST.clipping.frustum_planes[p], bsphere->center);
     if (dist < -bsphere->radius) {
@@ -1325,9 +1322,6 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         case DRW_CALL_INSTANCES:
           draw_geometry_execute_ex(
               shgroup, call->instances.geometry, 0, *call->instances.count, true);
-          break;
-        case DRW_CALL_GENERATE:
-          call->generate.geometry_fn(shgroup, draw_geometry_execute, call->generate.user_data);
           break;
         case DRW_CALL_PROCEDURAL:
           GPU_draw_primitive(call->procedural.prim_type, call->procedural.vert_count);
