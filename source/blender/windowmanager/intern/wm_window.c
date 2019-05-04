@@ -364,6 +364,7 @@ static void wm_block_confirm_quit_cancel(bContext *C, void *arg_block, void *UNU
 }
 
 /** Discard the file changes and quit */
+ATTR_NORETURN
 static void wm_block_confirm_quit_discard(bContext *C, void *arg_block, void *UNUSED(arg))
 {
   wmWindow *win = CTX_wm_window(C);
@@ -624,9 +625,9 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
       GHOST_SetTitle(win->ghostwin, "Blender");
     }
 
-    /* Informs GHOST of unsaved changes, to set window modified visual indicator (MAC OS X)
-     * and to give hint of unsaved changes for a user warning mechanism
-     * in case of OS application terminate request (e.g. OS Shortcut Alt+F4, Cmd+Q, (...), or session end) */
+    /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
+     * and to give hint of unsaved changes for a user warning mechanism in case of OS
+     * application terminate request (e.g. OS Shortcut Alt+F4, Cmd+Q, (...), or session end). */
     GHOST_SetWindowModifiedState(win->ghostwin, (GHOST_TUns8)!wm->file_saved);
   }
 }
@@ -769,7 +770,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm, const char *title, wm
 
     wm_window_swap_buffers(win);
 
-    //GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
+    // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
 
     /* standard state vars for window */
     GPU_state_init();
@@ -1271,8 +1272,9 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
     GHOST_TEventDataPtr data = GHOST_GetEventData(evt);
     wmWindow *win;
 
-    /* Ghost now can call this function for life resizes, but it should return if WM didn't initialize yet.
-     * Can happen on file read (especially full size window)  */
+    /* Ghost now can call this function for life resizes,
+     * but it should return if WM didn't initialize yet.
+     * Can happen on file read (especially full size window). */
     if ((wm->initialized & WM_WINDOW_IS_INITIALIZED) == 0) {
       return 1;
     }
@@ -2197,7 +2199,8 @@ bool WM_window_is_fullscreen(wmWindow *win)
 
 /**
  * Some editor data may need to be synced with scene data (3D View camera and layers).
- * This function ensures data is synced for editors in visible workspaces and their visible layouts.
+ * This function ensures data is synced for editors
+ * in visible workspaces and their visible layouts.
  */
 void WM_windows_scene_data_sync(const ListBase *win_lb, Scene *scene)
 {

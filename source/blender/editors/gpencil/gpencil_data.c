@@ -124,7 +124,8 @@ static int gp_data_add_exec(bContext *C, wmOperator *op)
       id_us_min(&gpd->id);
     }
 
-    /* add new datablock, with a single layer ready to use (so users don't have to perform an extra step) */
+    /* Add new datablock, with a single layer ready to use
+     * (so users don't have to perform an extra step). */
     if (is_annotation) {
       bGPdata *gpd = BKE_gpencil_data_addnew(bmain, DATA_("Annotations"));
       *gpd_ptr = gpd;
@@ -297,8 +298,9 @@ static int gp_layer_remove_exec(bContext *C, wmOperator *op)
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gpl))
+  if (ELEM(NULL, gpd, gpl)) {
     return OPERATOR_CANCELLED;
+  }
 
   if (gpl->flag & GP_LAYER_LOCKED) {
     BKE_report(op->reports, RPT_ERROR, "Cannot delete locked layers");
@@ -309,10 +311,12 @@ static int gp_layer_remove_exec(bContext *C, wmOperator *op)
    * - use the one after if this is the first
    * - if this is the only layer, this naturally becomes NULL
    */
-  if (gpl->prev)
+  if (gpl->prev) {
     BKE_gpencil_layer_setactive(gpd, gpl->prev);
-  else
+  }
+  else {
     BKE_gpencil_layer_setactive(gpd, gpl->next);
+  }
 
   /* delete the layer now... */
   BKE_gpencil_layer_delete(gpd, gpl);
@@ -353,8 +357,9 @@ static int gp_layer_move_exec(bContext *C, wmOperator *op)
   const int direction = RNA_enum_get(op->ptr, "type") * -1;
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gpl))
+  if (ELEM(NULL, gpd, gpl)) {
     return OPERATOR_CANCELLED;
+  }
 
   BLI_assert(ELEM(direction, -1, 0, 1)); /* we use value below */
   if (BLI_listbase_link_move(&gpd->layers, gpl, direction)) {
@@ -397,8 +402,9 @@ static int gp_layer_copy_exec(bContext *C, wmOperator *UNUSED(op))
   bGPDlayer *new_layer;
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gpl))
+  if (ELEM(NULL, gpd, gpl)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* make copy of layer, and add it immediately after the existing layer */
   new_layer = BKE_gpencil_layer_duplicate(gpl);
@@ -445,19 +451,22 @@ static bool gp_layer_duplicate_object_poll(bContext *C)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL))
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
     return false;
+  }
 
   bGPdata *gpd = (bGPdata *)ob->data;
   bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
 
-  if (gpl == NULL)
+  if (gpl == NULL) {
     return false;
+  }
 
   /* check there are more grease pencil objects */
   for (Base *base = view_layer->object_bases.first; base; base = base->next) {
-    if ((base->object != ob) && (base->object->type == OB_GPENCIL))
+    if ((base->object != ob) && (base->object->type == OB_GPENCIL)) {
       return true;
+    }
   }
 
   return false;
@@ -590,8 +599,9 @@ static int gp_frame_duplicate_exec(bContext *C, wmOperator *op)
   int mode = RNA_enum_get(op->ptr, "mode");
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gpl))
+  if (ELEM(NULL, gpd, gpl)) {
     return OPERATOR_CANCELLED;
+  }
 
   if (mode == 0) {
     BKE_gpencil_frame_addcopy(gpl, cfra_eval);
@@ -655,16 +665,18 @@ static int gp_frame_clean_fill_exec(bContext *C, wmOperator *op)
       if ((gpf == gpl->actframe) || (mode == GP_FRAME_CLEAN_FILL_ALL)) {
         bGPDstroke *gps, *gpsn;
 
-        if (gpf == NULL)
+        if (gpf == NULL) {
           continue;
+        }
 
         /* simply delete strokes which are no fill */
         for (gps = gpf->strokes.first; gps; gps = gpsn) {
           gpsn = gps->next;
 
           /* skip strokes that are invalid for current view */
-          if (ED_gpencil_stroke_can_use(C, gps) == false)
+          if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
+          }
 
           /* free stroke */
           if (gps->flag & GP_STROKE_NOFILL) {
@@ -737,16 +749,18 @@ static int gp_frame_clean_loose_exec(bContext *C, wmOperator *op)
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        if (gpf == NULL)
+        if (gpf == NULL) {
           continue;
+        }
 
         /* simply delete strokes which are no loose */
         for (gps = gpf->strokes.first; gps; gps = gpsn) {
           gpsn = gps->next;
 
           /* skip strokes that are invalid for current view */
-          if (ED_gpencil_stroke_can_use(C, gps) == false)
+          if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
+          }
 
           /* free stroke */
           if (gps->totpoints <= limit) {
@@ -817,8 +831,9 @@ static int gp_hide_exec(bContext *C, wmOperator *op)
   bool unselected = RNA_boolean_get(op->ptr, "unselected");
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, layer))
+  if (ELEM(NULL, gpd, layer)) {
     return OPERATOR_CANCELLED;
+  }
 
   if (unselected) {
     bGPDlayer *gpl;
@@ -897,8 +912,9 @@ static int gp_reveal_exec(bContext *C, wmOperator *op)
   const bool select = RNA_boolean_get(op->ptr, "select");
 
   /* sanity checks */
-  if (gpd == NULL)
+  if (gpd == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
 
@@ -957,8 +973,9 @@ static int gp_lock_all_exec(bContext *C, wmOperator *UNUSED(op))
   bGPDlayer *gpl;
 
   /* sanity checks */
-  if (gpd == NULL)
+  if (gpd == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   /* make all layers non-editable */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -996,8 +1013,9 @@ static int gp_unlock_all_exec(bContext *C, wmOperator *UNUSED(op))
   bGPDlayer *gpl;
 
   /* sanity checks */
-  if (gpd == NULL)
+  if (gpd == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   /* make all layers editable again */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -1036,8 +1054,9 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   int flags = GP_LAYER_LOCKED;
   bool isolate = false;
 
-  if (RNA_boolean_get(op->ptr, "affect_visibility"))
+  if (RNA_boolean_get(op->ptr, "affect_visibility")) {
     flags |= GP_LAYER_HIDE;
+  }
 
   if (ELEM(NULL, gpd, layer)) {
     BKE_report(op->reports, RPT_ERROR, "No active layer to isolate");
@@ -1047,8 +1066,9 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   /* Test whether to isolate or clear all flags */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     /* Skip if this is the active layer */
-    if (gpl == layer)
+    if (gpl == layer) {
       continue;
+    }
 
     /* If the flags aren't set, that means that the layer is
      * not alone, so we have some layers to isolate still
@@ -1064,10 +1084,12 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   if (isolate) {
     /* Set flags on all "other" layers */
     for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      if (gpl == layer)
+      if (gpl == layer) {
         continue;
-      else
+      }
+      else {
         gpl->flag |= flags;
+      }
     }
   }
   else {
@@ -1424,18 +1446,21 @@ static int gp_stroke_change_color_exec(bContext *C, wmOperator *op)
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-        if (gpf == NULL)
+        if (gpf == NULL) {
           continue;
+        }
 
         for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
           /* only if selected */
           if (gps->flag & GP_STROKE_SELECT) {
             /* skip strokes that are invalid for current view */
-            if (ED_gpencil_stroke_can_use(C, gps) == false)
+            if (ED_gpencil_stroke_can_use(C, gps) == false) {
               continue;
+            }
             /* check if the color is editable */
-            if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false)
+            if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
               continue;
+            }
 
             /* assign new color */
             gps->mat_nr = idx;
@@ -1485,8 +1510,9 @@ static int gp_stroke_lock_color_exec(bContext *C, wmOperator *UNUSED(op))
   short *totcol = give_totcolp(ob);
 
   /* sanity checks */
-  if (ELEM(NULL, gpd))
+  if (ELEM(NULL, gpd)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* first lock all colors */
   for (short i = 0; i < *totcol; i++) {
@@ -1609,8 +1635,9 @@ static int gpencil_vertex_group_assign_exec(bContext *C, wmOperator *UNUSED(op))
   Object *ob = CTX_data_active_object(C);
 
   /* sanity checks */
-  if (ELEM(NULL, ts, ob, ob->data))
+  if (ELEM(NULL, ts, ob, ob->data)) {
     return OPERATOR_CANCELLED;
+  }
 
   ED_gpencil_vgroup_assign(C, ob, ts->vgroup_weight);
 
@@ -1643,8 +1670,9 @@ static int gpencil_vertex_group_remove_from_exec(bContext *C, wmOperator *UNUSED
   Object *ob = CTX_data_active_object(C);
 
   /* sanity checks */
-  if (ELEM(NULL, ob, ob->data))
+  if (ELEM(NULL, ob, ob->data)) {
     return OPERATOR_CANCELLED;
+  }
 
   ED_gpencil_vgroup_remove(C, ob);
 
@@ -1676,8 +1704,9 @@ static int gpencil_vertex_group_select_exec(bContext *C, wmOperator *UNUSED(op))
   Object *ob = CTX_data_active_object(C);
 
   /* sanity checks */
-  if (ELEM(NULL, ob, ob->data))
+  if (ELEM(NULL, ob, ob->data)) {
     return OPERATOR_CANCELLED;
+  }
 
   ED_gpencil_vgroup_select(C, ob);
 
@@ -1709,8 +1738,9 @@ static int gpencil_vertex_group_deselect_exec(bContext *C, wmOperator *UNUSED(op
   Object *ob = CTX_data_active_object(C);
 
   /* sanity checks */
-  if (ELEM(NULL, ob, ob->data))
+  if (ELEM(NULL, ob, ob->data)) {
     return OPERATOR_CANCELLED;
+  }
 
   ED_gpencil_vgroup_deselect(C, ob);
 
@@ -2091,7 +2121,10 @@ typedef struct tJoinGPencil_AdtFixData {
   GHash *names_map;
 } tJoinGPencil_AdtFixData;
 
-/* Callback to pass to BKE_fcurves_main_cb() for RNA Paths attached to each F-Curve used in the AnimData */
+/**
+ * Callback to pass to #BKE_fcurves_main_cb()
+ * for RNA Paths attached to each F-Curve used in the #AnimData.
+ */
 static void joined_gpencil_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data)
 {
   tJoinGPencil_AdtFixData *afd = (tJoinGPencil_AdtFixData *)user_data;
@@ -2168,8 +2201,9 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
   bool ok = false;
 
   /* Ensure we're in right mode and that the active object is correct */
-  if (!ob_active || ob_active->type != OB_GPENCIL)
+  if (!ob_active || ob_active->type != OB_GPENCIL) {
     return OPERATOR_CANCELLED;
+  }
 
   bGPdata *gpd = (bGPdata *)ob_active->data;
   if ((!gpd) || GPENCIL_ANY_MODE(gpd)) {
@@ -2374,7 +2408,7 @@ static bool gpencil_active_color_poll(bContext *C)
   return false;
 }
 
-/* ******************* Lock and hide any color non used in current layer ************************** */
+/* **************** Lock and hide any color non used in current layer ************************** */
 static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
@@ -2382,14 +2416,16 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
   MaterialGPencilStyle *gp_style = NULL;
 
   /* sanity checks */
-  if (ELEM(NULL, gpd))
+  if (ELEM(NULL, gpd)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* first lock and hide all colors */
   Material *ma = NULL;
   short *totcol = give_totcolp(ob);
-  if (totcol == 0)
+  if (totcol == 0) {
     return OPERATOR_CANCELLED;
+  }
 
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
@@ -2406,8 +2442,9 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
         (gpl->flag & GP_LAYER_ACTIVE)) {
       for (bGPDstroke *gps = gpl->actframe->strokes.last; gps; gps = gps->prev) {
         /* skip strokes that are invalid for current view */
-        if (ED_gpencil_stroke_can_use(C, gps) == false)
+        if (ED_gpencil_stroke_can_use(C, gps) == false) {
           continue;
+        }
 
         ma = give_current_material(ob, gps->mat_nr + 1);
         DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
@@ -2459,8 +2496,9 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
   int flags = GP_STYLE_COLOR_LOCKED;
   bool isolate = false;
 
-  if (RNA_boolean_get(op->ptr, "affect_visibility"))
+  if (RNA_boolean_get(op->ptr, "affect_visibility")) {
     flags |= GP_STYLE_COLOR_HIDE;
+  }
 
   if (ELEM(NULL, gpd, active_color)) {
     BKE_report(op->reports, RPT_ERROR, "No active color to isolate");
@@ -2473,8 +2511,9 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
     /* Skip if this is the active one */
-    if (ma == active_ma)
+    if (ma == active_ma) {
       continue;
+    }
 
     /* If the flags aren't set, that means that the color is
      * not alone, so we have some colors to isolate still
@@ -2492,10 +2531,12 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
     for (short i = 0; i < *totcol; i++) {
       ma = give_current_material(ob, i + 1);
       gp_style = ma->gp_style;
-      if (gp_style == active_color)
+      if (gp_style == active_color) {
         continue;
-      else
+      }
+      else {
         gp_style->flag |= flags;
+      }
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
     }
   }
@@ -2556,8 +2597,9 @@ static int gpencil_color_hide_exec(bContext *C, wmOperator *op)
 
   Material *ma = NULL;
   short *totcol = give_totcolp(ob);
-  if (totcol == 0)
+  if (totcol == 0) {
     return OPERATOR_CANCELLED;
+  }
 
   if (unselected) {
     /* hide unselected */
@@ -2616,8 +2658,9 @@ static int gpencil_color_reveal_exec(bContext *C, wmOperator *UNUSED(op))
   Material *ma = NULL;
   short *totcol = give_totcolp(ob);
 
-  if (totcol == 0)
+  if (totcol == 0) {
     return OPERATOR_CANCELLED;
+  }
 
   /* make all colors visible */
   MaterialGPencilStyle *gp_style = NULL;
@@ -2666,8 +2709,9 @@ static int gpencil_color_lock_all_exec(bContext *C, wmOperator *UNUSED(op))
   Material *ma = NULL;
   short *totcol = give_totcolp(ob);
 
-  if (totcol == 0)
+  if (totcol == 0) {
     return OPERATOR_CANCELLED;
+  }
 
   /* make all layers non-editable */
   MaterialGPencilStyle *gp_style = NULL;
@@ -2716,8 +2760,9 @@ static int gpencil_color_unlock_all_exec(bContext *C, wmOperator *UNUSED(op))
   Material *ma = NULL;
   short *totcol = give_totcolp(ob);
 
-  if (totcol == 0)
+  if (totcol == 0) {
     return OPERATOR_CANCELLED;
+  }
 
   /* make all layers editable again*/
   MaterialGPencilStyle *gp_style = NULL;
@@ -2767,8 +2812,9 @@ static int gpencil_color_select_exec(bContext *C, wmOperator *op)
   const bool deselected = RNA_boolean_get(op->ptr, "deselect");
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gp_style))
+  if (ELEM(NULL, gpd, gp_style)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* read all strokes and select*/
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
@@ -2782,11 +2828,13 @@ static int gpencil_color_select_exec(bContext *C, wmOperator *op)
         /* verify something to do */
         for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
           /* skip strokes that are invalid for current view */
-          if (ED_gpencil_stroke_can_use(C, gps) == false)
+          if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
+          }
           /* check if the color is editable */
-          if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false)
+          if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
             continue;
+          }
 
           /* select */
           if (ob->actcol == gps->mat_nr + 1) {

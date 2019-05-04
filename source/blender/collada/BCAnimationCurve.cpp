@@ -118,7 +118,7 @@ void BCAnimationCurve::create_bezt(float frame, float output)
 BCAnimationCurve::~BCAnimationCurve()
 {
   if (curve_is_local_copy && fcurve) {
-    //fprintf(stderr, "removed fcurve %s\n", fcurve->rna_path);
+    // fprintf(stderr, "removed fcurve %s\n", fcurve->rna_path);
     delete_fcurve(fcurve);
     this->fcurve = NULL;
   }
@@ -262,10 +262,9 @@ FCurve *BCAnimationCurve::get_edit_fcurve()
     fcurve = create_fcurve(index, path.c_str());
 
     /* Caution here:
-    Replacing the pointer here is OK only because the original value
-    of FCurve was a const pointer into Blender territory. We do not
-    touch that! We use the local copy to prepare data for export.
-    */
+     * Replacing the pointer here is OK only because the original value
+     * of FCurve was a const pointer into Blender territory. We do not
+     * touch that! We use the local copy to prepare data for export. */
 
     curve_is_local_copy = true;
   }
@@ -638,7 +637,8 @@ void BCBezTriple::get_tangent(Scene *scene, float point[2], bool as_angle, int i
 {
   point[0] = FRA2TIME(bezt.vec[index][0]);
   if (bezt.ipo != BEZT_IPO_BEZ) {
-    /* We're in a mixed interpolation scenario, set zero as it's irrelevant but value might contain unused data */
+    /* We're in a mixed interpolation scenario, set zero as it's irrelevant but value might contain
+     * unused data */
     point[0] = 0;
     point[1] = 0;
   }

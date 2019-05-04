@@ -233,6 +233,7 @@ struct Image *BKE_image_add_generated(struct Main *bmain,
 struct Image *BKE_image_add_from_imbuf(struct Main *bmain, struct ImBuf *ibuf, const char *name);
 
 /* for reload, refresh, pack */
+void BKE_imageuser_default(struct ImageUser *iuser);
 void BKE_image_init_imageuser(struct Image *ima, struct ImageUser *iuser);
 void BKE_image_signal(struct Main *bmain, struct Image *ima, struct ImageUser *iuser, int signal);
 
@@ -293,7 +294,7 @@ void BKE_image_free_anim_ibufs(struct Image *ima, int except_frame);
 /* does all images with type MOVIE or SEQUENCE */
 void BKE_image_all_free_anim_ibufs(struct Main *bmain, int except_frame);
 
-void BKE_image_memorypack(struct Image *ima);
+bool BKE_image_memorypack(struct Image *ima);
 void BKE_image_packfiles(struct ReportList *reports, struct Image *ima, const char *basepath);
 void BKE_image_packfiles_from_mem(struct ReportList *reports,
                                   struct Image *ima,

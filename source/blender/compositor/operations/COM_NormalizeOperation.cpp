@@ -42,10 +42,12 @@ void NormalizeOperation::executePixel(float output[4], int x, int y, void *data)
   output[0] = (output[0] - minmult->x) * minmult->y;
 
   /* clamp infinities */
-  if (output[0] > 1.0f)
+  if (output[0] > 1.0f) {
     output[0] = 1.0f;
-  else if (output[0] < 0.0f)
+  }
+  else if (output[0] < 0.0f) {
     output[0] = 0.0f;
+  }
 }
 
 void NormalizeOperation::deinitExecution()
@@ -62,8 +64,9 @@ bool NormalizeOperation::determineDependingAreaOfInterest(rcti * /*input*/,
                                                           rcti *output)
 {
   rcti imageInput;
-  if (this->m_cachedInstance)
+  if (this->m_cachedInstance) {
     return false;
+  }
 
   NodeOperation *operation = getInputOperation(0);
   imageInput.xmax = operation->getWidth();
@@ -77,7 +80,8 @@ bool NormalizeOperation::determineDependingAreaOfInterest(rcti * /*input*/,
   return false;
 }
 
-/* The code below assumes all data is inside range +- this, and that input buffer is single channel */
+/* The code below assumes all data is inside range +- this, and that input buffer is single channel
+ */
 #define BLENDER_ZMAX 10000.0f
 
 void *NormalizeOperation::initializeTileData(rcti *rect)

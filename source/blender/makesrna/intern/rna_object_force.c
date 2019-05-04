@@ -524,6 +524,8 @@ static void rna_FieldSettings_type_set(PointerRNA *ptr, int value)
 
 static void rna_FieldSettings_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
+  DEG_relations_tag_update(bmain);
+
   if (particle_id_check(ptr)) {
     DEG_id_tag_update((ID *)ptr->id.data,
                       ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION |
@@ -532,18 +534,7 @@ static void rna_FieldSettings_dependency_update(Main *bmain, Scene *scene, Point
   else {
     Object *ob = (Object *)ptr->id.data;
 
-    /* do this before scene sort, that one checks for CU_PATH */
-#  if 0 /* XXX */
-    if (ob->type == OB_CURVE && ob->pd->forcefield == PFIELD_GUIDE) {
-      Curve *cu = ob->data;
-      cu->flag |= (CU_PATH | CU_3D);
-      do_curvebuts(B_CU3D);  /* all curves too */
-    }
-#  endif
-
     rna_FieldSettings_shape_update(bmain, scene, ptr);
-
-    DEG_relations_tag_update(bmain);
 
     if (ob->type == OB_CURVE && ob->pd->forcefield == PFIELD_GUIDE)
       DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
@@ -903,8 +894,9 @@ static void rna_def_pointcache_active(BlenderRNA *brna)
   /* This first-level RNA pointer also has list of all caches from owning ID.
    * Those caches items have exact same content as 'active' one, except for that collection,
    * to prevent ugly recursive layout pattern.
-   * Note: This shall probably be redone from scratch in a proper way at some point, but for now that will do,
-   *       and shall not break anything in the API. */
+   *
+   * Note: This shall probably be redone from scratch in a proper way at some point,
+   *       but for now that will do, and shall not break anything in the API. */
   prop = RNA_def_property(srna, "point_caches", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Cache_list_begin",

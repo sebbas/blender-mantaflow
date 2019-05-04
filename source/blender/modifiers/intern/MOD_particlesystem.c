@@ -62,14 +62,15 @@ static void freeData(ModifierData *md)
 
   /* ED_object_modifier_remove may have freed this first before calling
    * modifier_free (which calls this function) */
-  if (psmd->psys)
+  if (psmd->psys) {
     psmd->psys->flag |= PSYS_DELETE;
+  }
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
 #if 0
-  const ParticleSystemModifierData *psmd = (const ParticleSystemModifierData *) md;
+  const ParticleSystemModifierData *psmd = (const ParticleSystemModifierData *)md;
 #endif
   ParticleSystemModifierData *tpsmd = (ParticleSystemModifierData *)target;
 
@@ -101,13 +102,16 @@ static void deformVerts(ModifierData *md,
   ParticleSystem *psys = NULL;
   /* float cfra = BKE_scene_frame_get(md->scene); */ /* UNUSED */
 
-  if (ctx->object->particlesystem.first)
+  if (ctx->object->particlesystem.first) {
     psys = psmd->psys;
-  else
+  }
+  else {
     return;
+  }
 
-  if (!psys_check_enabled(ctx->object, psys, (ctx->flag & MOD_APPLY_RENDER) != 0))
+  if (!psys_check_enabled(ctx->object, psys, (ctx->flag & MOD_APPLY_RENDER) != 0)) {
     return;
+  }
 
   if (mesh_src == NULL) {
     mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, NULL, vertexCos, numVerts, false, true);
@@ -214,9 +218,12 @@ static void deformVerts(ModifierData *md,
 /* disabled particles in editmode for now, until support for proper evaluated mesh
  * updates is coded */
 #if 0
-static void deformVertsEM(
-        ModifierData *md, Object *ob, BMEditMesh *editData,
-        Mesh *mesh, float (*vertexCos)[3], int numVerts)
+static void deformVertsEM(ModifierData *md,
+                          Object *ob,
+                          BMEditMesh *editData,
+                          Mesh *mesh,
+                          float (*vertexCos)[3],
+                          int numVerts)
 {
   const bool do_temp_mesh = (mesh == NULL);
   if (do_temp_mesh) {

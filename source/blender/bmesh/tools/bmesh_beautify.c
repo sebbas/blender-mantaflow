@@ -66,15 +66,24 @@ static int erot_gsetutil_cmp(const void *a, const void *b)
 {
   const EdRotState *e_state_a = (const EdRotState *)a;
   const EdRotState *e_state_b = (const EdRotState *)b;
-  if      (e_state_a->v1 < e_state_b->v1) return -1;
-  else if (e_state_a->v1 > e_state_b->v1) return  1;
-  else if (e_state_a->v2 < e_state_b->v2) return -1;
-  else if (e_state_a->v2 > e_state_b->v2) return  1;
-  else if (e_state_a->f1 < e_state_b->f1) return -1;
-  else if (e_state_a->f1 > e_state_b->f1) return  1;
-  else if (e_state_a->f2 < e_state_b->f2) return -1;
-  else if (e_state_a->f2 > e_state_b->f2) return  1;
-  else                                    return  0;
+  if (e_state_a->v1 < e_state_b->v1)
+    return -1;
+  else if (e_state_a->v1 > e_state_b->v1)
+    return 1;
+  else if (e_state_a->v2 < e_state_b->v2)
+    return -1;
+  else if (e_state_a->v2 > e_state_b->v2)
+    return 1;
+  else if (e_state_a->f1 < e_state_b->f1)
+    return -1;
+  else if (e_state_a->f1 > e_state_b->f1)
+    return 1;
+  else if (e_state_a->f2 < e_state_b->f2)
+    return -1;
+  else if (e_state_a->f2 > e_state_b->f2)
+    return 1;
+  else
+    return 0;
 }
 #endif
 static GSet *erot_gset_new(void)
@@ -178,7 +187,8 @@ static float bm_edge_calc_rotate_beauty__area(const float v1[3],
     /**
      * Important to lock degenerate here,
      * since the triangle pars will be projected into different 2D spaces.
-     * Allowing to rotate out of a degenerate state can flip the faces (when performed iteratively).
+     * Allowing to rotate out of a degenerate state can flip the faces
+     * (when performed iteratively).
      */
     return BLI_polyfill_beautify_quad_rotate_calc_ex(v1_xy, v2_xy, v3_xy, v4_xy, true);
   } while (false);

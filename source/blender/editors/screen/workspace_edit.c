@@ -89,8 +89,7 @@ static void workspace_change_update(WorkSpace *workspace_new,
   /* needs to be done before changing mode! (to ensure right context) */
   UNUSED_VARS(workspace_old, workspace_new, C, wm);
 #if 0
-  Object *ob_act = CTX_data_active_object(C)
-  eObjectMode mode_old = workspace_old->object_mode;
+  Object *ob_act = CTX_data_active_object(C) eObjectMode mode_old = workspace_old->object_mode;
   eObjectMode mode_new = workspace_new->object_mode;
 
   if (mode_old != mode_new) {
@@ -110,7 +109,8 @@ static WorkSpaceLayout *workspace_change_get_new_layout(Main *bmain,
                                                         WorkSpace *workspace_new,
                                                         wmWindow *win)
 {
-  /* ED_workspace_duplicate may have stored a layout to activate once the workspace gets activated. */
+  /* ED_workspace_duplicate may have stored a layout to activate
+   * once the workspace gets activated. */
   WorkSpaceLayout *layout_old = WM_window_get_active_layout(win);
   WorkSpaceLayout *layout_new;
   bScreen *screen_new;
@@ -159,7 +159,8 @@ bool ED_workspace_change(WorkSpace *workspace_new, bContext *C, wmWindowManager 
 
   win->workspace_hook->temp_layout_store = NULL;
   if (workspace_old == workspace_new) {
-    /* Could also return true, everything that needs to be done was done (nothing :P), but nothing changed */
+    /* Could also return true, everything that needs to be done was done (nothing :P),
+     * but nothing changed */
     return false;
   }
 

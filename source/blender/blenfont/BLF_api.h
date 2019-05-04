@@ -53,6 +53,9 @@ int BLF_load_mem_unique(const char *name, const unsigned char *mem, int mem_size
 void BLF_unload(const char *name) ATTR_NONNULL();
 void BLF_unload_id(int fontid);
 
+/* Check if font supports a particular glyph. */
+bool BLF_has_glyph(int fontid, unsigned int unicode);
+
 /* Attach a file with metrics information from memory. */
 void BLF_metrics_attach(int fontid, unsigned char *mem, int mem_size);
 
@@ -198,8 +201,8 @@ void BLF_buffer(int fontid,
 /* Set the color to be used for text. */
 void BLF_buffer_col(int fontid, const float rgba[4]) ATTR_NONNULL(2);
 
-/* Draw the string into the buffer, this function draw in both buffer, float and unsigned char _BUT_
- * it's not necessary set both buffer, NULL is valid here.
+/* Draw the string into the buffer, this function draw in both buffer,
+ * float and unsigned char _BUT_ it's not necessary set both buffer, NULL is valid here.
  */
 void BLF_draw_buffer_ex(int fontid, const char *str, size_t len, struct ResultBLF *r_info)
     ATTR_NONNULL(2);

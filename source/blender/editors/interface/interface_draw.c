@@ -167,8 +167,13 @@ void UI_draw_roundbox_4fv(
 {
 #if 0
   float vec[7][2] = {
-    {0.195, 0.02}, {0.383, 0.067}, {0.55, 0.169}, {0.707, 0.293},
-    {0.831, 0.45}, {0.924, 0.617}, {0.98, 0.805},
+      {0.195, 0.02},
+      {0.383, 0.067},
+      {0.55, 0.169},
+      {0.707, 0.293},
+      {0.831, 0.45},
+      {0.924, 0.617},
+      {0.98, 0.805},
   };
   int a;
 
@@ -270,13 +275,16 @@ void UI_draw_roundbox_4fv(
 }
 
 #if 0
-static void round_box_shade_col(uint attr, const float col1[3], float const col2[3], const float fac)
+static void round_box_shade_col(uint attr,
+                                const float col1[3],
+                                float const col2[3],
+                                const float fac)
 {
   float col[4] = {
-    fac * col1[0] + (1.0f - fac) * col2[0],
-    fac * col1[1] + (1.0f - fac) * col2[1],
-    fac * col1[2] + (1.0f - fac) * col2[2],
-    1.0f,
+      fac * col1[0] + (1.0f - fac) * col2[0],
+      fac * col1[1] + (1.0f - fac) * col2[1],
+      fac * col1[2] + (1.0f - fac) * col2[2],
+      1.0f,
   };
   immAttr4fv(attr, col);
 }
@@ -296,8 +304,13 @@ void UI_draw_roundbox_shade_x(bool filled,
 {
 #if 0
   float vec[7][2] = {
-    {0.195, 0.02}, {0.383, 0.067}, {0.55, 0.169}, {0.707, 0.293},
-    {0.831, 0.45}, {0.924, 0.617}, {0.98, 0.805},
+      {0.195, 0.02},
+      {0.383, 0.067},
+      {0.55, 0.169},
+      {0.707, 0.293},
+      {0.831, 0.45},
+      {0.924, 0.617},
+      {0.98, 0.805},
   };
   const float div = maxy - miny;
   const float idiv = 1.0f / div;
@@ -317,9 +330,9 @@ void UI_draw_roundbox_shade_x(bool filled,
   }
 
   /* 'shade' defines strength of shading */
-  coltop[0]  = min_ff(1.0f, col[0] + shadetop);
-  coltop[1]  = min_ff(1.0f, col[1] + shadetop);
-  coltop[2]  = min_ff(1.0f, col[2] + shadetop);
+  coltop[0] = min_ff(1.0f, col[0] + shadetop);
+  coltop[1] = min_ff(1.0f, col[1] + shadetop);
+  coltop[2] = min_ff(1.0f, col[2] + shadetop);
   coldown[0] = max_ff(0.0f, col[0] + shadedown);
   coldown[1] = max_ff(0.0f, col[1] + shadedown);
   coldown[2] = max_ff(0.0f, col[2] + shadedown);
@@ -440,13 +453,24 @@ void UI_draw_roundbox_shade_x(bool filled,
 #if 0  /* unused */
 /* linear vertical shade within button or in outline */
 /* view2d scrollers use it */
-void UI_draw_roundbox_shade_y(
-        bool filled, float minx, float miny, float maxx, float maxy,
-        float rad, float shadeleft, float shaderight, const float col[4])
+void UI_draw_roundbox_shade_y(bool filled,
+                              float minx,
+                              float miny,
+                              float maxx,
+                              float maxy,
+                              float rad,
+                              float shadeleft,
+                              float shaderight,
+                              const float col[4])
 {
   float vec[7][2] = {
-    {0.195, 0.02}, {0.383, 0.067}, {0.55, 0.169}, {0.707, 0.293},
-    {0.831, 0.45}, {0.924, 0.617}, {0.98, 0.805},
+      {0.195, 0.02},
+      {0.383, 0.067},
+      {0.55, 0.169},
+      {0.707, 0.293},
+      {0.831, 0.45},
+      {0.924, 0.617},
+      {0.98, 0.805},
   };
   const float div = maxx - minx;
   const float idiv = 1.0f / div;
@@ -466,13 +490,12 @@ void UI_draw_roundbox_shade_y(
   immBindBuiltinProgram(GPU_SHADER_2D_SMOOTH_COLOR);
 
   /* 'shade' defines strength of shading */
-  colLeft[0]  = min_ff(1.0f, col[0] + shadeleft);
-  colLeft[1]  = min_ff(1.0f, col[1] + shadeleft);
-  colLeft[2]  = min_ff(1.0f, col[2] + shadeleft);
+  colLeft[0] = min_ff(1.0f, col[0] + shadeleft);
+  colLeft[1] = min_ff(1.0f, col[1] + shadeleft);
+  colLeft[2] = min_ff(1.0f, col[2] + shadeleft);
   colRight[0] = max_ff(0.0f, col[0] + shaderight);
   colRight[1] = max_ff(0.0f, col[1] + shaderight);
   colRight[2] = max_ff(0.0f, col[2] + shaderight);
-
 
   vert_count += (roundboxtype & UI_CNR_BOTTOM_RIGHT) ? 9 : 1;
   vert_count += (roundboxtype & UI_CNR_TOP_RIGHT) ? 9 : 1;
@@ -1310,12 +1333,14 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(ar),
   const float skin_rad = DEG2RADF(123.0f); /* angle in radians of the skin tone line */
   Scopes *scopes = (Scopes *)but->poin;
 
-  const float colors[6][3] = {{0.75, 0.0, 0.0},
-                              {0.75, 0.75, 0.0},
-                              {0.0, 0.75, 0.0},
-                              {0.0, 0.75, 0.75},
-                              {0.0, 0.0, 0.75},
-                              {0.75, 0.0, 0.75}};
+  const float colors[6][3] = {
+      {0.75, 0.0, 0.0},
+      {0.75, 0.75, 0.0},
+      {0.0, 0.75, 0.0},
+      {0.0, 0.75, 0.75},
+      {0.0, 0.0, 0.75},
+      {0.75, 0.0, 0.75},
+  };
 
   rctf rect = {
       .xmin = (float)recti->xmin + 1,
@@ -1585,16 +1610,10 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
   immBindBuiltinProgram(GPU_SHADER_2D_CHECKER);
 
   /* Drawing the checkerboard. */
-  immUniform4f("color1",
-               UI_ALPHA_CHECKER_DARK / 255.0f,
-               UI_ALPHA_CHECKER_DARK / 255.0f,
-               UI_ALPHA_CHECKER_DARK / 255.0f,
-               1.0f);
-  immUniform4f("color2",
-               UI_ALPHA_CHECKER_LIGHT / 255.0f,
-               UI_ALPHA_CHECKER_LIGHT / 255.0f,
-               UI_ALPHA_CHECKER_LIGHT / 255.0f,
-               1.0f);
+  const float checker_dark = UI_ALPHA_CHECKER_DARK / 255.0f;
+  const float checker_light = UI_ALPHA_CHECKER_LIGHT / 255.0f;
+  immUniform4f("color1", checker_dark, checker_dark, checker_dark, 1.0f);
+  immUniform4f("color2", checker_light, checker_light, checker_light, 1.0f);
   immUniform1i("size", 8);
   immRectf(pos_id, x1, y1, x1 + sizex, rect->ymax);
   immUnbindProgram();
@@ -1779,12 +1798,12 @@ static void ui_draw_but_curve_grid(
                       1.0f);
 
   immBegin(GPU_PRIM_LINES, (int)line_count * 2);
-  while (fx < rect->xmax) {
+  while (fx <= rect->xmax) {
     immVertex2f(pos, fx, rect->ymin);
     immVertex2f(pos, fx, rect->ymax);
     fx += dx;
   }
-  while (fy < rect->ymax) {
+  while (fy <= rect->ymax) {
     immVertex2f(pos, rect->xmin, fy);
     immVertex2f(pos, rect->xmax, fy);
     fy += dy;
@@ -1824,6 +1843,17 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
     cumap = (CurveMapping *)but->poin;
   }
 
+  /* calculate offset and zoom */
+  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&cumap->curr);
+  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&cumap->curr);
+  float offsx = cumap->curr.xmin - (1.0f / zoomx);
+  float offsy = cumap->curr.ymin - (1.0f / zoomy);
+
+  /* exit early if too narrow */
+  if (zoomx == 0.0f) {
+    return;
+  }
+
   CurveMap *cuma = &cumap->cm[cumap->cur];
 
   /* need scissor test, curve can draw outside of boundary */
@@ -1841,12 +1871,6 @@ void ui_draw_but_CURVE(ARegion *ar, uiBut *but, const uiWidgetColors *wcol, cons
               scissor_new.ymin,
               BLI_rcti_size_x(&scissor_new),
               BLI_rcti_size_y(&scissor_new));
-
-  /* calculate offset and zoom */
-  float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&cumap->curr);
-  float zoomy = (BLI_rcti_size_y(rect) - 2.0f) / BLI_rctf_size_y(&cumap->curr);
-  float offsx = cumap->curr.xmin - (1.0f / zoomx);
-  float offsy = cumap->curr.ymin - (1.0f / zoomy);
 
   /* Do this first to not mess imm context */
   if (but->a1 == UI_GRAD_H) {
@@ -2461,7 +2485,8 @@ void ui_draw_dropshadow(
     /* alpha ranges from 2 to 20 or so */
 #if 0 /* Old Method (pre 2.8) */
     float color[4] = {0.0f, 0.0f, 0.0f, calpha};
-    UI_draw_roundbox_4fv(true, rct->xmin - a, rct->ymin - a, rct->xmax + a, rct->ymax - 10.0f + a, rad + a, color);
+    UI_draw_roundbox_4fv(
+        true, rct->xmin - a, rct->ymin - a, rct->xmax + a, rct->ymax - 10.0f + a, rad + a, color);
 #endif
     /* Compute final visibility to match old method result. */
     /* TODO we could just find a better fit function inside the shader instead of this. */

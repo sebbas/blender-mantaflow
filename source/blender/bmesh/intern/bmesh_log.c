@@ -307,9 +307,11 @@ static void bm_log_faces_restore(BMesh *bm, BMLog *log, GHash *faces)
   GHASH_ITER (gh_iter, faces) {
     void *key = BLI_ghashIterator_getKey(&gh_iter);
     BMLogFace *lf = BLI_ghashIterator_getValue(&gh_iter);
-    BMVert *v[3] = {bm_log_vert_from_id(log, lf->v_ids[0]),
-                    bm_log_vert_from_id(log, lf->v_ids[1]),
-                    bm_log_vert_from_id(log, lf->v_ids[2])};
+    BMVert *v[3] = {
+        bm_log_vert_from_id(log, lf->v_ids[0]),
+        bm_log_vert_from_id(log, lf->v_ids[1]),
+        bm_log_vert_from_id(log, lf->v_ids[2]),
+    };
     BMFace *f;
 
     f = BM_face_create_verts(bm, v, 3, NULL, BM_CREATE_NOP, true);
@@ -728,8 +730,8 @@ void BM_log_entry_drop(BMLogEntry *entry)
      * Also, design wise, a first entry should not have any deleted vertices since it
      * should not have anything to delete them -from-
      */
-    //bm_log_id_ghash_release(log, entry->deleted_faces);
-    //bm_log_id_ghash_release(log, entry->deleted_verts);
+    // bm_log_id_ghash_release(log, entry->deleted_faces);
+    // bm_log_id_ghash_release(log, entry->deleted_verts);
   }
   else if (!entry->next) {
     /* Release IDs of elements that are added by this entry. Since
@@ -1125,11 +1127,9 @@ void bm_log_print(const BMLog *log, const char *description)
   int i;
 
   printf("%s:\n", description);
-  printf("    % 2d: [ initial ]%s\n", 0,
-         (!log->current_entry) ? current : "");
+  printf("    % 2d: [ initial ]%s\n", 0, (!log->current_entry) ? current : "");
   for (entry = log->entries.first, i = 1; entry; entry = entry->next, i++) {
-    printf("    % 2d: [%p]%s\n", i, entry,
-           (entry == log->current_entry) ? current : "");
+    printf("    % 2d: [%p]%s\n", i, entry, (entry == log->current_entry) ? current : "");
   }
 }
 #endif

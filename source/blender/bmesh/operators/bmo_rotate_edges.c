@@ -116,8 +116,7 @@ static void bm_rotate_edges_shared(
     BMOIter siter;
     BMEdge *e;
     uint i;
-    BMO_ITER_INDEX(e, &siter, op->slots_in, "edges", BM_EDGE, i)
-    {
+    BMO_ITER_INDEX (e, &siter, op->slots_in, "edges", BM_EDGE, i) {
       BM_elem_index_set(e, BM_edge_is_manifold(e) ? i : -1); /* set_dirty! */
       eheap_table[i] = NULL;
     }
@@ -138,8 +137,7 @@ static void bm_rotate_edges_shared(
       BMOIter siter;
       BMEdge *e;
       uint i;
-      BMO_ITER_INDEX(e, &siter, op->slots_in, "edges", BM_EDGE, i)
-      {
+      BMO_ITER_INDEX (e, &siter, op->slots_in, "edges", BM_EDGE, i) {
         BLI_assert(eheap_table[i] == NULL);
 
         bool ok = (BM_elem_index_get(e) != -1) && BM_edge_rotate_check(e);
@@ -153,14 +151,17 @@ static void bm_rotate_edges_shared(
         if (ok) {
           float cost = bm_edge_calc_rotate_cost(e);
           if (pass_type == PASS_TYPE_BOUNDARY) {
-            /* Trick to ensure once started, non boundaries are handled before other boundary edges.
+            /* Trick to ensure once started,
+             * non boundaries are handled before other boundary edges.
              * This means the first longest boundary defines the starting point which is rotated
-             * until all its connected edges are exhausted and the next boundary is popped off the heap.
+             * until all its connected edges are exhausted
+             * and the next boundary is popped off the heap.
              *
              * Without this we may rotate from different starting points and meet in the middle
              * with obviously uneven topology.
              *
-             * Move from negative to positive value, inverting so large values are still handled first.
+             * Move from negative to positive value,
+             * inverting so large values are still handled first.
              */
             cost = cost != 0.0f ? -1.0f / cost : FLT_MAX;
           }
@@ -192,10 +193,12 @@ static void bm_rotate_edges_shared(
 
           /* Note: we could validate all edges which have not been rotated
            * (not just previously degenerate edges).
-           * However there is no real need - they can be left until they're popped off the queue. */
+           * However there is no real need -
+           * they can be left until they're popped off the queue. */
 
           /* We don't know the exact topology after rotating the edge,
-           * so loop over all faces attached to the new edge, typically this will only be two faces. */
+           * so loop over all faces attached to the new edge,
+           * typically this will only be two faces. */
           BMLoop *l_radial_iter = e_rotate->l;
           do {
             /* Skip this edge. */

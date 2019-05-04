@@ -124,7 +124,8 @@ BMFace *BM_face_create_quad_tri(BMesh *bm,
 /**
  * \brief copies face loop data from shared adjacent faces.
  *
- * \param filter_fn: A function that filters the source loops before copying (don't always want to copy all)
+ * \param filter_fn: A function that filters the source loops before copying
+ * (don't always want to copy all).
  *
  * \note when a matching edge is found, both loops of that edge are copied
  * this is done since the face may not be completely surrounded by faces,
@@ -436,12 +437,12 @@ void BM_verts_sort_radial_plane(BMVert **vert_arr, int len)
     far_cross_dist = normalize_v3(far_cross_vec);
 
     /* more of a weight then a distance */
-    far_cross_dist = (/* first we want to have a value close to zero mapped to 1 */
-                      1.0f - fabsf(dot_v3v3(far_vec, far_cross_vec)) *
-
-                                 /* second  we multiply by the distance
-                       * so points close to the center are not preferred */
-                                 far_cross_dist);
+    far_cross_dist = (
+        /* First we want to have a value close to zero mapped to 1. */
+        1.0f - fabsf(dot_v3v3(far_vec, far_cross_vec)) *
+                   /* Second  we multiply by the distance
+                    * so points close to the center are not preferred. */
+                   far_cross_dist);
 
     if (far_cross_dist > far_cross_best || far_cross == NULL) {
       far_cross = vert_arr[i]->co;

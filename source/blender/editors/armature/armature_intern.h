@@ -162,10 +162,11 @@ typedef struct tPChanFCurveLink {
   /** old bbone values (to be restored along with the transform properties) */
   float roll1, roll2;
   /** (NOTE: we haven't renamed these this time, as their names are already long enough) */
-  float curveInX, curveInY;
-  float curveOutX, curveOutY;
+  float curve_in_x, curve_in_y;
+  float curve_out_x, curve_out_y;
   float ease1, ease2;
-  float scaleIn, scaleOut;
+  float scale_in_x, scale_in_y;
+  float scale_out_x, scale_out_y;
 
   /** copy of custom properties at start of operator (to be restored before each modal step) */
   struct IDProperty *oldprops;
@@ -216,8 +217,9 @@ void POSE_OT_propagate(struct wmOperatorType *ot);
 /* ******************************************************* */
 /* Various Armature Edit/Pose Editing API's */
 
-/* Ideally, many of these defines would not be needed as everything would be strictly self-contained
- * within each file, but some tools still have a bit of overlap which makes things messy -- Feb 2013
+/* Ideally, many of these defines would not be needed as everything would be strictly
+ * self-contained within each file,
+ * but some tools still have a bit of overlap which makes things messy -- Feb 2013
  */
 
 EditBone *make_boneList(struct ListBase *edbo, struct ListBase *bones, struct Bone *actBone);

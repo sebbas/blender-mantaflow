@@ -185,7 +185,7 @@ class CYCLES_RENDER_PT_sampling_sub_samples(CyclesButtonsPanel, Panel):
     bl_parent_id = "CYCLES_RENDER_PT_sampling"
 
     @classmethod
-    def poll(self, context):
+    def poll(cls, context):
         scene = context.scene
         cscene = scene.cycles
         return cscene.progressive != 'PATH' and use_branched_path(context)
@@ -256,7 +256,7 @@ class CYCLES_RENDER_PT_sampling_total(CyclesButtonsPanel, Panel):
     bl_parent_id = "CYCLES_RENDER_PT_sampling"
 
     @classmethod
-    def poll(self, context):
+    def poll(cls, context):
         scene = context.scene
         cscene = scene.cycles
 
@@ -312,7 +312,7 @@ class CYCLES_RENDER_PT_subdivision(CyclesButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
-    def poll(self, context):
+    def poll(cls, context):
         return (context.scene.render.engine == 'CYCLES') and (context.scene.cycles.feature_set == 'EXPERIMENTAL')
 
     def draw(self, context):
@@ -358,8 +358,6 @@ class CYCLES_RENDER_PT_hair(CyclesButtonsPanel, Panel):
         layout.active = ccscene.use_curves
 
         col = layout.column()
-        col.prop(ccscene, "minimum_width", text="Min Pixels")
-        col.prop(ccscene, "maximum_width", text="Max Extension")
         col.prop(ccscene, "shape", text="Shape")
         if not (ccscene.primitive in {'CURVE_SEGMENTS', 'LINE_SEGMENTS'} and ccscene.shape == 'RIBBONS'):
             col.prop(ccscene, "cull_backfacing", text="Cull back-faces")
@@ -747,7 +745,6 @@ class CYCLES_RENDER_PT_override(CyclesButtonsPanel, Panel):
 class CYCLES_RENDER_PT_passes(CyclesButtonsPanel, Panel):
     bl_label = "Passes"
     bl_context = "view_layer"
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         pass
@@ -2133,13 +2130,13 @@ classes = (
     CYCLES_RENDER_PT_performance_acceleration_structure,
     CYCLES_RENDER_PT_performance_final_render,
     CYCLES_RENDER_PT_performance_viewport,
-    CYCLES_RENDER_PT_filter,
-    CYCLES_RENDER_PT_override,
     CYCLES_RENDER_PT_passes,
     CYCLES_RENDER_PT_passes_data,
     CYCLES_RENDER_PT_passes_light,
     CYCLES_RENDER_PT_passes_crypto,
     CYCLES_RENDER_PT_passes_debug,
+    CYCLES_RENDER_PT_filter,
+    CYCLES_RENDER_PT_override,
     CYCLES_RENDER_PT_denoising,
     CYCLES_PT_post_processing,
     CYCLES_CAMERA_PT_dof,

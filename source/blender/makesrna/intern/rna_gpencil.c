@@ -1044,7 +1044,8 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "End Cap", "Stroke end extreme cap style");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
-  /* No fill: The stroke never must fill area and must use fill color as stroke color (this is a special flag for fill brush) */
+  /* No fill: The stroke never must fill area and must use fill color as stroke color
+   * (this is a special flag for fill brush). */
   prop = RNA_def_property(srna, "is_nofill_stroke", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_STROKE_NOFILL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -1817,6 +1818,11 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.001, 5);
   RNA_def_property_ui_text(prop, "Surface Offset", "Offset amount when drawing in surface mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
+
+  prop = RNA_def_property(srna, "is_annotation", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_DATA_ANNOTATIONS);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Annotation", "Current datablock is an annotation");
 
   /* Nested Structs */
   prop = RNA_def_property(srna, "grid", PROP_POINTER, PROP_NONE);

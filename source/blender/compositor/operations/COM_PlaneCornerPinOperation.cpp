@@ -43,13 +43,16 @@ static bool check_corners(float corners[4][2])
     sub_v2_v2v2(v2, corners[next], corners[i]);
 
     cur_cross = cross_v2v2(v1, v2);
-    if (fabsf(cur_cross) <= FLT_EPSILON)
+    if (fabsf(cur_cross) <= FLT_EPSILON) {
       return false;
+    }
 
-    if (cross == 0.0f)
+    if (cross == 0.0f) {
       cross = cur_cross;
-    else if (cross * cur_cross < 0.0f)
+    }
+    else if (cross * cur_cross < 0.0f) {
       return false;
+    }
   }
 
   return true;
@@ -125,10 +128,12 @@ void *PlaneCornerPinMaskOperation::initializeTileData(rcti *rect)
    */
   lockMutex();
   if (!m_corners_ready) {
-    SocketReader *readers[4] = {getInputSocketReader(0),
-                                getInputSocketReader(1),
-                                getInputSocketReader(2),
-                                getInputSocketReader(3)};
+    SocketReader *readers[4] = {
+        getInputSocketReader(0),
+        getInputSocketReader(1),
+        getInputSocketReader(2),
+        getInputSocketReader(3),
+    };
     float corners[4][2];
     readCornersFromSockets(rect, readers, corners);
     calculateCorners(corners, true, 0);
@@ -183,10 +188,12 @@ void *PlaneCornerPinWarpImageOperation::initializeTileData(rcti *rect)
   lockMutex();
   if (!m_corners_ready) {
     /* corner sockets start at index 1 */
-    SocketReader *readers[4] = {getInputSocketReader(1),
-                                getInputSocketReader(2),
-                                getInputSocketReader(3),
-                                getInputSocketReader(4)};
+    SocketReader *readers[4] = {
+        getInputSocketReader(1),
+        getInputSocketReader(2),
+        getInputSocketReader(3),
+        getInputSocketReader(4),
+    };
     float corners[4][2];
     readCornersFromSockets(rect, readers, corners);
     calculateCorners(corners, true, 0);
@@ -201,9 +208,11 @@ void *PlaneCornerPinWarpImageOperation::initializeTileData(rcti *rect)
 bool PlaneCornerPinWarpImageOperation::determineDependingAreaOfInterest(
     rcti *input, ReadBufferOperation *readOperation, rcti *output)
 {
-  for (int i = 0; i < 4; ++i)
-    if (getInputOperation(i + 1)->determineDependingAreaOfInterest(input, readOperation, output))
+  for (int i = 0; i < 4; ++i) {
+    if (getInputOperation(i + 1)->determineDependingAreaOfInterest(input, readOperation, output)) {
       return true;
+    }
+  }
 
   /* XXX this is bad, but unavoidable with the current design:
    * we don't know the actual corners and matrix at this point,
@@ -214,5 +223,8 @@ bool PlaneCornerPinWarpImageOperation::determineDependingAreaOfInterest(
   output->xmax = getInputOperation(0)->getWidth();
   output->ymax = getInputOperation(0)->getHeight();
   return true;
-  //  return PlaneDistortWarpImageOperation::determineDependingAreaOfInterest(input, readOperation, output);
+#if 0
+  return PlaneDistortWarpImageOperation::determineDependingAreaOfInterest(
+      input, readOperation, output);
+#endif
 }

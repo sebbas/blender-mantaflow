@@ -61,6 +61,11 @@ void DRW_particle_batch_cache_free(struct ParticleSystem *psys);
 void DRW_gpencil_batch_cache_dirty_tag(struct bGPdata *gpd);
 void DRW_gpencil_batch_cache_free(struct bGPdata *gpd);
 
+/* Garbage collection */
+void DRW_batch_cache_free_old(struct Object *ob, int ctime);
+
+void DRW_mesh_batch_cache_free_old(struct Mesh *me, int ctime);
+
 /* Curve */
 void DRW_curve_batch_cache_create_requested(struct Object *ob);
 
@@ -152,6 +157,7 @@ struct GPUBatch *DRW_mesh_batch_cache_get_edituv_verts(struct Mesh *me);
 struct GPUBatch *DRW_mesh_batch_cache_get_edituv_facedots(struct Mesh *me);
 /* For Image UV editor. */
 struct GPUBatch *DRW_mesh_batch_cache_get_uv_edges(struct Mesh *me);
+struct GPUBatch *DRW_mesh_batch_cache_get_edit_mesh_analysis(struct Mesh *me);
 
 void DRW_mesh_cache_sculpt_coords_ensure(struct Mesh *me);
 
@@ -199,10 +205,19 @@ struct GPUBatch *DRW_particles_batch_cache_get_edit_tip_points(struct Object *ob
                                                                struct PTCacheEdit *edit);
 
 /* Common */
-#define DRW_ADD_FLAG_FROM_VBO_REQUEST(flag, vbo, value) \
-  (flag |= DRW_vbo_requested(vbo) ? (value) : 0)
-#define DRW_ADD_FLAG_FROM_IBO_REQUEST(flag, ibo, value) \
-  (flag |= DRW_ibo_requested(ibo) ? (value) : 0)
+// #define DRW_DEBUG_MESH_CACHE_REQUEST
+
+#ifdef DRW_DEBUG_MESH_CACHE_REQUEST
+#  define DRW_ADD_FLAG_FROM_VBO_REQUEST(flag, vbo, value) \
+    (flag |= DRW_vbo_requested(vbo) ? (printf("  VBO requested " #vbo "\n") ? value : value) : 0)
+#  define DRW_ADD_FLAG_FROM_IBO_REQUEST(flag, ibo, value) \
+    (flag |= DRW_ibo_requested(ibo) ? (printf("  IBO requested " #ibo "\n") ? value : value) : 0)
+#else
+#  define DRW_ADD_FLAG_FROM_VBO_REQUEST(flag, vbo, value) \
+    (flag |= DRW_vbo_requested(vbo) ? (value) : 0)
+#  define DRW_ADD_FLAG_FROM_IBO_REQUEST(flag, ibo, value) \
+    (flag |= DRW_ibo_requested(ibo) ? (value) : 0)
+#endif
 
 /* Test and assign NULL if test fails */
 #define DRW_TEST_ASSIGN_VBO(v) (v = (DRW_vbo_requested(v) ? (v) : NULL))

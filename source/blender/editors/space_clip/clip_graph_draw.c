@@ -111,8 +111,9 @@ static void tracking_segment_knot_cb(void *userdata,
   TrackMotionCurveUserData *data = (TrackMotionCurveUserData *)userdata;
   int sel = 0, sel_flag;
 
-  if (track != data->act_track)
+  if (track != data->act_track) {
     return;
+  }
 
   sel_flag = coord == 0 ? MARKER_GRAPH_SEL_X : MARKER_GRAPH_SEL_Y;
   sel = (marker->flag & sel_flag) ? 1 : 0;
@@ -140,8 +141,9 @@ static void draw_tracks_motion_curves(View2D *v2d, SpaceClip *sc, unsigned int p
 
   BKE_movieclip_get_size(clip, &sc->user, &width, &height);
 
-  if (!width || !height)
+  if (!width || !height) {
     return;
+  }
 
   /* non-selected knot handles */
   userdata.hsize = UI_GetThemeValuef(TH_HANDLE_VERTEX_SIZE);
@@ -337,14 +339,10 @@ void clip_draw_graph(SpaceClip *sc, ARegion *ar, Scene *scene)
 {
   MovieClip *clip = ED_space_clip_get_clip(sc);
   View2D *v2d = &ar->v2d;
-  View2DGrid *grid;
-  short unitx = V2D_UNIT_FRAMESCALE, unity = V2D_UNIT_VALUES;
 
   /* grid */
-  grid = UI_view2d_grid_calc(
-      scene, v2d, unitx, V2D_GRID_NOCLAMP, unity, V2D_GRID_NOCLAMP, ar->winx, ar->winy);
-  UI_view2d_grid_draw(v2d, grid, V2D_GRIDLINES_ALL);
-  UI_view2d_grid_free(grid);
+  UI_view2d_draw_lines_x__values(v2d);
+  UI_view2d_draw_lines_y__values(v2d);
 
   if (clip) {
     uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);

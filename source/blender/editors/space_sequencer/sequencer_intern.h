@@ -42,9 +42,6 @@ struct bContext;
 struct rctf;
 struct wmOperator;
 
-/* space_sequencer.c */
-struct ARegion *sequencer_has_buttons_region(struct ScrArea *sa);
-
 /* sequencer_draw.c */
 void draw_timeline_seq(const struct bContext *C, struct ARegion *ar);
 void sequencer_draw_preview(const struct bContext *C,
@@ -94,7 +91,7 @@ int seq_effect_find_selected(struct Scene *scene,
 /* operator helpers */
 bool sequencer_edit_poll(struct bContext *C);
 /* UNUSED */
-//bool sequencer_strip_poll(struct bContext *C);
+// bool sequencer_strip_poll(struct bContext *C);
 bool sequencer_strip_has_path_poll(struct bContext *C);
 bool sequencer_view_preview_poll(struct bContext *C);
 bool sequencer_view_strips_poll(struct bContext *C);
@@ -210,7 +207,6 @@ struct ImBuf *make_histogram_view_from_ibuf(struct ImBuf *ibuf);
 
 /* sequencer_buttons.c */
 void sequencer_buttons_register(struct ARegionType *art);
-void SEQUENCER_OT_properties(struct wmOperatorType *ot);
 
 /* sequencer_modifiers.c */
 void SEQUENCER_OT_strip_modifier_add(struct wmOperatorType *ot);

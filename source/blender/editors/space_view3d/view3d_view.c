@@ -146,7 +146,7 @@ void ED_view3d_smooth_view_ex(
   }
   sms.org_view = rv3d->view;
 
-  /* sms.to_camera = false; */ /* initizlized to zero anyway */
+  /* sms.to_camera = false; */ /* initialized to zero anyway */
 
   /* note on camera locking, this is a little confusing but works ok.
    * we may be changing the view 'as if' there is no active camera, but in fact
@@ -739,9 +739,16 @@ void view3d_winmatrix_set(Depsgraph *depsgraph, ARegion *ar, const View3D *v3d, 
   rv3d->is_persp = !is_ortho;
 
 #if 0
-  printf("%s: %d %d %f %f %f %f %f %f\n", __func__, winx, winy,
-         viewplane.xmin, viewplane.ymin, viewplane.xmax, viewplane.ymax,
-         clipsta, clipend);
+  printf("%s: %d %d %f %f %f %f %f %f\n",
+         __func__,
+         winx,
+         winy,
+         viewplane.xmin,
+         viewplane.ymin,
+         viewplane.xmax,
+         viewplane.ymax,
+         clipsta,
+         clipend);
 #endif
 
   if (rect) { /* picking */
@@ -858,8 +865,8 @@ void view3d_viewmatrix_set(Depsgraph *depsgraph,
       vec[2] = 0.0f;
 
       if (rect_scale) {
-        /* Since 'RegionView3D.winmat' has been calculated and this function doesn't take the 'ARegion'
-         * we don't know about the region size.
+        /* Since 'RegionView3D.winmat' has been calculated and this function doesn't take the
+         * 'ARegion' we don't know about the region size.
          * Use 'rect_scale' when drawing a sub-region to apply 2D offset,
          * scaled by the difference between the sub-region and the region size.
          */
@@ -1223,7 +1230,7 @@ static bool view3d_localview_init(const Depsgraph *depsgraph,
 
   if (local_view_bit == 0) {
     /* TODO(dfelinto): We can kick one of the other 3D views out of local view
-       specially if it is not being used.  */
+     * specially if it is not being used.  */
     BKE_report(reports, RPT_ERROR, "No more than 16 local views");
     ok = false;
   }

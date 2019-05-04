@@ -144,8 +144,9 @@ void BKE_armature_mat_pose_to_bone_ex(struct Depsgraph *depsgraph,
                                       float outmat[4][4]);
 
 void BKE_pchan_mat3_to_rot(struct bPoseChannel *pchan, float mat[3][3], bool use_compat);
+void BKE_pchan_rot_to_mat3(const struct bPoseChannel *pchan, float mat[3][3]);
 void BKE_pchan_apply_mat4(struct bPoseChannel *pchan, float mat[4][4], bool use_comat);
-void BKE_pchan_to_mat4(struct bPoseChannel *pchan, float chan_mat[4][4]);
+void BKE_pchan_to_mat4(const struct bPoseChannel *pchan, float chan_mat[4][4]);
 void BKE_pchan_calc_mat(struct bPoseChannel *pchan);
 
 /* Simple helper, computes the offset bone matrix. */
@@ -207,8 +208,8 @@ typedef struct BBoneSplineParameters {
   /* Control values. */
   float ease1, ease2;
   float roll1, roll2;
-  float scaleIn, scaleOut;
-  float curveInX, curveInY, curveOutX, curveOutY;
+  float scale_in_x, scale_in_y, scale_out_x, scale_out_y;
+  float curve_in_x, curve_in_y, curve_out_x, curve_out_y;
 } BBoneSplineParameters;
 
 void BKE_pchan_bbone_handles_get(struct bPoseChannel *pchan,
@@ -334,17 +335,6 @@ void BKE_pose_eval_proxy_cleanup(struct Depsgraph *depsgraph, struct Object *obj
 void BKE_pose_eval_proxy_copy_bone(struct Depsgraph *depsgraph,
                                    struct Object *object,
                                    int pchan_index);
-
-/* BBOne deformation cache.
- *
- * The idea here is to pre-calculate deformation queternions, matricies and such
- * used by armature_deform_verts().
- */
-struct ObjectBBoneDeform;
-struct ObjectBBoneDeform *BKE_armature_cached_bbone_deformation_get(struct Object *object);
-void BKE_armature_cached_bbone_deformation_free_data(struct Object *object);
-void BKE_armature_cached_bbone_deformation_free(struct Object *object);
-void BKE_armature_cached_bbone_deformation_update(struct Object *object);
 
 #ifdef __cplusplus
 }

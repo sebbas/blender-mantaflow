@@ -50,8 +50,8 @@ class CurvePoint_nonconst_traits : public Nonconst_traits<CurvePoint *> {
 /*                                */
 /**********************************/
 
-/*! iterator on a curve. Allows an iterating outside  initial vertices. A CurvePoint is instanciated an returned
- *  when the iterator is dereferenced.
+/*! iterator on a curve. Allows an iterating outside  initial vertices. A CurvePoint is
+ * instanciated an returned when the iterator is dereferenced.
  */
 template<class Traits>
 class __point_iterator : public IteratorBase<Traits, BidirectionalIteratorTag_Traits> {
@@ -66,7 +66,7 @@ class __point_iterator : public IteratorBase<Traits, BidirectionalIteratorTag_Tr
   typedef __point_iterator<CurvePoint_const_traits> const_iterator;
 
 #if 0
-  typedef Vertex vertex_type ;
+  typedef Vertex vertex_type;
   typedef vertex_container_iterator vertex_iterator_type;
   typedef CurvePoint<Vertex> Point;
   typedef Point point_type;
@@ -76,7 +76,8 @@ class __point_iterator : public IteratorBase<Traits, BidirectionalIteratorTag_Tr
 #  if defined(__GNUC__) && (__GNUC__ < 3)
   typedef bidirectional_iterator<CurvePoint<Vertex>, ptrdiff_t> bidirectional_point_iterator;
 #  else
-  typedef iterator<bidirectional_iterator_tag, CurvePoint<Vertex>, ptrdiff_t> bidirectional_point_iterator;
+  typedef iterator<bidirectional_iterator_tag, CurvePoint<Vertex>, ptrdiff_t>
+      bidirectional_point_iterator;
 #  endif
 #endif
   friend class Curve;
@@ -85,7 +86,7 @@ class __point_iterator : public IteratorBase<Traits, BidirectionalIteratorTag_Tr
   friend class __point_iterator<CurvePoint_nonconst_traits>;
   friend class iterator;
 #endif
-  //protected:
+  // protected:
  public:
   float _CurvilinearLength;
   float _step;
@@ -168,7 +169,7 @@ class __point_iterator : public IteratorBase<Traits, BidirectionalIteratorTag_Tr
       delete _Point;
   }
 
-  //protected:  //FIXME
+  // protected:  //FIXME
  public:
   inline __point_iterator(vertex_container_iterator iA,
                           vertex_container_iterator iB,
@@ -306,7 +307,7 @@ class __point_iterator : public IteratorBase<Traits, BidirectionalIteratorTag_Tr
     else {
       _t = 1.0f;  // AB is a null segment, we're directly at its end
     }
-    //if normAB ~= 0, we don't change these values
+    // if normAB ~= 0, we don't change these values
     if (_t >= 1) {
       _CurvilinearLength -= normAB * (_t - 1);
       if (_currentn == _n - 1) {

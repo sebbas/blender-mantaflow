@@ -36,9 +36,8 @@ GHOST_WindowSDL::GHOST_WindowSDL(GHOST_SystemSDL *system,
                                  const GHOST_TEmbedderWindowID parentWindow,
                                  GHOST_TDrawingContextType type,
                                  const bool stereoVisual,
-                                 const bool exclusive,
-                                 const GHOST_TUns16 numOfAASamples)
-    : GHOST_Window(width, height, state, stereoVisual, exclusive, numOfAASamples),
+                                 const bool exclusive)
+    : GHOST_Window(width, height, state, stereoVisual, exclusive),
       m_system(system),
       m_valid_setup(false),
       m_invalid_window(false),
@@ -81,7 +80,6 @@ GHOST_Context *GHOST_WindowSDL::newDrawingContext(GHOST_TDrawingContextType type
 {
   if (type == GHOST_kDrawingContextTypeOpenGL) {
     GHOST_Context *context = new GHOST_ContextSDL(m_wantStereoVisual,
-                                                  m_wantNumOfAASamples,
                                                   m_sdl_win,
                                                   0,  // profile bit
                                                   3,
@@ -349,24 +347,26 @@ static unsigned char sdl_std_cursor_mask_sb_h_double_arrow[] = {
     0x18,
     0x0c,
 };
-static unsigned char sdl_std_cursor_sb_h_double_arrow[] = {0x00,
-                                                           0x00,
-                                                           0x08,
-                                                           0x08,
-                                                           0x0c,
-                                                           0x18,
-                                                           0xfe,
-                                                           0x3f,
-                                                           0x0f,
-                                                           0x78,
-                                                           0xfe,
-                                                           0x3f,
-                                                           0x0c,
-                                                           0x18,
-                                                           0x08,
-                                                           0x08,
-                                                           0x00,
-                                                           0x00};
+static unsigned char sdl_std_cursor_sb_h_double_arrow[] = {
+    0x00,
+    0x00,
+    0x08,
+    0x08,
+    0x0c,
+    0x18,
+    0xfe,
+    0x3f,
+    0x0f,
+    0x78,
+    0xfe,
+    0x3f,
+    0x0c,
+    0x18,
+    0x08,
+    0x08,
+    0x00,
+    0x00,
+};
 #define sdl_std_cursor_WIDTH_sb_h_double_arrow 15
 #define sdl_std_cursor_HEIGHT_sb_h_double_arrow 9
 #define sdl_std_cursor_HOT_X_sb_h_double_arrow -7
@@ -621,7 +621,7 @@ static void sdl_cursor_init(void)
   DEF_CURSOR(bottom_right_corner, GHOST_kStandardCursorBottomRightCorner);
   DEF_CURSOR(bottom_left_corner, GHOST_kStandardCursorBottomLeftCorner);
   DEF_CURSOR(arrow, GHOST_kStandardCursorCopy);
-  //DEF_CURSOR(arrow, GHOST_kStandardCursorCustom);
+  // DEF_CURSOR(arrow, GHOST_kStandardCursorCustom);
   DEF_CURSOR(arrow, GHOST_kStandardCursorPencil);
 
 #undef DEF_CURSOR

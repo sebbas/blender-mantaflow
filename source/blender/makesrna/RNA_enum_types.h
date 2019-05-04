@@ -44,7 +44,6 @@ extern const EnumPropertyItem rna_enum_metaelem_type_items[];
 
 extern const EnumPropertyItem rna_enum_proportional_falloff_items[];
 extern const EnumPropertyItem rna_enum_proportional_falloff_curve_only_items[];
-extern const EnumPropertyItem rna_enum_proportional_editing_items[];
 extern const EnumPropertyItem rna_enum_snap_target_items[];
 extern const EnumPropertyItem rna_enum_snap_element_items[];
 extern const EnumPropertyItem rna_enum_snap_node_element_items[];
@@ -115,6 +114,7 @@ extern const EnumPropertyItem rna_enum_operator_return_items[];
 extern const EnumPropertyItem rna_enum_operator_property_tags[];
 
 extern const EnumPropertyItem rna_enum_brush_sculpt_tool_items[];
+extern const EnumPropertyItem rna_enum_brush_uv_sculpt_tool_items[];
 extern const EnumPropertyItem rna_enum_brush_vertex_tool_items[];
 extern const EnumPropertyItem rna_enum_brush_weight_tool_items[];
 extern const EnumPropertyItem rna_enum_brush_gpencil_types_items[];
@@ -248,7 +248,12 @@ const EnumPropertyItem *RNA_action_itemf(struct bContext *C,
                                          struct PointerRNA *ptr,
                                          struct PropertyRNA *prop,
                                          bool *r_free);
-// EnumPropertyItem *RNA_action_local_itemf(struct bContext *C, struct PointerRNA *ptr, struct PropertyRNA *prop, bool *r_free);
+#if 0
+EnumPropertyItem *RNA_action_local_itemf(struct bContext *C,
+                                         struct PointerRNA *ptr,
+                                         struct PropertyRNA *prop,
+                                         bool *r_free);
+#endif
 const EnumPropertyItem *RNA_collection_itemf(struct bContext *C,
                                              struct PointerRNA *ptr,
                                              struct PropertyRNA *prop,

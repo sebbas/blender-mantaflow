@@ -134,8 +134,6 @@ void draw_object_select_id(struct Depsgraph *depsgraph,
                            struct Object *ob,
                            short select_mode);
 
-void draw_object_depth(RegionView3D *rv3d, struct Object *ob);
-
 int view3d_effective_drawtype(const struct View3D *v3d);
 
 /* view3d_draw.c */
@@ -234,7 +232,6 @@ void viewzoom_modal_keymap(struct wmKeyConfig *keyconf);
 void viewdolly_modal_keymap(struct wmKeyConfig *keyconf);
 
 /* view3d_buttons.c */
-void VIEW3D_OT_properties(struct wmOperatorType *ot);
 void VIEW3D_OT_object_mode_pie_or_toggle(struct wmOperatorType *ot);
 void view3d_buttons_register(struct ARegionType *art);
 
@@ -267,9 +264,6 @@ void VIEW3D_OT_snap_cursor_to_selected(struct wmOperatorType *ot);
 void VIEW3D_OT_snap_cursor_to_active(struct wmOperatorType *ot);
 
 /* space_view3d.c */
-struct ARegion *view3d_has_buttons_region(struct ScrArea *sa);
-struct ARegion *view3d_has_tools_region(struct ScrArea *sa);
-
 extern const char *view3d_context_dir[]; /* doc access */
 
 /* view3d_widgets.c */

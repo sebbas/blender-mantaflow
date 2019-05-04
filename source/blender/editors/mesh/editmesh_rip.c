@@ -86,8 +86,7 @@ static float edbm_rip_edgedist_squared(ARegion *ar,
 
 #if 0
 static float edbm_rip_linedist(
-        ARegion *ar, float mat[4][4],
-        const float co1[3], const float co2[3], const float mvalf[2])
+    ARegion *ar, float mat[4][4], const float co1[3], const float co2[3], const float mvalf[2])
 {
   float vec1[2], vec2[2];
 
@@ -171,23 +170,26 @@ static float edbm_rip_edge_side_measure(
  *
  * The method used for checking the side of selection is as follows...
  * - First tag all rip-able edges.
- * - Build a contiguous edge list by looping over tagged edges and following each ones tagged siblings in both
- *   directions.
- *   - The loops are not stored in an array, Instead both loops on either side of each edge has its index values set
- *     to count down from the last edge, this way, once we have the 'last' edge its very easy to walk down the
- *     connected edge loops.
- *     The reason for using loops like this is because when the edges are split we don't which face user gets the newly
- *     created edge (its as good as random so we cant assume new edges will be on once side).
- *     After splitting, its very simple to walk along boundary loops since each only has one edge from a single side.
- * - The end loop pairs are stored in an array however to support multiple edge-selection-islands, so you can rip
- *   multiple selections at once.
+ * - Build a contiguous edge list by looping over tagged edges and following each ones tagged
+ *   siblings in both directions.
+ *   - The loops are not stored in an array, Instead both loops on either side of each edge has
+ *     its index values set to count down from the last edge, this way, once we have the 'last'
+ *     edge its very easy to walk down the connected edge loops.
+ *     The reason for using loops like this is because when the edges are split we don't which
+ *     face user gets the newly created edge
+ *     (its as good as random so we cant assume new edges will be on once side).
+ *     After splitting, its very simple to walk along boundary loops since each only has one edge
+ *     from a single side.
+ * - The end loop pairs are stored in an array however to support multiple edge-selection-islands,
+ *   so you can rip multiple selections at once.
  * - * Execute the split *
- * - For each #EdgeLoopPair walk down both sides of the split using the loops and measure which is facing the mouse.
+ * - For each #EdgeLoopPair walk down both sides of the split using the loops and measure
+ *   which is facing the mouse.
  * - Deselect the edge loop facing away.
  *
  * Limitation!
- * This currently works very poorly with intersecting edge islands (verts with more than 2 tagged edges)
- * This is nice to but for now not essential.
+ * This currently works very poorly with intersecting edge islands
+ * (verts with more than 2 tagged edges). This is nice to but for now not essential.
  *
  * - campbell.
  */
@@ -540,8 +542,9 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
     ese.ele = NULL;
 
     BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-      if (BM_elem_flag_test(v, BM_ELEM_SELECT))
+      if (BM_elem_flag_test(v, BM_ELEM_SELECT)) {
         break;
+      }
     }
   }
 
@@ -810,8 +813,9 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
       BM_vert_select_set(bm, v_rip, true);
     }
     else {
-      if (fill_uloop_pairs)
+      if (fill_uloop_pairs) {
         MEM_freeN(fill_uloop_pairs);
+      }
       return OPERATOR_CANCELLED;
     }
   }
@@ -905,6 +909,9 @@ static int edbm_rip_invoke__edge(bContext *C, const wmEvent *event, Object *obed
         if (BM_elem_flag_test(e, BM_ELEM_SELECT)) {
           e_best = e;
           i++;
+          /* Tag the edge verts so we know which verts to rip */
+          BM_elem_flag_enable(e->v1, BM_ELEM_TAG);
+          BM_elem_flag_enable(e->v2, BM_ELEM_TAG);
         }
         totedge_manifold++;
       }
@@ -932,13 +939,14 @@ static int edbm_rip_invoke__edge(bContext *C, const wmEvent *event, Object *obed
                 l_b;
 
         l = BM_loop_other_edge_loop(l, v);
-        /* important edge is manifold else we can be attempting to split off a fan that don't budge,
-         * not crashing but adds duplicate edge. */
+        /* Important edge is manifold else we can be attempting to split off
+         * a fan that don't budge, not crashing but adds duplicate edge. */
         if (BM_edge_is_manifold(l->e)) {
           l = l->radial_next;
 
-          if (totedge_manifold != 3)
+          if (totedge_manifold != 3) {
             l = BM_loop_other_edge_loop(l, v);
+          }
 
           if (l) {
             BLI_assert(!BM_elem_flag_test(l->e, BM_ELEM_TAG));

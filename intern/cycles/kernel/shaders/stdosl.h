@@ -235,15 +235,42 @@ int clamp(int x, int minval, int maxval)
   return max(min(x, maxval), minval);
 }
 #if 0
-normal mix (normal x, normal y, normal a) { return x*(1-a) + y*a; }
-normal mix (normal x, normal y, float  a) { return x*(1-a) + y*a; }
-vector mix (vector x, vector y, vector a) { return x*(1-a) + y*a; }
-vector mix (vector x, vector y, float  a) { return x*(1-a) + y*a; }
-point  mix (point  x, point  y, point  a) { return x*(1-a) + y*a; }
-point  mix (point  x, point  y, float  a) { return x*(1-a) + y*a; }
-color  mix (color  x, color  y, color  a) { return x*(1-a) + y*a; }
-color  mix (color  x, color  y, float  a) { return x*(1-a) + y*a; }
-float  mix (float  x, float  y, float  a) { return x*(1-a) + y*a; }
+normal mix(normal x, normal y, normal a)
+{
+  return x * (1 - a) + y * a;
+}
+normal mix(normal x, normal y, float a)
+{
+  return x * (1 - a) + y * a;
+}
+vector mix(vector x, vector y, vector a)
+{
+  return x * (1 - a) + y * a;
+}
+vector mix(vector x, vector y, float a)
+{
+  return x * (1 - a) + y * a;
+}
+point mix(point x, point y, point a)
+{
+  return x * (1 - a) + y * a;
+}
+point mix(point x, point y, float a)
+{
+  return x * (1 - a) + y * a;
+}
+color mix(color x, color y, color a)
+{
+  return x * (1 - a) + y * a;
+}
+color mix(color x, color y, float a)
+{
+  return x * (1 - a) + y * a;
+}
+float mix(float x, float y, float a)
+{
+  return x * (1 - a) + y * a;
+}
 #else
 normal mix(normal x, normal y, normal a) BUILTIN;
 normal mix(normal x, normal y, float a) BUILTIN;
@@ -360,16 +387,16 @@ point rotate(point p, float angle, point a, point b)
   vector axis = normalize(b - a);
   float cosang, sinang;
   /* Older OSX has major issues with sincos() function,
-     * it's likely a big in OSL or LLVM. For until we've
-     * updated to new versions of this libraries we'll
-     * use a workaround to prevent possible crashes on all
-     * the platforms.
-     *
-     * Shouldn't be that bad because it's mainly used for
-     * anisotropic shader where angle is usually constant.
-     */
+   * it's likely a big in OSL or LLVM. For until we've
+   * updated to new versions of this libraries we'll
+   * use a workaround to prevent possible crashes on all
+   * the platforms.
+   *
+   * Shouldn't be that bad because it's mainly used for
+   * anisotropic shader where angle is usually constant.
+   */
 #if 0
-    sincos (angle, sinang, cosang);
+  sincos(angle, sinang, cosang);
 #else
   sinang = sin(angle);
   cosang = cos(angle);
@@ -398,7 +425,7 @@ point rotate(point p, float angle, point a, point b)
 normal ensure_valid_reflection(normal Ng, vector I, normal N)
 {
   /* The implementation here mirrors the one in kernel_montecarlo.h,
-     * check there for an explanation of the algorithm. */
+   * check there for an explanation of the algorithm. */
 
   float sqr(float x)
   {

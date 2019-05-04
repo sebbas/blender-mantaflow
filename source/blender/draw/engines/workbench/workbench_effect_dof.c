@@ -185,9 +185,12 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
   wpd->dof_blur_tx = DRW_texture_pool_query_2d(
       size[0], size[1], GPU_R11F_G11F_B10F, &draw_engine_workbench_solid);
 #if 0
-  wpd->coc_temp_tx     = DRW_texture_pool_query_2d(shrink_h_size[0], shrink_h_size[1], GPU_RG8, &draw_engine_workbench_solid);
-  wpd->coc_tiles_tx[0] = DRW_texture_pool_query_2d(shrink_w_size[0], shrink_w_size[1], GPU_RG8, &draw_engine_workbench_solid);
-  wpd->coc_tiles_tx[1] = DRW_texture_pool_query_2d(shrink_w_size[0], shrink_w_size[1], GPU_RG8, &draw_engine_workbench_solid);
+  wpd->coc_temp_tx = DRW_texture_pool_query_2d(
+      shrink_h_size[0], shrink_h_size[1], GPU_RG8, &draw_engine_workbench_solid);
+  wpd->coc_tiles_tx[0] = DRW_texture_pool_query_2d(
+      shrink_w_size[0], shrink_w_size[1], GPU_RG8, &draw_engine_workbench_solid);
+  wpd->coc_tiles_tx[1] = DRW_texture_pool_query_2d(
+      shrink_w_size[0], shrink_w_size[1], GPU_RG8, &draw_engine_workbench_solid);
 #endif
 
   GPU_framebuffer_ensure_config(&fbl->dof_downsample_fb,
@@ -197,18 +200,21 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
                                     GPU_ATTACHMENT_TEXTURE(txl->coc_halfres_tx),
                                 });
 #if 0
-  GPU_framebuffer_ensure_config(&fbl->dof_coc_tile_h_fb, {
-    GPU_ATTACHMENT_NONE,
-    GPU_ATTACHMENT_TEXTURE(wpd->coc_temp_tx),
-  });
-  GPU_framebuffer_ensure_config(&fbl->dof_coc_tile_v_fb, {
-    GPU_ATTACHMENT_NONE,
-    GPU_ATTACHMENT_TEXTURE(wpd->coc_tiles_tx[0]),
-  });
-  GPU_framebuffer_ensure_config(&fbl->dof_coc_dilate_fb, {
-    GPU_ATTACHMENT_NONE,
-    GPU_ATTACHMENT_TEXTURE(wpd->coc_tiles_tx[1]),
-  });
+  GPU_framebuffer_ensure_config(&fbl->dof_coc_tile_h_fb,
+                                {
+                                    GPU_ATTACHMENT_NONE,
+                                    GPU_ATTACHMENT_TEXTURE(wpd->coc_temp_tx),
+                                });
+  GPU_framebuffer_ensure_config(&fbl->dof_coc_tile_v_fb,
+                                {
+                                    GPU_ATTACHMENT_NONE,
+                                    GPU_ATTACHMENT_TEXTURE(wpd->coc_tiles_tx[0]),
+                                });
+  GPU_framebuffer_ensure_config(&fbl->dof_coc_dilate_fb,
+                                {
+                                    GPU_ATTACHMENT_NONE,
+                                    GPU_ATTACHMENT_TEXTURE(wpd->coc_tiles_tx[1]),
+                                });
 #endif
   GPU_framebuffer_ensure_config(&fbl->dof_blur1_fb,
                                 {
@@ -237,9 +243,10 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
     /* TODO(fclem) deduplicate with eevee */
 
     /* this is factor that converts to the scene scale. focal length and sensor are expressed in mm
-     * unit.scale_length is how many meters per blender unit we have. We want to convert to blender units though
-     * because the shader reads coordinates in world space, which is in blender units.
-     * Note however that focus_distance is already in blender units and shall not be scaled here (see T48157). */
+     * unit.scale_length is how many meters per blender unit we have. We want to convert to blender
+     * units though because the shader reads coordinates in world space, which is in blender units.
+     * Note however that focus_distance is already in blender units and shall not be scaled here
+     * (see T48157). */
     float scale = (scene_eval->unit.system) ? scene_eval->unit.scale_length : 1.0f;
     float scale_camera = 0.001f / scale;
     /* we want radius here for the aperture number  */
@@ -318,12 +325,14 @@ void workbench_dof_create_pass(WORKBENCH_Data *vedata,
   }
 #if 0
   {
-    DRWShadingGroup *grp = DRW_shgroup_create(e_data.effect_dof_flatten_h_sh, psl->dof_flatten_h_ps);
+    DRWShadingGroup *grp = DRW_shgroup_create(e_data.effect_dof_flatten_h_sh,
+                                              psl->dof_flatten_h_ps);
     DRW_shgroup_uniform_texture(grp, "inputCocTex", txl->coc_halfres_tx);
     DRW_shgroup_call_add(grp, quad, NULL);
   }
   {
-    DRWShadingGroup *grp = DRW_shgroup_create(e_data.effect_dof_flatten_v_sh, psl->dof_flatten_v_ps);
+    DRWShadingGroup *grp = DRW_shgroup_create(e_data.effect_dof_flatten_v_sh,
+                                              psl->dof_flatten_v_ps);
     DRW_shgroup_uniform_texture(grp, "inputCocTex", wpd->coc_temp_tx);
     DRW_shgroup_call_add(grp, quad, NULL);
   }

@@ -151,8 +151,9 @@ static void check_unused_keys(MovieCache *cache)
       PRINT("%s: cache '%s' remove item %p without buffer\n", __func__, cache->name, item);
     }
 
-    if (remove)
+    if (remove) {
       BLI_ghash_remove(cache->hash, key, moviecache_keyfree, moviecache_valfree);
+    }
   }
 }
 
@@ -185,55 +186,24 @@ static void IMB_moviecache_destructor(void *p)
   }
 }
 
-/* approximate size of ImBuf in memory */
-static size_t IMB_get_size_in_memory(ImBuf *ibuf)
+static size_t get_size_in_memory(ImBuf *ibuf)
 {
-  int a;
-  size_t size = 0, channel_size = 0;
-
-  /* Persistent images should have no affect on how "normal"
-   * images are cached.
-   *
-   * This is a bit arbitrary, but would make it so only movies
-   * and sequences are memory limited, keeping textures in the
-   * memory in order to avoid constant file reload on viewport
-   * update.
-   */
+  /* Keep textures in the memory to avoid constant file reload on viewport update. */
   if (ibuf->userflags & IB_PERSISTENT) {
     return 0;
   }
-
-  size += sizeof(ImBuf);
-
-  if (ibuf->rect)
-    channel_size += sizeof(char);
-
-  if (ibuf->rect_float)
-    channel_size += sizeof(float);
-
-  size += channel_size * ibuf->x * ibuf->y * ibuf->channels;
-
-  if (ibuf->miptot) {
-    for (a = 0; a < ibuf->miptot; a++) {
-      if (ibuf->mipmap[a])
-        size += IMB_get_size_in_memory(ibuf->mipmap[a]);
-    }
+  else {
+    return IMB_get_size_in_memory(ibuf);
   }
-
-  if (ibuf->tiles) {
-    size += sizeof(unsigned int) * ibuf->ytiles * ibuf->xtiles;
-  }
-
-  return size;
 }
-
 static size_t get_item_size(void *p)
 {
   size_t size = sizeof(MovieCacheItem);
   MovieCacheItem *item = (MovieCacheItem *)p;
 
-  if (item->ibuf)
-    size += IMB_get_size_in_memory(item->ibuf);
+  if (item->ibuf) {
+    size += get_size_in_memory(item->ibuf);
+  }
 
   return size;
 }
@@ -285,8 +255,9 @@ void IMB_moviecache_init(void)
 
 void IMB_moviecache_destruct(void)
 {
-  if (limitor)
+  if (limitor) {
     delete_MEM_CacheLimiter(limitor);
+  }
 }
 
 MovieCache *IMB_moviecache_create(const char *name,
@@ -338,8 +309,9 @@ static void do_moviecache_put(MovieCache *cache, void *userkey, ImBuf *ibuf, boo
   MovieCacheKey *key;
   MovieCacheItem *item;
 
-  if (!limitor)
+  if (!limitor) {
     IMB_moviecache_init();
+  }
 
   IMB_refImBuf(ibuf);
 
@@ -367,8 +339,9 @@ static void do_moviecache_put(MovieCache *cache, void *userkey, ImBuf *ibuf, boo
     memcpy(cache->last_userkey, userkey, cache->keysize);
   }
 
-  if (need_lock)
+  if (need_lock) {
     BLI_mutex_lock(&limitor_lock);
+  }
 
   item->c_handle = MEM_CacheLimiter_insert(limitor, item);
 
@@ -376,8 +349,9 @@ static void do_moviecache_put(MovieCache *cache, void *userkey, ImBuf *ibuf, boo
   MEM_CacheLimiter_enforce_limits(limitor);
   MEM_CacheLimiter_unref(item->c_handle);
 
-  if (need_lock)
+  if (need_lock) {
     BLI_mutex_unlock(&limitor_lock);
+  }
 
   /* cache limiter can't remove unused keys which points to destroyed values */
   check_unused_keys(cache);
@@ -398,7 +372,7 @@ bool IMB_moviecache_put_if_possible(MovieCache *cache, void *userkey, ImBuf *ibu
   size_t mem_in_use, mem_limit, elem_size;
   bool result = false;
 
-  elem_size = IMB_get_size_in_memory(ibuf);
+  elem_size = get_size_in_memory(ibuf);
   mem_limit = MEM_CacheLimiter_get_maximum();
 
   BLI_mutex_lock(&limitor_lock);
@@ -460,11 +434,13 @@ void IMB_moviecache_free(MovieCache *cache)
   BLI_mempool_destroy(cache->items_pool);
   BLI_mempool_destroy(cache->userkeys_pool);
 
-  if (cache->points)
+  if (cache->points) {
     MEM_freeN(cache->points);
+  }
 
-  if (cache->last_userkey)
+  if (cache->last_userkey) {
     MEM_freeN(cache->last_userkey);
+  }
 
   MEM_freeN(cache);
 }
@@ -500,12 +476,14 @@ void IMB_moviecache_get_cache_segments(
   *totseg_r = 0;
   *points_r = NULL;
 
-  if (!cache->getdatafp)
+  if (!cache->getdatafp) {
     return;
+  }
 
   if (cache->proxy != proxy || cache->render_flags != render_flags) {
-    if (cache->points)
+    if (cache->points) {
       MEM_freeN(cache->points);
+    }
 
     cache->points = NULL;
   }
@@ -529,8 +507,9 @@ void IMB_moviecache_get_cache_segments(
       if (item->ibuf) {
         cache->getdatafp(key->userkey, &framenr, &curproxy, &curflags);
 
-        if (curproxy == proxy && curflags == render_flags)
+        if (curproxy == proxy && curflags == render_flags) {
           frames[a++] = framenr;
+        }
       }
     }
 
@@ -538,11 +517,13 @@ void IMB_moviecache_get_cache_segments(
 
     /* count */
     for (a = 0; a < totframe; a++) {
-      if (a && frames[a] - frames[a - 1] != 1)
+      if (a && frames[a] - frames[a - 1] != 1) {
         totseg++;
+      }
 
-      if (a == totframe - 1)
+      if (a == totframe - 1) {
         totseg++;
+      }
     }
 
     if (totseg) {
@@ -552,16 +533,18 @@ void IMB_moviecache_get_cache_segments(
 
       /* fill */
       for (a = 0, b = 0; a < totframe; a++) {
-        if (a == 0)
+        if (a == 0) {
           points[b++] = frames[a];
+        }
 
         if (a && frames[a] - frames[a - 1] != 1) {
           points[b++] = frames[a - 1];
           points[b++] = frames[a];
         }
 
-        if (a == totframe - 1)
+        if (a == totframe - 1) {
           points[b++] = frames[a];
+        }
       }
 
       *totseg_r = totseg;

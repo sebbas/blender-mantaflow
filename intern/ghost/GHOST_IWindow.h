@@ -205,16 +205,11 @@ class GHOST_IWindow {
 
   /**
    * Gets the current swap interval for swapBuffers.
-   * \param intervalOut pointer to location to return swap interval (left untouched if there is an error)
+   * \param intervalOut pointer to location to return swap interval
+   * (left untouched if there is an error)
    * \return A boolean success indicator of if swap interval was successfully read.
    */
   virtual GHOST_TSuccess getSwapInterval(int &intervalOut) = 0;
-
-  /**
-   * Gets the current swap interval for swapBuffers.
-   * \return Number of AA Samples (0 if there is no multisample buffer)
-   */
-  virtual GHOST_TUns16 getNumOfAASamples() = 0;
 
   /**
    * Activates the drawing context of this window.

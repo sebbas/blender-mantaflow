@@ -455,7 +455,8 @@ bool ED_view3d_win_to_ray_clipped(struct Depsgraph *depsgraph,
  * \param r_ray_start: The world-space point where the ray intersects the window plane.
  * \param r_ray_normal: The normalized world-space direction of towards mval.
  *
- * \note Ignores view near/far clipping, to take this into account use #ED_view3d_win_to_ray_clipped.
+ * \note Ignores view near/far clipping,
+ * to take this into account use #ED_view3d_win_to_ray_clipped.
  */
 void ED_view3d_win_to_ray(const ARegion *ar,
                           const float mval[2],
@@ -498,7 +499,10 @@ void ED_view3d_global_to_vector(const RegionView3D *rv3d, const float coord[3], 
 
 /* very similar to ED_view3d_win_to_3d() but has no advantage, de-duplicating */
 #if 0
-bool view3d_get_view_aligned_coordinate(ARegion *ar, float fp[3], const int mval[2], const bool do_fallback)
+bool view3d_get_view_aligned_coordinate(ARegion *ar,
+                                        float fp[3],
+                                        const int mval[2],
+                                        const bool do_fallback)
 {
   RegionView3D *rv3d = ar->regiondata;
   float dvec[3];
@@ -508,8 +512,7 @@ bool view3d_get_view_aligned_coordinate(ARegion *ar, float fp[3], const int mval
   ret = ED_view3d_project_int_global(ar, fp, mval_cpy, V3D_PROJ_TEST_NOP);
 
   if (ret == V3D_PROJ_RET_OK) {
-    const float mval_f[2] = {(float)(mval_cpy[0] - mval[0]),
-                             (float)(mval_cpy[1] - mval[1])};
+    const float mval_f[2] = {(float)(mval_cpy[0] - mval[0]), (float)(mval_cpy[1] - mval[1])};
     const float zfac = ED_view3d_calc_zfac(rv3d, fp, NULL);
     ED_view3d_win_to_delta(ar, mval_f, dvec, zfac);
     sub_v3_v3(fp, dvec);
@@ -554,8 +557,9 @@ void ED_view3d_win_to_3d(const View3D *v3d,
     copy_v3_v3(ray_origin, rv3d->viewinv[3]);
     ED_view3d_win_to_vector(ar, mval, ray_direction);
 
-    /* note, we could use isect_line_plane_v3() however we want the intersection to be infront of the
-     * view no matter what, so apply the unsigned factor instead */
+    /* note, we could use isect_line_plane_v3()
+     * however we want the intersection to be infront of the view no matter what,
+     * so apply the unsigned factor instead */
     plane_from_point_normal_v3(plane, depth_pt, rv3d->viewinv[2]);
 
     isect_ray_plane_v3(ray_origin, ray_direction, plane, &lambda, false);

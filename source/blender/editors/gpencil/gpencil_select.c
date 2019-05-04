@@ -74,8 +74,9 @@ static bool gpencil_select_poll(bContext *C)
   /* we just need some visible strokes, and to be in editmode or other modes only to catch event */
   if (GPENCIL_ANY_MODE(gpd)) {
     /* TODO: include a check for visible strokes? */
-    if (gpd->layers.first)
+    if (gpd->layers.first) {
       return true;
+    }
   }
 
   return false;
@@ -291,8 +292,9 @@ typedef enum eGP_SelectGrouped {
   /* Select strokes with the same color */
   GP_SEL_SAME_MATERIAL = 1,
 
-  /* TODO: All with same prefix - Useful for isolating all layers for a particular character for instance */
-  /* TODO: All with same appearance - colour/opacity/volumetric/fills ? */
+  /* TODO: All with same prefix -
+   * Useful for isolating all layers for a particular character for instance. */
+  /* TODO: All with same appearance - color/opacity/volumetric/fills ? */
 } eGP_SelectGrouped;
 
 /* ----------------------------------- */
@@ -308,8 +310,9 @@ static void gp_select_same_layer(bContext *C)
     bGPDstroke *gps;
     bool found = false;
 
-    if (gpf == NULL)
+    if (gpf == NULL) {
       continue;
+    }
 
     /* Search for a selected stroke */
     for (gps = gpf->strokes.first; gps; gps = gps->next) {
@@ -621,7 +624,8 @@ static int gpencil_select_more_exec(bContext *C, wmOperator *UNUSED(op))
       int i;
       bool prev_sel;
 
-      /* First Pass: Go in forward order, expanding selection if previous was selected (pre changes)...
+      /* First Pass: Go in forward order,
+       * expanding selection if previous was selected (pre changes).
        * - This pass covers the "after" edges of selection islands
        */
       prev_sel = false;
@@ -705,7 +709,8 @@ static int gpencil_select_less_exec(bContext *C, wmOperator *UNUSED(op))
       int i;
       bool prev_sel;
 
-      /* First Pass: Go in forward order, shrinking selection if previous was not selected (pre changes)...
+      /* First Pass: Go in forward order, shrinking selection
+       * if previous was not selected (pre changes).
        * - This pass covers the "after" edges of selection islands
        */
       prev_sel = false;
@@ -776,9 +781,12 @@ void GPENCIL_OT_select_less(wmOperatorType *ot)
 /** \name Circle Select Operator
  * \{ */
 
-/* Helper to check if a given stroke is within the area */
-/* NOTE: Code here is adapted (i.e. copied directly) from gpencil_paint.c::gp_stroke_eraser_dostroke()
- *       It would be great to de-duplicate the logic here sometime, but that can wait...
+/**
+ * Helper to check if a given stroke is within the area.
+ *
+ * \note Code here is adapted (i.e. copied directly)
+ * from gpencil_paint.c #gp_stroke_eraser_dostroke().
+ * It would be great to de-duplicate the logic here sometime, but that can wait.
  */
 static bool gp_stroke_do_circle_sel(bGPDlayer *gpl,
                                     bGPDstroke *gps,
@@ -1290,6 +1298,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
   bool deselect = RNA_boolean_get(op->ptr, "deselect");
   bool toggle = RNA_boolean_get(op->ptr, "toggle");
   bool whole = RNA_boolean_get(op->ptr, "entire_strokes");
+  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
 
   int mval[2] = {0};
 
@@ -1352,15 +1361,18 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
 
   /* Abort if nothing hit... */
   if (ELEM(NULL, hit_stroke, hit_point)) {
+    if (deselect_all) {
+      /* since left mouse select change, deselect all if click outside any hit */
+      deselect_all_selected(C);
 
-    /* since left mouse select change, deselect all if click outside any hit */
-    deselect_all_selected(C);
+      /* copy on write tag is needed, or else no refresh happens */
+      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
+      DEG_id_tag_update(&gpd->id, ID_RECALC_COPY_ON_WRITE);
+      WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, NULL);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, NULL);
 
-    /* copy on write tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
-    DEG_id_tag_update(&gpd->id, ID_RECALC_COPY_ON_WRITE);
-    WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, NULL);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, NULL);
+      return OPERATOR_FINISHED;
+    }
 
     return OPERATOR_CANCELLED;
   }
@@ -1382,17 +1394,21 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
 
     /* entire stroke's points */
     for (i = 0, pt = hit_stroke->points; i < hit_stroke->totpoints; i++, pt++) {
-      if (deselect == false)
+      if (deselect == false) {
         pt->flag |= GP_SPOINT_SELECT;
-      else
+      }
+      else {
         pt->flag &= ~GP_SPOINT_SELECT;
+      }
     }
 
     /* stroke too... */
-    if (deselect == false)
+    if (deselect == false) {
       hit_stroke->flag |= GP_STROKE_SELECT;
-    else
+    }
+    else {
       hit_stroke->flag &= ~GP_STROKE_SELECT;
+    }
   }
   else {
     /* just the point (and the stroke) */

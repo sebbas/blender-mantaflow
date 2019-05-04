@@ -225,13 +225,13 @@ typedef struct SmokeDomainSettings {
   float cell_size[3];   /* size of simulation cell in local space */
   float global_size[3]; /* global size of domain axises */
   float prev_loc[3];
-  int shift[3];     /* current domain shift in simulation cells */
-  float shift_f[3]; /* exact domain shift */
-  float obj_shift_f
-      [3]; /* how much object has shifted since previous smoke frame (used to "lock" domain while drawing) */
-  float imat[4][4];        /* domain object imat */
-  float obmat[4][4];       /* domain obmat */
-  float fluidmat[4][4];    /* low res fluid matrix */
+  int shift[3];         /* current domain shift in simulation cells */
+  float shift_f[3];     /* exact domain shift */
+  float obj_shift_f[3]; /* how much object has shifted since previous smoke frame (used to "lock"
+                           domain while drawing) */
+  float imat[4][4];     /* domain object imat */
+  float obmat[4][4];    /* domain obmat */
+  float fluidmat[4][4]; /* low res fluid matrix */
   float fluidmat_wt[4][4]; /* high res fluid matrix */
   int base_res[3];         /* initial "non-adapted" resolution */
   int res_min[3];          /* cell min */
@@ -380,7 +380,8 @@ typedef struct SmokeDomainSettings {
   char _pad9[7]; /* unused */
 
   /* pointcache options */
-  /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading old files. */
+  /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading
+   * old files. */
   struct PointCache *point_cache[2]; /* definition is in DNA_object_force_types.h */
   struct ListBase ptcaches[2];
   int cache_comp;
@@ -408,12 +409,18 @@ typedef struct SmokeDomainSettings {
 #define FLUID_FLOW_TEXTURE_MAP_UV 1
 
 /* flags */
-#define FLUID_FLOW_ABSOLUTE (1 << 1)     /* old style emission */
-#define FLUID_FLOW_INITVELOCITY (1 << 2) /* passes particles speed to the smoke */
-#define FLUID_FLOW_TEXTUREEMIT (1 << 3)  /* use texture to control emission speed */
-#define FLUID_FLOW_USE_PART_SIZE \
-  (1 << 4) /* use specific size for particles instead of closest cell */
-#define FLUID_FLOW_USE_INFLOW (1 << 5) /* control when to apply inflow */
+enum {
+  /** Old style emission. */
+  FLUID_FLOW_ABSOLUTE = (1 << 1),
+  /** Passes particles speed to the smoke. */
+  FLUID_FLOW_INITVELOCITY = (1 << 2),
+  /** Use texture to control emission speed. */
+  FLUID_FLOW_TEXTUREEMIT = (1 << 3),
+  /** Use specific size for particles instead of closest cell. */
+  FLUID_FLOW_USE_PART_SIZE = (1 << 4),
+  /* Control when to apply inflow. */
+  FLUID_FLOW_USE_INFLOW = (1 << 5),
+};
 
 typedef struct SmokeFlowSettings {
   /** For fast RNA access. */

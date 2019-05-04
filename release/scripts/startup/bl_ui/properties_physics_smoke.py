@@ -39,6 +39,7 @@ class PhysicButtonsPanel:
     bl_region_type = 'WINDOW'
     bl_context = "physics"
 
+    @staticmethod
     def poll_fluid(context):
         ob = context.object
         if not ((ob and ob.type == 'MESH') and (context.smoke)):
@@ -47,6 +48,7 @@ class PhysicButtonsPanel:
         md = context.smoke
         return md and (context.smoke.smoke_type != 'NONE') and (bpy.app.build_options.manta)
 
+    @staticmethod
     def poll_fluid_domain(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
@@ -54,6 +56,7 @@ class PhysicButtonsPanel:
         md = context.smoke
         return md and (md.smoke_type == 'DOMAIN')
 
+    @staticmethod
     def poll_smoke_domain(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
@@ -64,6 +67,7 @@ class PhysicButtonsPanel:
             return domain.smoke_domain_type in {'GAS'}
         return False
 
+    @staticmethod
     def poll_liquid_domain(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
@@ -74,12 +78,14 @@ class PhysicButtonsPanel:
             return domain.smoke_domain_type in {'LIQUID'}
         return False
 
+    @staticmethod
     def poll_fluid_flow(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
 
         md = context.smoke
         return md and (md.smoke_type == 'FLOW')
+
 
 class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
     bl_label = "Fluid"
@@ -103,6 +109,7 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
         md = context.smoke
 
         layout.prop(md, "smoke_type")
+
 
 class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
     bl_label = "Settings"
@@ -242,6 +249,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 col = flow.column()
                 col.prop(effec, "guiding_mode", text="Guiding Mode")
 
+
 class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Smoke"
     bl_parent_id = 'PHYSICS_PT_manta_fluid'
@@ -273,6 +281,7 @@ class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
         col.prop(domain, "beta", text="Temperature Diff.")
         col = flow.column()
         col.prop(domain, "vorticity")
+
 
 class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
     bl_label = "Dissolve"
@@ -314,6 +323,7 @@ class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "use_dissolve_smoke_log", text="Slow")
+
 
 class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
     bl_label = "Fire"
@@ -988,7 +998,6 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
             if domain.use_mesh:
                 col.prop(domain, "cache_mesh_format", text="Mesh file format")
 
-
         col.prop(domain, "export_manta_script", text="Export Mantaflow Script")
 
 class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
@@ -1110,6 +1119,7 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
         col.prop(domain, "vector_display_type", text="Display As")
         col.prop(domain, "vector_scale")
 
+
 classes = (
     MANTA_MT_presets,
     PHYSICS_PT_manta,
@@ -1134,6 +1144,7 @@ classes = (
     PHYSICS_PT_manta_viewport_display_color,
     PHYSICS_PT_manta_viewport_display_debug,
 )
+
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class

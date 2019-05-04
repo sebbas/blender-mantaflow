@@ -37,10 +37,7 @@ GHOST_SystemSDL::GHOST_SystemSDL() : GHOST_System()
     printf("Error initializing SDL:  %s\n", SDL_GetError());
   }
 
-  /* SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1); */
-  /* SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4); */
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
   SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
@@ -75,8 +72,7 @@ GHOST_IWindow *GHOST_SystemSDL::createWindow(const STR_String &title,
                                parentWindow,
                                type,
                                ((glSettings.flags & GHOST_glStereoVisual) != 0),
-                               exclusive,
-                               glSettings.numOfAASamples);
+                               exclusive);
 
   if (window) {
     if (GHOST_kWindowStateFullScreen == state) {
@@ -145,7 +141,6 @@ GHOST_TUns8 GHOST_SystemSDL::getNumDisplays() const
 GHOST_IContext *GHOST_SystemSDL::createOffscreenContext()
 {
   GHOST_Context *context = new GHOST_ContextSDL(0,
-                                                0,
                                                 NULL,
                                                 0,  // profile bit
                                                 3,
@@ -318,7 +313,7 @@ void GHOST_SystemSDL::processEvent(SDL_Event *sdl_event)
       SDL_WindowEvent &sdl_sub_evt = sdl_event->window;
       GHOST_WindowSDL *window = findGhostWindow(
           SDL_GetWindowFromID_fallback(sdl_sub_evt.windowID));
-      //assert(window != NULL); // can be NULL on close window.
+      // assert(window != NULL); // can be NULL on close window.
 
       switch (sdl_sub_evt.event) {
         case SDL_WINDOWEVENT_EXPOSED:
@@ -360,8 +355,8 @@ void GHOST_SystemSDL::processEvent(SDL_Event *sdl_event)
       GHOST_TInt32 y_root = sdl_sub_evt.y + y_win;
 
 #if 0
-      if (window->getCursorGrabMode() != GHOST_kGrabDisable && window->getCursorGrabMode() != GHOST_kGrabNormal)
-      {
+      if (window->getCursorGrabMode() != GHOST_kGrabDisable &&
+          window->getCursorGrabMode() != GHOST_kGrabNormal) {
         GHOST_TInt32 x_new = x_root;
         GHOST_TInt32 y_new = y_root;
         GHOST_TInt32 x_accum, y_accum;
@@ -390,10 +385,15 @@ void GHOST_SystemSDL::processEvent(SDL_Event *sdl_event)
             SDL_WarpMouseInWindow(sdl_win, x_new - x_win, y_new - y_win);
           }
 
-          g_event = new GHOST_EventCursor(getMilliSeconds(), GHOST_kEventCursorMove, window, x_new, y_new);
+          g_event = new GHOST_EventCursor(
+              getMilliSeconds(), GHOST_kEventCursorMove, window, x_new, y_new);
         }
         else {
-          g_event = new GHOST_EventCursor(getMilliSeconds(), GHOST_kEventCursorMove, window, x_root + x_accum, y_root + y_accum);
+          g_event = new GHOST_EventCursor(getMilliSeconds(),
+                                          GHOST_kEventCursorMove,
+                                          window,
+                                          x_root + x_accum,
+                                          y_root + y_accum);
         }
       }
       else
@@ -453,7 +453,8 @@ void GHOST_SystemSDL::processEvent(SDL_Event *sdl_event)
       assert(window != NULL);
 
       GHOST_TKey gkey = convertSDLKey(sdl_sub_evt.keysym.scancode);
-      /* note, the sdl_sub_evt.keysym.sym is truncated, for unicode support ghost has to be modified */
+      /* note, the sdl_sub_evt.keysym.sym is truncated,
+       * for unicode support ghost has to be modified */
       /* printf("%d\n", sym); */
       if (sym > 127) {
         switch (sym) {
@@ -631,7 +632,7 @@ bool GHOST_SystemSDL::generateWindowExposeEvents()
     (*w_start)->validate();
 
     if (g_event) {
-      //printf("Expose events pushed\n");
+      // printf("Expose events pushed\n");
       pushEvent(g_event);
       anyProcessed = true;
     }
@@ -656,7 +657,7 @@ bool GHOST_SystemSDL::processEvents(bool waitForEvent)
 
       if (next == GHOST_kFireTimeNever) {
         SDL_WaitEventTimeout(NULL, -1);
-        //SleepTillEvent(m_display, -1);
+        // SleepTillEvent(m_display, -1);
       }
       else {
         GHOST_TInt64 maxSleep = next - getMilliSeconds();

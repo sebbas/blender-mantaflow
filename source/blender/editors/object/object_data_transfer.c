@@ -65,11 +65,12 @@ static const EnumPropertyItem DT_layer_items[] = {
      "Vertex Group(s)",
      "Transfer active or all vertex groups"},
 #if 0 /* XXX For now, would like to finish/merge work from 2014 gsoc first. */
-  {DT_TYPE_SHAPEKEY, "SHAPEKEYS", 0, "Shapekey(s)", "Transfer active or all shape keys"},
+    {DT_TYPE_SHAPEKEY, "SHAPEKEYS", 0, "Shapekey(s)", "Transfer active or all shape keys"},
 #endif
-#if 0 /* XXX When SkinModifier is enabled,
-        * it seems to erase its own CD_MVERT_SKIN layer from final DM :( */
-  {DT_TYPE_SKIN, "SKIN", 0, "Skin Weight", "Transfer skin weights"},
+/* XXX When SkinModifier is enabled,
+ * it seems to erase its own CD_MVERT_SKIN layer from final DM :( */
+#if 0
+    {DT_TYPE_SKIN, "SKIN", 0, "Skin Weight", "Transfer skin weights"},
 #endif
     {DT_TYPE_BWEIGHT_VERT, "BEVEL_WEIGHT_VERT", 0, "Bevel Weight", "Transfer bevel weights"},
     {0, "", 0, "Edge Data", ""},
@@ -519,7 +520,8 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 }
 
 /* Used by both OBJECT_OT_data_transfer and OBJECT_OT_datalayout_transfer */
-/* Note this context poll is only really partial, it cannot check for all possible invalid cases. */
+/* Note this context poll is only really partial,
+ * it cannot check for all possible invalid cases. */
 static bool data_transfer_poll(bContext *C)
 {
   Object *ob = ED_object_active_context(C);
@@ -772,8 +774,8 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
   dtmd = (DataTransferModifierData *)edit_modifier_property_get(
       op, ob_act, eModifierType_DataTransfer);
 
-  /* If we have a modifier, we transfer data layout from this modifier's source object to active one.
-   * Else, we transfer data layout from active object to all selected ones. */
+  /* If we have a modifier, we transfer data layout from this modifier's source object to
+   * active one. Else, we transfer data layout from active object to all selected ones. */
   if (dtmd) {
     Object *ob_src = dtmd->ob_source;
     Object *ob_dst = ob_act;
@@ -840,6 +842,7 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
     BLI_freelistN(&ctx_objects);
   }
 
+  DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, NULL);
 
   return OPERATOR_FINISHED;

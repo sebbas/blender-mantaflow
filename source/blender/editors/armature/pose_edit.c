@@ -78,7 +78,8 @@ Object *ED_pose_object_from_context(bContext *C)
   ScrArea *sa = CTX_wm_area(C);
   Object *ob;
 
-  /* since this call may also be used from the buttons window, we need to check for where to get the object */
+  /* Since this call may also be used from the buttons window,
+   * we need to check for where to get the object. */
   if (sa && sa->spacetype == SPACE_PROPERTIES) {
     ob = ED_object_context(C);
   }
@@ -167,7 +168,8 @@ static bool pose_has_protected_selected(Object *ob, short warn)
       }
     }
     if (pchan) {
-      if (warn) error("Cannot change Proxy protected bones");
+      if (warn)
+        error("Cannot change Proxy protected bones");
       return 1;
     }
   }
@@ -261,8 +263,9 @@ static int pose_calculate_paths_invoke(bContext *C, wmOperator *op, const wmEven
 {
   Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
 
-  if (ELEM(NULL, ob, ob->pose))
+  if (ELEM(NULL, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* set default settings from existing/stored settings */
   {
@@ -289,8 +292,9 @@ static int pose_calculate_paths_exec(bContext *C, wmOperator *op)
   Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
   Scene *scene = CTX_data_scene(C);
 
-  if (ELEM(NULL, ob, ob->pose))
+  if (ELEM(NULL, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* grab baking settings from operator settings */
   {
@@ -389,8 +393,9 @@ static int pose_update_paths_exec(bContext *C, wmOperator *UNUSED(op))
   Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
   Scene *scene = CTX_data_scene(C);
 
-  if (ELEM(NULL, ob, scene))
+  if (ELEM(NULL, ob, scene)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* calculate the bones that now have motionpaths... */
   /* TODO: only make for the selected bones? */
@@ -425,8 +430,9 @@ static void ED_pose_clear_paths(Object *ob, bool only_selected)
   bPoseChannel *pchan;
   bool skipped = false;
 
-  if (ELEM(NULL, ob, ob->pose))
+  if (ELEM(NULL, ob, ob->pose)) {
     return;
+  }
 
   /* free the motionpath blocks for all bones - This is easier for users to quickly clear all */
   for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
@@ -442,8 +448,9 @@ static void ED_pose_clear_paths(Object *ob, bool only_selected)
   }
 
   /* if nothing was skipped, there should be no paths left! */
-  if (skipped == false)
+  if (skipped == false) {
     ob->pose->avs.path_bakeflag &= ~MOTIONPATH_BAKE_HAS_PATHS;
+  }
 
   /* tag armature object for copy on write - so removed paths don't still show */
   DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
@@ -456,8 +463,9 @@ static int pose_clear_paths_exec(bContext *C, wmOperator *op)
   bool only_selected = RNA_boolean_get(op->ptr, "only_selected");
 
   /* only continue if there's an object */
-  if (ELEM(NULL, ob, ob->pose))
+  if (ELEM(NULL, ob, ob->pose)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* use the backend function for this */
   ED_pose_clear_paths(ob, only_selected);
@@ -600,8 +608,7 @@ static int pose_autoside_names_exec(bContext *C, wmOperator *op)
   Object *ob_prev = NULL;
 
   /* loop through selected bones, auto-naming them */
-  CTX_DATA_BEGIN_WITH_ID(C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob)
-  {
+  CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     bArmature *arm = ob->data;
     BLI_strncpy(newname, pchan->name, sizeof(newname));
     if (bone_autoside_name(newname, 1, axis, pchan->bone->head[axis], pchan->bone->tail[axis])) {
@@ -658,8 +665,7 @@ static int pose_bone_rotmode_exec(bContext *C, wmOperator *op)
   Object *prev_ob = NULL;
 
   /* set rotation mode of selected bones  */
-  CTX_DATA_BEGIN_WITH_ID(C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob)
-  {
+  CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     pchan->rotmode = mode;
 
     if (prev_ob != ob) {
@@ -735,8 +741,9 @@ static int pose_armature_layers_showall_exec(bContext *C, wmOperator *op)
   int i;
 
   /* sanity checking */
-  if (arm == NULL)
+  if (arm == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   /* use RNA to set the layers
    * although it would be faster to just set directly using bitflags, we still
@@ -744,8 +751,9 @@ static int pose_armature_layers_showall_exec(bContext *C, wmOperator *op)
    */
   RNA_id_pointer_create(&arm->id, &ptr);
 
-  for (i = 0; i < maxLayers; i++)
+  for (i = 0; i < maxLayers; i++) {
     layers[i] = 1;
+  }
 
   RNA_boolean_set_array(&ptr, "layers", layers);
 
@@ -788,10 +796,12 @@ static int armature_layers_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   bool layers[32];
 
   /* sanity checking */
-  if (arm == NULL)
+  if (arm == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
-  /* get RNA pointer to armature data to use that to retrieve the layers as ints to init the operator */
+  /* Get RNA pointer to armature data to use that to retrieve the layers as ints
+   * to init the operator. */
   RNA_id_pointer_create((ID *)arm, &ptr);
   RNA_boolean_get_array(&ptr, "layers", layers);
   RNA_boolean_set_array(op->ptr, "layers", layers);
@@ -886,8 +896,7 @@ static int pose_bone_layers_exec(bContext *C, wmOperator *op)
   Object *prev_ob = NULL;
 
   /* set layers of pchans based on the values set in the operator props */
-  CTX_DATA_BEGIN_WITH_ID(C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob)
-  {
+  CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     /* get pointer for pchan, and write flags this way */
     RNA_pointer_create((ID *)ob->data, &RNA_Bone, pchan->bone, &ptr);
     RNA_boolean_set_array(&ptr, "layers", layers);
@@ -963,8 +972,7 @@ static int armature_bone_layers_exec(bContext *C, wmOperator *op)
   RNA_boolean_get_array(op->ptr, "layers", layers);
 
   /* set layers of pchans based on the values set in the operator props */
-  CTX_DATA_BEGIN_WITH_ID(C, EditBone *, ebone, selected_editable_bones, bArmature *, arm)
-  {
+  CTX_DATA_BEGIN_WITH_ID (C, EditBone *, ebone, selected_editable_bones, bArmature *, arm) {
     /* get pointer for pchan, and write flags this way */
     RNA_pointer_create((ID *)arm, &RNA_EditBone, ebone, &ptr);
     RNA_boolean_set_array(&ptr, "layers", layers);

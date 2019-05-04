@@ -251,8 +251,9 @@ static void rasterize_half(const MBakeRast *bake_rast,
   const int h = bake_rast->h;
   int y, y0, y1;
 
-  if (y1_in <= 0 || y0_in >= h)
+  if (y1_in <= 0 || y0_in >= h) {
     return;
+  }
 
   y0 = y0_in < 0 ? 0 : y0_in;
   y1 = y1_in >= h ? h : y1_in;
@@ -263,8 +264,9 @@ static void rasterize_half(const MBakeRast *bake_rast,
     float x_l = s_stable != 0 ? (s0_s + (((s1_s - s0_s) * (y - t0_s)) / (t1_s - t0_s))) : s0_s;
     float x_r = l_stable != 0 ? (s0_l + (((s1_l - s0_l) * (y - t0_l)) / (t1_l - t0_l))) : s0_l;
 
-    if (is_mid_right != 0)
+    if (is_mid_right != 0) {
       SWAP(float, x_l, x_r);
+    }
 
     iXl = (int)ceilf(x_l);
     iXr = (int)ceilf(x_r);
@@ -273,8 +275,9 @@ static void rasterize_half(const MBakeRast *bake_rast,
       iXl = iXl < 0 ? 0 : iXl;
       iXr = iXr >= w ? w : iXr;
 
-      for (x = iXl; x < iXr; x++)
+      for (x = iXl; x < iXr; x++) {
         set_rast_triangle(bake_rast, x, y);
+      }
     }
   }
 }
@@ -295,8 +298,9 @@ static void bake_rasterize(const MBakeRast *bake_rast,
   int is_mid_right = 0, ylo, yhi, yhi_beg;
 
   /* skip degenerates */
-  if ((slo == smi && tlo == tmi) || (slo == shi && tlo == thi) || (smi == shi && tmi == thi))
+  if ((slo == smi && tlo == tmi) || (slo == shi && tlo == thi) || (smi == shi && tmi == thi)) {
     return;
+  }
 
   /* sort by T */
   if (tlo > tmi && tlo > thi) {
@@ -389,12 +393,14 @@ static void *do_multires_bake_thread(void *data_v)
     const short mat_nr = mp->mat_nr;
     const MLoopUV *mloopuv = data->mloopuv;
 
-    if (multiresbake_test_break(bkr))
+    if (multiresbake_test_break(bkr)) {
       break;
+    }
 
     Image *tri_image = mat_nr < bkr->ob_image.len ? bkr->ob_image.array[mat_nr] : NULL;
-    if (tri_image != handle->image)
+    if (tri_image != handle->image) {
       continue;
+    }
 
     data->tri_index = tri_index;
 
@@ -402,8 +408,9 @@ static void *do_multires_bake_thread(void *data_v)
         bake_rast, mloopuv[lt->tri[0]].uv, mloopuv[lt->tri[1]].uv, mloopuv[lt->tri[2]].uv);
 
     /* tag image buffer for refresh */
-    if (data->ibuf->rect_float)
+    if (data->ibuf->rect_float) {
       data->ibuf->userflags |= IB_RECT_INVALID;
+    }
 
     data->ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
 
@@ -411,13 +418,15 @@ static void *do_multires_bake_thread(void *data_v)
     BLI_spin_lock(&handle->queue->spin);
     bkr->baked_faces++;
 
-    if (bkr->do_update)
+    if (bkr->do_update) {
       *bkr->do_update = true;
+    }
 
-    if (bkr->progress)
+    if (bkr->progress) {
       *bkr->progress = ((float)bkr->baked_objects +
                         (float)bkr->baked_faces / handle->queue->tot_tri) /
                        bkr->tot_obj;
+    }
     BLI_spin_unlock(&handle->queue->spin);
   }
 
@@ -476,18 +485,21 @@ static void do_multires_bake(MultiresBakeRender *bkr,
     void *bake_data = NULL;
 
     if (require_tangent) {
-      if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1)
+      if (CustomData_get_layer_index(&dm->loopData, CD_TANGENT) == -1) {
         DM_calc_loop_tangents(dm, true, NULL, 0);
+      }
 
       pvtangent = DM_get_loop_data_layer(dm, CD_TANGENT);
     }
 
     /* all threads shares the same custom bake data */
-    if (initBakeData)
+    if (initBakeData) {
       bake_data = initBakeData(bkr, ima);
+    }
 
-    if (tot_thread > 1)
+    if (tot_thread > 1) {
       BLI_threadpool_init(&threads, do_multires_bake_thread, tot_thread);
+    }
 
     handles = MEM_callocN(tot_thread * sizeof(MultiresBakeThread), "do_multires_bake handles");
 
@@ -528,15 +540,18 @@ static void do_multires_bake(MultiresBakeRender *bkr,
 
       init_bake_rast(&handle->bake_rast, ibuf, &handle->data, flush_pixel, bkr->do_update);
 
-      if (tot_thread > 1)
+      if (tot_thread > 1) {
         BLI_threadpool_insert(&threads, handle);
+      }
     }
 
     /* run threads */
-    if (tot_thread > 1)
+    if (tot_thread > 1) {
       BLI_threadpool_end(&threads);
-    else
+    }
+    else {
       do_multires_bake_thread(&handles[0]);
+    }
 
     /* construct bake result */
     result->height_min = handles[0].height_min;
@@ -550,8 +565,9 @@ static void do_multires_bake(MultiresBakeRender *bkr,
     BLI_spin_end(&queue.spin);
 
     /* finalize baking */
-    if (freeBakeData)
+    if (freeBakeData) {
       freeBakeData(bake_data);
+    }
 
     MEM_freeN(handles);
 
@@ -658,11 +674,13 @@ static void get_ccgdm_data(DerivedMesh *lodm,
   CLAMP(crn_x, 0.0f, grid_size);
   CLAMP(crn_y, 0.0f, grid_size);
 
-  if (n != NULL)
+  if (n != NULL) {
     interp_bilinear_grid(&key, grid_data[g_index + S], crn_x, crn_y, 0, n);
+  }
 
-  if (co != NULL)
+  if (co != NULL) {
     interp_bilinear_grid(&key, grid_data[g_index + S], crn_x, crn_y, 1, co);
+  }
 }
 
 /* mode = 0: interpolate normals,
@@ -727,9 +745,10 @@ static void *init_heights_data(MultiresBakeRender *bkr, Image *ima)
   DerivedMesh *lodm = bkr->lores_dm;
   BakeImBufuserData *userdata = ibuf->userdata;
 
-  if (userdata->displacement_buffer == NULL)
+  if (userdata->displacement_buffer == NULL) {
     userdata->displacement_buffer = MEM_callocN(sizeof(float) * ibuf->x * ibuf->y,
                                                 "MultiresBake heights");
+  }
 
   height_data = MEM_callocN(sizeof(MHeightBakeData), "MultiresBake heightData");
 
@@ -747,8 +766,9 @@ static void *init_heights_data(MultiresBakeRender *bkr, Image *ima)
       smd.uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_CORNERS;
       smd.quality = 3;
 
-      if (bkr->simple)
+      if (bkr->simple) {
         smd.subdivType = ME_SIMPLE_SUBSURF;
+      }
 
       height_data->ssdm = subsurf_make_derived_from_derived(
           bkr->lores_dm, &smd, bkr->scene, NULL, 0);
@@ -767,8 +787,9 @@ static void free_heights_data(void *bake_data)
 {
   MHeightBakeData *height_data = (MHeightBakeData *)bake_data;
 
-  if (height_data->ssdm)
+  if (height_data->ssdm) {
     height_data->ssdm->release(height_data->ssdm);
+  }
 
   MEM_freeN(height_data);
 }
@@ -984,8 +1005,10 @@ static unsigned short get_ao_random2(const int i)
   return ao_random_table_2[i & (MAX_NUMBER_OF_AO_RAYS - 1)];
 }
 
-static void build_permutation_table(unsigned short permutation[], unsigned short temp_permutation[],
-                                    const int number_of_rays, const int is_first_perm_table)
+static void build_permutation_table(unsigned short permutation[],
+                                    unsigned short temp_permutation[],
+                                    const int number_of_rays,
+                                    const int is_first_perm_table)
 {
   int i, k;
 
@@ -1031,11 +1054,13 @@ static void create_ao_raytree(MultiresBakeRender *bkr, MAOBakeData *ao_data)
   grid_data = hidm->getGridData(hidm);
   hidm->getGridKey(hidm, &key);
 
-  /* face_side = (grid_size << 1) - 1; */  /* UNUSED */
+  /* face_side = (grid_size << 1) - 1; */ /* UNUSED */
   num_faces = num_grids * (grid_size - 1) * (grid_size - 1);
 
-  raytree = ao_data->raytree = RE_rayobject_create(bkr->raytrace_structure, num_faces, bkr->octree_resolution);
-  face = ao_data->rayfaces = (RayFace *)MEM_callocN(num_faces * sizeof(RayFace), "ObjectRen faces");
+  raytree = ao_data->raytree = RE_rayobject_create(
+      bkr->raytrace_structure, num_faces, bkr->octree_resolution);
+  face = ao_data->rayfaces = (RayFace *)MEM_callocN(num_faces * sizeof(RayFace),
+                                                    "ObjectRen faces");
 
   for (i = 0; i < num_grids; i++) {
     int x, y;
@@ -1083,8 +1108,10 @@ static void *init_ao_data(MultiresBakeRender *bkr, Image *UNUSED(ima))
   ao_data->permutation_table_2 = MEM_callocN(permutation_size, "multires AO baker perm2");
   temp_permutation_table = MEM_callocN(permutation_size, "multires AO baker temp perm");
 
-  build_permutation_table(ao_data->permutation_table_1, temp_permutation_table, bkr->number_of_rays, 1);
-  build_permutation_table(ao_data->permutation_table_2, temp_permutation_table, bkr->number_of_rays, 0);
+  build_permutation_table(
+      ao_data->permutation_table_1, temp_permutation_table, bkr->number_of_rays, 1);
+  build_permutation_table(
+      ao_data->permutation_table_2, temp_permutation_table, bkr->number_of_rays, 0);
 
   MEM_freeN(temp_permutation_table);
 
@@ -1113,17 +1140,23 @@ static void build_coordinate_frame(float axisX[3], float axisY[3], const float a
 
   if (faX <= faY && faX <= faZ) {
     const float len = sqrtf(axisZ[1] * axisZ[1] + axisZ[2] * axisZ[2]);
-    axisY[0] = 0; axisY[1] = axisZ[2] / len; axisY[2] = -axisZ[1] / len;
+    axisY[0] = 0;
+    axisY[1] = axisZ[2] / len;
+    axisY[2] = -axisZ[1] / len;
     cross_v3_v3v3(axisX, axisY, axisZ);
   }
   else if (faY <= faZ) {
     const float len = sqrtf(axisZ[0] * axisZ[0] + axisZ[2] * axisZ[2]);
-    axisX[0] = axisZ[2] / len; axisX[1] = 0; axisX[2] = -axisZ[0] / len;
+    axisX[0] = axisZ[2] / len;
+    axisX[1] = 0;
+    axisX[2] = -axisZ[0] / len;
     cross_v3_v3v3(axisY, axisZ, axisX);
   }
   else {
     const float len = sqrtf(axisZ[0] * axisZ[0] + axisZ[1] * axisZ[1]);
-    axisX[0] = axisZ[1] / len; axisX[1] = -axisZ[0] / len; axisX[2] = 0;
+    axisX[0] = axisZ[1] / len;
+    axisX[1] = -axisZ[0] / len;
+    axisX[2] = 0;
     cross_v3_v3v3(axisY, axisZ, axisX);
   }
 }
@@ -1143,9 +1176,17 @@ static int trace_ao_ray(MAOBakeData *ao_data, float ray_start[3], float ray_dire
   return RE_rayobject_raycast(ao_data->raytree, &isect);
 }
 
-static void apply_ao_callback(DerivedMesh *lores_dm, DerivedMesh *hires_dm, void *UNUSED(thread_data),
-                              void *bake_data, ImBuf *ibuf, const int tri_index, const int lvl,
-                              const float st[2], float UNUSED(tangmat[3][3]), const int x, const int y)
+static void apply_ao_callback(DerivedMesh *lores_dm,
+                              DerivedMesh *hires_dm,
+                              void *UNUSED(thread_data),
+                              void *bake_data,
+                              ImBuf *ibuf,
+                              const int tri_index,
+                              const int lvl,
+                              const float st[2],
+                              float UNUSED(tangmat[3][3]),
+                              const int x,
+                              const int y)
 {
   const MLoopTri *lt = lores_dm->getLoopTriArray(lores_dm) + tri_index;
   MPoly *mpoly = lores_dm->getPolyArray(lores_dm) + lt->poly;
@@ -1180,9 +1221,8 @@ static void apply_ao_callback(DerivedMesh *lores_dm, DerivedMesh *hires_dm, void
   CLAMP(uv[0], 0.0f, 1.0f);
   CLAMP(uv[1], 0.0f, 1.0f);
 
-  get_ccgdm_data(lores_dm, hires_dm,
-                 ao_data->orig_index_mp_to_orig,
-                 lvl, lt, uv[0], uv[1], pos, nrm);
+  get_ccgdm_data(
+      lores_dm, hires_dm, ao_data->orig_index_mp_to_orig, lvl, lt, uv[0], uv[1], pos, nrm);
 
   /* offset ray origin by user bias along normal */
   for (i = 0; i < 3; i++)
@@ -1204,11 +1244,14 @@ static void apply_ao_callback(DerivedMesh *lores_dm, DerivedMesh *hires_dm, void
     /* use N-Rooks to distribute our N ray samples across
      * a multi-dimensional domain (2D)
      */
-    const unsigned short I = ao_data->permutation_table_1[(i + perm_offs) % ao_data->number_of_rays];
+    const unsigned short I =
+        ao_data->permutation_table_1[(i + perm_offs) % ao_data->number_of_rays];
     const unsigned short J = ao_data->permutation_table_2[i];
 
-    const float JitPh = (get_ao_random2(I + perm_offs) & (MAX_NUMBER_OF_AO_RAYS - 1)) / ((float)MAX_NUMBER_OF_AO_RAYS);
-    const float JitTh = (get_ao_random1(J + perm_offs) & (MAX_NUMBER_OF_AO_RAYS - 1)) / ((float)MAX_NUMBER_OF_AO_RAYS);
+    const float JitPh = (get_ao_random2(I + perm_offs) & (MAX_NUMBER_OF_AO_RAYS - 1)) /
+                        ((float)MAX_NUMBER_OF_AO_RAYS);
+    const float JitTh = (get_ao_random1(J + perm_offs) & (MAX_NUMBER_OF_AO_RAYS - 1)) /
+                        ((float)MAX_NUMBER_OF_AO_RAYS);
     const float SiSqPhi = (I + JitPh) / ao_data->number_of_rays;
     const float Theta = (float)(2 * M_PI) * ((J + JitTh) / ao_data->number_of_rays);
 
@@ -1288,10 +1331,12 @@ static void bake_ibuf_normalize_displacement(
     if (*current_mask == FILTER_MASK_USED) {
       float normalized_displacement;
 
-      if (max_distance > 1e-5f)
+      if (max_distance > 1e-5f) {
         normalized_displacement = (*current_displacement + max_distance) / (max_distance * 2);
-      else
+      }
+      else {
         normalized_displacement = 0.5f;
+      }
 
       if (ibuf->rect_float) {
         /* currently baking happens to RGBA only */
@@ -1399,8 +1444,9 @@ static void finish_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
     ImBuf *ibuf = BKE_image_acquire_ibuf(ima, NULL, NULL);
     BakeImBufuserData *userdata = (BakeImBufuserData *)ibuf->userdata;
 
-    if (ibuf->x <= 0 || ibuf->y <= 0)
+    if (ibuf->x <= 0 || ibuf->y <= 0) {
       continue;
+    }
 
     if (use_displacement_buffer) {
       bake_ibuf_normalize_displacement(ibuf,
@@ -1414,8 +1460,9 @@ static void finish_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
 
     ibuf->userflags |= IB_BITMAPDIRTY | IB_DISPLAY_BUFFER_INVALID;
 
-    if (ibuf->rect_float)
+    if (ibuf->rect_float) {
       ibuf->userflags |= IB_RECT_INVALID;
+    }
 
     if (ibuf->mipmap[0]) {
       ibuf->userflags |= IB_MIPMAP_INVALID;
@@ -1423,8 +1470,9 @@ static void finish_images(MultiresBakeRender *bkr, MultiresBakeResult *result)
     }
 
     if (ibuf->userdata) {
-      if (userdata->displacement_buffer)
+      if (userdata->displacement_buffer) {
         MEM_freeN(userdata->displacement_buffer);
+      }
 
       MEM_freeN(userdata->mask_buffer);
       MEM_freeN(userdata);

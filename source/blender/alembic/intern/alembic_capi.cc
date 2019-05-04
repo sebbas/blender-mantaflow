@@ -290,8 +290,9 @@ static void export_endjob(void *customdata)
     BLI_delete(data->filename, false, false);
   }
 
-  if (!data->settings.logger.empty()) {
-    std::cerr << data->settings.logger;
+  std::string log = data->settings.logger.str();
+  if (!log.empty()) {
+    std::cerr << log;
     WM_report(RPT_ERROR, "Errors occurred during the export, look in the console to know more...");
   }
 
@@ -626,6 +627,7 @@ struct ImportJobData {
   char filename[1024];
   ImportSettings settings;
 
+  ArchiveReader *archive;
   std::vector<AbcObjectReader *> readers;
 
   short *stop;
@@ -671,9 +673,9 @@ static void import_startjob(void *user_data, short *stop, short *do_update, floa
 
   cache_file->is_sequence = data->settings.is_sequence;
   cache_file->scale = data->settings.scale;
-  cache_file->handle = handle_from_archive(archive);
-  BLI_strncpy(cache_file->filepath, data->filename, 1024);
+  STRNCPY(cache_file->filepath, data->filename);
 
+  data->archive = archive;
   data->settings.cache_file = cache_file;
 
   *data->do_update = true;
@@ -787,8 +789,9 @@ static void import_endjob(void *user_data)
 
       /* It's possible that cancellation occurred between the creation of
        * the reader and the creation of the Blender object. */
-      if (ob == NULL)
+      if (ob == NULL) {
         continue;
+      }
 
       BKE_id_free_us(data->bmain, ob);
     }
@@ -853,6 +856,7 @@ static void import_endjob(void *user_data)
 static void import_freejob(void *user_data)
 {
   ImportJobData *data = static_cast<ImportJobData *>(user_data);
+  delete data->archive;
   delete data;
 }
 
@@ -884,6 +888,7 @@ bool ABC_import(bContext *C,
   job->settings.validate_meshes = validate_meshes;
   job->error_code = ABC_NO_ERROR;
   job->was_cancelled = false;
+  job->archive = NULL;
 
   G.is_break = false;
 

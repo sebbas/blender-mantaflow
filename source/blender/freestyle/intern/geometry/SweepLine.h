@@ -188,8 +188,8 @@ template<class T, class Point> class Segment {
 #  pragma warning(pop)
 #endif
 
-/*! defines a binary function that can be overload by the user to specify at each condition the intersection
- *  between 2 edges must be computed
+/*! defines a binary function that can be overload by the user to specify at each condition the
+ * intersection between 2 edges must be computed
  */
 template<class T1, class T2> struct binary_rule {
   binary_rule()
@@ -226,8 +226,8 @@ template<class T, class Point> class SweepLine {
   inline void process(Point &p,
                       vector<Segment<T, Point> *> &segments,
 #if 0
-                      binary_rule<Segment<T, Point>,Segment<T, Point> >& binrule = \
-                              binary_rule<Segment<T, Point>, Segment<T, Point> >(),
+                      binary_rule<Segment<T, Point>, Segment<T, Point>> &binrule =
+                          binary_rule<Segment<T, Point>, Segment<T, Point>>(),
 #else
                       binary_rule<Segment<T, Point>, Segment<T, Point>> &binrule,
 #endif
@@ -249,8 +249,8 @@ template<class T, class Point> class SweepLine {
 
   inline void add(Segment<T, Point> *S,
 #if 0
-                  binary_rule<Segment<T, Point>, Segment<T, Point> >& binrule = \
-                          binary_rule<Segment<T, Point>, Segment<T, Point> >(),
+                  binary_rule<Segment<T, Point>, Segment<T, Point>> &binrule =
+                      binary_rule<Segment<T, Point>, Segment<T, Point>>(),
 #else
                   binary_rule<Segment<T, Point>, Segment<T, Point>> &binrule,
 #endif

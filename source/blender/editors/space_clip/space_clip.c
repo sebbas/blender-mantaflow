@@ -136,12 +136,14 @@ static void reinit_preview_region(const bContext *C, ARegion *ar)
   SpaceClip *sc = CTX_wm_space_clip(C);
 
   if (sc->view == SC_VIEW_DOPESHEET) {
-    if ((ar->v2d.flag & V2D_VIEWSYNC_AREA_VERTICAL) == 0)
+    if ((ar->v2d.flag & V2D_VIEWSYNC_AREA_VERTICAL) == 0) {
       init_preview_region(scene, sa, sc, ar);
+    }
   }
   else {
-    if (ar->v2d.flag & V2D_VIEWSYNC_AREA_VERTICAL)
+    if (ar->v2d.flag & V2D_VIEWSYNC_AREA_VERTICAL) {
       init_preview_region(scene, sa, sc, ar);
+    }
   }
 }
 
@@ -150,15 +152,17 @@ static ARegion *ED_clip_has_preview_region(const bContext *C, ScrArea *sa)
   ARegion *ar, *arnew;
 
   ar = BKE_area_find_region_type(sa, RGN_TYPE_PREVIEW);
-  if (ar)
+  if (ar) {
     return ar;
+  }
 
   /* add subdiv level; after header */
   ar = BKE_area_find_region_type(sa, RGN_TYPE_WINDOW);
 
   /* is error! */
-  if (ar == NULL)
+  if (ar == NULL) {
     return NULL;
+  }
 
   arnew = MEM_callocN(sizeof(ARegion), "clip preview region");
 
@@ -173,15 +177,17 @@ static ARegion *ED_clip_has_channels_region(ScrArea *sa)
   ARegion *ar, *arnew;
 
   ar = BKE_area_find_region_type(sa, RGN_TYPE_CHANNELS);
-  if (ar)
+  if (ar) {
     return ar;
+  }
 
   /* add subdiv level; after header */
   ar = BKE_area_find_region_type(sa, RGN_TYPE_PREVIEW);
 
   /* is error! */
-  if (ar == NULL)
+  if (ar == NULL) {
     return NULL;
+  }
 
   arnew = MEM_callocN(sizeof(ARegion), "clip channels region");
 
@@ -200,13 +206,15 @@ static void clip_scopes_tag_refresh(ScrArea *sa)
   SpaceClip *sc = (SpaceClip *)sa->spacedata.first;
   ARegion *ar;
 
-  if (sc->mode != SC_MODE_TRACKING)
+  if (sc->mode != SC_MODE_TRACKING) {
     return;
+  }
 
   /* only while properties are visible */
   for (ar = sa->regionbase.first; ar; ar = ar->next) {
-    if (ar->regiontype == RGN_TYPE_UI && ar->flag & RGN_FLAG_HIDDEN)
+    if (ar->regiontype == RGN_TYPE_UI && ar->flag & RGN_FLAG_HIDDEN) {
       return;
+    }
   }
 
   sc->scopes.ok = false;
@@ -296,11 +304,13 @@ static void clip_free(SpaceLink *sl)
 
   sc->clip = NULL;
 
-  if (sc->scopes.track_preview)
+  if (sc->scopes.track_preview) {
     IMB_freeImBuf(sc->scopes.track_preview);
+  }
 
-  if (sc->scopes.track_search)
+  if (sc->scopes.track_search) {
     IMB_freeImBuf(sc->scopes.track_search);
+  }
 }
 
 /* spacetype; init callback */
@@ -434,10 +444,6 @@ static void clip_operatortypes(void)
   WM_operatortype_append(CLIP_OT_set_scene_frames);
   WM_operatortype_append(CLIP_OT_cursor_set);
 
-  /* ** clip_toolbar.c ** */
-  WM_operatortype_append(CLIP_OT_tools);
-  WM_operatortype_append(CLIP_OT_properties);
-
   /* ** tracking_ops.c ** */
 
   /* navigation */
@@ -569,13 +575,15 @@ static int clip_context(const bContext *C, const char *member, bContextDataResul
     return true;
   }
   else if (CTX_data_equals(member, "edit_movieclip")) {
-    if (sc->clip)
+    if (sc->clip) {
       CTX_data_id_pointer_set(result, &sc->clip->id);
+    }
     return true;
   }
   else if (CTX_data_equals(member, "edit_mask")) {
-    if (sc->mask_info.mask)
+    if (sc->mask_info.mask) {
       CTX_data_id_pointer_set(result, &sc->mask_info.mask->id);
+    }
     return true;
   }
 
@@ -851,14 +859,14 @@ static void clip_main_region_init(wmWindowManager *wm, ARegion *ar)
 
   /* mask polls mode */
   keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", 0, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip Editor", SPACE_CLIP, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
 static void clip_main_region_draw(const bContext *C, ARegion *ar)
@@ -872,8 +880,9 @@ static void clip_main_region_draw(const bContext *C, ARegion *ar)
 
   /* if tracking is in progress, we should synchronize framenr from clipuser
    * so latest tracked frame would be shown */
-  if (clip && clip->tracking_context)
+  if (clip && clip->tracking_context) {
     BKE_autotrack_context_sync_user(clip->tracking_context, &sc->user);
+  }
 
   if (sc->flag & SC_LOCK_SELECTION) {
     ImBuf *tmpibuf = NULL;
@@ -887,8 +896,9 @@ static void clip_main_region_draw(const bContext *C, ARegion *ar)
       sc->yof += sc->ylockof;
     }
 
-    if (tmpibuf)
+    if (tmpibuf) {
       IMB_freeImBuf(tmpibuf);
+    }
   }
 
   /* clear and setup matrix */
@@ -972,10 +982,12 @@ static void clip_main_region_listener(wmWindow *UNUSED(win),
   /* context changes */
   switch (wmn->category) {
     case NC_GPENCIL:
-      if (wmn->action == NA_EDITED)
+      if (wmn->action == NA_EDITED) {
         ED_region_tag_redraw(ar);
-      else if (wmn->data & ND_GPENCIL_EDITMODE)
+      }
+      else if (wmn->data & ND_GPENCIL_EDITMODE) {
         ED_region_tag_redraw(ar);
+      }
       break;
   }
 }
@@ -990,13 +1002,13 @@ static void clip_preview_region_init(wmWindowManager *wm, ARegion *ar)
 
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip Graph Editor", SPACE_CLIP, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip Dopesheet Editor", SPACE_CLIP, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
 static void graph_region_draw(const bContext *C, ARegion *ar)
@@ -1005,11 +1017,11 @@ static void graph_region_draw(const bContext *C, ARegion *ar)
   View2DScrollers *scrollers;
   SpaceClip *sc = CTX_wm_space_clip(C);
   Scene *scene = CTX_data_scene(C);
-  short unitx, unity;
   short cfra_flag = 0;
 
-  if (sc->flag & SC_LOCK_TIMECURSOR)
+  if (sc->flag & SC_LOCK_TIMECURSOR) {
     ED_clip_graph_center_current_frame(scene, ar);
+  }
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
@@ -1021,24 +1033,28 @@ static void graph_region_draw(const bContext *C, ARegion *ar)
   clip_draw_graph(sc, ar, scene);
 
   /* current frame indicator line */
-  if (sc->flag & SC_SHOW_SECONDS)
+  if (sc->flag & SC_SHOW_SECONDS) {
     cfra_flag |= DRAWCFRA_UNIT_SECONDS;
+  }
   ANIM_draw_cfra(C, v2d, cfra_flag);
 
   /* reset view matrix */
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  unitx = (sc->flag & SC_SHOW_SECONDS) ? V2D_UNIT_SECONDS : V2D_UNIT_FRAMES;
-  unity = V2D_UNIT_VALUES;
-  scrollers = UI_view2d_scrollers_calc(
-      C, v2d, NULL, unitx, V2D_GRID_NOCLAMP, unity, V2D_GRID_NOCLAMP);
-  UI_view2d_scrollers_draw(C, v2d, scrollers);
+  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
 
+  /* scale indicators */
+  UI_view2d_draw_scale_x__discrete_frames_or_seconds(
+      ar, v2d, &v2d->hor, scene, sc->flag & SC_SHOW_SECONDS);
+  UI_view2d_draw_scale_y__values(ar, v2d, &v2d->vert);
+
   /* current frame indicator */
-  if (sc->flag & SC_SHOW_SECONDS)
+  if (sc->flag & SC_SHOW_SECONDS) {
     cfra_flag |= DRAWCFRA_UNIT_SECONDS;
+  }
   UI_view2d_view_orthoSpecial(ar, v2d, 1);
   ANIM_draw_cfra_number(C, v2d, cfra_flag);
 }
@@ -1049,12 +1065,12 @@ static void dopesheet_region_draw(const bContext *C, ARegion *ar)
   SpaceClip *sc = CTX_wm_space_clip(C);
   MovieClip *clip = ED_space_clip_get_clip(sc);
   View2D *v2d = &ar->v2d;
-  View2DGrid *grid;
   View2DScrollers *scrollers;
-  short unit = 0, cfra_flag = 0;
+  short cfra_flag = 0;
 
-  if (clip)
+  if (clip) {
     BKE_tracking_dopesheet_update(&clip->tracking);
+  }
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
@@ -1063,28 +1079,28 @@ static void dopesheet_region_draw(const bContext *C, ARegion *ar)
   UI_view2d_view_ortho(v2d);
 
   /* time grid */
-  unit = (sc->flag & SC_SHOW_SECONDS) ? V2D_UNIT_SECONDS : V2D_UNIT_FRAMES;
-  grid = UI_view2d_grid_calc(
-      scene, v2d, unit, V2D_GRID_CLAMP, V2D_ARG_DUMMY, V2D_ARG_DUMMY, ar->winx, ar->winy);
-  UI_view2d_grid_draw(v2d, grid, V2D_GRIDLINES_ALL);
-  UI_view2d_grid_free(grid);
+  UI_view2d_draw_lines_x__discrete_frames_or_seconds(v2d, scene, sc->flag & SC_SHOW_SECONDS);
 
   /* data... */
   clip_draw_dopesheet_main(sc, ar, scene);
 
   /* current frame indicator line */
-  if (sc->flag & SC_SHOW_SECONDS)
+  if (sc->flag & SC_SHOW_SECONDS) {
     cfra_flag |= DRAWCFRA_UNIT_SECONDS;
+  }
   ANIM_draw_cfra(C, v2d, cfra_flag);
 
   /* reset view matrix */
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  scrollers = UI_view2d_scrollers_calc(
-      C, v2d, NULL, unit, V2D_GRID_CLAMP, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
-  UI_view2d_scrollers_draw(C, v2d, scrollers);
+  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
+
+  /* frame numbers */
+  UI_view2d_draw_scale_x__discrete_frames_or_seconds(
+      ar, v2d, &v2d->hor, scene, sc->flag & SC_SHOW_SECONDS);
 
   /* current frame number indicator */
   UI_view2d_view_orthoSpecial(ar, v2d, 1);
@@ -1095,10 +1111,12 @@ static void clip_preview_region_draw(const bContext *C, ARegion *ar)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);
 
-  if (sc->view == SC_VIEW_GRAPH)
+  if (sc->view == SC_VIEW_GRAPH) {
     graph_region_draw(C, ar);
-  else if (sc->view == SC_VIEW_DOPESHEET)
+  }
+  else if (sc->view == SC_VIEW_DOPESHEET) {
     dopesheet_region_draw(C, ar);
+  }
 }
 
 static void clip_preview_region_listener(wmWindow *UNUSED(win),
@@ -1121,7 +1139,7 @@ static void clip_channels_region_init(wmWindowManager *wm, ARegion *ar)
   UI_view2d_region_reinit(&ar->v2d, V2D_COMMONVIEW_LIST, ar->winx, ar->winy);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip Dopesheet Editor", SPACE_CLIP, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
 static void clip_channels_region_draw(const bContext *C, ARegion *ar)
@@ -1130,8 +1148,9 @@ static void clip_channels_region_draw(const bContext *C, ARegion *ar)
   MovieClip *clip = ED_space_clip_get_clip(sc);
   View2D *v2d = &ar->v2d;
 
-  if (clip)
+  if (clip) {
     BKE_tracking_dopesheet_update(&clip->tracking);
+  }
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
@@ -1219,20 +1238,24 @@ static void clip_props_region_listener(wmWindow *UNUSED(win),
   /* context changes */
   switch (wmn->category) {
     case NC_WM:
-      if (wmn->data == ND_HISTORY)
+      if (wmn->data == ND_HISTORY) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_SCENE:
-      if (wmn->data == ND_MODE)
+      if (wmn->data == ND_MODE) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_SPACE:
-      if (wmn->data == ND_SPACE_CLIP)
+      if (wmn->data == ND_SPACE_CLIP) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_GPENCIL:
-      if (wmn->action == NA_EDITED)
+      if (wmn->action == NA_EDITED) {
         ED_region_tag_redraw(ar);
+      }
       break;
   }
 }
@@ -1268,12 +1291,14 @@ static void clip_properties_region_listener(wmWindow *UNUSED(win),
   /* context changes */
   switch (wmn->category) {
     case NC_GPENCIL:
-      if (ELEM(wmn->data, ND_DATA, ND_GPENCIL_EDITMODE))
+      if (ELEM(wmn->data, ND_DATA, ND_GPENCIL_EDITMODE)) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_BRUSH:
-      if (wmn->action == NA_EDITED)
+      if (wmn->action == NA_EDITED) {
         ED_region_tag_redraw(ar);
+      }
       break;
   }
 }

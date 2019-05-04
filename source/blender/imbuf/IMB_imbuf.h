@@ -173,6 +173,13 @@ bool addzbufImBuf(struct ImBuf *ibuf);
 bool addzbuffloatImBuf(struct ImBuf *ibuf);
 
 /**
+ * Approximate size of ImBuf in memory
+ *
+ * \attention Defined in allocimbuf.c
+ */
+size_t IMB_get_size_in_memory(struct ImBuf *ibuf);
+
+/**
  *
  * \attention Defined in rectop.c
  */
@@ -272,18 +279,20 @@ void IMB_rectblend_threaded(struct ImBuf *dbuf,
  */
 
 typedef enum IMB_Timecode_Type {
-  IMB_TC_NONE = 0, /* don't use timecode files at all */
-
-  IMB_TC_RECORD_RUN = 1, /* use images in the order as they are recorded
-                          * (currently, this is the only one implemented
-                          * and is a sane default) */
-
-  IMB_TC_FREE_RUN = 2,                       /* use global timestamp written by recording
-                          * device (prosumer camcorders e.g. can do that) */
-  IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN = 4, /* interpolate a global timestamp using the
-                                              * record date and time written by recording
-                                              * device (*every* consumer camcorder can do
-                                              * that :) )*/
+  /** Don't use timecode files at all. */
+  IMB_TC_NONE = 0,
+  /** use images in the order as they are recorded
+   * (currently, this is the only one implemented
+   * and is a sane default) */
+  IMB_TC_RECORD_RUN = 1,
+  /** Use global timestamp written by recording
+   * device (prosumer camcorders e.g. can do that). */
+  IMB_TC_FREE_RUN = 2,
+  /** Interpolate a global timestamp using the
+   * record date and time written by recording
+   * device (*every* consumer camcorder can do
+   * that :) )*/
+  IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN = 4,
   IMB_TC_RECORD_RUN_NO_GAPS = 8,
   IMB_TC_MAX_SLOT = 4,
 } IMB_Timecode_Type;
@@ -470,7 +479,8 @@ bool IMB_isfloat(struct ImBuf *ibuf);
 /* create char buffer, color corrected if necessary, for ImBufs that lack one */
 void IMB_rect_from_float(struct ImBuf *ibuf);
 /* Create char buffer for part of the image, color corrected if necessary,
- * Changed part will be stored in buffer. This is expected to be used for texture painting updates */
+ * Changed part will be stored in buffer.
+ * This is expected to be used for texture painting updates */
 void IMB_partial_rect_from_float(
     struct ImBuf *ibuf, float *buffer, int x, int y, int w, int h, bool is_data);
 void IMB_float_from_rect(struct ImBuf *ibuf);
@@ -658,7 +668,8 @@ void IMB_rectfill_area(struct ImBuf *ibuf,
                        struct ColorManagedDisplay *display);
 void IMB_rectfill_alpha(struct ImBuf *ibuf, const float value);
 
-/* this should not be here, really, we needed it for operating on render data, IMB_rectfill_area calls it */
+/* This should not be here, really,
+ * we needed it for operating on render data, IMB_rectfill_area calls it. */
 void buf_rectfill_area(unsigned char *rect,
                        float *rectf,
                        int width,

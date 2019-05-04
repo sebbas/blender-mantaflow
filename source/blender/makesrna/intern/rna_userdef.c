@@ -1581,7 +1581,7 @@ static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Vertex Select", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "vertex_size", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "vertex_size", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 1, 32);
   RNA_def_property_ui_text(prop, "Vertex Size", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -1656,7 +1656,7 @@ static void rna_def_userdef_theme_spaces_face(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Face Dot Selected", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "facedot_size", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "facedot_size", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 1, 10);
   RNA_def_property_ui_text(prop, "Face Dot Size", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -1803,7 +1803,7 @@ static void rna_def_userdef_theme_spaces_curves(
     RNA_def_property_ui_text(prop, "Handle Vertex Select", "");
     RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-    prop = RNA_def_property(srna, "handle_vertex_size", PROP_INT, PROP_NONE);
+    prop = RNA_def_property(srna, "handle_vertex_size", PROP_INT, PROP_PIXEL);
     RNA_def_property_range(prop, 1, 100);
     RNA_def_property_ui_text(prop, "Handle Vertex Size", "");
     RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -1824,7 +1824,7 @@ static void rna_def_userdef_theme_spaces_gpencil(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Grease Pencil Vertex Select", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "gp_vertex_size", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "gp_vertex_size", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 1, 10);
   RNA_def_property_ui_text(prop, "Grease Pencil Vertex Size", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -2027,9 +2027,16 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
 
   rna_def_userdef_theme_spaces_paint_curves(srna);
 
-  prop = RNA_def_property(srna, "outline_width", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "outline_width", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 1, 5);
   RNA_def_property_ui_text(prop, "Outline Width", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "object_origin_size", PROP_INT, PROP_PIXEL);
+  RNA_def_property_int_sdna(prop, NULL, "obcenter_dia");
+  RNA_def_property_range(prop, 4, 10);
+  RNA_def_property_ui_text(
+      prop, "Object Origin Size", "Diameter in Pixels for Object/Light origin display");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
@@ -2949,10 +2956,8 @@ static void rna_def_userdef_theme_space_action(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(
       prop, "Keyframe Scale Factor", "Scale factor for adjusting the height of keyframes");
-  RNA_def_property_range(
-      prop,
-      0.8f,
-      5.0f); /* Note: These limits prevent buttons overlapping (min), and excessive size... (max) */
+  /* Note: These limits prevent buttons overlapping (min), and excessive size... (max) */
+  RNA_def_property_range(prop, 0.8f, 5.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_DOPESHEET, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "summary", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -4066,7 +4071,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
                            "Show a small rotating 3D axes in the top right corner of the 3D View");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
-  prop = RNA_def_property(srna, "mini_axis_size", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "mini_axis_size", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "rvisize");
   RNA_def_property_range(prop, 10, 64);
   RNA_def_property_ui_text(prop, "Mini Axes Size", "The axes icon's size");
@@ -4101,13 +4106,6 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_range(prop, 10, 200);
   RNA_def_property_int_default(prop, 75);
   RNA_def_property_ui_text(prop, "Gizmo Size", "Diameter of the gizmo");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
-
-  prop = RNA_def_property(srna, "object_origin_size", PROP_INT, PROP_PIXEL);
-  RNA_def_property_int_sdna(prop, NULL, "obcenter_dia");
-  RNA_def_property_range(prop, 4, 10);
-  RNA_def_property_ui_text(
-      prop, "Object Origin Size", "Diameter in Pixels for Object/Light origin display");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   /* View2D Grid Displays */
@@ -4474,7 +4472,18 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Duplicate Particle", "Causes particle systems to be duplicated with the object");
 
-  /* currently only used for insert offset (aka auto-offset), maybe also be useful for later stuff though */
+  prop = RNA_def_property(srna, "use_duplicate_lightprobe", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "dupflag", USER_DUP_LIGHTPROBE);
+  RNA_def_property_ui_text(
+      prop, "Duplicate Light Probe", "Causes light probe data to be duplicated with the object");
+
+  prop = RNA_def_property(srna, "use_duplicate_grease_pencil", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "dupflag", USER_DUP_GPENCIL);
+  RNA_def_property_ui_text(
+      prop, "Duplicate GPencil", "Causes grease pencil data to be duplicated with the object");
+
+  /* Currently only used for insert offset (aka auto-offset),
+   * maybe also be useful for later stuff though. */
   prop = RNA_def_property(srna, "node_margin", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "node_margin");
   RNA_def_property_ui_text(
@@ -4534,21 +4543,21 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem audio_rate_items[] = {
-      /*      {8000, "RATE_8000", 0, "8 kHz", "Set audio sampling rate to 8000 samples per second"}, */
-      /*      {11025, "RATE_11025", 0, "11.025 kHz", "Set audio sampling rate to 11025 samples per second"}, */
-      /*      {16000, "RATE_16000", 0, "16 kHz", "Set audio sampling rate to 16000 samples per second"}, */
-      /*      {22050, "RATE_22050", 0, "22.05 kHz", "Set audio sampling rate to 22050 samples per second"}, */
-      /*      {32000, "RATE_32000", 0, "32 kHz", "Set audio sampling rate to 32000 samples per second"}, */
-      {44100, "RATE_44100", 0, "44.1 kHz", "Set audio sampling rate to 44100 samples per second"},
-      {48000, "RATE_48000", 0, "48 kHz", "Set audio sampling rate to 48000 samples per second"},
-      /*      {88200, "RATE_88200", 0, "88.2 kHz", "Set audio sampling rate to 88200 samples per second"}, */
-      {96000, "RATE_96000", 0, "96 kHz", "Set audio sampling rate to 96000 samples per second"},
-      {192000,
-       "RATE_192000",
-       0,
-       "192 kHz",
-       "Set audio sampling rate to 192000 samples per second"},
-      {0, NULL, 0, NULL, NULL},
+#  if 0
+    {8000, "RATE_8000", 0, "8 kHz", "Set audio sampling rate to 8000 samples per second"},
+    {11025, "RATE_11025", 0, "11.025 kHz", "Set audio sampling rate to 11025 samples per second"},
+    {16000, "RATE_16000", 0, "16 kHz", "Set audio sampling rate to 16000 samples per second"},
+    {22050, "RATE_22050", 0, "22.05 kHz", "Set audio sampling rate to 22050 samples per second"},
+    {32000, "RATE_32000", 0, "32 kHz", "Set audio sampling rate to 32000 samples per second"},
+#  endif
+    {44100, "RATE_44100", 0, "44.1 kHz", "Set audio sampling rate to 44100 samples per second"},
+    {48000, "RATE_48000", 0, "48 kHz", "Set audio sampling rate to 48000 samples per second"},
+#  if 0
+    {88200, "RATE_88200", 0, "88.2 kHz", "Set audio sampling rate to 88200 samples per second"},
+#  endif
+    {96000, "RATE_96000", 0, "96 kHz", "Set audio sampling rate to 96000 samples per second"},
+    {192000, "RATE_192000", 0, "192 kHz", "Set audio sampling rate to 192000 samples per second"},
+    {0, NULL, 0, NULL, NULL},
   };
 
   static const EnumPropertyItem audio_format_items[] = {
@@ -4580,6 +4589,11 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem image_draw_methods[] = {
+      {IMAGE_DRAW_METHOD_AUTO,
+       "AUTO",
+       0,
+       "Automatic",
+       "Automatically choose method based on GPU and image"},
       {IMAGE_DRAW_METHOD_2DTEXTURE,
        "2DTEXTURE",
        0,
@@ -4590,11 +4604,6 @@ static void rna_def_userdef_system(BlenderRNA *brna)
        0,
        "GLSL",
        "Use GLSL shaders for display transform and draw image with 2D texture"},
-      {IMAGE_DRAW_METHOD_DRAWPIXELS,
-       "DRAWPIXELS",
-       0,
-       "DrawPixels",
-       "Use CPU for display transform and draw image using DrawPixels"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -4765,6 +4774,23 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       prop,
       "Texture Collection Rate",
       "Number of seconds between each run of the GL texture garbage collector");
+
+  prop = RNA_def_property(srna, "vbo_time_out", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "vbotimeout");
+  RNA_def_property_range(prop, 0, 3600);
+  RNA_def_property_ui_text(
+      prop,
+      "VBO Time Out",
+      "Time since last access of a GL Vertex buffer object in seconds after which it is freed "
+      "(set to 0 to keep vbo allocated)");
+
+  prop = RNA_def_property(srna, "vbo_collection_rate", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "vbocollectrate");
+  RNA_def_property_range(prop, 1, 3600);
+  RNA_def_property_ui_text(
+      prop,
+      "VBO Collection Rate",
+      "Number of seconds between each run of the GL Vertex buffer object garbage collector");
 
   /* Select */
 
@@ -5069,9 +5095,11 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   /* 3D view */
   prop = RNA_def_property(srna, "ndof_show_guide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "ndof_flag", NDOF_SHOW_GUIDE);
+
+  /* TODO: update description when fly-mode visuals are in place
+   * ("projected position in fly mode"). */
   RNA_def_property_ui_text(
       prop, "Show Navigation Guide", "Display the center and axis during rotation");
-  /* TODO: update description when fly-mode visuals are in place  ("projected position in fly mode")*/
 
   /* 3D view */
   prop = RNA_def_property(srna, "ndof_view_navigate_method", PROP_ENUM, PROP_NONE);
@@ -5431,7 +5459,7 @@ void RNA_def_userdef(BlenderRNA *brna)
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     {0, "", 0, NULL, NULL},
     {USER_SECTION_ADDONS, "ADDONS", 0, "Add-ons", ""},
-#  if 0  //def WITH_USERDEF_WORKSPACES
+#  if 0  // def WITH_USERDEF_WORKSPACES
     {0, "", 0, NULL, NULL},
     {USER_SECTION_WORKSPACE_CONFIG, "WORKSPACE_CONFIG", 0, "Configuration File", ""},
     {USER_SECTION_WORKSPACE_ADDONS, "WORKSPACE_ADDONS", 0, "Add-on Overrides", ""},

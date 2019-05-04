@@ -369,8 +369,9 @@ static void gizmomap_prepare_drawing(wmGizmoMap *gzmap,
       continue;
     }
 
-    /* needs to be initialized on first draw */
-    /* XXX weak: Gizmo-group may skip refreshing if it's invisible (map gets untagged nevertheless) */
+    /* Needs to be initialized on first draw. */
+    /* XXX weak: Gizmo-group may skip refreshing if it's invisible
+     * (map gets untagged nevertheless). */
     if (gzmap->update_flag[drawstep] & GIZMOMAP_IS_REFRESH_CALLBACK) {
       /* force refresh again. */
       gzgroup->init_flag &= ~WM_GIZMOGROUP_INIT_REFRESH;
@@ -402,8 +403,9 @@ static void gizmos_draw_list(const wmGizmoMap *gzmap, const bContext *C, ListBas
     return;
   }
 
-  /* TODO this will need it own shader probably? don't think it can be handled from that point though. */
-  /*  const bool use_lighting = (U.gizmo_flag & V3D_GIZMO_SHADED) != 0; */
+  /* TODO(campbell): This will need it own shader probably?
+   * Don't think it can be handled from that point though. */
+  /* const bool use_lighting = (U.gizmo_flag & V3D_GIZMO_SHADED) != 0; */
 
   bool is_depth_prev = false;
 
@@ -414,7 +416,8 @@ static void gizmos_draw_list(const wmGizmoMap *gzmap, const bContext *C, ListBas
 
     bool is_depth = (gz->parent_gzgroup->type->flag & WM_GIZMOGROUPTYPE_DEPTH_3D) != 0;
 
-    /* Weak! since we don't 100% support depth yet (select ignores depth) always show highlighted */
+    /* Weak! since we don't 100% support depth yet (select ignores depth)
+     * always show highlighted. */
     if (is_depth && (gz->state & WM_GIZMO_STATE_HIGHLIGHT)) {
       is_depth = false;
     }
@@ -472,7 +475,8 @@ static void gizmo_draw_select_3D_loop(const bContext *C,
   int select_id = 0;
   wmGizmo *gz;
 
-  /* TODO(campbell): this depends on depth buffer being written to, currently broken for the 3D view. */
+  /* TODO(campbell): this depends on depth buffer being written to,
+   * currently broken for the 3D view. */
   bool is_depth_prev = false;
   bool is_depth_skip_prev = false;
 
@@ -806,8 +810,7 @@ static bool wm_gizmomap_select_all_intern(bContext *C, wmGizmoMap *gzmap)
 
   wm_gizmomap_select_array_ensure_len_alloc(gzmap, BLI_ghash_len(hash));
 
-  GHASH_ITER_INDEX(gh_iter, hash, i)
-  {
+  GHASH_ITER_INDEX (gh_iter, hash, i) {
     wmGizmo *gz_iter = BLI_ghashIterator_getValue(&gh_iter);
     WM_gizmo_select_set(gzmap, gz_iter, true);
   }
@@ -905,6 +908,7 @@ bool WM_gizmomap_cursor_set(const wmGizmoMap *gzmap, wmWindow *win)
 bool wm_gizmomap_highlight_set(wmGizmoMap *gzmap, const bContext *C, wmGizmo *gz, int part)
 {
   if ((gz != gzmap->gzmap_context.highlight) || (gz && part != gz->highlight_part)) {
+    const bool init_last_cursor = (gzmap->gzmap_context.highlight == NULL);
     if (gzmap->gzmap_context.highlight) {
       gzmap->gzmap_context.highlight->state &= ~WM_GIZMO_STATE_HIGHLIGHT;
       gzmap->gzmap_context.highlight->highlight_part = -1;
@@ -915,11 +919,15 @@ bool wm_gizmomap_highlight_set(wmGizmoMap *gzmap, const bContext *C, wmGizmo *gz
     if (gz) {
       gz->state |= WM_GIZMO_STATE_HIGHLIGHT;
       gz->highlight_part = part;
-      gzmap->gzmap_context.last_cursor = -1;
+      if (init_last_cursor) {
+        gzmap->gzmap_context.last_cursor = -1;
+      }
 
       if (C && gz->type->cursor_get) {
         wmWindow *win = CTX_wm_window(C);
-        gzmap->gzmap_context.last_cursor = win->cursor;
+        if (init_last_cursor) {
+          gzmap->gzmap_context.last_cursor = win->cursor;
+        }
         WM_cursor_set(win, gz->type->cursor_get(gz));
       }
     }
@@ -928,6 +936,7 @@ bool wm_gizmomap_highlight_set(wmGizmoMap *gzmap, const bContext *C, wmGizmo *gz
         wmWindow *win = CTX_wm_window(C);
         WM_cursor_set(win, gzmap->gzmap_context.last_cursor);
       }
+      gzmap->gzmap_context.last_cursor = -1;
     }
 
     /* tag the region for redraw */

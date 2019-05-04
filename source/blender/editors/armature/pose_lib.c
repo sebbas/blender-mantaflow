@@ -77,7 +77,9 @@ static void action_set_activemarker(void *UNUSED(a), void *UNUSED(b), void *UNUS
 }
 
 /* ************************************************************* */
-/* == POSE-LIBRARY TOOL FOR BLENDER ==
+/**
+ * Pose-Library Tool for Blender
+ * =============================
  *
  * Overview:
  *  This tool allows animators to store a set of frequently used poses to dump into
@@ -85,13 +87,13 @@ static void action_set_activemarker(void *UNUSED(a), void *UNUSED(b), void *UNUS
  *  It acts as a kind of "glorified clipboard for poses", allowing for naming of poses.
  *
  * Features:
- * - PoseLibs are simply normal Actions
- * - Each "pose" is simply a set of keyframes that occur on a particular frame
- *   -> a set of TimeMarkers that belong to each Action, help 'label' where a 'pose' can be
- *      found in the Action
+ * - PoseLibs are simply normal Actions.
+ * - Each "pose" is simply a set of keyframes that occur on a particular frame.
+ *   - A set of TimeMarkers that belong to each Action, help 'label' where a 'pose' can be
+ *     found in the Action.
  * - The Scrollwheel or PageUp/Down buttons when used in a special mode or after pressing/holding
- *   [a modifier] key, cycles through the poses available for the active pose's poselib, allowing the
- *   animator to preview what action best suits that pose
+ *   [a modifier] key, cycles through the poses available for the active pose's poselib,
+ *   allowing the animator to preview what action best suits that pose.
  */
 /* ************************************************************* */
 
@@ -105,8 +107,9 @@ static int poselib_get_free_index(bAction *act)
   bool changed = false;
 
   /* sanity checks */
-  if (ELEM(NULL, act, act->markers.first))
+  if (ELEM(NULL, act, act->markers.first)) {
     return 1;
+  }
 
   /* As poses are not stored in chronological order, we must iterate over this list
    * a few times until we don't make any new discoveries (mostly about the lower bound).
@@ -135,19 +138,23 @@ static int poselib_get_free_index(bAction *act)
   /* - if low is not equal to high, then low+1 is a gap
    * - if low is equal to high, then high+1 is the next index (add at end)
    */
-  if (low < high)
+  if (low < high) {
     return (low + 1);
-  else
+  }
+  else {
     return (high + 1);
+  }
 }
 
 /* returns the active pose for a poselib */
 static TimeMarker *poselib_get_active_pose(bAction *act)
 {
-  if ((act) && (act->active_marker))
+  if ((act) && (act->active_marker)) {
     return BLI_findlink(&act->markers, act->active_marker - 1);
-  else
+  }
+  else {
     return NULL;
+  }
 }
 
 /* Get object that Pose Lib should be found on */
@@ -157,15 +164,18 @@ static Object *get_poselib_object(bContext *C)
   ScrArea *sa;
 
   /* sanity check */
-  if (C == NULL)
+  if (C == NULL) {
     return NULL;
+  }
 
   sa = CTX_wm_area(C);
 
-  if (sa && (sa->spacetype == SPACE_PROPERTIES))
+  if (sa && (sa->spacetype == SPACE_PROPERTIES)) {
     return ED_object_context(C);
-  else
+  }
+  else {
     return BKE_object_pose_armature_get(CTX_data_active_object(C));
+  }
 }
 
 /* Poll callback for operators that require existing PoseLib data (with poses) to work */
@@ -190,12 +200,14 @@ static bool has_poselib_pose_data_for_editing_poll(bContext *C)
 static bAction *poselib_init_new(Main *bmain, Object *ob)
 {
   /* sanity checks - only for armatures */
-  if (ELEM(NULL, ob, ob->pose))
+  if (ELEM(NULL, ob, ob->pose)) {
     return NULL;
+  }
 
   /* init object's poselib action (unlink old one if there) */
-  if (ob->poselib)
+  if (ob->poselib) {
     id_us_min(&ob->poselib->id);
+  }
 
   ob->poselib = BKE_action_add(bmain, "PoseLib");
   ob->poselib->idroot = ID_OB;
@@ -206,12 +218,15 @@ static bAction *poselib_init_new(Main *bmain, Object *ob)
 /* Initialize a new poselib (checks if that needs to happen) */
 static bAction *poselib_validate(Main *bmain, Object *ob)
 {
-  if (ELEM(NULL, ob, ob->pose))
+  if (ELEM(NULL, ob, ob->pose)) {
     return NULL;
-  else if (ob->poselib == NULL)
+  }
+  else if (ob->poselib == NULL) {
     return poselib_init_new(bmain, ob);
-  else
+  }
+  else {
     return ob->poselib;
+  }
 }
 
 /* ************************************************************* */
@@ -223,8 +238,9 @@ static int poselib_new_exec(bContext *C, wmOperator *UNUSED(op))
   Object *ob = get_poselib_object(C);
 
   /* sanity checks */
-  if (ob == NULL)
+  if (ob == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   /* new method here deals with the rest... */
   poselib_init_new(bmain, ob);
@@ -257,8 +273,9 @@ static int poselib_unlink_exec(bContext *C, wmOperator *UNUSED(op))
   Object *ob = get_poselib_object(C);
 
   /* sanity checks */
-  if (ELEM(NULL, ob, ob->poselib))
+  if (ELEM(NULL, ob, ob->poselib)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* there should be a poselib (we just checked above!), so just lower its user count and remove */
   id_us_min(&ob->poselib->id);
@@ -338,10 +355,12 @@ static int poselib_sanitize_exec(bContext *C, wmOperator *op)
   for (marker = act->markers.first; marker; marker = markern) {
     markern = marker->next;
 
-    if (marker->flag != -1)
+    if (marker->flag != -1) {
       BLI_freelinkN(&act->markers, marker);
-    else
+    }
+    else {
       marker->flag = 0;
+    }
   }
 
   /* free temp memory */
@@ -423,8 +442,9 @@ static int poselib_add_menu_invoke(bContext *C, wmOperator *op, const wmEvent *U
   uiLayout *layout;
 
   /* sanity check */
-  if (ELEM(NULL, ob, pose))
+  if (ELEM(NULL, ob, pose)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* start building */
   pup = UI_popup_menu_begin(C, op->type->name, ICON_NONE);
@@ -472,8 +492,9 @@ static int poselib_add_exec(bContext *C, wmOperator *op)
   char name[64];
 
   /* sanity check (invoke should have checked this anyway) */
-  if (ELEM(NULL, ob, pose))
+  if (ELEM(NULL, ob, pose)) {
     return OPERATOR_CANCELLED;
+  }
 
   /* get name to give to pose */
   RNA_string_get(op->ptr, "name", name);
@@ -677,7 +698,8 @@ static int poselib_rename_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     return OPERATOR_CANCELLED;
   }
   else {
-    /* use the existing name of the marker as the name, and use the active marker as the one to rename */
+    /* Use the existing name of the marker as the name,
+     * and use the active marker as the one to rename. */
     RNA_enum_set(op->ptr, "pose", act->active_marker - 1);
     RNA_string_set(op->ptr, "name", marker->name);
   }
@@ -954,8 +976,9 @@ static void poselib_backup_posecopy(tPoseLib_PreviewData *pld)
       plb->pchan = pchan;
       memcpy(&plb->olddata, plb->pchan, sizeof(bPoseChannel));
 
-      if (pchan->prop)
+      if (pchan->prop) {
         plb->oldprops = IDP_CopyProperty(pchan->prop);
+      }
 
       BLI_addtail(&pld->backups, plb);
 
@@ -975,8 +998,9 @@ static void poselib_backup_restore(tPoseLib_PreviewData *pld)
     memcpy(plb->pchan, &plb->olddata, sizeof(bPoseChannel));
 
     /* just overwrite values of properties from the stored copies (there should be some) */
-    if (plb->oldprops)
+    if (plb->oldprops) {
       IDP_SyncGroupValues(plb->pchan->prop, plb->oldprops);
+    }
 
     /* TODO: constraints settings aren't restored yet,
      * even though these could change (though not that likely) */
@@ -1024,10 +1048,12 @@ static void poselib_apply_pose(tPoseLib_PreviewData *pld)
   const bool any_bone_selected = pld->flag & PL_PREVIEW_ANY_BONE_SELECTED;
 
   /* get the frame */
-  if (pld->marker)
+  if (pld->marker) {
     frame = pld->marker->frame;
-  else
+  }
+  else {
     return;
+  }
 
   /* init settings for testing groups for keyframes */
   group_ok_cb = ANIM_editkeyframes_ok(BEZT_OK_FRAMERANGE);
@@ -1058,8 +1084,9 @@ static void poselib_apply_pose(tPoseLib_PreviewData *pld)
           }
         }
 
-        if (ok)
+        if (ok) {
           animsys_evaluate_action_group(ptr, act, agrp, (float)frame);
+        }
       }
     }
   }
@@ -1090,13 +1117,15 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, tPoseLib_PreviewData 
           ANIM_relative_keyingset_add_source(&dsources, &pld->ob->id, &RNA_PoseBone, pchan);
 
           /* clear any unkeyed tags */
-          if (pchan->bone)
+          if (pchan->bone) {
             pchan->bone->flag &= ~BONE_UNKEYED;
+          }
         }
         else {
           /* add unkeyed tags */
-          if (pchan->bone)
+          if (pchan->bone) {
             pchan->bone->flag |= BONE_UNKEYED;
+          }
         }
       }
     }
@@ -1121,27 +1150,32 @@ static void poselib_preview_apply(bContext *C, wmOperator *op)
   /* only recalc pose (and its dependencies) if pose has changed */
   if (pld->redraw == PL_PREVIEW_REDRAWALL) {
     /* don't clear pose if firsttime */
-    if ((pld->flag & PL_PREVIEW_FIRSTTIME) == 0)
+    if ((pld->flag & PL_PREVIEW_FIRSTTIME) == 0) {
       poselib_backup_restore(pld);
-    else
+    }
+    else {
       pld->flag &= ~PL_PREVIEW_FIRSTTIME;
+    }
 
     /* pose should be the right one to draw (unless we're temporarily not showing it) */
     if ((pld->flag & PL_PREVIEW_SHOWORIGINAL) == 0) {
       RNA_int_set(op->ptr, "pose_index", BLI_findindex(&pld->act->markers, pld->marker));
       poselib_apply_pose(pld);
     }
-    else
+    else {
       RNA_int_set(op->ptr, "pose_index", -2); /* -2 means don't apply any pose */
+    }
 
     /* old optimize trick... this enforces to bypass the depsgraph
      * - note: code copied from transform_generics.c -> recalcData()
      */
     // FIXME: shouldn't this use the builtin stuff?
-    if ((pld->arm->flag & ARM_DELAYDEFORM) == 0)
+    if ((pld->arm->flag & ARM_DELAYDEFORM) == 0) {
       DEG_id_tag_update(&pld->ob->id, ID_RECALC_GEOMETRY); /* sets recalc flags */
-    else
+    }
+    else {
       BKE_pose_where_is(CTX_data_depsgraph(C), pld->scene, pld->ob);
+    }
   }
 
   /* do header print - if interactively previewing */
@@ -1202,8 +1236,9 @@ static void poselib_preview_apply(bContext *C, wmOperator *op)
 static void poselib_preview_get_next(tPoseLib_PreviewData *pld, int step)
 {
   /* stop if not going anywhere, as we assume that there is a direction to move in */
-  if (step == 0)
+  if (step == 0) {
     return;
+  }
 
   /* search-string dictates a special approach */
   if (pld->searchstr[0]) {
@@ -1241,50 +1276,59 @@ static void poselib_preview_get_next(tPoseLib_PreviewData *pld, int step)
 
     /* find first match */
     for (ldc = pld->searchp.first; ldc; ldc = ldc->next) {
-      if (ldc->data == pld->marker)
+      if (ldc->data == pld->marker) {
         break;
+      }
     }
-    if (ldc == NULL)
+    if (ldc == NULL) {
       ldc = pld->searchp.first;
+    }
 
     /* Loop through the matches in a cyclic fashion, incrementing/decrementing step as appropriate
      * until step == 0. At this point, marker should be the correct marker.
      */
     if (step > 0) {
-      for (ld = ldc; ld && step; ld = ldn, step--)
+      for (ld = ldc; ld && step; ld = ldn, step--) {
         ldn = (ld->next) ? ld->next : pld->searchp.first;
+      }
     }
     else {
-      for (ld = ldc; ld && step; ld = ldn, step++)
+      for (ld = ldc; ld && step; ld = ldn, step++) {
         ldn = (ld->prev) ? ld->prev : pld->searchp.last;
+      }
     }
 
     /* set marker */
-    if (ld)
+    if (ld) {
       pld->marker = ld->data;
+    }
   }
   else {
     TimeMarker *marker, *next;
 
     /* if no marker, because we just ended searching, then set that to the start of the list */
-    if (pld->marker == NULL)
+    if (pld->marker == NULL) {
       pld->marker = pld->act->markers.first;
+    }
 
     /* Loop through the markers in a cyclic fashion, incrementing/decrementing step as appropriate
      * until step == 0. At this point, marker should be the correct marker.
      */
     if (step > 0) {
-      for (marker = pld->marker; marker && step; marker = next, step--)
+      for (marker = pld->marker; marker && step; marker = next, step--) {
         next = (marker->next) ? marker->next : pld->act->markers.first;
+      }
     }
     else {
-      for (marker = pld->marker; marker && step; marker = next, step++)
+      for (marker = pld->marker; marker && step; marker = next, step++) {
         next = (marker->prev) ? marker->prev : pld->act->markers.last;
+      }
     }
 
     /* it should be fairly impossible for marker to be NULL */
-    if (marker)
+    if (marker) {
       pld->marker = marker;
+    }
   }
 }
 
@@ -1301,8 +1345,9 @@ static void poselib_preview_handle_search(tPoseLib_PreviewData *pld,
         short index = pld->search_cursor;
         short i;
 
-        for (i = index; i <= len; i++)
+        for (i = index; i <= len; i++) {
           pld->searchstr[i - 1] = pld->searchstr[i];
+        }
 
         pld->search_cursor--;
 
@@ -1319,8 +1364,9 @@ static void poselib_preview_handle_search(tPoseLib_PreviewData *pld,
         int i;
 
         if (index < len) {
-          for (i = index; i < len; i++)
+          for (i = index; i < len; i++) {
             pld->searchstr[i] = pld->searchstr[i + 1];
+          }
 
           poselib_preview_get_next(pld, 1);
           pld->redraw = PL_PREVIEW_REDRAWALL;
@@ -1337,11 +1383,13 @@ static void poselib_preview_handle_search(tPoseLib_PreviewData *pld,
     short i;
 
     if (len) {
-      for (i = len; i > index; i--)
+      for (i = len; i > index; i--) {
         pld->searchstr[i] = pld->searchstr[i - 1];
+      }
     }
-    else
+    else {
       pld->searchstr[1] = 0;
+    }
 
     pld->searchstr[index] = ascii;
     pld->search_cursor++;
@@ -1359,7 +1407,11 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
 
   /* only accept 'press' event, and ignore 'release', so that we don't get double actions */
   if (ELEM(event->val, KM_PRESS, KM_NOTHING) == 0) {
-    //printf("PoseLib: skipping event with type '%s' and val %d\n", WM_key_event_string(event->type, false), event->val);
+#if 0
+    printf("PoseLib: skipping event with type '%s' and val %d\n",
+           WM_key_event_string(event->type, false),
+           event->val);
+#endif
     return ret;
   }
 
@@ -1403,7 +1455,7 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
       case PADMINUS:
       case MIDDLEMOUSE:
       case MOUSEMOVE:
-        //pld->redraw = PL_PREVIEW_REDRAWHEADER;
+        // pld->redraw = PL_PREVIEW_REDRAWHEADER;
         ret = OPERATOR_PASS_THROUGH;
         break;
 
@@ -1471,8 +1523,9 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
     case RIGHTARROWKEY:
       if (pld->searchstr[0]) {
         /* move text-cursor to the right */
-        if (pld->search_cursor < strlen(pld->searchstr))
+        if (pld->search_cursor < strlen(pld->searchstr)) {
           pld->search_cursor++;
+        }
         pld->redraw = PL_PREVIEW_REDRAWHEADER;
       }
       else {
@@ -1486,8 +1539,9 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
     case LEFTARROWKEY:
       if (pld->searchstr[0]) {
         /* move text-cursor to the left */
-        if (pld->search_cursor)
+        if (pld->search_cursor) {
           pld->search_cursor--;
+        }
         pld->redraw = PL_PREVIEW_REDRAWHEADER;
       }
       else {
@@ -1533,7 +1587,7 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
      */
     case MIDDLEMOUSE:
     case MOUSEMOVE:
-      //pld->redraw = PL_PREVIEW_REDRAWHEADER;
+      // pld->redraw = PL_PREVIEW_REDRAWHEADER;
       ret = OPERATOR_PASS_THROUGH;
       break;
 
@@ -1556,7 +1610,7 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
       }
       else {
         /* view manipulation (see above) */
-        //pld->redraw = PL_PREVIEW_REDRAWHEADER;
+        // pld->redraw = PL_PREVIEW_REDRAWHEADER;
         ret = OPERATOR_PASS_THROUGH;
       }
       break;
@@ -1592,12 +1646,15 @@ static void poselib_preview_init_data(bContext *C, wmOperator *op)
   pld->sa = CTX_wm_area(C);
 
   /* get starting pose based on RNA-props for this operator */
-  if (pose_index == -1)
+  if (pose_index == -1) {
     pld->marker = poselib_get_active_pose(pld->act);
-  else if (pose_index == -2)
+  }
+  else if (pose_index == -2) {
     pld->flag |= PL_PREVIEW_SHOWORIGINAL;
-  else
+  }
+  else {
     pld->marker = (pld->act) ? BLI_findlink(&pld->act->markers, pose_index) : NULL;
+  }
 
   /* check if valid poselib */
   if (ELEM(NULL, pld->ob, pld->pose, pld->arm)) {
@@ -1614,8 +1671,9 @@ static void poselib_preview_init_data(bContext *C, wmOperator *op)
     if (pld->act->markers.first) {
       /* just use first one then... */
       pld->marker = pld->act->markers.first;
-      if (pose_index > -2)
+      if (pose_index > -2) {
         BKE_report(op->reports, RPT_WARNING, "Pose lib had no active pose");
+      }
     }
     else {
       BKE_report(op->reports, RPT_ERROR, "Pose lib has no poses to preview/apply");
@@ -1670,10 +1728,12 @@ static void poselib_preview_cleanup(bContext *C, wmOperator *op)
     /* old optimize trick... this enforces to bypass the depgraph
      * - note: code copied from transform_generics.c -> recalcData()
      */
-    if ((arm->flag & ARM_DELAYDEFORM) == 0)
+    if ((arm->flag & ARM_DELAYDEFORM) == 0) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY); /* sets recalc flags */
-    else
+    }
+    else {
       BKE_pose_where_is(CTX_data_depsgraph(C), scene, ob);
+    }
   }
   else if (pld->state == PL_PREVIEW_CONFIRM) {
     /* tag poses as appropriate */
@@ -1688,10 +1748,11 @@ static void poselib_preview_cleanup(bContext *C, wmOperator *op)
 
     /* updates */
     if (IS_AUTOKEY_MODE(scene, NORMAL)) {
-      //remake_action_ipos(ob->action);
+      // remake_action_ipos(ob->action);
     }
-    else
+    else {
       BKE_pose_where_is(CTX_data_depsgraph(C), scene, ob);
+    }
   }
 
   /* Request final redraw of the view. */
@@ -1715,10 +1776,12 @@ static int poselib_preview_exit(bContext *C, wmOperator *op)
   /* finish up */
   poselib_preview_cleanup(C, op);
 
-  if (ELEM(exit_state, PL_PREVIEW_CANCEL, PL_PREVIEW_ERROR))
+  if (ELEM(exit_state, PL_PREVIEW_CANCEL, PL_PREVIEW_ERROR)) {
     return OPERATOR_CANCELLED;
-  else
+  }
+  else {
     return OPERATOR_FINISHED;
+  }
 }
 
 /* Cancel previewing operation (called when exiting Blender) */
@@ -1734,15 +1797,17 @@ static int poselib_preview_modal(bContext *C, wmOperator *op, const wmEvent *eve
   int ret;
 
   /* 1) check state to see if we're still running */
-  if (pld->state != PL_PREVIEW_RUNNING)
+  if (pld->state != PL_PREVIEW_RUNNING) {
     return poselib_preview_exit(C, op);
+  }
 
   /* 2) handle events */
   ret = poselib_preview_handle_event(C, op, event);
 
   /* 3) apply changes and redraw, otherwise, confirming goes wrong */
-  if (pld->redraw)
+  if (pld->redraw) {
     poselib_preview_apply(C, op);
+  }
 
   return ret;
 }
@@ -1834,9 +1899,15 @@ void POSELIB_OT_browse_interactive(wmOperatorType *ot)
   // XXX: percentage vs factor?
   /* not used yet */
 #if 0
-  RNA_def_float_factor(
-          ot->srna, "blend_factor", 1.0f, 0.0f, 1.0f, "Blend Factor",
-          "Amount that the pose is applied on top of the existing poses", 0.0f, 1.0f);
+  RNA_def_float_factor(ot->srna,
+                       "blend_factor",
+                       1.0f,
+                       0.0f,
+                       1.0f,
+                       "Blend Factor",
+                       "Amount that the pose is applied on top of the existing poses",
+                       0.0f,
+                       1.0f);
 #endif
 }
 

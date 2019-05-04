@@ -720,7 +720,8 @@ static PointerRNA rna_Curve_active_spline_get(PointerRNA *ptr)
   Nurb *nu;
   ListBase *nurbs = BKE_curve_nurbs_get(cu);
 
-  /* for curve outside editmode will set to -1,  should be changed to be allowed outside of editmode. */
+  /* For curve outside editmode will set to -1,
+   * should be changed to be allowed outside of editmode. */
   nu = BLI_findlink(nurbs, cu->actnu);
 
   if (nu)
@@ -1311,7 +1312,7 @@ static void rna_def_charinfo(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_wrap", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", CU_CHINFO_WRAP);
   RNA_def_property_ui_text(prop, "Wrap", "");
-  RNA_def_property_update(prop, 0, "rna_Curve_update_data"); */
+  RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 #  endif
 
   prop = RNA_def_property(srna, "use_small_caps", PROP_BOOLEAN, PROP_NONE);
@@ -1780,7 +1781,8 @@ static void rna_def_curve_nurb(BlenderRNA *brna)
       {KEY_LINEAR, "LINEAR", 0, "Linear", ""},
       {KEY_CARDINAL, "CARDINAL", 0, "Cardinal", ""},
       {KEY_BSPLINE, "BSPLINE", 0, "BSpline", ""},
-      {KEY_CU_EASE, "EASE", 0, "Ease", ""}, /* todo, define somewhere, not one of BEZT_IPO_* */
+      /* TODO: define somewhere, not one of BEZT_IPO_*. */
+      {KEY_CU_EASE, "EASE", 0, "Ease", ""},
       {0, NULL, 0, NULL, NULL},
   };
 

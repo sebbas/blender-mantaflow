@@ -399,10 +399,12 @@ static int set_plane_exec(bContext *C, wmOperator *op)
   int tot = 0;
   float vec[3][3], mat[4][4], obmat[4][4], newmat[4][4], orig[3] = {0.0f, 0.0f, 0.0f};
   int plane = RNA_enum_get(op->ptr, "plane");
-  float rot[4][4] = {{0.0f, 0.0f, -1.0f, 0.0f},
-                     {0.0f, 1.0f, 0.0f, 0.0f},
-                     {1.0f, 0.0f, 0.0f, 0.0f},
-                     {0.0f, 0.0f, 0.0f, 1.0f}}; /* 90 degrees Y-axis rotation matrix */
+  float rot[4][4] = {
+      {0.0f, 0.0f, -1.0f, 0.0f},
+      {0.0f, 1.0f, 0.0f, 0.0f},
+      {1.0f, 0.0f, 0.0f, 0.0f},
+      {0.0f, 0.0f, 0.0f, 1.0f},
+  }; /* 90 degrees Y-axis rotation matrix */
 
   if (count_selected_bundles(C) != 3) {
     BKE_report(op->reports, RPT_ERROR, "Three tracks with bundles are needed to orient the floor");
@@ -677,8 +679,9 @@ static int do_set_scale(bContext *C, wmOperator *op, bool scale_solution, bool a
 
       DEG_id_tag_update(&clip->id, 0);
 
-      if (object)
+      if (object) {
         DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
+      }
 
       WM_event_add_notifier(C, NC_MOVIECLIP | NA_EVALUATED, clip);
       WM_event_add_notifier(C, NC_OBJECT | ND_TRANSFORM, NULL);
@@ -698,8 +701,9 @@ static int set_scale_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(e
   SpaceClip *sc = CTX_wm_space_clip(C);
   MovieClip *clip = ED_space_clip_get_clip(sc);
 
-  if (!RNA_struct_property_is_set(op->ptr, "distance"))
+  if (!RNA_struct_property_is_set(op->ptr, "distance")) {
     RNA_float_set(op->ptr, "distance", clip->tracking.settings.dist);
+  }
 
   return set_scale_exec(C, op);
 }

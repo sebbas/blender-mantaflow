@@ -87,11 +87,15 @@ static void cmp_node_image_add_pass_output(bNodeTree *ntree,
 
   if (sock_index < 0) {
     /* The first 31 sockets always are the legacy hardcoded sockets.
-     * Any dynamically allocated sockets follow afterwards, and are sorted in the order in which they were stored in the RenderResult.
-     * Therefore, we remember the index of the last matched socket. New sockets are placed behind the previously traversed one, but always after the first 31. */
+     * Any dynamically allocated sockets follow afterwards,
+     * and are sorted in the order in which they were stored in the RenderResult.
+     * Therefore, we remember the index of the last matched socket.
+     * New sockets are placed behind the previously traversed one,
+     * but always after the first 31. */
     int after_index = *prev_index;
-    if (is_rlayers && after_index < 30)
+    if (is_rlayers && after_index < 30) {
       after_index = 30;
+    }
 
     if (rres_index >= 0) {
       sock = node_add_socket_from_template(
@@ -158,10 +162,12 @@ static void cmp_node_image_create_outputs(bNodeTree *ntree,
         RenderPass *rpass;
         for (rpass = rl->passes.first; rpass; rpass = rpass->next) {
           int type;
-          if (rpass->channels == 1)
+          if (rpass->channels == 1) {
             type = SOCK_FLOAT;
-          else
+          }
+          else {
             type = SOCK_RGBA;
+          }
 
           cmp_node_image_add_pass_output(ntree,
                                          node,
@@ -337,7 +343,8 @@ static void cmp_node_rlayer_create_outputs(bNodeTree *ntree,
                                  &prev_index);
 }
 
-/* XXX make this into a generic socket verification function for dynamic socket replacement (multilayer, groups, static templates) */
+/* XXX make this into a generic socket verification function for dynamic socket replacement
+ * (multilayer, groups, static templates) */
 static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rlayer)
 {
   bNodeSocket *sock, *sock_next;
@@ -345,10 +352,12 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
   int sock_index;
 
   /* XXX make callback */
-  if (rlayer)
+  if (rlayer) {
     cmp_node_rlayer_create_outputs(ntree, node, &available_sockets);
-  else
+  }
+  else {
     cmp_node_image_create_outputs(ntree, node, &available_sockets);
+  }
 
   /* Get rid of sockets whose passes are not available in the image.
    * If sockets that are not available would be deleted, the connections to them would be lost
@@ -358,7 +367,8 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
    * Another important detail comes from compatibility with the older socket model, where there
    * was a fixed socket per pass type that was just hidden or not. Therefore, older versions expect
    * the first 31 passes to belong to a specific pass type.
-   * So, we keep those 31 always allocated before the others as well, even if they have no links attached. */
+   * So, we keep those 31 always allocated before the others as well,
+   * even if they have no links attached. */
   sock_index = 0;
   for (sock = node->outputs.first; sock; sock = sock_next, sock_index++) {
     sock_next = sock->next;
@@ -368,8 +378,9 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
     else {
       bNodeLink *link;
       for (link = ntree->links.first; link; link = link->next) {
-        if (link->fromsock == sock)
+        if (link->fromsock == sock) {
           break;
+        }
       }
       if (!link && (!rlayer || sock_index > 30)) {
         MEM_freeN(sock->storage);
@@ -387,8 +398,9 @@ static void cmp_node_image_verify_outputs(bNodeTree *ntree, bNode *node, bool rl
 static void cmp_node_image_update(bNodeTree *ntree, bNode *node)
 {
   /* avoid unnecessary updates, only changes to the image/image user data are of interest */
-  if (node->update & NODE_UPDATE_ID)
+  if (node->update & NODE_UPDATE_ID) {
     cmp_node_image_verify_outputs(ntree, node, false);
+  }
 
   cmp_node_update_default(ntree, node);
 }
@@ -411,8 +423,9 @@ static void node_composit_free_image(bNode *node)
   bNodeSocket *sock;
 
   /* free extra socket info */
-  for (sock = node->outputs.first; sock; sock = sock->next)
+  for (sock = node->outputs.first; sock; sock = sock->next) {
     MEM_freeN(sock->storage);
+  }
 
   MEM_freeN(node->storage);
 }
@@ -426,8 +439,9 @@ static void node_composit_copy_image(bNodeTree *UNUSED(dest_ntree),
   dest_node->storage = MEM_dupallocN(src_node->storage);
 
   /* copy extra socket info */
-  for (sock = src_node->outputs.first; sock; sock = sock->next)
+  for (sock = src_node->outputs.first; sock; sock = sock->next) {
     sock->new_sock->storage = MEM_dupallocN(sock->storage);
+  }
 }
 
 void register_node_type_cmp_image(void)
@@ -437,7 +451,7 @@ void register_node_type_cmp_image(void)
   cmp_node_type_base(&ntype, CMP_NODE_IMAGE, "Image", NODE_CLASS_INPUT, NODE_PREVIEW);
   node_type_init(&ntype, node_composit_init_image);
   node_type_storage(&ntype, "ImageUser", node_composit_free_image, node_composit_copy_image);
-  node_type_update(&ntype, cmp_node_image_update, NULL);
+  node_type_update(&ntype, cmp_node_image_update);
   node_type_label(&ntype, node_image_label);
 
   nodeRegisterType(&ntype);
@@ -518,9 +532,11 @@ static bool node_composit_poll_rlayers(bNodeType *UNUSED(ntype), bNodeTree *ntre
      * Render layers node can only be used in local scene->nodetree,
      * since it directly links to the scene.
      */
-    for (scene = G.main->scenes.first; scene; scene = scene->id.next)
-      if (scene->nodetree == ntree)
+    for (scene = G.main->scenes.first; scene; scene = scene->id.next) {
+      if (scene->nodetree == ntree) {
         break;
+      }
+    }
 
     return (scene != NULL);
   }
@@ -569,7 +585,7 @@ void register_node_type_cmp_rlayers(void)
   ntype.initfunc_api = node_composit_init_rlayers;
   ntype.poll = node_composit_poll_rlayers;
   node_type_storage(&ntype, NULL, node_composit_free_rlayers, node_composit_copy_rlayers);
-  node_type_update(&ntype, cmp_node_rlayers_update, NULL);
+  node_type_update(&ntype, cmp_node_rlayers_update);
   node_type_init(&ntype, node_cmp_rlayers_outputs);
   node_type_size_preset(&ntype, NODE_SIZE_LARGE);
 

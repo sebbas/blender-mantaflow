@@ -272,7 +272,7 @@ BMOpSlot *BMO_slot_get(BMOpSlot slot_args[BMO_OP_MAX_SLOTS], const char *identif
   int slot_code = bmo_name_to_slotcode_check(slot_args, identifier);
 
   if (UNLIKELY(slot_code < 0)) {
-    //return &BMOpEmptySlot;
+    // return &BMOpEmptySlot;
     BLI_assert(0);
     return NULL; /* better crash */
   }
@@ -741,7 +741,8 @@ void *bmo_slot_buffer_grow(BMesh *bm, BMOperator *op, int slot_code, int totadd)
     if (slot->len >= slot->size) {
       slot->size = (slot->size + 1 + totadd) * 2;
 
-      allocsize = BMO_OPSLOT_TYPEINFO[bmo_opdefines[op->type]->slot_types[slot_code].type] * slot->size;
+      allocsize = BMO_OPSLOT_TYPEINFO[bmo_opdefines[op->type]->slot_types[slot_code].type] *
+                  slot->size;
 
       tmp = slot->data.buf;
       slot->data.buf = MEM_callocN(allocsize, "opslot dynamic array");
@@ -756,7 +757,8 @@ void *bmo_slot_buffer_grow(BMesh *bm, BMOperator *op, int slot_code, int totadd)
     slot->len += totadd;
     slot->size = slot->len + 2;
 
-    allocsize = BMO_OPSLOT_TYPEINFO[bmo_opdefines[op->type]->slot_types[slot_code].type] * slot->len;
+    allocsize = BMO_OPSLOT_TYPEINFO[bmo_opdefines[op->type]->slot_types[slot_code].type] *
+                slot->len;
 
     tmp = slot->data.buf;
     slot->data.buf = MEM_callocN(allocsize, "opslot dynamic array");

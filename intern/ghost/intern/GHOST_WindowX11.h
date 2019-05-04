@@ -46,7 +46,8 @@ class GHOST_DropTargetX11;
 
 /**
  * X11 implementation of GHOST_IWindow.
- * Dimensions are given in screen coordinates that are relative to the upper-left corner of the screen.
+ * Dimensions are given in screen coordinates that are
+ * relative to the upper-left corner of the screen.
  */
 
 class GHOST_WindowX11 : public GHOST_Window {
@@ -65,7 +66,6 @@ class GHOST_WindowX11 : public GHOST_Window {
    * \param type      The type of drawing context installed in this window.
    * \param stereoVisual  Stereo visual for quad buffered stereo.
    * \param alphaBackground Enable alpha blending of window with display background
-   * \param numOfAASamples    Number of samples used for AA (zero if no AA)
    */
   GHOST_WindowX11(GHOST_SystemX11 *system,
                   Display *display,
@@ -80,7 +80,6 @@ class GHOST_WindowX11 : public GHOST_Window {
                   const bool stereoVisual = false,
                   const bool exclusive = false,
                   const bool alphaBackground = false,
-                  const GHOST_TUns16 numOfAASamples = 0,
                   const bool is_debug = false);
 
   bool getValid() const;

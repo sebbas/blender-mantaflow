@@ -479,12 +479,14 @@ bool Application::processEvent(GHOST_IEvent *event)
 
   switch (event->getType()) {
 #if 0
-  case GHOST_kEventUnknown:
-    break;
-  case GHOST_kEventCursorButton:
-    std::cout << "GHOST_kEventCursorButton"; break;
-  case GHOST_kEventCursorMove:
-    std::cout << "GHOST_kEventCursorMove"; break;
+    case GHOST_kEventUnknown:
+      break;
+    case GHOST_kEventCursorButton:
+      std::cout << "GHOST_kEventCursorButton";
+      break;
+    case GHOST_kEventCursorMove:
+      std::cout << "GHOST_kEventCursorMove";
+      break;
 #endif
     case GHOST_kEventWheel: {
       GHOST_TEventWheelData *wheelData = (GHOST_TEventWheelData *)event->getData();
@@ -676,11 +678,12 @@ int main(int /*argc*/, char ** /*argv*/)
     LONG lresult;
     HKEY hkey = 0;
     DWORD dwd = 0;
-    //unsigned char buffer[128];
+    // unsigned char buffer[128];
 
     CRegKey regkey;
-    //DWORD keyValue;
-    //      lresult = regkey.Open(HKEY_LOCAL_MACHINE, "SOFTWARE\\NVIDIA Corporation\\Global\\Stereo3D\\StereoEnable");
+    // DWORD keyValue;
+    // lresult = regkey.Open(
+    //     HKEY_LOCAL_MACHINE, "SOFTWARE\\NVIDIA Corporation\\Global\\Stereo3D\\StereoEnable");
     lresult = regkey.Open(HKEY_LOCAL_MACHINE,
                           "SOFTWARE\\NVIDIA Corporation\\Global\\Stereo3D\\StereoEnable",
                           KEY_ALL_ACCESS);
@@ -716,7 +719,7 @@ int main(int /*argc*/, char ** /*argv*/)
 
     // Enter main loop
     while (!app.m_exitRequested) {
-      //printf("main: loop\n");
+      // printf("main: loop\n");
       fSystem->processEvents(true);
       fSystem->dispatchEvents();
     }

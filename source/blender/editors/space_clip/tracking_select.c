@@ -58,11 +58,13 @@ static float dist_to_crns(float co[2], float pos[2], float crns[4][2]);
 static int mouse_on_side(
     float co[2], float x1, float y1, float x2, float y2, float epsx, float epsy)
 {
-  if (x1 > x2)
+  if (x1 > x2) {
     SWAP(float, x1, x2);
+  }
 
-  if (y1 > y2)
+  if (y1 > y2) {
     SWAP(float, y1, y2);
+  }
 
   return (co[0] >= x1 - epsx && co[0] <= x2 + epsx) && (co[1] >= y1 - epsy && co[1] <= y2 + epsy);
 }
@@ -115,14 +117,17 @@ static int track_mouse_area(const bContext *C, float co[2], MovieTrackingTrack *
   epsy = max_ff(epsy, 2.0f / height);
 
   if (sc->flag & SC_SHOW_MARKER_SEARCH) {
-    if (mouse_on_rect(co, marker->pos, marker->search_min, marker->search_max, epsx, epsy))
+    if (mouse_on_rect(co, marker->pos, marker->search_min, marker->search_max, epsx, epsy)) {
       return TRACK_AREA_SEARCH;
+    }
   }
 
   if ((marker->flag & MARKER_DISABLED) == 0) {
-    if (sc->flag & SC_SHOW_MARKER_PATTERN)
-      if (mouse_on_crns(co, marker->pos, marker->pattern_corners, epsx, epsy))
+    if (sc->flag & SC_SHOW_MARKER_PATTERN) {
+      if (mouse_on_crns(co, marker->pos, marker->pattern_corners, epsx, epsy)) {
         return TRACK_AREA_PAT;
+      }
+    }
 
     epsx = 12.0f / width;
     epsy = 12.0f / height;
@@ -204,12 +209,14 @@ static MovieTrackingTrack *find_nearest_track(SpaceClip *sc,
           (co[1] - marker->pos[1] - cur->offset[1]) * (co[1] - marker->pos[1] - cur->offset[1]));
 
       /* distance to pattern boundbox */
-      if (sc->flag & SC_SHOW_MARKER_PATTERN)
+      if (sc->flag & SC_SHOW_MARKER_PATTERN) {
         d2 = dist_to_crns(co, marker->pos, marker->pattern_corners);
+      }
 
       /* distance to search boundbox */
-      if (sc->flag & SC_SHOW_MARKER_SEARCH && TRACK_VIEW_SELECTED(sc, cur))
+      if (sc->flag & SC_SHOW_MARKER_SEARCH && TRACK_VIEW_SELECTED(sc, cur)) {
         d3 = dist_to_rect(co, marker->pos, marker->search_min, marker->search_max);
+      }
 
       /* choose minimal distance. useful for cases of overlapped markers. */
       dist = min_fff(d1, d2, d3);
@@ -256,7 +263,7 @@ static MovieTrackingPlaneTrack *find_nearest_plane_track(SpaceClip *sc,
   return plane_track;
 }
 
-void ed_tracking_delect_all_tracks(ListBase *tracks_base)
+void ed_tracking_deselect_all_tracks(ListBase *tracks_base)
 {
   MovieTrackingTrack *track;
   for (track = tracks_base->first; track != NULL; track = track->next) {
@@ -264,7 +271,7 @@ void ed_tracking_delect_all_tracks(ListBase *tracks_base)
   }
 }
 
-void ed_tracking_delect_all_plane_tracks(ListBase *plane_tracks_base)
+void ed_tracking_deselect_all_plane_tracks(ListBase *plane_tracks_base)
 {
   MovieTrackingPlaneTrack *plane_track;
   for (plane_track = plane_tracks_base->first; plane_track != NULL;
@@ -273,7 +280,7 @@ void ed_tracking_delect_all_plane_tracks(ListBase *plane_tracks_base)
   }
 }
 
-static int mouse_select(bContext *C, float co[2], int extend)
+static int mouse_select(bContext *C, float co[2], const bool extend, const bool deselect_all)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);
   MovieClip *clip = ED_space_clip_get_clip(sc);
@@ -288,6 +295,15 @@ static int mouse_select(bContext *C, float co[2], int extend)
   track = find_nearest_track(sc, tracksbase, co, &distance_to_track);
   plane_track = find_nearest_plane_track(sc, plane_tracks_base, co, &distance_to_plane_track);
 
+  /* Do not select beyond some reasonable distance, that is useless and
+   * prevents the 'deselect on nothing' behavior. */
+  if (distance_to_track > 0.05f) {
+    track = NULL;
+  }
+  if (distance_to_plane_track > 0.05f) {
+    plane_track = NULL;
+  }
+
   /* Between track and plane we choose closest to the mouse for selection here. */
   if (track && plane_track) {
     if (distance_to_track < distance_to_plane_track) {
@@ -298,15 +314,16 @@ static int mouse_select(bContext *C, float co[2], int extend)
     }
   }
 
-  if (!extend) {
-    ed_tracking_delect_all_plane_tracks(plane_tracks_base);
-  }
-
   if (track) {
+    if (!extend) {
+      ed_tracking_deselect_all_plane_tracks(plane_tracks_base);
+    }
+
     int area = track_mouse_area(C, co, track);
 
-    if (!extend || !TRACK_VIEW_SELECTED(sc, track))
+    if (!extend || !TRACK_VIEW_SELECTED(sc, track)) {
       area = TRACK_AREA_ALL;
+    }
 
     if (extend && TRACK_AREA_SELECTED(track, area)) {
       if (track == act_track) {
@@ -318,8 +335,9 @@ static int mouse_select(bContext *C, float co[2], int extend)
       }
     }
     else {
-      if (area == TRACK_AREA_POINT)
+      if (area == TRACK_AREA_POINT) {
         area = TRACK_AREA_ALL;
+      }
 
       BKE_tracking_track_select(tracksbase, track, area, extend);
       clip->tracking.act_track = track;
@@ -328,7 +346,7 @@ static int mouse_select(bContext *C, float co[2], int extend)
   }
   else if (plane_track) {
     if (!extend) {
-      ed_tracking_delect_all_tracks(tracksbase);
+      ed_tracking_deselect_all_tracks(tracksbase);
     }
 
     if (PLANE_TRACK_VIEW_SELECTED(plane_track)) {
@@ -342,6 +360,10 @@ static int mouse_select(bContext *C, float co[2], int extend)
 
     clip->tracking.act_track = NULL;
     clip->tracking.act_plane_track = plane_track;
+  }
+  else if (deselect_all) {
+    ed_tracking_deselect_all_tracks(tracksbase);
+    ed_tracking_deselect_all_plane_tracks(plane_tracks_base);
   }
 
   if (!extend) {
@@ -371,12 +393,12 @@ static bool select_poll(bContext *C)
 static int select_exec(bContext *C, wmOperator *op)
 {
   float co[2];
-  int extend;
 
   RNA_float_get_array(op->ptr, "location", co);
-  extend = RNA_boolean_get(op->ptr, "extend");
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
 
-  return mouse_select(C, co, extend);
+  return mouse_select(C, co, extend, deselect_all);
 }
 
 static int select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -424,11 +446,19 @@ void CLIP_OT_select(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
+  PropertyRNA *prop;
   RNA_def_boolean(ot->srna,
                   "extend",
                   0,
                   "Extend",
                   "Extend selection rather than clearing the existing selection");
+  prop = RNA_def_boolean(ot->srna,
+                         "deselect_all",
+                         false,
+                         "Deselect On Nothing",
+                         "Deselect all when nothing under the cursor");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   RNA_def_float_vector(
       ot->srna,
       "location",
@@ -584,10 +614,12 @@ static int do_lasso_select_marker(bContext *C,
 
         if (BLI_rcti_isect_pt(&rect, screen_co[0], screen_co[1]) &&
             BLI_lasso_is_point_inside(mcords, moves, screen_co[0], screen_co[1], V2D_IS_CLIPPED)) {
-          if (select)
+          if (select) {
             BKE_tracking_track_flag_set(track, TRACK_AREA_ALL, SELECT);
-          else
+          }
+          else {
             BKE_tracking_track_flag_clear(track, TRACK_AREA_ALL, SELECT);
+          }
         }
 
         changed = true;
@@ -820,8 +852,9 @@ static int select_all_exec(bContext *C, wmOperator *op)
 
   ED_clip_select_all(sc, action, &has_selection);
 
-  if (!has_selection)
+  if (!has_selection) {
     sc->flag &= ~SC_LOCK_SELECTION;
+  }
 
   BKE_tracking_dopesheet_tag_update(tracking);
 
@@ -888,8 +921,9 @@ static int select_grouped_exec(bContext *C, wmOperator *op)
       if (act_track) {
         ok = (track->flag & TRACK_CUSTOMCOLOR) == (act_track->flag & TRACK_CUSTOMCOLOR);
 
-        if (ok && track->flag & TRACK_CUSTOMCOLOR)
+        if (ok && track->flag & TRACK_CUSTOMCOLOR) {
           ok = equals_v3v3(track->color, act_track->color);
+        }
       }
     }
     else if (group == 6) { /* failed */
@@ -898,10 +932,12 @@ static int select_grouped_exec(bContext *C, wmOperator *op)
 
     if (ok) {
       track->flag |= SELECT;
-      if (sc->flag & SC_SHOW_MARKER_PATTERN)
+      if (sc->flag & SC_SHOW_MARKER_PATTERN) {
         track->pat_flag |= SELECT;
-      if (sc->flag & SC_SHOW_MARKER_SEARCH)
+      }
+      if (sc->flag & SC_SHOW_MARKER_SEARCH) {
         track->search_flag |= SELECT;
+      }
     }
 
     track = track->next;

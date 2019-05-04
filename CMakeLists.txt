@@ -544,10 +544,6 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
   endif()
 endif()
 
-# Dependency graph
-option(WITH_LEGACY_DEPSGRAPH "Build Blender with legacy dependency graph" ON)
-mark_as_advanced(WITH_LEGACY_DEPSGRAPH)
-
 if(WIN32)
   # Use hardcoded paths or find_package to find externals
   option(WITH_WINDOWS_FIND_MODULES "Use find_package to locate libraries" OFF)
@@ -815,6 +811,12 @@ if (NOT CMAKE_BUILD_TYPE MATCHES "Release")
 
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${COMPILER_ASAN_CXXFLAGS}")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${COMPILER_ASAN_CXXFLAGS}")
+    if(WITH_CYCLES_OSL)
+      # With OSL, Cycles disables rtti in some modules, wich then breaks at linking
+      # when trying to use vptr sanitizer (included into 'undefined' general option).
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-sanitize=vptr")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-sanitize=vptr")
+    endif()
     if(MSVC)
       set(COMPILER_ASAN_LINKER_FLAGS "/FUNCTIONPADMIN:6")
     endif()

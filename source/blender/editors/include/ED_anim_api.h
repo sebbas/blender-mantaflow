@@ -276,7 +276,8 @@ typedef enum eAnim_Update_Flags {
 typedef enum eAnimFilter_Flags {
   /** data which channel represents is fits the dopesheet filters
    * (i.e. scene visibility criteria) */
-  // XXX: it's hard to think of any examples where this *ISN'T* the case... perhaps becomes implicit?
+  /* XXX: it's hard to think of any examples where this *ISN'T* the case...
+   * perhaps becomes implicit?. */
   ANIMFILTER_DATA_VISIBLE = (1 << 0),
   /** channel is visible within the channel-list hierarchy
    * (i.e. F-Curves within Groups in ActEdit) */
@@ -610,6 +611,9 @@ void ANIM_set_active_channel(bAnimContext *ac,
 /* Delete the F-Curve from the given AnimData block (if possible),
  * as appropriate according to animation context */
 void ANIM_fcurve_delete_from_animdata(bAnimContext *ac, struct AnimData *adt, struct FCurve *fcu);
+
+/* Unlink the action from animdata if it's empty. */
+bool ANIM_remove_empty_action_from_animdata(struct AnimData *adt);
 
 /* ************************************************ */
 /* DRAWING API */

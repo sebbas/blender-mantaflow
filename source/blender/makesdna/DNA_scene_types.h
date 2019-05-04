@@ -670,7 +670,7 @@ typedef struct RenderData {
   /**
    * The number of samples to use per pixel.
    */
-  short osa;
+  short osa DNA_DEPRECATED;
 
   short frs_sec;
   char _pad[6];
@@ -802,11 +802,6 @@ typedef struct RenderProfile {
 /* ToolSettings.uv_sculpt_settings */
 #define UV_SCULPT_LOCK_BORDERS 1
 #define UV_SCULPT_ALL_ISLANDS 2
-
-/* ToolSettings.uv_sculpt_tool */
-#define UV_SCULPT_TOOL_PINCH 1
-#define UV_SCULPT_TOOL_RELAX 2
-#define UV_SCULPT_TOOL_GRAB 3
 
 /* ToolSettings.uv_relax_method */
 #define UV_SCULPT_TOOL_RELAX_LAPLACIAN 1
@@ -965,11 +960,11 @@ typedef struct Sculpt {
   Paint paint;
 
   /* For rotating around a pivot point */
-  //float pivot[3]; XXX not used?
+  // float pivot[3]; XXX not used?
   int flags;
 
   /* Control tablet input */
-  //char tablet_size, tablet_strength; XXX not used?
+  // char tablet_size, tablet_strength; XXX not used?
   int radial_symm[3];
 
   /* Maximum edge length for dynamic topology sculpting (in pixels) */
@@ -1467,7 +1462,7 @@ typedef struct ToolSettings {
   char snap_target;
   char snap_transform_mode_flag;
 
-  char proportional, prop_mode;
+  char proportional_edit, prop_mode;
   /** Proportional edit, object mode. */
   char proportional_objects;
   /** Proportional edit, mask editing. */
@@ -1479,7 +1474,7 @@ typedef struct ToolSettings {
   /** Lock marker editing. */
   char lock_markers;
 
-  /**aUto normalizing mode in wpain.t*/
+  /** Auto normalizing mode in wpaint. */
   char auto_normalize;
   /** Paint multiple bones in wpaint. */
   char multipaint;
@@ -1488,10 +1483,8 @@ typedef struct ToolSettings {
   char vgroupsubset;
 
   /* UV painting */
-  char _pad2[1];
-  char use_uv_sculpt;
+  char _pad2[3];
   char uv_sculpt_settings;
-  char uv_sculpt_tool;
   char uv_relax_method;
   /* XXX: these sculpt_paint_* fields are deprecated, use the
    * unified_paint_settings field instead! */
@@ -1572,6 +1565,11 @@ typedef struct SceneDisplay {
   float matcap_ssao_distance;
   float matcap_ssao_attenuation;
   int matcap_ssao_samples;
+
+  /** Method of AA for viewport rendering and image rendering */
+  char viewport_aa;
+  char render_aa;
+  char _pad[6];
 
   /** OpenGL render engine settings. */
   View3DShading shading;
@@ -1779,7 +1777,7 @@ typedef struct Scene {
 #define SCER_SHOW_SUBFRAME (1 << 3)
 
 /* RenderData.mode */
-#define R_OSA (1 << 0)
+#define R_MODE_UNUSED_0 (1 << 0) /* cleared */
 #define R_MODE_UNUSED_1 (1 << 1) /* cleared */
 #define R_MODE_UNUSED_2 (1 << 2) /* cleared */
 #define R_MODE_UNUSED_3 (1 << 3) /* cleared */
@@ -1816,8 +1814,9 @@ enum {
   R_SEQ_UNUSED_0 = (1 << 0), /* cleared */
   R_SEQ_UNUSED_1 = (1 << 1), /* cleared */
   R_SEQ_UNUSED_2 = (1 << 2), /* cleared */
-  R_SEQ_SOLID_TEX = (1 << 3),
-  R_SEQ_CAMERA_DOF = (1 << 4),
+  R_SEQ_UNUSED_3 = (1 << 3), /* cleared */
+  R_SEQ_UNUSED_4 = (1 << 4), /* cleared */
+  R_SEQ_OVERRIDE_SCENE_SETTINGS = (1 << 5),
 };
 
 /* RenderData.displaymode */
@@ -2078,11 +2077,12 @@ enum {
 #define PROP_INVSQUARE 7
 #define PROP_MODE_MAX 8
 
-/* ToolSettings.proportional */
-#define PROP_EDIT_OFF 0
-#define PROP_EDIT_ON 1
-#define PROP_EDIT_CONNECTED 2
-#define PROP_EDIT_PROJECTED 3
+/** #ToolSettings.proportional_edit & similarly named members. */
+enum {
+  PROP_EDIT_USE = (1 << 0),
+  PROP_EDIT_CONNECTED = (1 << 1),
+  PROP_EDIT_PROJECTED = (1 << 2),
+};
 
 /* ToolSettings.weightuser */
 enum {
@@ -2400,6 +2400,17 @@ enum {
   SHADOW_ESM = 1,
   SHADOW_VSM = 2,
   SHADOW_METHOD_MAX = 3,
+};
+
+/* SceneDisplay->render_aa, SceneDisplay->viewport_aa */
+enum {
+  SCE_DISPLAY_AA_OFF = 0,
+  SCE_DISPLAY_AA_FXAA = 1,
+  SCE_DISPLAY_AA_SAMPLES_5 = 5,
+  SCE_DISPLAY_AA_SAMPLES_8 = 8,
+  SCE_DISPLAY_AA_SAMPLES_11 = 11,
+  SCE_DISPLAY_AA_SAMPLES_16 = 16,
+  SCE_DISPLAY_AA_SAMPLES_32 = 32,
 };
 
 #ifdef __cplusplus

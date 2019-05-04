@@ -599,7 +599,8 @@ float dist_squared_to_ray_v3_normalized(const float ray_origin[3],
 
 /**
  * Find the closest point in a seg to a ray and return the distance squared.
- * \param r_point: Is the point on segment closest to ray (or to ray_origin if the ray and the segment are parallel).
+ * \param r_point: Is the point on segment closest to ray
+ * (or to ray_origin if the ray and the segment are parallel).
  * \param r_depth: the distance of r_point projection on ray to the ray_origin.
  */
 float dist_squared_ray_to_seg_v3(const float ray_origin[3],
@@ -828,14 +829,9 @@ void dist_squared_to_projected_aabb_precalc(struct DistProjectedAABBPrecalc *pre
   float projmat_trans[4][4];
   transpose_m4_m4(projmat_trans, projmat);
   if (!isect_plane_plane_plane_v3(
-          projmat_trans[0], projmat_trans[1], projmat_trans[3],
-          precalc->ray_origin))
-  {
+          projmat_trans[0], projmat_trans[1], projmat_trans[3], precalc->ray_origin)) {
     /* Orthographic projection. */
-    isect_plane_plane_v3(
-            px, py,
-            precalc->ray_origin,
-            precalc->ray_direction);
+    isect_plane_plane_v3(px, py, precalc->ray_origin, precalc->ray_direction);
   }
   else {
     /* Perspective projection. */
@@ -1904,12 +1900,11 @@ bool isect_ray_tri_watertight_v3(const float ray_origin[3],
     const float t = (u * a_kz + v * b_kz + w * c_kz) * sz;
     const float sign_t = xor_fl(t, sign_det);
     if ((sign_t < 0.0f)
-    /* differ from Cycles, don't read r_lambda's original value
-         * otherwise we won't match any of the other intersect functions here...
-         * which would be confusing */
+    /* Differ from Cycles, don't read r_lambda's original value
+     * otherwise we won't match any of the other intersect functions here...
+     * which would be confusing. */
 #if 0
-        ||
-        (sign_T > *r_lambda * xor_signmask(det, sign_mask))
+        || (sign_T > *r_lambda * xor_signmask(det, sign_mask))
 #endif
     ) {
       return false;
@@ -1945,10 +1940,14 @@ bool isect_ray_tri_watertight_v3_simple(const float ray_origin[3],
  * A version of #isect_ray_tri_v3 which takes a threshold argument
  * so rays slightly outside the triangle to be considered as intersecting.
  */
-bool isect_ray_tri_threshold_v3(
-        const float ray_origin[3], const float ray_direction[3],
-        const float v0[3], const float v1[3], const float v2[3],
-        float *r_lambda, float r_uv[2], const float threshold)
+bool isect_ray_tri_threshold_v3(const float ray_origin[3],
+                                const float ray_direction[3],
+                                const float v0[3],
+                                const float v1[3],
+                                const float v2[3],
+                                float *r_lambda,
+                                float r_uv[2],
+                                const float threshold)
 {
   const float epsilon = 0.00000001f;
   float p[3], s[3], e1[3], e2[3], q[3];
@@ -1960,14 +1959,16 @@ bool isect_ray_tri_threshold_v3(
 
   cross_v3_v3v3(p, ray_direction, e2);
   a = dot_v3v3(e1, p);
-  if ((a > -epsilon) && (a < epsilon)) return false;
+  if ((a > -epsilon) && (a < epsilon))
+    return false;
   f = 1.0f / a;
 
   sub_v3_v3v3(s, ray_origin, v0);
 
   cross_v3_v3v3(q, s, e1);
   *r_lambda = f * dot_v3v3(e2, q);
-  if ((*r_lambda < 0.0f)) return false;
+  if ((*r_lambda < 0.0f))
+    return false;
 
   u = f * dot_v3v3(s, p);
   v = f * dot_v3v3(ray_direction, q);
@@ -1978,13 +1979,19 @@ bool isect_ray_tri_threshold_v3(
     dv = v - t;
   }
   else {
-    if      (u < 0) du = u;
-    else if (u > 1) du = u - 1;
-    else            du = 0.0f;
+    if (u < 0)
+      du = u;
+    else if (u > 1)
+      du = u - 1;
+    else
+      du = 0.0f;
 
-    if      (v < 0) dv = v;
-    else if (v > 1) dv = v - 1;
-    else            dv = 0.0f;
+    if (v < 0)
+      dv = v;
+    else if (v > 1)
+      dv = v - 1;
+    else
+      dv = 0.0f;
   }
 
   mul_v3_fl(e1, du);
@@ -2849,7 +2856,7 @@ bool isect_ray_aabb_v3(const struct IsectRayAABB_Precalc *data,
 
   /* Note: tmax does not need to be updated since we don't use it
    * keeping this here for future reference - jwilkins */
-  //if (tzmax < tmax) tmax = tzmax;
+  // if (tzmax < tmax) tmax = tzmax;
 
   if (tmin_out) {
     (*tmin_out) = tmin;
@@ -2862,7 +2869,8 @@ bool isect_ray_aabb_v3(const struct IsectRayAABB_Precalc *data,
  * Test a bounding box (AABB) for ray intersection.
  * Assumes the ray is already local to the boundbox space.
  *
- * \note: \a direction should be normalized if you intend to use the \a tmin or \a tmax distance results!
+ * \note: \a direction should be normalized
+ * if you intend to use the \a tmin or \a tmax distance results!
  */
 bool isect_ray_aabb_v3_simple(const float orig[3],
                               const float dir[3],
@@ -3125,7 +3133,8 @@ bool isect_point_tri_prism_v3(const float p[3],
 /**
  * \param r_isect_co: The point \a p projected onto the triangle.
  * \return True when \a p is inside the triangle.
- * \note Its up to the caller to check the distance between \a p and \a r_vi against an error margin.
+ * \note Its up to the caller to check the distance between \a p and \a r_vi
+ * against an error margin.
  */
 bool isect_point_tri_v3(
     const float p[3], const float v1[3], const float v2[3], const float v3[3], float r_isect_co[3])
@@ -3402,7 +3411,12 @@ void interp_weights_quad_v3(float w[4],
   }
 }
 
-/* return 1 of point is inside triangle, 2 if it's on the edge, 0 if point is outside of triangle */
+/**
+ * \return
+ * - 0 if the point is outside of triangle.
+ * - 1 if the point is inside triangle.
+ * - 2 if it's on the edge.
+ * */
 int barycentric_inside_triangle_v2(const float w[3])
 {
   if (IN_RANGE(w[0], 0.0f, 1.0f) && IN_RANGE(w[1], 0.0f, 1.0f) && IN_RANGE(w[2], 0.0f, 1.0f)) {
@@ -3463,7 +3477,8 @@ void barycentric_weights_v2(
 
 /**
  * A version of #barycentric_weights_v2 that doesn't allow negative weights.
- * Useful when negative values cause problems and points are only ever slightly outside of the triangle.
+ * Useful when negative values cause problems and points are only
+ * ever slightly outside of the triangle.
  */
 void barycentric_weights_v2_clamped(
     const float v1[2], const float v2[2], const float v3[2], const float co[2], float w[3])
@@ -3518,9 +3533,9 @@ void barycentric_weights_v2_quad(const float v1[2],
                                  float w[4])
 {
   /* note: fabsf() here is not needed for convex quads (and not used in interp_weights_poly_v2).
-   *       but in the case of concave/bow-tie quads for the mask rasterizer it gives unreliable results
-   *       without adding absf(). If this becomes an issue for more general usage we could have
-   *       this optional or use a different function - Campbell */
+   * but in the case of concave/bow-tie quads for the mask rasterizer it gives unreliable results
+   * without adding absf(). If this becomes an issue for more general usage we could have
+   * this optional or use a different function - Campbell */
 #define MEAN_VALUE_HALF_TAN_V2(_area, i1, i2) \
   ((_area = cross_v2v2(dirs[i1], dirs[i2])) != 0.0f ? \
        fabsf(((lens[i1] * lens[i2]) - dot_v2v2(dirs[i1], dirs[i2])) / _area) : \
@@ -4332,7 +4347,8 @@ void window_translate_m4(float winmat[4][4], float perspmat[4][4], const float x
 }
 
 /**
- * Frustum planes extraction from a projection matrix (homogeneous 4d vector representations of planes).
+ * Frustum planes extraction from a projection matrix
+ * (homogeneous 4d vector representations of planes).
  *
  * plane parameters can be NULL if you do not need them.
  */
@@ -4808,7 +4824,8 @@ void tangent_from_uv_v3(const float uv1[2],
  * \param pos: current pos array of 'new' positions
  * \param weight: current weight array of 'new'weights (may be NULL pointer if you have no weights)
  * \param rpos: Reference rpos array of 'old' positions
- * \param rweight: Reference rweight array of 'old'weights (may be NULL pointer if you have no weights).
+ * \param rweight: Reference rweight array of 'old'weights
+ * (may be NULL pointer if you have no weights).
  *
  * output
  *
@@ -5212,20 +5229,20 @@ typedef union {
 
 static vFloat vec_splat_float(float val)
 {
-  return (vFloat) {val, val, val, val};
+  return (vFloat){val, val, val, val};
 }
 
 static float ff_quad_form_factor(float *p, float *n, float *q0, float *q1, float *q2, float *q3)
 {
   vFloat vcos, rlen, vrx, vry, vrz, vsrx, vsry, vsrz, gx, gy, gz, vangle;
-  vUInt8 rotate = (vUInt8) {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3};
+  vUInt8 rotate = (vUInt8){4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3};
   vFloatResult vresult;
   float result;
 
   /* compute r* */
-  vrx = (vFloat) {q0[0], q1[0], q2[0], q3[0]} -vec_splat_float(p[0]);
-  vry = (vFloat) {q0[1], q1[1], q2[1], q3[1]} -vec_splat_float(p[1]);
-  vrz = (vFloat) {q0[2], q1[2], q2[2], q3[2]} -vec_splat_float(p[2]);
+  vrx = (vFloat){q0[0], q1[0], q2[0], q3[0]} - vec_splat_float(p[0]);
+  vry = (vFloat){q0[1], q1[1], q2[1], q3[1]} - vec_splat_float(p[1]);
+  vrz = (vFloat){q0[2], q1[2], q2[2], q3[2]} - vec_splat_float(p[2]);
 
   /* normalize r* */
   rlen = vec_rsqrte(vrx * vrx + vry * vry + vrz * vrz + vec_splat_float(1e-16f));
@@ -5255,9 +5272,9 @@ static float ff_quad_form_factor(float *p, float *n, float *q0, float *q1, float
   vangle = vacosf(vcos);
 
   /* dot */
-  vresult.v = (vec_splat_float(n[0]) * gx +
-               vec_splat_float(n[1]) * gy +
-               vec_splat_float(n[2]) * gz) * vangle;
+  vresult.v = (vec_splat_float(n[0]) * gx + vec_splat_float(n[1]) * gy +
+               vec_splat_float(n[2]) * gz) *
+              vangle;
 
   result = (vresult.f[0] + vresult.f[1] + vresult.f[2] + vresult.f[3]) * (0.5f / (float)M_PI);
   result = MAX2(result, 0.0f);

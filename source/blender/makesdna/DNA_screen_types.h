@@ -166,9 +166,11 @@ typedef struct Panel {
 /**
  * Notes on Panel Categories:
  *
- * - #ARegion.panels_category (#PanelCategoryDyn) is a runtime only list of categories collected during draw.
+ * - #ARegion.panels_category (#PanelCategoryDyn)
+ *   is a runtime only list of categories collected during draw.
  *
- * - #ARegion.panels_category_active (#PanelCategoryStack) is basically a list of strings (category id's).
+ * - #ARegion.panels_category_active (#PanelCategoryStack)
+ *   is basically a list of strings (category id's).
  *
  * Clicking on a tab moves it to the front of ar->panels_category_active,
  * If the context changes so this tab is no longer displayed,
@@ -344,7 +346,7 @@ typedef struct ScrArea {
    * runtime variable, updated by executing operators.
    */
   short region_active_win;
-  char temp, _pad;
+  char _pad[2];
 
   /** Callbacks for this space type. */
   struct SpaceType *type;
@@ -471,7 +473,7 @@ enum {
 
 /** #bScreen.flag */
 enum {
-  SCREEN_COLLAPSE_TOPBAR = 1,
+  SCREEN_DEPRECATED = 1,
   SCREEN_COLLAPSE_STATUSBAR = 2,
 };
 
@@ -544,7 +546,7 @@ enum {
 #define UI_LIST_AUTO_SIZE_THRESHOLD 1
 
 /* uiList filter flags (dyn_data) */
-/* WARNING! Those values are used by integer RNA too, which does not handle well values > INT_MAX...
+/* WARNING! Those values are used by integer RNA too, which does not handle well values > INT_MAX.
  *          So please do not use 32nd bit here. */
 enum {
   UILST_FLT_ITEM = 1 << 30, /* This item has passed the filter process successfully. */
@@ -589,6 +591,7 @@ enum {
   /* A place for buttons to trigger execution of something that was set up in other regions. */
   RGN_TYPE_EXECUTE = 10,
   RGN_TYPE_FOOTER = 11,
+  RGN_TYPE_TOOL_HEADER = 12,
 };
 /* use for function args */
 #define RGN_TYPE_ANY -1
@@ -625,6 +628,9 @@ enum {
   /** Size has been clamped (floating regions only). */
   RGN_FLAG_SIZE_CLAMP_X = (1 << 5),
   RGN_FLAG_SIZE_CLAMP_Y = (1 << 6),
+  /** When the user sets the region is hidden,
+   * needed for floating regions that may be hidden for other reasons. */
+  RGN_FLAG_HIDDEN_BY_USER = (1 << 7),
 };
 
 /** #ARegion.do_draw */

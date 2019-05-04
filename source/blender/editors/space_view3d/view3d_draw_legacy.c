@@ -219,12 +219,6 @@ static void validate_object_select_id(struct Depsgraph *depsgraph,
   G.f &= ~G_FLAG_BACKBUFSEL;
 }
 
-void view3d_opengl_read_pixels(
-    ARegion *ar, int x, int y, int w, int h, int format, int type, void *data)
-{
-  glReadPixels(ar->winrct.xmin + x, ar->winrct.ymin + y, w, h, format, type, data);
-}
-
 /* TODO: Creating, attaching texture, and destroying a framebuffer is quite slow.
  *       Calling this function should be avoided during interactive drawing. */
 static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void *data)
@@ -234,7 +228,6 @@ static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void 
   GPUFrameBuffer *tmp_fb = GPU_framebuffer_create();
   GPU_framebuffer_texture_attach(tmp_fb, dtxl->depth, 0, 0);
   GPU_framebuffer_bind(tmp_fb);
-  glDisable(GL_SCISSOR_TEST);
 
   glReadPixels(rect->xmin,
                rect->ymin,
@@ -244,9 +237,7 @@ static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void 
                GL_FLOAT,
                data);
 
-  glEnable(GL_SCISSOR_TEST);
   GPU_framebuffer_restore();
-
   GPU_framebuffer_free(tmp_fb);
 }
 
@@ -269,29 +260,11 @@ void ED_view3d_backbuf_depth_validate(ViewContext *vc)
 {
   if (vc->v3d->flag & V3D_INVALID_BACKBUF) {
     ARegion *ar = vc->ar;
-    RegionView3D *rv3d = ar->regiondata;
     Object *obact_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
 
     if (obact_eval && ((obact_eval->base_flag & BASE_VISIBLE) != 0)) {
-      GPU_scissor(ar->winrct.xmin,
-                  ar->winrct.ymin,
-                  BLI_rcti_size_x(&ar->winrct),
-                  BLI_rcti_size_y(&ar->winrct));
-
-      GPU_depth_test(true);
-      GPU_clear(GPU_DEPTH_BIT);
-
-      if (rv3d->rflag & RV3D_CLIPPING) {
-        ED_view3d_clipping_set(rv3d);
-      }
-
-      draw_object_depth(rv3d, obact_eval);
-
-      if (rv3d->rflag & RV3D_CLIPPING) {
-        ED_view3d_clipping_disable();
-      }
-
-      GPU_depth_test(false);
+      GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
+      DRW_draw_depth_object(vc->ar, viewport, obact_eval);
     }
 
     vc->v3d->flag &= ~V3D_INVALID_BACKBUF;
@@ -374,7 +347,7 @@ uint ED_view3d_select_id_read_nearest(struct ViewContext *UNUSED(vc),
                                       uint *r_dist)
 {
   /* Create region around mouse cursor. This must be square and have an odd
-   * width, the spiralling algorithm does not work with arbitrary rectangles. */
+   * width, the spiraling algorithm does not work with arbitrary rectangles. */
   rcti rect;
   BLI_rcti_init_pt_radius(&rect, mval, *r_dist);
   rect.xmax += 1;
@@ -855,9 +828,15 @@ void ED_view3d_depth_update(ARegion *ar)
     }
 
     if (d->damaged) {
-      view3d_opengl_read_pixels(ar, 0, 0, d->w, d->h, GL_DEPTH_COMPONENT, GL_FLOAT, d->depths);
+      GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
+      rcti r = {
+          .xmin = 0,
+          .xmax = d->w,
+          .ymin = 0,
+          .ymax = d->h,
+      };
+      view3d_opengl_read_Z_pixels(viewport, &r, d->depths);
       glGetDoublev(GL_DEPTH_RANGE, d->depth_range);
-
       d->damaged = false;
     }
   }
@@ -943,7 +922,8 @@ void ED_view3d_screen_datamask(const bContext *C,
 
 /**
  * Store values from #RegionView3D, set when drawing.
- * This is needed when we draw with to a viewport using a different matrix (offscreen drawing for example).
+ * This is needed when we draw with to a viewport using a different matrix
+ * (offscreen drawing for example).
  *
  * Values set by #ED_view3d_update_viewmat should be handled here.
  */
@@ -1015,8 +995,8 @@ void ED_scene_draw_fps(Scene *scene, int xoffset, int *yoffset)
   if (tot) {
     fpsi->redrawtime_index = (fpsi->redrawtime_index + 1) % REDRAW_FRAME_AVERAGE;
 
-    //fpsi->redrawtime_index++;
-    //if (fpsi->redrawtime >= REDRAW_FRAME_AVERAGE) {
+    // fpsi->redrawtime_index++;
+    // if (fpsi->redrawtime >= REDRAW_FRAME_AVERAGE) {
     //  fpsi->redrawtime = 0;
     //}
 

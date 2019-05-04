@@ -303,7 +303,8 @@ class SVertex : public Interface0D {
     _Point2D = iPoint2D;
   }
 
-  /*! Adds a normal to the Svertex's set of normals. If the same normal is already in the set, nothing changes. */
+  /*! Adds a normal to the Svertex's set of normals. If the same normal is already in the set,
+   * nothing changes. */
   inline void AddNormal(const Vec3r &iNormal)
   {
     _Normals.insert(iNormal);  // if iNormal in the set already exists, nothing is done
@@ -333,12 +334,12 @@ class SVertex : public Interface0D {
     _directionFredo = d;
   }
 
-  real curvatureFredo ()
+  real curvatureFredo()
   {
     return _curvatureFredo;
   }
 
-  const Vec2r directionFredo ()
+  const Vec2r directionFredo()
   {
     return _directionFredo;
   }
@@ -420,7 +421,7 @@ class SVertex : public Interface0D {
     return *(_Normals.begin());
   }
 
-  //Material material() const ;
+  // Material material() const ;
   Id shape_id() const;
   const SShape *shape() const;
   float shape_importance() const;
@@ -462,13 +463,12 @@ class SVertex : public Interface0D {
 class ViewEdge;
 
 /*! Base Class for feature edges.
- *  This FEdge can represent a silhouette, a crease, a ridge/valley, a border or a suggestive contour.
- *  For silhouettes,  the FEdge is oriented such as, the visible face lies on the left of the edge.
- *  For borders, the FEdge is oriented such as, the face lies on the left of the edge.
- *  An FEdge can represent an initial edge of the mesh or runs accross a face of the initial mesh depending
- *  on the smoothness or sharpness of the mesh.
- *  This class is specialized into a smooth and a sharp version since their properties slightly vary from
- *  one to the other.
+ *  This FEdge can represent a silhouette, a crease, a ridge/valley, a border or a suggestive
+ * contour. For silhouettes,  the FEdge is oriented such as, the visible face lies on the left of
+ * the edge. For borders, the FEdge is oriented such as, the face lies on the left of the edge. An
+ * FEdge can represent an initial edge of the mesh or runs accross a face of the initial mesh
+ * depending on the smoothness or sharpness of the mesh. This class is specialized into a smooth
+ * and a sharp version since their properties slightly vary from one to the other.
  */
 class FEdge : public Interface1D {
  public:  // Implementation of Interface0D
@@ -509,13 +509,13 @@ class FEdge : public Interface1D {
   SVertex *_VertexB;
   Id _Id;
   Nature::EdgeNature _Nature;
-  //vector<Polygon3r> _Occluders; // visibility // NOT HANDLED BY THE COPY CONSTRUCTOR!!
+  // vector<Polygon3r> _Occluders; // visibility // NOT HANDLED BY THE COPY CONSTRUCTOR!!
 
   FEdge *_NextEdge;  // next edge on the chain
   FEdge *_PreviousEdge;
   ViewEdge *_ViewEdge;
-  // Sometimes we need to deport the visibility computation onto another edge. For example the exact edges use
-  // edges of the mesh to compute their visibility
+  // Sometimes we need to deport the visibility computation onto another edge. For example the
+  // exact edges use edges of the mesh to compute their visibility
 
   Polygon3r _aFace;  // The occluded face which lies on the right of a silhouette edge
   Vec3r _occludeeIntersection;
@@ -657,7 +657,7 @@ class FEdge : public Interface1D {
   int invisibility() const;
 
 #if 0
-  inline const vector<Polygon3r>& occluders() const
+  inline const vector<Polygon3r> &occluders() const
   {
     return _Occluders;
   }
@@ -765,7 +765,7 @@ class FEdge : public Interface1D {
   }
 
 #if 0
-  inline void AddOccluder(Polygon3r& iPolygon)
+  inline void AddOccluder(Polygon3r &iPolygon)
   {
     _Occluders.push_back(iPolygon);
   }
@@ -783,12 +783,12 @@ class FEdge : public Interface1D {
     _hasVisibilityPoint = iBool;
   }
 
-  inline void setVisibilityPointA(const Vec3r& iPoint)
+  inline void setVisibilityPointA(const Vec3r &iPoint)
   {
     _VisibilityPointA = iPoint;
   }
 
-  inline void setVisibilityPointB(const Vec3r& iPoint)
+  inline void setVisibilityPointB(const Vec3r &iPoint)
   {
     _VisibilityPointB = iPoint;
   }
@@ -868,7 +868,7 @@ class FEdge : public Interface1D {
 
   /* Information access interface */
 
-  //Material material() const;
+  // Material material() const;
   Id shape_id() const;
   const SShape *shape() const;
   float shape_importance() const;
@@ -891,7 +891,7 @@ class FEdge : public Interface1D {
   const SShape *occluded_shape() const;
 
 #if 0
-  inline const bool  occludee_empty() const
+  inline const bool occludee_empty() const
   {
     return _occludeeEmpty;
   }
@@ -904,12 +904,14 @@ class FEdge : public Interface1D {
   inline float local_average_depth(int iCombination = 0) const;
   inline float local_depth_variance(int iCombination = 0) const;
   inline real local_average_density(float sigma = 2.3f, int iCombination = 0) const;
-  inline Vec3r shaded_color(int iCombination = 0) const {}
+  inline Vec3r shaded_color(int iCombination = 0) const
+  {
+  }
 #endif
 
   int viewedge_nature() const;
 
-  //float viewedge_length() const;
+  // float viewedge_length() const;
 
   inline Vec3r orientation2d() const
   {
@@ -940,16 +942,16 @@ class FEdge : public Interface1D {
   /*! Returns an iterator over the 2 (!) SVertex pointing after the last SVertex. */
   virtual inline Interface0DIterator verticesEnd();
 
-  /*! Returns an iterator over the FEdge points, pointing to the first point. The difference with verticesBegin()
-   *  is that here we can iterate over points of the FEdge at a any given sampling.
+  /*! Returns an iterator over the FEdge points, pointing to the first point. The difference with
+   * verticesBegin() is that here we can iterate over points of the FEdge at a any given sampling.
    *  Indeed, for each iteration, a virtual point is created.
    *  \param t:
    *    The sampling with which we want to iterate over points of this FEdge.
    */
   virtual inline Interface0DIterator pointsBegin(float t = 0.0f);
 
-  /*! Returns an iterator over the FEdge points, pointing after the last point. The difference with verticesEnd()
-   * is that here we can iterate over points of the FEdge at a any given sampling.
+  /*! Returns an iterator over the FEdge points, pointing after the last point. The difference with
+   * verticesEnd() is that here we can iterate over points of the FEdge at a any given sampling.
    *  Indeed, for each iteration, a virtual point is created.
    *  \param t:
    *    The sampling with which we want to iterate over points of this FEdge.
@@ -1275,8 +1277,8 @@ class FEdgeSharp : public FEdge {
 #endif
 };
 
-/*! Class defining a smooth edge. This kind of edge typically runs across a face of the input mesh. It can be
- *  a silhouette, a ridge or valley, a suggestive contour.
+/*! Class defining a smooth edge. This kind of edge typically runs across a face of the input mesh.
+ * It can be a silhouette, a ridge or valley, a suggestive contour.
  */
 class FEdgeSmooth : public FEdge {
  protected:
@@ -1400,7 +1402,8 @@ class FEdgeSmooth : public FEdge {
 /*                                */
 /**********************************/
 
-/*! Class to define a feature shape. It is the gathering of feature elements from an identified input shape */
+/*! Class to define a feature shape. It is the gathering of feature elements from an identified
+ * input shape */
 class SShape {
  private:
   vector<FEdge *> _chains;          // list of fedges that are chains starting points.
@@ -1576,10 +1579,10 @@ class SShape {
   }
 
   /*! Splits an edge into several edges.
-   *  The edge's vertices are passed rather than the edge itself. This way, all feature edges (SILHOUETTE,
-   *  CREASE, BORDER) are splitted in the same time.
-   *  The processed edges are flagged as done (using the userdata flag).One single new vertex is created whereas
-   *  several splitted edges might created for the different kinds of edges. These new elements are added to the lists
+   *  The edge's vertices are passed rather than the edge itself. This way, all feature edges
+   * (SILHOUETTE, CREASE, BORDER) are splitted in the same time. The processed edges are flagged as
+   * done (using the userdata flag).One single new vertex is created whereas several splitted edges
+   * might created for the different kinds of edges. These new elements are added to the lists
    *  maintained by the shape.
    *  New chains are also created.
    *    ioA
@@ -1587,12 +1590,11 @@ class SShape {
    *    ioB
    *      The second vertex for the edge that gets splitted
    *    iParameters
-   *      A vector containing 2D real vectors indicating the parameters giving the intersections coordinates in
-   *      3D and in 2D. These intersections points must be sorted from B to A.
-   *      Each parameter defines the intersection point I as I=A+T*AB. T<0 and T>1 are then incorrect insofar as
-   *      they give intersections points that lie outside the segment.
-   *    ioNewEdges
-   *      The edges that are newly created (the initial edges are not included) are added to this list.
+   *      A vector containing 2D real vectors indicating the parameters giving the intersections
+   * coordinates in 3D and in 2D. These intersections points must be sorted from B to A. Each
+   * parameter defines the intersection point I as I=A+T*AB. T<0 and T>1 are then incorrect insofar
+   * as they give intersections points that lie outside the segment. ioNewEdges The edges that are
+   * newly created (the initial edges are not included) are added to this list.
    */
   inline void SplitEdge(FEdge *fe, const vector<Vec2r> &iParameters, vector<FEdge *> &ioNewEdges)
   {
@@ -1635,7 +1637,7 @@ class SShape {
     for (vector<SVertex *>::iterator sv = intersections.begin(), svend = intersections.end();
          sv != svend;
          sv++) {
-      //SVertex *svA = fe->vertexA();
+      // SVertex *svA = fe->vertexA();
       SVertex *svB = fe->vertexB();
 
       // We split edge AB into AA' and A'B. A' and A'B are created.
@@ -1676,7 +1678,7 @@ class SShape {
       fe->setId(id);
 
       // update edge AA' for the next pointing edge
-      //ioEdge->setNextEdge(newEdge);
+      // ioEdge->setNextEdge(newEdge);
       (fe)->setNextEdge(NULL);
 
       // update vertex pointing edges list:
@@ -1688,17 +1690,13 @@ class SShape {
     }
   }
 
-  /* splits an edge into 2 edges. The new vertex and edge are added to the sshape list of vertices and edges
-   *  a new chain is also created.
-   *  returns the new edge.
-   *    ioEdge
-   *      The edge that gets splitted
-   *    newpoint
-   *      x,y,z coordinates of the new point.
+  /* splits an edge into 2 edges. The new vertex and edge are added to the sshape list of vertices
+   * and edges a new chain is also created. returns the new edge. ioEdge The edge that gets
+   * splitted newpoint x,y,z coordinates of the new point.
    */
   inline FEdge *SplitEdgeIn2(FEdge *ioEdge, SVertex *ioNewVertex)
   {
-    //soc unused - SVertex *A = ioEdge->vertexA();
+    // soc unused - SVertex *A = ioEdge->vertexA();
     SVertex *B = ioEdge->vertexB();
 
     // We split edge AB into AA' and A'B. A' and A'B are created.

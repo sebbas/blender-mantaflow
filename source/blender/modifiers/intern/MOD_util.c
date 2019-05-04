@@ -158,10 +158,12 @@ void MOD_previous_vcos_store(ModifierData *md, float (*vertexCos)[3])
 {
   while ((md = md->next) && md->type == eModifierType_Armature) {
     ArmatureModifierData *amd = (ArmatureModifierData *)md;
-    if (amd->multi && amd->prevCos == NULL)
+    if (amd->multi && amd->prevCos == NULL) {
       amd->prevCos = MEM_dupallocN(vertexCos);
-    else
+    }
+    else {
       break;
+    }
   }
   /* lattice/mesh modifier too */
 }
@@ -206,11 +208,13 @@ Mesh *MOD_deform_mesh_eval_get(Object *ob,
     }
   }
   else if (ELEM(ob->type, OB_FONT, OB_CURVE, OB_SURF)) {
-    /* TODO(sybren): get evaluated mesh from depsgraph once that's properly generated for curves. */
+    /* TODO(sybren): get evaluated mesh from depsgraph once
+     * that's properly generated for curves. */
     mesh = BKE_mesh_new_nomain_from_curve(ob);
 
     /* Currently, that may not be the case everytime
-     * (texts e.g. tend to give issues, also when deforming curve points instead of generated curve geometry... ). */
+     * (texts e.g. tend to give issues,
+     * also when deforming curve points instead of generated curve geometry... ). */
     if (mesh != NULL && mesh->totvert != num_verts) {
       BKE_id_free(NULL, mesh);
       mesh = NULL;
@@ -235,10 +239,12 @@ void MOD_get_vgroup(
   *dvert = NULL;
 
   if (*defgrp_index != -1) {
-    if (ob->type == OB_LATTICE)
+    if (ob->type == OB_LATTICE) {
       *dvert = BKE_lattice_deform_verts_get(ob);
-    else if (mesh)
+    }
+    else if (mesh) {
       *dvert = mesh->dvert;
+    }
   }
 }
 

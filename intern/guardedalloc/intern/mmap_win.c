@@ -32,7 +32,7 @@
 #  include "mmap_win.h"
 
 #  ifndef FILE_MAP_EXECUTE
-//not defined in earlier versions of the Platform  SDK (before February 2003)
+// not defined in earlier versions of the Platform  SDK (before February 2003)
 #    define FILE_MAP_EXECUTE 0x0020
 #  endif
 
@@ -98,8 +98,8 @@ void *mmap(void *UNUSED(start), size_t len, int prot, int flags, int fd, off_t o
   }
 
 #  if 0
-  if ( fd == -1 ) {
-    _set_errno( EBADF );
+  if (fd == -1) {
+    _set_errno(EBADF);
     return MAP_FAILED;
   }
 #  endif

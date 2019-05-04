@@ -83,8 +83,8 @@ typedef enum {
    */
   eModifierTypeFlag_RequiresOriginalData = (1 << 5),
 
-  /* For modifiers that support pointcache, so we can check to see if it has files we need to deal with
-   */
+  /* For modifiers that support pointcache,
+   * so we can check to see if it has files we need to deal with. */
   eModifierTypeFlag_UsesPointCache = (1 << 6),
 
   /* For physics modifiers, max one per type */
@@ -110,13 +110,16 @@ typedef void (*TexWalkFunc)(void *userData,
                             const char *propname);
 
 typedef enum ModifierApplyFlag {
-  MOD_APPLY_RENDER = 1 << 0,          /* Render time. */
-  MOD_APPLY_USECACHE = 1 << 1,        /* Result of evaluation will be cached, so modifier might
-                                    * want to cache data for quick updates (used by subsurf) */
-  MOD_APPLY_ORCO = 1 << 2,            /* Modifier evaluated for undeformed texture coordinates */
-  MOD_APPLY_IGNORE_SIMPLIFY = 1 << 3, /* Ignore scene simplification flag and use subdivisions
-                                       * level set in multires modifier.
-                                       */
+  /** Render time. */
+  MOD_APPLY_RENDER = 1 << 0,
+  /** Result of evaluation will be cached, so modifier might
+   * want to cache data for quick updates (used by subsurf) */
+  MOD_APPLY_USECACHE = 1 << 1,
+  /** Modifier evaluated for undeformed texture coordinates */
+  MOD_APPLY_ORCO = 1 << 2,
+  /** Ignore scene simplification flag and use subdivisions
+   * level set in multires modifier. */
+  MOD_APPLY_IGNORE_SIMPLIFY = 1 << 3,
 } ModifierApplyFlag;
 
 typedef struct ModifierUpdateDepsgraphContext {

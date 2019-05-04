@@ -32,15 +32,12 @@
 /* **************************************** */
 /* space_nla.c / nla_buttons.c */
 
-ARegion *nla_has_buttons_region(ScrArea *sa);
-
 bool nla_panel_context(const bContext *C,
                        PointerRNA *adt_ptr,
                        PointerRNA *nlt_ptr,
                        PointerRNA *strip_ptr);
 
 void nla_buttons_register(ARegionType *art);
-void NLA_OT_properties(wmOperatorType *ot);
 
 /* **************************************** */
 /* nla_draw.c */

@@ -23,7 +23,8 @@
 
 /* bmesh data structures */
 
-/* dissable holes for now, these are ifdef'd because they use more memory and cant be saved in DNA currently */
+/* dissable holes for now,
+ * these are ifdef'd because they use more memory and cant be saved in DNA currently */
 // #define USE_BMESH_HOLES
 
 struct BMEdge;
@@ -58,23 +59,32 @@ struct BLI_mempool;
  * 4: some elements for internal record keeping.
  */
 typedef struct BMHeader {
-  void *data; /* customdata layers */
-  int index;  /* notes:
-              * - Use BM_elem_index_get/set macros for index
-              * - Uninitialized to -1 so we can easily tell its not set.
-              * - Used for edge/vert/face/loop, check BMesh.elem_index_dirty for valid index values,
-              *   this is abused by various tools which set it dirty.
-              * - For loops this is used for sorting during tessellation. */
+  /** Customdata layers. */
+  void *data;
 
-  char htype; /* element geometric type (verts/edges/loops/faces) */
-  char hflag; /* this would be a CD layer, see below */
+  /**
+   * \note
+   * - Use BM_elem_index_get/set macros for index
+   * - Uninitialized to -1 so we can easily tell its not set.
+   * - Used for edge/vert/face/loop, check BMesh.elem_index_dirty for valid index values,
+   *   this is abused by various tools which set it dirty.
+   * - For loops this is used for sorting during tessellation.
+   */
+  int index;
 
-  /* internal use only!
-   * note,.we are very picky about not bloating this struct
+  /** Element geometric type (verts/edges/loops/faces). */
+  char htype;
+  /** This would be a CD layer, see below. */
+  char hflag;
+
+  /**
+   * Internal use only!
+   * \note We are very picky about not bloating this struct
    * but in this case its padded up to 16 bytes anyway,
-   * so adding a flag here gives no increase in size */
+   * so adding a flag here gives no increase in size.
+   */
   char api_flag;
-  //  char _pad;
+  // char _pad;
 } BMHeader;
 
 BLI_STATIC_ASSERT((sizeof(BMHeader) <= 16), "BMHeader size has grown!");
@@ -89,10 +99,12 @@ typedef struct BMVert {
   float co[3]; /* vertex coordinates */
   float no[3]; /* vertex normal */
 
-  /* pointer to (any) edge using this vertex (for disk cycles)
+  /**
+   * Pointer to (any) edge using this vertex (for disk cycles).
    *
-   * note: some higher level functions set this to different edges that use this vertex,
-   *       which is a bit of an abuse of internal bmesh data but also works OK for now (use with care!).
+   * \note Some higher level functions set this to different edges that use this vertex,
+   * which is a bit of an abuse of internal bmesh data but also works OK for now
+   * (use with care!).
    */
   struct BMEdge *e;
 } BMVert;
@@ -116,8 +128,12 @@ typedef struct BMEdge {
    * to access the other loops using the edge */
   struct BMLoop *l;
 
-  /* disk cycle pointers
-   * relative data: d1 indicates indicates the next/prev edge around vertex v1 and d2 does the same for v2 */
+  /**
+   * Disk Cycle Pointers
+   *
+   * relative data: d1 indicates indicates the next/prev
+   * edge around vertex v1 and d2 does the same for v2.
+   */
   BMDiskLink v1_disk_link, v2_disk_link;
 } BMEdge;
 
@@ -272,7 +288,10 @@ typedef struct BMLoopNorEditData {
 
 typedef struct BMLoopNorEditDataArray {
   BMLoopNorEditData *lnor_editdata;
-  /* This one has full amount of loops, used to map loop index to actual BMLoopNorEditData struct. */
+  /**
+   * This one has full amount of loops,
+   * used to map loop index to actual BMLoopNorEditData struct.
+   */
   BMLoopNorEditData **lidx_to_lnor_editdata;
 
   int cd_custom_normal_offset;

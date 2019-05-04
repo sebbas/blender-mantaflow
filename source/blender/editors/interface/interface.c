@@ -213,6 +213,16 @@ void ui_window_to_block_fl(const ARegion *ar, uiBlock *block, float *x, float *y
   }
 }
 
+void ui_window_to_block_rctf(const struct ARegion *ar,
+                             uiBlock *block,
+                             rctf *rct_dst,
+                             const rctf *rct_src)
+{
+  *rct_dst = *rct_src;
+  ui_window_to_block_fl(ar, block, &rct_dst->xmin, &rct_dst->ymin);
+  ui_window_to_block_fl(ar, block, &rct_dst->xmax, &rct_dst->ymax);
+}
+
 void ui_window_to_block(const ARegion *ar, uiBlock *block, int *x, int *y)
 {
   float fx, fy;
@@ -230,6 +240,14 @@ void ui_window_to_region(const ARegion *ar, int *x, int *y)
 {
   *x -= ar->winrct.xmin;
   *y -= ar->winrct.ymin;
+}
+
+void ui_window_to_region_rcti(const ARegion *ar, rcti *rect_dst, const rcti *rct_src)
+{
+  rect_dst->xmin = rct_src->xmin - ar->winrct.xmin;
+  rect_dst->xmax = rct_src->xmax - ar->winrct.xmin;
+  rect_dst->ymin = rct_src->ymin - ar->winrct.ymin;
+  rect_dst->ymax = rct_src->ymax - ar->winrct.ymin;
 }
 
 void ui_region_to_window(const ARegion *ar, int *x, int *y)
@@ -1274,16 +1292,17 @@ static bool ui_but_event_property_operator_string(const bContext *C,
 #if 0
           else {
             printf("ERROR in %s(): Couldn't get path for scene property - %s\n",
-                   __func__, RNA_property_identifier(prop));
+                   __func__,
+                   RNA_property_identifier(prop));
           }
 #endif
         }
       }
       else {
-        //puts("other id");
+        // puts("other id");
       }
 
-      //printf("prop shortcut: '%s' (%s)\n", RNA_property_identifier(prop), data_path);
+      // printf("prop shortcut: '%s' (%s)\n", RNA_property_identifier(prop), data_path);
     }
 
     /* we have a datapath! */
@@ -1374,14 +1393,16 @@ static bool ui_but_event_property_operator_string(const bContext *C,
  *
  * --Matt 07/2006
  */
-const char ui_radial_dir_order[8] = {UI_RADIAL_W,
-                                     UI_RADIAL_E,
-                                     UI_RADIAL_S,
-                                     UI_RADIAL_N,
-                                     UI_RADIAL_NW,
-                                     UI_RADIAL_NE,
-                                     UI_RADIAL_SW,
-                                     UI_RADIAL_SE};
+const char ui_radial_dir_order[8] = {
+    UI_RADIAL_W,
+    UI_RADIAL_E,
+    UI_RADIAL_S,
+    UI_RADIAL_N,
+    UI_RADIAL_NW,
+    UI_RADIAL_NE,
+    UI_RADIAL_SW,
+    UI_RADIAL_SE,
+};
 
 const char ui_radial_dir_to_numpad[8] = {8, 9, 6, 3, 2, 1, 4, 7};
 const short ui_radial_dir_to_angle[8] = {90, 45, 0, 315, 270, 225, 180, 135};
@@ -1594,7 +1615,7 @@ void ui_fontscale(short *points, float aspect)
 
     /* for some reason scaling fonts goes too fast compared to widget size */
     /* XXX not true anymore? (ton) */
-    //aspect = sqrt(aspect);
+    // aspect = sqrt(aspect);
     pointsf /= aspect;
 
     if (aspect > 1.0f) {
@@ -2421,8 +2442,10 @@ static float ui_get_but_step_unit(uiBut *but, float step_default)
 }
 
 /**
- * \param float_precision: For number buttons the precision to use or -1 to fallback to the button default.
- * \param use_exp_float: Use exponent representation of floats when out of reasonable range (outside of 1e3/1e-3).
+ * \param float_precision: For number buttons the precision
+ * to use or -1 to fallback to the button default.
+ * \param use_exp_float: Use exponent representation of floats
+ * when out of reasonable range (outside of 1e3/1e-3).
  */
 void ui_but_string_get_ex(uiBut *but,
                           char *str,
@@ -2751,10 +2774,10 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
 
           /* This is kind of hackish, in theory think we could only ever use the second member of
            * this if/else, since ui_searchbox_apply() is supposed to always set that pointer when
-           * we are storing pointers... But keeping str search first for now, to try to break as little as
-           * possible existing code. All this is band-aids anyway.
-           * Fact remains, using editstr as main 'reference' over whole search button thingy is utterly weak
-           * and should be redesigned imho, but that's not a simple task. */
+           * we are storing pointers... But keeping str search first for now,
+           * to try to break as little as possible existing code. All this is band-aids anyway.
+           * Fact remains, using editstr as main 'reference' over whole search button thingy
+           * is utterly weak and should be redesigned imho, but that's not a simple task. */
           if (prop && RNA_property_collection_lookup_string(&ptr, prop, str, &rptr)) {
             RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr);
           }
@@ -6183,9 +6206,9 @@ static void operator_enum_call_cb(struct bContext *UNUSED(C), void *but, void *a
     if (ot->prop) {
       RNA_property_enum_set(opptr, ot->prop, POINTER_AS_INT(arg2));
       /* We do not call op from here, will be called by button code.
-       * ui_apply_but_funcs_after() (in interface_handlers.c) called this func before checking operators,
-       * because one of its parameters is the button itself!
-       */
+       * ui_apply_but_funcs_after() (in interface_handlers.c)
+       * called this func before checking operators,
+       * because one of its parameters is the button itself! */
     }
     else {
       printf("%s: op->prop for '%s' is NULL\n", __func__, ot->idname);
@@ -6194,8 +6217,8 @@ static void operator_enum_call_cb(struct bContext *UNUSED(C), void *but, void *a
 }
 
 /**
- * Same parameters as for uiDefSearchBut, with additional operator type and properties, used by callback
- * to call again the right op with the right options (properties values).
+ * Same parameters as for uiDefSearchBut, with additional operator type and properties,
+ * used by callback to call again the right op with the right options (properties values).
  */
 uiBut *uiDefSearchButO_ptr(uiBlock *block,
                            wmOperatorType *ot,

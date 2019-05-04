@@ -133,8 +133,9 @@ cl_mem OpenCLDevice::COM_clAttachMemoryBufferToKernelParameter(cl_kernel kernel,
   if (error != CL_SUCCESS) {
     printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
   }
-  if (error == CL_SUCCESS)
+  if (error == CL_SUCCESS) {
     cleanup->push_back(clBuffer);
+  }
 
   error = clSetKernelArg(kernel, parameterIndex, sizeof(cl_mem), &clBuffer);
   if (error != CL_SUCCESS) {
@@ -190,8 +191,10 @@ void OpenCLDevice::COM_clAttachOutputMemoryBufferToKernelParameter(cl_kernel ker
 void OpenCLDevice::COM_clEnqueueRange(cl_kernel kernel, MemoryBuffer *outputMemoryBuffer)
 {
   cl_int error;
-  const size_t size[] = {(size_t)outputMemoryBuffer->getWidth(),
-                         (size_t)outputMemoryBuffer->getHeight()};
+  const size_t size[] = {
+      (size_t)outputMemoryBuffer->getWidth(),
+      (size_t)outputMemoryBuffer->getHeight(),
+  };
 
   error = clEnqueueNDRangeKernel(this->m_queue, kernel, 2, NULL, size, 0, 0, 0, NULL);
   if (error != CL_SUCCESS) {
@@ -261,8 +264,9 @@ cl_kernel OpenCLDevice::COM_clCreateKernel(const char *kernelname,
     printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
   }
   else {
-    if (clKernelsToCleanUp)
+    if (clKernelsToCleanUp) {
       clKernelsToCleanUp->push_back(kernel);
+    }
   }
   return kernel;
 }

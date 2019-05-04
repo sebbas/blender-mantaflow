@@ -123,10 +123,12 @@ struct Mesh *BKE_mesh_new_nomain_from_template(const struct Mesh *me_src,
                                                int loops_len,
                                                int polys_len);
 
-/* Performs copy for use during evaluation, optional referencing original arrays to reduce memory. */
+/* Performs copy for use during evaluation,
+ * optional referencing original arrays to reduce memory. */
 struct Mesh *BKE_mesh_copy_for_eval(struct Mesh *source, bool reference);
 
-/* These functions construct a new Mesh, contrary to BKE_mesh_from_nurbs which modifies ob itself. */
+/* These functions construct a new Mesh,
+ * contrary to BKE_mesh_from_nurbs which modifies ob itself. */
 struct Mesh *BKE_mesh_new_nomain_from_curve(struct Object *ob);
 struct Mesh *BKE_mesh_new_nomain_from_curve_displist(struct Object *ob, struct ListBase *dispbase);
 
@@ -214,8 +216,8 @@ struct Mesh *BKE_mesh_new_from_object(struct Depsgraph *depsgraph,
                                       const bool calc_undeformed);
 struct Mesh *BKE_mesh_create_derived_for_modifier(struct Depsgraph *depsgraph,
                                                   struct Scene *scene,
-                                                  struct Object *ob,
-                                                  struct ModifierData *md,
+                                                  struct Object *ob_eval,
+                                                  struct ModifierData *md_eval,
                                                   int build_shapekey_layers);
 
 /* Copies a nomain-Mesh into an existing Mesh. */
@@ -325,22 +327,25 @@ void BKE_edges_sharp_from_angle_set(const struct MVert *mverts,
  * References a contiguous loop-fan with normal offset vars.
  */
 typedef struct MLoopNorSpace {
-  float vec_lnor[3];  /* Automatically computed loop normal. */
-  float vec_ref[3];   /* Reference vector, orthogonal to vec_lnor. */
-  float vec_ortho[3]; /* Third vector, orthogonal to vec_lnor and vec_ref. */
-  float
-      ref_alpha; /* Reference angle, around vec_ortho, in ]0, pi] range (0.0 marks that space as invalid). */
-  float
-      ref_beta; /* Reference angle, around vec_lnor, in ]0, 2pi] range (0.0 marks that space as invalid). */
-  /* All loops using this lnor space (i.e. smooth fan of loops),
+  /** Automatically computed loop normal. */
+  float vec_lnor[3];
+  /** Reference vector, orthogonal to vec_lnor. */
+  float vec_ref[3];
+  /** Third vector, orthogonal to vec_lnor and vec_ref. */
+  float vec_ortho[3];
+  /** Reference angle, around vec_ortho, in ]0, pi] range (0.0 marks that space as invalid). */
+  float ref_alpha;
+  /** Reference angle, around vec_lnor, in ]0, 2pi] range (0.0 marks that space as invalid). */
+  float ref_beta;
+  /** All loops using this lnor space (i.e. smooth fan of loops),
    * as (depending on owning MLoopNorSpaceArrary.data_type):
    *     - Indices (uint_in_ptr), or
    *     - BMLoop pointers. */
   struct LinkNode *loops;
   char flags;
 
-  void *
-      user_data; /* To be used for extended processing related to loop normal spaces (aka smooth fans). */
+  /** To be used for extended processing related to loop normal spaces (aka smooth fans). */
+  void *user_data;
 } MLoopNorSpace;
 /**
  * MLoopNorSpace.flags
@@ -668,6 +673,7 @@ enum {
   BKE_MESH_BATCH_DIRTY_ALL = 0,
   BKE_MESH_BATCH_DIRTY_MAYBE_ALL,
   BKE_MESH_BATCH_DIRTY_SELECT,
+  BKE_MESH_BATCH_DIRTY_SELECT_PAINT,
   BKE_MESH_BATCH_DIRTY_SHADING,
   BKE_MESH_BATCH_DIRTY_SCULPT_COORDS,
   BKE_MESH_BATCH_DIRTY_UVEDIT_ALL,

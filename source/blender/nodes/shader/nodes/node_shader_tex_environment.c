@@ -48,9 +48,7 @@ static void node_shader_init_tex_environment(bNodeTree *UNUSED(ntree), bNode *no
   BKE_texture_colormapping_default(&tex->base.color_mapping);
   tex->color_space = SHD_COLORSPACE_COLOR;
   tex->projection = SHD_PROJ_EQUIRECTANGULAR;
-  tex->iuser.frames = 1;
-  tex->iuser.sfra = 1;
-  tex->iuser.ok = 1;
+  BKE_imageuser_default(&tex->iuser);
 
   node->storage = tex;
 }
@@ -73,8 +71,9 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   int isdata = tex->color_space == SHD_COLORSPACE_NONE;
   GPUNodeLink *outalpha;
 
-  if (!ima)
+  if (!ima) {
     return GPU_stack_link(mat, node, "node_tex_environment_empty", in, out);
+  }
 
   if (!in[0].link) {
     GPU_link(mat, "node_tex_environment_texco", GPU_builtin(GPU_VIEW_POSITION), &in[0].link);

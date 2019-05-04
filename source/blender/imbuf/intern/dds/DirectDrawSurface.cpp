@@ -76,7 +76,7 @@ static const uint FOURCC_RXGB = DDS_MAKEFOURCC('R', 'X', 'G', 'B');
 static const uint FOURCC_ATI1 = DDS_MAKEFOURCC('A', 'T', 'I', '1');
 static const uint FOURCC_ATI2 = DDS_MAKEFOURCC('A', 'T', 'I', '2');
 
-//static const uint FOURCC_A2XY = DDS_MAKEFOURCC('A', '2', 'X', 'Y');
+// static const uint FOURCC_A2XY = DDS_MAKEFOURCC('A', '2', 'X', 'Y');
 
 static const uint FOURCC_DX10 = DDS_MAKEFOURCC('D', 'X', '1', '0');
 
@@ -100,25 +100,25 @@ static const uint D3DFMT_X8B8G8R8 = 33;
 static const uint D3DFMT_G16R16 = 34;
 static const uint D3DFMT_A2R10G10B10 = 35;
 
-//static const uint D3DFMT_A16B16G16R16 = 36;
+// static const uint D3DFMT_A16B16G16R16 = 36;
 
 // Palette formats.
-//static const uint D3DFMT_A8P8 = 40;
-//static const uint D3DFMT_P8 = 41;
+// static const uint D3DFMT_A8P8 = 40;
+// static const uint D3DFMT_P8 = 41;
 
 // Luminance formats.
 static const uint D3DFMT_L8 = 50;
-//static const uint D3DFMT_A8L8 = 51;
-//static const uint D3DFMT_A4L4 = 52;
+// static const uint D3DFMT_A8L8 = 51;
+// static const uint D3DFMT_A4L4 = 52;
 static const uint D3DFMT_L16 = 81;
 
 // Floating point formats
-//static const uint D3DFMT_R16F = 111;
-//static const uint D3DFMT_G16R16F = 112;
-//static const uint D3DFMT_A16B16G16R16F = 113;
-//static const uint D3DFMT_R32F = 114;
-//static const uint D3DFMT_G32R32F = 115;
-//static const uint D3DFMT_A32B32G32R32F = 116;
+// static const uint D3DFMT_R16F = 111;
+// static const uint D3DFMT_G16R16F = 112;
+// static const uint D3DFMT_A16B16G16R16F = 113;
+// static const uint D3DFMT_R32F = 114;
+// static const uint D3DFMT_G32R32F = 115;
+// static const uint D3DFMT_A32B32G32R32F = 116;
 
 static const uint DDSD_CAPS = 0x00000001U;
 static const uint DDSD_PIXELFORMAT = 0x00001000U;
@@ -479,8 +479,9 @@ void mem_read(Stream &mem, DDSHeader &header)
   mem_read(mem, header.pitch);
   mem_read(mem, header.depth);
   mem_read(mem, header.mipmapcount);
-  for (uint i = 0; i < 11; i++)
+  for (uint i = 0; i < 11; i++) {
     mem_read(mem, header.reserved[i]);
+  }
   mem_read(mem, header.pf);
   mem_read(mem, header.caps);
   mem_read(mem, header.notused);
@@ -550,8 +551,9 @@ DDSHeader::DDSHeader()
   this->pitch = 0;
   this->depth = 0;
   this->mipmapcount = 0;
-  for (uint i = 0; i < 11; i++)
+  for (uint i = 0; i < 11; i++) {
     this->reserved[i] = 0;
+  }
 
   // Store version information on the reserved header attributes.
   this->reserved[9] = FOURCC_NVTT;
@@ -720,10 +722,12 @@ void DDSHeader::setPixelFormat(uint bitcount, uint rmask, uint gmask, uint bmask
   }
 
   // D3DX functions do not like this:
-  this->pf.fourcc = 0;  //findD3D9Format(bitcount, rmask, gmask, bmask, amask);
-  /*if (this->pf.fourcc) {
+  this->pf.fourcc = 0;  // findD3D9Format(bitcount, rmask, gmask, bmask, amask);
+#if 0
+  if (this->pf.fourcc) {
     this->pf.flags |= DDPF_FOURCC;
-  }*/
+  }
+#endif
 
   if (!(bitcount > 0 && bitcount <= 32)) {
     printf("DDS: bad bit count, pixel format not set\n");
@@ -738,33 +742,39 @@ void DDSHeader::setPixelFormat(uint bitcount, uint rmask, uint gmask, uint bmask
 
 void DDSHeader::setDX10Format(uint format)
 {
-  //this->pf.flags = 0;
+  // this->pf.flags = 0;
   this->pf.fourcc = FOURCC_DX10;
   this->header10.dxgiFormat = format;
 }
 
 void DDSHeader::setNormalFlag(bool b)
 {
-  if (b)
+  if (b) {
     this->pf.flags |= DDPF_NORMAL;
-  else
+  }
+  else {
     this->pf.flags &= ~DDPF_NORMAL;
+  }
 }
 
 void DDSHeader::setSrgbFlag(bool b)
 {
-  if (b)
+  if (b) {
     this->pf.flags |= DDPF_SRGB;
-  else
+  }
+  else {
     this->pf.flags &= ~DDPF_SRGB;
+  }
 }
 
 void DDSHeader::setHasAlphaFlag(bool b)
 {
-  if (b)
+  if (b) {
     this->pf.flags |= DDPF_ALPHAPIXELS;
-  else
+  }
+  else {
     this->pf.flags &= ~DDPF_ALPHAPIXELS;
+  }
 }
 
 void DDSHeader::setUserVersion(int version)
@@ -866,8 +876,9 @@ DirectDrawSurface::DirectDrawSurface(unsigned char *mem, uint size) : stream(mem
   // some ATI2 compressed normal maps do not have their
   // normal flag set, so force it here (the original nvtt don't do
   // this, but the decompressor has a -forcenormal flag)
-  if (header.pf.fourcc == FOURCC_ATI2)
+  if (header.pf.fourcc == FOURCC_ATI2) {
     header.setNormalFlag(true);
+  }
 }
 
 DirectDrawSurface::~DirectDrawSurface()
@@ -973,10 +984,12 @@ bool DirectDrawSurface::hasAlpha() const
 
 uint DirectDrawSurface::mipmapCount() const
 {
-  if (header.flags & DDSD_MIPMAPCOUNT)
+  if (header.flags & DDSD_MIPMAPCOUNT) {
     return header.mipmapcount;
-  else
+  }
+  else {
     return 1;
+  }
 }
 
 uint DirectDrawSurface::fourCC() const
@@ -986,26 +999,32 @@ uint DirectDrawSurface::fourCC() const
 
 uint DirectDrawSurface::width() const
 {
-  if (header.flags & DDSD_WIDTH)
+  if (header.flags & DDSD_WIDTH) {
     return header.width;
-  else
+  }
+  else {
     return 1;
+  }
 }
 
 uint DirectDrawSurface::height() const
 {
-  if (header.flags & DDSD_HEIGHT)
+  if (header.flags & DDSD_HEIGHT) {
     return header.height;
-  else
+  }
+  else {
     return 1;
+  }
 }
 
 uint DirectDrawSurface::depth() const
 {
-  if (header.flags & DDSD_DEPTH)
+  if (header.flags & DDSD_DEPTH) {
     return header.depth;
-  else
+  }
+  else {
     return 1;
+  }
 }
 
 bool DirectDrawSurface::isTexture1D() const
@@ -1194,8 +1213,9 @@ static Color32 buildNormal(uint8 x, uint8 y)
   float nx = 2 * (x / 255.0f) - 1;
   float ny = 2 * (y / 255.0f) - 1;
   float nz = 0.0f;
-  if (1 - nx * nx - ny * ny > 0)
+  if (1 - nx * nx - ny * ny > 0) {
     nz = sqrt(1 - nx * nx - ny * ny);
+  }
   uint8 z = CLAMP(int(255.0f * (nz + 1) / 2.0f), 0, 255);
 
   return Color32(x, y, z);
@@ -1207,16 +1227,21 @@ void DirectDrawSurface::readBlock(ColorBlock *rgba)
 
   // Map DX10 block formats to fourcc codes.
   if (header.hasDX10Header()) {
-    if (header.header10.dxgiFormat == DXGI_FORMAT_BC1_UNORM)
+    if (header.header10.dxgiFormat == DXGI_FORMAT_BC1_UNORM) {
       fourcc = FOURCC_DXT1;
-    if (header.header10.dxgiFormat == DXGI_FORMAT_BC2_UNORM)
+    }
+    if (header.header10.dxgiFormat == DXGI_FORMAT_BC2_UNORM) {
       fourcc = FOURCC_DXT3;
-    if (header.header10.dxgiFormat == DXGI_FORMAT_BC3_UNORM)
+    }
+    if (header.header10.dxgiFormat == DXGI_FORMAT_BC3_UNORM) {
       fourcc = FOURCC_DXT5;
-    if (header.header10.dxgiFormat == DXGI_FORMAT_BC4_UNORM)
+    }
+    if (header.header10.dxgiFormat == DXGI_FORMAT_BC4_UNORM) {
       fourcc = FOURCC_ATI1;
-    if (header.header10.dxgiFormat == DXGI_FORMAT_BC5_UNORM)
+    }
+    if (header.header10.dxgiFormat == DXGI_FORMAT_BC5_UNORM) {
       fourcc = FOURCC_ATI2;
+    }
   }
 
   if (fourcc == FOURCC_DXT1) {
@@ -1305,8 +1330,8 @@ uint DirectDrawSurface::blockSize() const
         case DXGI_FORMAT_BC5_UNORM:
         case DXGI_FORMAT_BC5_SNORM:
           return 16;
-      };
-  };
+      }
+  }
 
   // Not a block image.
   return 0;
@@ -1339,7 +1364,7 @@ uint DirectDrawSurface::mipmapSize(uint mipmap) const
   else {
     printf("DDS: mipmap format not supported\n");
     return (0);
-  };
+  }
 }
 
 uint DirectDrawSurface::faceSize() const
@@ -1376,56 +1401,77 @@ uint DirectDrawSurface::offset(const uint face, const uint mipmap)
 void DirectDrawSurface::printInfo() const
 {
   printf("Flags: 0x%.8X\n", header.flags);
-  if (header.flags & DDSD_CAPS)
+  if (header.flags & DDSD_CAPS) {
     printf("\tDDSD_CAPS\n");
-  if (header.flags & DDSD_PIXELFORMAT)
+  }
+  if (header.flags & DDSD_PIXELFORMAT) {
     printf("\tDDSD_PIXELFORMAT\n");
-  if (header.flags & DDSD_WIDTH)
+  }
+  if (header.flags & DDSD_WIDTH) {
     printf("\tDDSD_WIDTH\n");
-  if (header.flags & DDSD_HEIGHT)
+  }
+  if (header.flags & DDSD_HEIGHT) {
     printf("\tDDSD_HEIGHT\n");
-  if (header.flags & DDSD_DEPTH)
+  }
+  if (header.flags & DDSD_DEPTH) {
     printf("\tDDSD_DEPTH\n");
-  if (header.flags & DDSD_PITCH)
+  }
+  if (header.flags & DDSD_PITCH) {
     printf("\tDDSD_PITCH\n");
-  if (header.flags & DDSD_LINEARSIZE)
+  }
+  if (header.flags & DDSD_LINEARSIZE) {
     printf("\tDDSD_LINEARSIZE\n");
-  if (header.flags & DDSD_MIPMAPCOUNT)
+  }
+  if (header.flags & DDSD_MIPMAPCOUNT) {
     printf("\tDDSD_MIPMAPCOUNT\n");
+  }
 
   printf("Height: %u\n", header.height);
   printf("Width: %u\n", header.width);
   printf("Depth: %u\n", header.depth);
-  if (header.flags & DDSD_PITCH)
+  if (header.flags & DDSD_PITCH) {
     printf("Pitch: %u\n", header.pitch);
-  else if (header.flags & DDSD_LINEARSIZE)
+  }
+  else if (header.flags & DDSD_LINEARSIZE) {
     printf("Linear size: %u\n", header.pitch);
+  }
   printf("Mipmap count: %u\n", header.mipmapcount);
 
   printf("Pixel Format:\n");
   printf("\tFlags: 0x%.8X\n", header.pf.flags);
-  if (header.pf.flags & DDPF_RGB)
+  if (header.pf.flags & DDPF_RGB) {
     printf("\t\tDDPF_RGB\n");
-  if (header.pf.flags & DDPF_LUMINANCE)
+  }
+  if (header.pf.flags & DDPF_LUMINANCE) {
     printf("\t\tDDPF_LUMINANCE\n");
-  if (header.pf.flags & DDPF_FOURCC)
+  }
+  if (header.pf.flags & DDPF_FOURCC) {
     printf("\t\tDDPF_FOURCC\n");
-  if (header.pf.flags & DDPF_ALPHAPIXELS)
+  }
+  if (header.pf.flags & DDPF_ALPHAPIXELS) {
     printf("\t\tDDPF_ALPHAPIXELS\n");
-  if (header.pf.flags & DDPF_ALPHA)
+  }
+  if (header.pf.flags & DDPF_ALPHA) {
     printf("\t\tDDPF_ALPHA\n");
-  if (header.pf.flags & DDPF_PALETTEINDEXED1)
+  }
+  if (header.pf.flags & DDPF_PALETTEINDEXED1) {
     printf("\t\tDDPF_PALETTEINDEXED1\n");
-  if (header.pf.flags & DDPF_PALETTEINDEXED2)
+  }
+  if (header.pf.flags & DDPF_PALETTEINDEXED2) {
     printf("\t\tDDPF_PALETTEINDEXED2\n");
-  if (header.pf.flags & DDPF_PALETTEINDEXED4)
+  }
+  if (header.pf.flags & DDPF_PALETTEINDEXED4) {
     printf("\t\tDDPF_PALETTEINDEXED4\n");
-  if (header.pf.flags & DDPF_PALETTEINDEXED8)
+  }
+  if (header.pf.flags & DDPF_PALETTEINDEXED8) {
     printf("\t\tDDPF_PALETTEINDEXED8\n");
-  if (header.pf.flags & DDPF_ALPHAPREMULT)
+  }
+  if (header.pf.flags & DDPF_ALPHAPREMULT) {
     printf("\t\tDDPF_ALPHAPREMULT\n");
-  if (header.pf.flags & DDPF_NORMAL)
+  }
+  if (header.pf.flags & DDPF_NORMAL) {
     printf("\t\tDDPF_NORMAL\n");
+  }
 
   if (header.pf.fourcc != 0) {
     // Display fourcc code even when DDPF_FOURCC flag not set.
@@ -1456,33 +1502,44 @@ void DirectDrawSurface::printInfo() const
 
   printf("Caps:\n");
   printf("\tCaps 1: 0x%.8X\n", header.caps.caps1);
-  if (header.caps.caps1 & DDSCAPS_COMPLEX)
+  if (header.caps.caps1 & DDSCAPS_COMPLEX) {
     printf("\t\tDDSCAPS_COMPLEX\n");
-  if (header.caps.caps1 & DDSCAPS_TEXTURE)
+  }
+  if (header.caps.caps1 & DDSCAPS_TEXTURE) {
     printf("\t\tDDSCAPS_TEXTURE\n");
-  if (header.caps.caps1 & DDSCAPS_MIPMAP)
+  }
+  if (header.caps.caps1 & DDSCAPS_MIPMAP) {
     printf("\t\tDDSCAPS_MIPMAP\n");
+  }
 
   printf("\tCaps 2: 0x%.8X\n", header.caps.caps2);
-  if (header.caps.caps2 & DDSCAPS2_VOLUME)
+  if (header.caps.caps2 & DDSCAPS2_VOLUME) {
     printf("\t\tDDSCAPS2_VOLUME\n");
+  }
   else if (header.caps.caps2 & DDSCAPS2_CUBEMAP) {
     printf("\t\tDDSCAPS2_CUBEMAP\n");
-    if ((header.caps.caps2 & DDSCAPS2_CUBEMAP_ALL_FACES) == DDSCAPS2_CUBEMAP_ALL_FACES)
+    if ((header.caps.caps2 & DDSCAPS2_CUBEMAP_ALL_FACES) == DDSCAPS2_CUBEMAP_ALL_FACES) {
       printf("\t\tDDSCAPS2_CUBEMAP_ALL_FACES\n");
+    }
     else {
-      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_POSITIVEX)
+      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_POSITIVEX) {
         printf("\t\tDDSCAPS2_CUBEMAP_POSITIVEX\n");
-      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_NEGATIVEX)
+      }
+      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_NEGATIVEX) {
         printf("\t\tDDSCAPS2_CUBEMAP_NEGATIVEX\n");
-      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_POSITIVEY)
+      }
+      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_POSITIVEY) {
         printf("\t\tDDSCAPS2_CUBEMAP_POSITIVEY\n");
-      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_NEGATIVEY)
+      }
+      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_NEGATIVEY) {
         printf("\t\tDDSCAPS2_CUBEMAP_NEGATIVEY\n");
-      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_POSITIVEZ)
+      }
+      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_POSITIVEZ) {
         printf("\t\tDDSCAPS2_CUBEMAP_POSITIVEZ\n");
-      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_NEGATIVEZ)
+      }
+      if (header.caps.caps2 & DDSCAPS2_CUBEMAP_NEGATIVEZ) {
         printf("\t\tDDSCAPS2_CUBEMAP_NEGATIVEZ\n");
+      }
     }
   }
 

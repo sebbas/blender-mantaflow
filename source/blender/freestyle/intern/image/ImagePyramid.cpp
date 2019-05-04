@@ -30,9 +30,9 @@ using namespace std;
 namespace Freestyle {
 
 #if 0
-ImagePyramid::ImagePyramid(const GrayImage& level0, unsigned nbLevels)
+ImagePyramid::ImagePyramid(const GrayImage &level0, unsigned nbLevels)
 {
-  BuildPyramid(level0,nbLevels);
+  BuildPyramid(level0, nbLevels);
 }
 #endif
 
@@ -153,7 +153,7 @@ void GaussianPyramid::BuildPyramid(GrayImage *level0, unsigned nbLevels)
   unsigned w = pLevel->width();
   unsigned h = pLevel->height();
   if (nbLevels != 0) {
-    for (unsigned int i = 0; i < nbLevels; ++i) {  //soc
+    for (unsigned int i = 0; i < nbLevels; ++i) {  // soc
       w = pLevel->width() >> 1;
       h = pLevel->height() >> 1;
       GrayImage *img = new GrayImage(w, h);

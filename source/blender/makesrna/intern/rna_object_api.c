@@ -106,12 +106,7 @@ static void rna_Object_select_set(
     return;
   }
 
-  if (select) {
-    BKE_view_layer_base_select(base);
-  }
-  else {
-    base->flag &= ~BASE_SELECTED;
-  }
+  ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
 
   Scene *scene = CTX_data_scene(C);
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
@@ -439,8 +434,8 @@ static void rna_Object_shape_key_remove(Object *ob,
 }
 
 #  if 0
-static void rna_Mesh_assign_verts_to_group(Object *ob, bDeformGroup *group, int *indices, int totindex,
-                                           float weight, int assignmode)
+static void rna_Mesh_assign_verts_to_group(
+    Object *ob, bDeformGroup *group, int *indices, int totindex, float weight, int assignmode)
 {
   if (ob->type != OB_MESH) {
     BKE_report(reports, RPT_ERROR, "Object should be of mesh type");
@@ -534,7 +529,8 @@ static void rna_Object_ray_cast(Object *ob,
        distmin <= distance)) {
     BVHTreeFromMesh treeData = {NULL};
 
-    /* no need to managing allocation or freeing of the BVH data. this is generated and freed as needed */
+    /* No need to managing allocation or freeing of the BVH data.
+     * This is generated and freed as needed. */
     BKE_bvhtree_from_mesh_get(&treeData, ob->runtime.mesh_eval, BVHTREE_FROM_LOOPTRI, 4);
 
     /* may fail if the mesh has no faces, in that case the ray-cast misses */
@@ -591,7 +587,8 @@ static void rna_Object_closest_point_on_mesh(Object *ob,
     return;
   }
 
-  /* no need to managing allocation or freeing of the BVH data. this is generated and freed as needed */
+  /* No need to managing allocation or freeing of the BVH data.
+   * this is generated and freed as needed. */
   BKE_bvhtree_from_mesh_get(&treeData, ob->runtime.mesh_eval, BVHTREE_FROM_LOOPTRI, 4);
 
   if (treeData.tree == NULL) {

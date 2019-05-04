@@ -575,7 +575,7 @@ static void draw_image_buffer(const bContext *C,
     /* If RGBA display with color management */
     if ((sima->flag & (SI_SHOW_R | SI_SHOW_G | SI_SHOW_B | SI_SHOW_ALPHA)) == 0) {
 
-      glaDrawImBuf_glsl_ctx_clipping(
+      ED_draw_imbuf_ctx_clipping(
           C, ibuf, x, y, GL_NEAREST, 0, 0, clip_max_x, clip_max_y, zoomx, zoomy);
     }
     else {
@@ -673,7 +673,7 @@ void draw_image_grease_pencil(bContext *C, bool onlyv2d)
   }
   else {
     /* assume that UI_view2d_restore(C) has been called... */
-    //SpaceImage *sima = (SpaceImage *)CTX_wm_space_data(C);
+    // SpaceImage *sima = (SpaceImage *)CTX_wm_space_data(C);
 
     /* draw grease-pencil ('screen' strokes) */
     ED_annotation_draw_view2d(C, 0);

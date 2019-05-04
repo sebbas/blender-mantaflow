@@ -209,14 +209,13 @@ static void *bmw_VertShellWalker_step(BMWalker *walker)
 
   BMW_state_remove(walker);
 
-
   /* find the next edge whose other vertex has not been visite */
   curedge = shellWalk.curedge;
   do {
     if (!BLI_gset_haskey(walker->visit_set, curedge)) {
       if (!walker->restrictflag ||
-          (walker->restrictflag && BMO_edge_flag_test(walker->bm, curedge, walker->restrictflag)))
-      {
+          (walker->restrictflag &&
+           BMO_edge_flag_test(walker->bm, curedge, walker->restrictflag))) {
         BMwShellWalker *newstate;
 
         v_old = BM_edge_other_vert(curedge, shellWalk.base);
@@ -727,9 +726,9 @@ static void *bmw_IslandboundWalker_step(BMWalker *walker)
   iwalk = BMW_state_add(walker);
   iwalk->base = owalk.base;
 
-  //if (!BMO_face_flag_test(walker->bm, l->f, walker->restrictflag))
+  // if (!BMO_face_flag_test(walker->bm, l->f, walker->restrictflag))
   //  iwalk->curloop = l->radial_next;
-  iwalk->curloop = l;  //else iwalk->curloop = l;
+  iwalk->curloop = l;  // else iwalk->curloop = l;
   iwalk->lastv = v;
 
   return owalk.curloop;
@@ -990,8 +989,9 @@ static void *bmw_EdgeLoopWalker_step(BMWalker *walker)
 
     vert_edge_tot = BM_vert_edge_count_nonwire(v);
 
-    /* typical loopiong over edges in the middle of a mesh */
-    /* however, why use 2 here at all? I guess for internal ngon loops it can be useful. Antony R. */
+    /* Typical loopiong over edges in the middle of a mesh */
+    /* However, why use 2 here at all?
+     * I guess for internal ngon loops it can be useful. Antony R. */
     if (vert_edge_tot == 4 || vert_edge_tot == 2) {
       int i_opposite = vert_edge_tot / 2;
       int i = 0;

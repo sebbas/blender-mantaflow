@@ -37,7 +37,7 @@ ccl_device bool BVH_FUNCTION_FULL_NAME(QBVH)(KernelGlobals *kg,
                                              uint *num_hits)
 {
   /* TODO(sergey):
-  *  - Test if pushing distance on the stack helps.
+   *  - Test if pushing distance on the stack helps.
    * - Likely and unlikely for if() statements.
    * - Test restrict attribute for pointers.
    */
@@ -293,10 +293,7 @@ ccl_device bool BVH_FUNCTION_FULL_NAME(QBVH)(KernelGlobals *kg,
                                                  object,
                                                  prim_addr,
                                                  ray->time,
-                                                 curve_type,
-                                                 NULL,
-                                                 0,
-                                                 0);
+                                                 curve_type);
                 }
                 else {
                   hit = curve_intersect(kg,
@@ -307,10 +304,7 @@ ccl_device bool BVH_FUNCTION_FULL_NAME(QBVH)(KernelGlobals *kg,
                                         object,
                                         prim_addr,
                                         ray->time,
-                                        curve_type,
-                                        NULL,
-                                        0,
-                                        0);
+                                        curve_type);
                 }
                 break;
               }

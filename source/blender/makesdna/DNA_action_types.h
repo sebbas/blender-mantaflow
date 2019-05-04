@@ -31,6 +31,7 @@
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 #include "DNA_view2d_types.h"
+#include "DNA_vec_types.h"
 #include "DNA_userdef_types.h" /* ThemeWireColor */
 
 struct Collection;
@@ -183,8 +184,11 @@ struct DualQuat;
 struct Mat4;
 
 typedef struct bPoseChannel_Runtime {
+  /* Cached dual quaternion for deformation. */
+  struct DualQuat deform_dual_quat;
+
+  /* B-Bone shape data: copy of the segment count for validation. */
   int bbone_segments;
-  char _pad[4];
 
   /* Rest and posed matrices for segments. */
   struct Mat4 *bbone_rest_mats;
@@ -313,10 +317,11 @@ typedef struct bPoseChannel {
    * and are applied on top of the copies in pchan->bone
    */
   float roll1, roll2;
-  float curveInX, curveInY;
-  float curveOutX, curveOutY;
+  float curve_in_x, curve_in_y;
+  float curve_out_x, curve_out_y;
   float ease1, ease2;
-  float scaleIn, scaleOut;
+  float scale_in_x, scale_in_y;
+  float scale_out_x, scale_out_y;
 
   /** B-Bone custom handles; set on read file or rebuild pose based on pchan->bone data. */
   struct bPoseChannel *bbone_prev;
@@ -360,7 +365,7 @@ typedef enum ePchan_Flag {
   POSE_IKTREE = (1 << 13),
 #if 0
   /* has Spline IK */
-  POSE_HAS_IKS    =   (1 << 14),
+  POSE_HAS_IKS = (1 << 14),
 #endif
   /* spline IK solving */
   POSE_IKSPLINE = (1 << 15),
@@ -570,8 +575,8 @@ typedef enum eItasc_Solver {
  * ensure that action-groups never end up being the sole 'owner' of a channel.
  *
  * This is also exploited for bone-groups. Bone-Groups are stored per bPose, and are used
- * primarily to color bones in the 3d-view. There are other benefits too, but those are mostly related
- * to Action-Groups.
+ * primarily to color bones in the 3d-view. There are other benefits too, but those are mostly
+ * related to Action-Groups.
  *
  * Note that these two uses each have their own RNA 'ActionGroup' and 'BoneGroup'.
  */
@@ -626,13 +631,13 @@ typedef enum eActionGroup_Flag {
 
 /* Action - reusable F-Curve 'bag'  (act)
  *
- * This contains F-Curves that may affect settings from more than one ID blocktype and/or
- * datablock (i.e. sub-data linked/used directly to the ID block that the animation data is linked to),
- * but with the restriction that the other unrelated data (i.e. data that is not directly used or linked to
- * by the source ID block).
+ * This contains F-Curves that may affect settings from more than one ID blocktype and/or datablock
+ * (i.e. sub-data linked/used directly to the ID block that the animation data is linked to),
+ * but with the restriction that the other unrelated data (i.e. data that is not directly used or
+ * linked to by the source ID block).
  *
- * It serves as a 'unit' of reusable animation information (i.e. keyframes/motion data), that
- * affects a group of related settings (as defined by the user).
+ * It serves as a 'unit' of reusable animation information (i.e. keyframes/motion data),
+ * that affects a group of related settings (as defined by the user).
  */
 typedef struct bAction {
   /** ID-serialisation for relinking. */
@@ -826,11 +831,11 @@ typedef enum eSAction_Flag {
   /* draw time in seconds instead of time in frames */
   SACTION_DRAWTIME = (1 << 2),
   /* don't filter action channels according to visibility */
-  //SACTION_NOHIDE = (1 << 3), // XXX deprecated... old animation system
+  // SACTION_NOHIDE = (1 << 3), // XXX deprecated... old animation system
   /* don't kill overlapping keyframes after transform */
   SACTION_NOTRANSKEYCULL = (1 << 4),
   /* don't include keyframes that are out of view */
-  //SACTION_HORIZOPTIMISEON = (1 << 5), // XXX deprecated... old irrelevant trick
+  // SACTION_HORIZOPTIMISEON = (1 << 5), // XXX deprecated... old irrelevant trick
   /* show pose-markers (local to action) in Action Editor mode  */
   SACTION_POSEMARKERS_SHOW = (1 << 6),
   /* don't draw action channels using group colors (where applicable) */

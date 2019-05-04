@@ -92,7 +92,8 @@ typedef struct UndoType {
   /**
    * When NULL, we don't consider this undo type for context checks.
    * Operators must explicitly set the undo type and handle adding the undo step.
-   * This is needed when tools operate on data which isn't the primary mode (eg, paint-curve in sculpt mode).
+   * This is needed when tools operate on data which isn't the primary mode
+   * (eg, paint-curve in sculpt mode).
    */
   bool (*poll)(struct bContext *C);
 
@@ -187,7 +188,9 @@ void BKE_undosys_type_free_all(void);
 
 /* ID Accessor */
 #if 0 /* functionality is only used internally for now. */
-void BKE_undosys_foreach_ID_ref(UndoStack *ustack, UndoTypeForEachIDRefFn foreach_ID_ref_fn, void *user_data);
+void BKE_undosys_foreach_ID_ref(UndoStack *ustack,
+                                UndoTypeForEachIDRefFn foreach_ID_ref_fn,
+                                void *user_data);
 #endif
 
 /* Use when the undo step stores many arbitrary pointers. */

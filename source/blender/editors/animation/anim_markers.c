@@ -107,10 +107,12 @@ ListBase *ED_context_get_markers(const bContext *C)
 /* public API for getting markers from "animation" context */
 ListBase *ED_animcontext_get_markers(const bAnimContext *ac)
 {
-  if (ac)
+  if (ac) {
     return context_get_markers(ac->scene, ac->sa);
-  else
+  }
+  else {
     return NULL;
+  }
 }
 
 /* --------------------------------- */
@@ -118,7 +120,8 @@ ListBase *ED_animcontext_get_markers(const bAnimContext *ac)
 /**
  * Apply some transformation to markers after the fact
  *
- * \param markers: List of markers to affect - this may or may not be the scene markers list, so don't assume anything
+ * \param markers: List of markers to affect - this may or may not be the scene markers list,
+ * so don't assume anything.
  * \param scene: Current scene (for getting current frame)
  * \param mode: (TfmMode) transform mode that this transform is for
  * \param value: From the transform code, this is ``t->vec[0]``
@@ -200,7 +203,7 @@ void ED_markers_get_minmax(ListBase *markers, short sel, float *first, float *la
   float min, max;
 
   /* sanity check */
-  //printf("markers = %p -  %p, %p\n", markers, markers->first, markers->last);
+  // printf("markers = %p -  %p, %p\n", markers, markers->first, markers->last);
   if (ELEM(NULL, markers, markers->first, markers->last)) {
     *first = 0.0f;
     *last = 0.0f;
@@ -211,10 +214,12 @@ void ED_markers_get_minmax(ListBase *markers, short sel, float *first, float *la
   max = -FLT_MAX;
   for (marker = markers->first; marker; marker = marker->next) {
     if (!sel || (marker->flag & SELECT)) {
-      if (marker->frame < min)
+      if (marker->frame < min) {
         min = (float)marker->frame;
-      if (marker->frame > max)
+      }
+      if (marker->frame > max) {
         max = (float)marker->frame;
+      }
     }
   }
 
@@ -231,15 +236,17 @@ static void add_marker_to_cfra_elem(ListBase *lb, TimeMarker *marker, short only
   CfraElem *ce, *cen;
 
   /* should this one only be considered if it is selected? */
-  if ((only_sel) && ((marker->flag & SELECT) == 0))
+  if ((only_sel) && ((marker->flag & SELECT) == 0)) {
     return;
+  }
 
   /* insertion sort - try to find a previous cfra elem */
   for (ce = lb->first; ce; ce = ce->next) {
     if (ce->cfra == marker->frame) {
       /* do because of double keys */
-      if (marker->flag & SELECT)
+      if (marker->flag & SELECT) {
         ce->sel = marker->flag;
+      }
       return;
     }
     else if (ce->cfra > marker->frame) {
@@ -248,10 +255,12 @@ static void add_marker_to_cfra_elem(ListBase *lb, TimeMarker *marker, short only
   }
 
   cen = MEM_callocN(sizeof(CfraElem), "add_to_cfra_elem");
-  if (ce)
+  if (ce) {
     BLI_insertlinkbefore(lb, ce, cen);
-  else
+  }
+  else {
     BLI_addtail(lb, cen);
+  }
 
   cen->cfra = marker->frame;
   cen->sel = marker->flag;
@@ -280,8 +289,9 @@ void ED_markers_make_cfra_list(ListBase *markers, ListBase *lb, short only_sel)
     return;
   }
 
-  for (marker = markers->first; marker; marker = marker->next)
+  for (marker = markers->first; marker; marker = marker->next) {
     add_marker_to_cfra_elem(lb, marker, only_sel);
+  }
 }
 
 void ED_markers_deselect_all(ListBase *markers, int action)
@@ -315,8 +325,9 @@ TimeMarker *ED_markers_get_first_selected(ListBase *markers)
 
   if (markers) {
     for (marker = markers->first; marker; marker = marker->next) {
-      if (marker->flag & SELECT)
+      if (marker->flag & SELECT) {
         return marker;
+      }
     }
   }
 
@@ -326,7 +337,8 @@ TimeMarker *ED_markers_get_first_selected(ListBase *markers)
 /* --------------------------------- */
 
 /* Print debugging prints of list of markers
- * BSI's: do NOT make static or put in if-defs as "unused code". That's too much trouble when we need to use for quick debugging!
+ * BSI's: do NOT make static or put in if-defs as "unused code".
+ * That's too much trouble when we need to use for quick debugging!
  */
 void debug_markers_print_list(ListBase *markers)
 {
@@ -349,45 +361,38 @@ void debug_markers_print_list(ListBase *markers)
 
 /* ************* Marker Drawing ************ */
 
-static void draw_marker_name(const uiFontStyle *fstyle,
-                             TimeMarker *marker,
-                             const char *name,
-                             int cfra,
-                             const float xpos,
-                             const float ypixels)
+static void marker_color_get(TimeMarker *marker, unsigned char *color)
 {
-  unsigned char text_col[4];
-  float x, y;
-
-  /* minimal y coordinate which wouldn't be occluded by scroll */
-  int min_y = 17.0f * UI_DPI_FAC;
-
   if (marker->flag & SELECT) {
-    UI_GetThemeColor4ubv(TH_TEXT_HI, text_col);
-    x = xpos + 4.0f * UI_DPI_FAC;
-    y = (ypixels <= 39.0f * UI_DPI_FAC) ? (ypixels - 10.0f * UI_DPI_FAC) : 29.0f * UI_DPI_FAC;
-    y = max_ii(y, min_y);
+    UI_GetThemeColor4ubv(TH_TEXT_HI, color);
   }
   else {
-    UI_GetThemeColor4ubv(TH_TEXT, text_col);
-    if ((marker->frame <= cfra) && (marker->frame + 5 > cfra)) {
-      x = xpos + 8.0f * UI_DPI_FAC;
-      y = (ypixels <= 39.0f * UI_DPI_FAC) ? (ypixels - 10.0f * UI_DPI_FAC) : 29.0f * UI_DPI_FAC;
-      y = max_ii(y, min_y);
-    }
-    else {
-      x = xpos + 8.0f * UI_DPI_FAC;
-      y = 17.0f * UI_DPI_FAC;
-    }
+    UI_GetThemeColor4ubv(TH_TEXT, color);
   }
+}
+
+static void draw_marker_name(const uiFontStyle *fstyle,
+                             TimeMarker *marker,
+                             float marker_x,
+                             float text_y)
+{
+  unsigned char text_color[4];
+  marker_color_get(marker, text_color);
+
+  const char *name = marker->name;
 
 #ifdef DURIAN_CAMERA_SWITCH
-  if (marker->camera && (marker->camera->restrictflag & OB_RESTRICT_RENDER)) {
-    text_col[3] = 100;
+  if (marker->camera) {
+    Object *camera = marker->camera;
+    name = camera->id.name + 2;
+    if (camera->restrictflag & OB_RESTRICT_RENDER) {
+      text_color[3] = 100;
+    }
   }
 #endif
 
-  UI_fontstyle_draw_simple(fstyle, x, y, name, text_col);
+  int name_x = marker_x + UI_DPI_ICON_SIZE * 0.6;
+  UI_fontstyle_draw_simple(fstyle, name_x, text_y, name, text_color);
 }
 
 static void draw_marker_line(const float color[4], float x, float ymin, float ymax)
@@ -414,29 +419,24 @@ static void draw_marker_line(const float color[4], float x, float ymin, float ym
   immUnbindProgram();
 }
 
-/* function to draw markers */
-static void draw_marker(const uiFontStyle *fstyle,
-                        TimeMarker *marker,
-                        int cfra,
-                        int flag,
-                        /* avoid re-calculating each time */
-                        const float ypixels,
-                        const float xscale,
-                        int height)
+static int marker_get_icon_id(TimeMarker *marker, int flag)
 {
-  const float xpos = marker->frame * xscale;
+  if (flag & DRAW_MARKERS_LOCAL) {
+    return (marker->flag & ACTIVE) ? ICON_PMARKER_ACT :
+                                     (marker->flag & SELECT) ? ICON_PMARKER_SEL : ICON_PMARKER;
+  }
 #ifdef DURIAN_CAMERA_SWITCH
-  const float yoffs = (marker->camera) ? 0.2f * UI_DPI_ICON_SIZE : 0.0f;
-#else
-  const float yoffs = 0.0f;
+  else if (marker->camera) {
+    return (marker->flag & SELECT) ? ICON_OUTLINER_OB_CAMERA : ICON_CAMERA_DATA;
+  }
 #endif
-  int icon_id;
+  else {
+    return (marker->flag & SELECT) ? ICON_MARKER_HLT : ICON_MARKER;
+  }
+}
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-
-  /* vertical line - dotted */
+static void draw_marker_line_if_necessary(TimeMarker *marker, int flag, int xpos, int height)
+{
 #ifdef DURIAN_CAMERA_SWITCH
   if ((marker->camera) || (flag & DRAW_MARKERS_LINES))
 #else
@@ -451,103 +451,114 @@ static void draw_marker(const uiFontStyle *fstyle,
       copy_v4_fl4(color, 0.0f, 0.0f, 0.0f, 0.38f);
     }
 
-    draw_marker_line(color, xpos, yoffs + 1.5f * UI_DPI_ICON_SIZE, height);
+    draw_marker_line(color, xpos, UI_DPI_FAC * 20, height);
   }
+}
 
-  /* 5 px to offset icon to align properly, space / pixels corrects for zoom */
-  if (flag & DRAW_MARKERS_LOCAL) {
-    icon_id = (marker->flag & ACTIVE) ? ICON_PMARKER_ACT :
-                                        (marker->flag & SELECT) ? ICON_PMARKER_SEL : ICON_PMARKER;
-  }
-#ifdef DURIAN_CAMERA_SWITCH
-  else if (marker->camera) {
-    icon_id = (marker->flag & SELECT) ? ICON_OUTLINER_OB_CAMERA : ICON_CAMERA_DATA;
-  }
-#endif
-  else {
-    icon_id = (marker->flag & SELECT) ? ICON_MARKER_HLT : ICON_MARKER;
-  }
+static void draw_marker(
+    const uiFontStyle *fstyle, TimeMarker *marker, int xpos, int flag, int region_height)
+{
+  GPU_blend(true);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
-  UI_icon_draw(xpos - 0.55f * UI_DPI_ICON_SIZE, yoffs + UI_DPI_ICON_SIZE, icon_id);
+  draw_marker_line_if_necessary(marker, flag, xpos, region_height);
+
+  int icon_id = marker_get_icon_id(marker, flag);
+  UI_icon_draw(xpos - 0.55f * UI_DPI_ICON_SIZE, UI_DPI_FAC * 18, icon_id);
 
   GPU_blend(false);
 
-  /* and the marker name too, shifted slightly to the top-right */
-#ifdef DURIAN_CAMERA_SWITCH
-  if (marker->camera) {
-    draw_marker_name(fstyle, marker, marker->camera->id.name + 2, cfra, xpos, ypixels);
+  float name_y = UI_DPI_FAC * 18;
+  if (marker->flag & SELECT) {
+    name_y += UI_DPI_FAC * 10;
   }
-  else if (marker->name[0]) {
-    draw_marker_name(fstyle, marker, marker->name, cfra, xpos, ypixels);
+  draw_marker_name(fstyle, marker, xpos, name_y);
+}
+
+static void draw_markers_background(rctf *rect)
+{
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+
+  const unsigned char shade[4] = {0, 0, 0, 16};
+  immUniformColor4ubv(shade);
+
+  GPU_blend(true);
+  GPU_blend_set_func_separate(
+      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+
+  immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
+
+  GPU_blend(false);
+
+  immUnbindProgram();
+}
+
+static bool marker_is_in_frame_range(TimeMarker *marker, int frame_range[2])
+{
+  if (marker->frame < frame_range[0]) {
+    return false;
   }
-#else
-  if (marker->name[0]) {
-    draw_marker_name(fstyle, marker, marker->name, cfra, xpos, ypixels);
+  if (marker->frame > frame_range[1]) {
+    return false;
   }
-#endif
+  return true;
+}
+
+static void get_marker_region_rect(View2D *v2d, rctf *rect)
+{
+  rect->xmin = v2d->cur.xmin;
+  rect->xmax = v2d->cur.xmax;
+  rect->ymin = 0;
+  rect->ymax = UI_MARKER_MARGIN_Y;
+}
+
+static void get_marker_clip_frame_range(View2D *v2d, float xscale, int r_range[2])
+{
+  float font_width_max = (10 * UI_DPI_FAC) / xscale;
+  r_range[0] = v2d->cur.xmin - sizeof(((TimeMarker *)NULL)->name) * font_width_max;
+  r_range[1] = v2d->cur.xmax + font_width_max;
 }
 
 /* Draw Scene-Markers in time window */
 void ED_markers_draw(const bContext *C, int flag)
 {
-  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   ListBase *markers = ED_context_get_markers(C);
-  View2D *v2d;
-  TimeMarker *marker;
-  Scene *scene;
-  int select_pass;
-  int v2d_clip_range_x[2];
-  float font_width_max;
-
-  /* cache values */
-  float ypixels, xscale, yscale;
-
   if (markers == NULL || BLI_listbase_is_empty(markers)) {
     return;
   }
 
-  scene = CTX_data_scene(C);
-  v2d = UI_view2d_fromcontext(C);
-  int height = v2d->mask.ymax - v2d->mask.ymin;
+  ARegion *ar = CTX_wm_region(C);
+  View2D *v2d = UI_view2d_fromcontext(C);
 
-  if (flag & DRAW_MARKERS_MARGIN) {
-    uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+  rctf markers_region_rect;
+  get_marker_region_rect(v2d, &markers_region_rect);
 
-    const unsigned char shade[4] = {0, 0, 0, 16};
-    immUniformColor4ubv(shade);
-
-    GPU_blend(true);
-    GPU_blend_set_func_separate(
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-
-    immRectf(pos, v2d->cur.xmin, 0, v2d->cur.xmax, UI_MARKER_MARGIN_Y);
-
-    GPU_blend(false);
-
-    immUnbindProgram();
-  }
+  draw_markers_background(&markers_region_rect);
 
   /* no time correction for framelen! space is drawn with old values */
-  ypixels = BLI_rcti_size_y(&v2d->mask);
-  UI_view2d_scale_get(v2d, &xscale, &yscale);
+  float xscale, dummy;
+  UI_view2d_scale_get(v2d, &xscale, &dummy);
   GPU_matrix_push();
   GPU_matrix_scale_2f(1.0f / xscale, 1.0f);
 
-  /* x-bounds with offset for text (adjust for long string, avoid checking string width) */
-  font_width_max = (10 * UI_DPI_FAC) / xscale;
-  v2d_clip_range_x[0] = v2d->cur.xmin - (sizeof(marker->name) * font_width_max);
-  v2d_clip_range_x[1] = v2d->cur.xmax + font_width_max;
+  int clip_frame_range[2];
+  get_marker_clip_frame_range(v2d, xscale, clip_frame_range);
 
-  /* loop [unselected, selected] */
-  for (select_pass = 0; select_pass <= SELECT; select_pass += SELECT) {
-    /* unselected markers are drawn at the first time */
-    for (marker = markers->first; marker; marker = marker->next) {
-      if ((marker->flag & SELECT) == select_pass) {
-        /* bounds check */
-        if ((marker->frame >= v2d_clip_range_x[0]) && (marker->frame <= v2d_clip_range_x[1])) {
-          draw_marker(fstyle, marker, scene->r.cfra, flag, ypixels, xscale, height);
-        }
+  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
+
+  for (TimeMarker *marker = markers->first; marker; marker = marker->next) {
+    if ((marker->flag & SELECT) == 0) {
+      if (marker_is_in_frame_range(marker, clip_frame_range)) {
+        draw_marker(fstyle, marker, marker->frame * xscale, flag, ar->winy);
+      }
+    }
+  }
+  for (TimeMarker *marker = markers->first; marker; marker = marker->next) {
+    if (marker->flag & SELECT) {
+      if (marker_is_in_frame_range(marker, clip_frame_range)) {
+        draw_marker(fstyle, marker, marker->frame * xscale, flag, ar->winy);
       }
     }
   }
@@ -569,8 +580,9 @@ static bool ed_markers_poll_selected_markers(bContext *C)
   ListBase *markers = ED_context_get_markers(C);
 
   /* first things first: markers can only exist in timeline views */
-  if (ED_operator_animview_active(C) == 0)
+  if (ED_operator_animview_active(C) == 0) {
     return 0;
+  }
 
   /* check if some marker is selected */
   return ED_markers_get_first_selected(markers) != NULL;
@@ -581,12 +593,14 @@ static bool ed_markers_poll_selected_no_locked_markers(bContext *C)
   ListBase *markers = ED_context_get_markers(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
-  if (ts->lock_markers)
+  if (ts->lock_markers) {
     return 0;
+  }
 
   /* first things first: markers can only exist in timeline views */
-  if (ED_operator_animview_active(C) == 0)
+  if (ED_operator_animview_active(C) == 0) {
     return 0;
+  }
 
   /* check if some marker is selected */
   return ED_markers_get_first_selected(markers) != NULL;
@@ -598,12 +612,14 @@ static bool ed_markers_poll_markers_exist(bContext *C)
   ListBase *markers = ED_context_get_markers(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
-  if (ts->lock_markers)
+  if (ts->lock_markers) {
     return 0;
+  }
 
   /* first things first: markers can only exist in timeline views */
-  if (ED_operator_animview_active(C) == 0)
+  if (ED_operator_animview_active(C) == 0) {
     return 0;
+  }
 
   /* list of markers must exist, as well as some markers in it! */
   return (markers && markers->first);
@@ -632,14 +648,17 @@ static int ed_markers_opwrap_invoke_custom(bContext *C,
   /* removed check for Y coord of event, keymap has bounbox now */
 
   /* allow operator to run now */
-  if (invoke_func)
+  if (invoke_func) {
     retval = invoke_func(C, op, event);
-  else if (op->type->exec)
+  }
+  else if (op->type->exec) {
     retval = op->type->exec(C, op);
-  else
+  }
+  else {
     BKE_report(op->reports,
                RPT_ERROR,
                "Programming error: operator does not actually have code to do anything!");
+  }
 
   /* unless successful, must add "pass-through"
    * to let normal operator's have a chance at tackling this event */
@@ -669,19 +688,22 @@ static int ed_marker_add_exec(bContext *C, wmOperator *UNUSED(op))
   TimeMarker *marker;
   int frame = CTX_data_scene(C)->r.cfra;
 
-  if (markers == NULL)
+  if (markers == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   /* prefer not having 2 markers at the same place,
    * though the user can move them to overlap once added */
   for (marker = markers->first; marker; marker = marker->next) {
-    if (marker->frame == frame)
+    if (marker->frame == frame) {
       return OPERATOR_CANCELLED;
+    }
   }
 
   /* deselect all */
-  for (marker = markers->first; marker; marker = marker->next)
+  for (marker = markers->first; marker; marker = marker->next) {
     marker->flag &= ~SELECT;
+  }
 
   marker = MEM_callocN(sizeof(TimeMarker), "TimeMarker");
   marker->flag = SELECT;
@@ -1079,8 +1101,9 @@ static void ed_marker_duplicate_apply(bContext *C)
   ListBase *markers = ED_context_get_markers(C);
   TimeMarker *marker, *newmarker;
 
-  if (markers == NULL)
+  if (markers == NULL) {
     return;
+  }
 
   /* go through the list of markers, duplicate selected markers and add duplicated copies
    * to the beginning of the list (unselect original markers)
@@ -1189,8 +1212,9 @@ static int ed_marker_select(bContext *C, const wmEvent *event, bool extend, bool
   float viewx;
   int x, cfra;
 
-  if (markers == NULL)
+  if (markers == NULL) {
     return OPERATOR_PASS_THROUGH;
+  }
 
   x = event->x - ar->winrct.xmin;
 
@@ -1209,8 +1233,9 @@ static int ed_marker_select(bContext *C, const wmEvent *event, bool extend, bool
     TimeMarker *marker;
     int sel = 0;
 
-    if (!extend)
+    if (!extend) {
       BKE_view_layer_base_deselect_all(view_layer);
+    }
 
     for (marker = markers->first; marker; marker = marker->next) {
       if (marker->frame == cfra) {
@@ -1225,8 +1250,9 @@ static int ed_marker_select(bContext *C, const wmEvent *event, bool extend, bool
           base = BKE_view_layer_base_find(view_layer, marker->camera);
           if (base) {
             ED_object_base_select(base, sel);
-            if (sel)
+            if (sel) {
               ED_object_base_activate(C, base);
+            }
           }
         }
       }
@@ -1315,8 +1341,9 @@ static int ed_marker_box_select_exec(bContext *C, wmOperator *op)
   WM_operator_properties_border_to_rctf(op, &rect);
   UI_view2d_region_to_view_rctf(v2d, &rect, &rect);
 
-  if (markers == NULL)
+  if (markers == NULL) {
     return 0;
+  }
 
   const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
   const bool select = (sel_op != SEL_OP_SUB);
@@ -1410,8 +1437,9 @@ static int ed_marker_delete_exec(bContext *C, wmOperator *UNUSED(op))
   TimeMarker *marker, *nmarker;
   bool changed = false;
 
-  if (markers == NULL)
+  if (markers == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   for (marker = markers->first; marker; marker = nmarker) {
     nmarker = marker->next;
@@ -1475,8 +1503,9 @@ static int ed_marker_rename_invoke_wrapper(bContext *C, wmOperator *op, const wm
 {
   /* must initialize the marker name first if there is a marker selected */
   TimeMarker *marker = ED_markers_get_first_selected(ED_context_get_markers(C));
-  if (marker)
+  if (marker) {
     RNA_string_set(op->ptr, "name", marker->name);
+  }
 
   /* now see if the operator is usable */
   return ed_markers_opwrap_invoke_custom(C, op, event, WM_operator_props_popup_confirm);
@@ -1504,7 +1533,13 @@ static void MARKER_OT_rename(wmOperatorType *ot)
                             sizeof(((TimeMarker *)NULL)->name),
                             "Name",
                             "New name for marker");
-  //RNA_def_boolean(ot->srna, "ensure_unique", 0, "Ensure Unique", "Ensure that new name is unique within collection of markers");
+#if 0
+  RNA_def_boolean(ot->srna,
+                  "ensure_unique",
+                  0,
+                  "Ensure Unique",
+                  "Ensure that new name is unique within collection of markers");
+#endif
 }
 
 /* **************** make links to scene ***************** */
@@ -1592,8 +1627,9 @@ static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
   }
 
   /* add new marker, unless we already have one on this frame, in which case, replace it */
-  if (markers == NULL)
+  if (markers == NULL) {
     return OPERATOR_CANCELLED;
+  }
 
   marker = ED_markers_find_nearest_marker(markers, CFRA);
   if ((marker == NULL) || (marker->frame != CFRA)) {

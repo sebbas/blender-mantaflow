@@ -77,7 +77,7 @@ static SpaceLink *console_new(const ScrArea *UNUSED(area), const Scene *UNUSED(s
   ar->v2d.minzoom = ar->v2d.maxzoom = 1.0f;
 
   /* for now, aspect ratio should be maintained, and zoom is clamped within sane default limits */
-  //ar->v2d.keepzoom = (V2D_KEEPASPECT|V2D_LIMITZOOM);
+  // ar->v2d.keepzoom = (V2D_KEEPASPECT|V2D_LIMITZOOM);
 
   return (SpaceLink *)sconsole;
 }
@@ -136,7 +136,7 @@ static void console_main_region_init(wmWindowManager *wm, ARegion *ar)
 
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Console", SPACE_CONSOLE, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   /* add drop boxes */
   lb = WM_dropboxmap_find("Console", SPACE_CONSOLE, RGN_TYPE_WINDOW);
@@ -231,9 +231,8 @@ static void console_main_region_draw(const bContext *C, ARegion *ar)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  scrollers = UI_view2d_scrollers_calc(
-      C, v2d, NULL, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_GRID_CLAMP);
-  UI_view2d_scrollers_draw(C, v2d, scrollers);
+  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
 }
 

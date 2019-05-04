@@ -271,20 +271,24 @@ void apply_keyb_grid(
     int shift, int ctrl, float *val, float fac1, float fac2, float fac3, int invert)
 {
   /* fac1 is for 'nothing', fac2 for CTRL, fac3 for SHIFT */
-  if (invert)
+  if (invert) {
     ctrl = !ctrl;
+  }
 
   if (ctrl && shift) {
-    if (fac3 != 0.0f)
+    if (fac3 != 0.0f) {
       *val = fac3 * floorf(*val / fac3 + 0.5f);
+    }
   }
   else if (ctrl) {
-    if (fac2 != 0.0f)
+    if (fac2 != 0.0f) {
       *val = fac2 * floorf(*val / fac2 + 0.5f);
+    }
   }
   else {
-    if (fac1 != 0.0f)
+    if (fac1 != 0.0f) {
       *val = fac1 * floorf(*val / fac1 + 0.5f);
+    }
   }
 }
 
@@ -326,7 +330,7 @@ void unpack_menu(bContext *C,
           break;
         case PF_EQUAL:
           BLI_snprintf(line, sizeof(line), IFACE_("Use %s (identical)"), local_name);
-          //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_LOCAL);
+          // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_LOCAL);
           uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_USE_LOCAL);
           RNA_string_set(&props_ptr, "id", id_name);
@@ -334,13 +338,13 @@ void unpack_menu(bContext *C,
           break;
         case PF_DIFFERS:
           BLI_snprintf(line, sizeof(line), IFACE_("Use %s (differs)"), local_name);
-          //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_LOCAL);
+          // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_LOCAL);
           uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_USE_LOCAL);
           RNA_string_set(&props_ptr, "id", id_name);
 
           BLI_snprintf(line, sizeof(line), IFACE_("Overwrite %s"), local_name);
-          //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_LOCAL);
+          // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_LOCAL);
           uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_WRITE_LOCAL);
           RNA_string_set(&props_ptr, "id", id_name);
@@ -352,27 +356,27 @@ void unpack_menu(bContext *C,
   switch (checkPackedFile(BKE_main_blendfile_path(bmain), abs_name, pf)) {
     case PF_NOFILE:
       BLI_snprintf(line, sizeof(line), IFACE_("Create %s"), abs_name);
-      //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_ORIGINAL);
       uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_WRITE_ORIGINAL);
       RNA_string_set(&props_ptr, "id", id_name);
       break;
     case PF_EQUAL:
       BLI_snprintf(line, sizeof(line), IFACE_("Use %s (identical)"), abs_name);
-      //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_ORIGINAL);
       uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_USE_ORIGINAL);
       RNA_string_set(&props_ptr, "id", id_name);
       break;
     case PF_DIFFERS:
       BLI_snprintf(line, sizeof(line), IFACE_("Use %s (differs)"), abs_name);
-      //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_USE_ORIGINAL);
       uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_USE_ORIGINAL);
       RNA_string_set(&props_ptr, "id", id_name);
 
       BLI_snprintf(line, sizeof(line), IFACE_("Overwrite %s"), abs_name);
-      //uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_ORIGINAL);
+      // uiItemEnumO_ptr(layout, ot, line, 0, "method", PF_WRITE_ORIGINAL);
       uiItemFullO_ptr(layout, ot, line, ICON_NONE, NULL, WM_OP_EXEC_DEFAULT, 0, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_WRITE_ORIGINAL);
       RNA_string_set(&props_ptr, "id", id_name);
@@ -391,8 +395,10 @@ void ED_region_draw_mouse_line_cb(const bContext *C, ARegion *ar, void *arg_info
 {
   wmWindow *win = CTX_wm_window(C);
   const float *mval_src = (float *)arg_info;
-  const float mval_dst[2] = {win->eventstate->x - ar->winrct.xmin,
-                             win->eventstate->y - ar->winrct.ymin};
+  const float mval_dst[2] = {
+      win->eventstate->x - ar->winrct.xmin,
+      win->eventstate->y - ar->winrct.ymin,
+  };
 
   const uint shdr_pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);

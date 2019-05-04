@@ -89,8 +89,9 @@ bArmature *BKE_armature_add(Main *bmain, const char *name)
 
 bArmature *BKE_armature_from_object(Object *ob)
 {
-  if (ob->type == OB_ARMATURE)
+  if (ob->type == OB_ARMATURE) {
     return (bArmature *)ob->data;
+  }
   return NULL;
 }
 
@@ -168,9 +169,33 @@ static void copy_bonechildren(Bone *bone_dst,
   }
 }
 
+static void copy_bonechildren_custom_handles(Bone *bone_dst, bArmature *arm_dst, GHash **bone_hash)
+{
+  Bone *bone_dst_child;
+
+  /* Lazily create the name -> bone hashtable. */
+  if ((bone_dst->bbone_prev || bone_dst->bbone_next) && *bone_hash == NULL) {
+    *bone_hash = BKE_armature_bone_from_name_map(arm_dst);
+  }
+
+  if (bone_dst->bbone_prev) {
+    bone_dst->bbone_prev = BLI_ghash_lookup(*bone_hash, bone_dst->bbone_prev->name);
+  }
+  if (bone_dst->bbone_next) {
+    bone_dst->bbone_next = BLI_ghash_lookup(*bone_hash, bone_dst->bbone_next->name);
+  }
+
+  for (bone_dst_child = bone_dst->childbase.first; bone_dst_child;
+       bone_dst_child = bone_dst_child->next) {
+    copy_bonechildren_custom_handles(bone_dst_child, arm_dst, bone_hash);
+  }
+}
+
 /**
- * Only copy internal data of Armature ID from source to already allocated/initialized destination.
- * You probably never want to use that directly, use BKE_id_copy or BKE_id_copy_ex for typical needs.
+ * Only copy internal data of Armature ID from source
+ * to already allocated/initialized destination.
+ * You probably never want to use that directly,
+ * use #BKE_id_copy or #BKE_id_copy_ex for typical needs.
  *
  * WARNING! This function will not handle ID user count!
  *
@@ -199,6 +224,17 @@ void BKE_armature_copy_data(Main *UNUSED(bmain),
 
   arm_dst->act_bone = bone_dst_act;
 
+  /* Fix custom handle references. */
+  GHash *bone_hash = NULL; /* lazily created */
+
+  for (bone_dst = arm_dst->bonebase.first; bone_dst; bone_dst = bone_dst->next) {
+    copy_bonechildren_custom_handles(bone_dst, arm_dst, &bone_hash);
+  }
+
+  if (bone_hash) {
+    BLI_ghash_free(bone_hash, NULL, NULL);
+  }
+
   arm_dst->edbo = NULL;
   arm_dst->act_edbone = NULL;
 }
@@ -215,12 +251,14 @@ static Bone *get_named_bone_bonechildren(ListBase *lb, const char *name)
   Bone *curBone, *rbone;
 
   for (curBone = lb->first; curBone; curBone = curBone->next) {
-    if (STREQ(curBone->name, name))
+    if (STREQ(curBone->name, name)) {
       return curBone;
+    }
 
     rbone = get_named_bone_bonechildren(&curBone->childbase, name);
-    if (rbone)
+    if (rbone) {
       return rbone;
+    }
   }
 
   return NULL;
@@ -232,8 +270,9 @@ static Bone *get_named_bone_bonechildren(ListBase *lb, const char *name)
  */
 Bone *BKE_armature_find_bone_name(bArmature *arm, const char *name)
 {
-  if (!arm)
+  if (!arm) {
     return NULL;
+  }
 
   return get_named_bone_bonechildren(&arm->bonebase, name);
 }
@@ -285,8 +324,9 @@ int bone_autoside_name(
   char extension[5] = "";
 
   len = strlen(name);
-  if (len == 0)
+  if (len == 0) {
     return 0;
+  }
   BLI_strncpy(basename, name, sizeof(basename));
 
   /* Figure out extension to append:
@@ -300,47 +340,59 @@ int bone_autoside_name(
   if (axis == 2) {
     /* z-axis - vertical (top/bottom) */
     if (IS_EQF(head, 0.0f)) {
-      if (tail < 0)
+      if (tail < 0) {
         strcpy(extension, "Bot");
-      else if (tail > 0)
+      }
+      else if (tail > 0) {
         strcpy(extension, "Top");
+      }
     }
     else {
-      if (head < 0)
+      if (head < 0) {
         strcpy(extension, "Bot");
-      else
+      }
+      else {
         strcpy(extension, "Top");
+      }
     }
   }
   else if (axis == 1) {
     /* y-axis - depth (front/back) */
     if (IS_EQF(head, 0.0f)) {
-      if (tail < 0)
+      if (tail < 0) {
         strcpy(extension, "Fr");
-      else if (tail > 0)
+      }
+      else if (tail > 0) {
         strcpy(extension, "Bk");
+      }
     }
     else {
-      if (head < 0)
+      if (head < 0) {
         strcpy(extension, "Fr");
-      else
+      }
+      else {
         strcpy(extension, "Bk");
+      }
     }
   }
   else {
     /* x-axis - horizontal (left/right) */
     if (IS_EQF(head, 0.0f)) {
-      if (tail < 0)
+      if (tail < 0) {
         strcpy(extension, "R");
-      else if (tail > 0)
+      }
+      else if (tail > 0) {
         strcpy(extension, "L");
+      }
     }
     else {
-      if (head < 0)
+      if (head < 0) {
         strcpy(extension, "R");
-      /* XXX Shouldn't this be simple else, as for z and y axes? */
-      else if (head > 0)
+        /* XXX Shouldn't this be simple else, as for z and y axes? */
+      }
+      else if (head > 0) {
         strcpy(extension, "L");
+      }
     }
   }
 
@@ -391,8 +443,9 @@ int bone_autoside_name(
     return 1;
   }
 
-  else
+  else {
     return 0;
+  }
 }
 
 /* ************* B-Bone support ******************* */
@@ -420,8 +473,9 @@ static void equalize_cubic_bezier(const float control[4][3],
   /* Calculate the length of the polyline at each point. */
   pdist[0] = 0.0f;
 
-  for (int i = 0; i < temp_segments; i++)
+  for (int i = 0; i < temp_segments; i++) {
     pdist[i + 1] = pdist[i] + len_v3v3(coords[i], coords[i + 1]);
+  }
 
   /* Go over distances and calculate new parameter values. */
   float dist_step = pdist[temp_segments] / final_segments;
@@ -432,8 +486,9 @@ static void equalize_cubic_bezier(const float control[4][3],
     float dist = i * dist_step;
 
     /* We're looking for location (distance) 'dist' in the array. */
-    while ((nr < temp_segments) && (dist >= pdist[nr]))
+    while ((nr < temp_segments) && (dist >= pdist[nr])) {
       nr++;
+    }
 
     float fac = (pdist[nr] - dist) / (pdist[nr] - pdist[nr - 1]);
 
@@ -443,7 +498,8 @@ static void equalize_cubic_bezier(const float control[4][3],
   r_t_points[final_segments] = 1.0f;
 }
 
-/* Evaluate bezier position and tangent at a specific parameter value using the De Casteljau algorithm. */
+/* Evaluate bezier position and tangent at a specific parameter value
+ * using the De Casteljau algorithm. */
 static void evaluate_cubic_bezier(const float control[4][3],
                                   float t,
                                   float r_pos[3],
@@ -660,15 +716,17 @@ void BKE_pchan_bbone_spline_params_get(struct bPoseChannel *pchan,
       }
     }
 
-    param->scaleIn = bone->scaleIn * (!rest ? pchan->scaleIn : 1.0f);
-    param->scaleOut = bone->scaleOut * (!rest ? pchan->scaleOut : 1.0f);
+    param->scale_in_x = bone->scale_in_x * (!rest ? pchan->scale_in_x : 1.0f);
+    param->scale_in_y = bone->scale_in_y * (!rest ? pchan->scale_in_y : 1.0f);
+    param->scale_out_x = bone->scale_out_x * (!rest ? pchan->scale_out_x : 1.0f);
+    param->scale_out_y = bone->scale_out_y * (!rest ? pchan->scale_out_y : 1.0f);
 
     /* Extra curve x / y */
-    param->curveInX = bone->curveInX + (!rest ? pchan->curveInX : 0.0f);
-    param->curveInY = bone->curveInY + (!rest ? pchan->curveInY : 0.0f);
+    param->curve_in_x = bone->curve_in_x + (!rest ? pchan->curve_in_x : 0.0f);
+    param->curve_in_y = bone->curve_in_y + (!rest ? pchan->curve_in_y : 0.0f);
 
-    param->curveOutX = bone->curveOutX + (!rest ? pchan->curveOutX : 0.0f);
-    param->curveOutY = bone->curveOutY + (!rest ? pchan->curveOutY : 0.0f);
+    param->curve_out_x = bone->curve_out_x + (!rest ? pchan->curve_out_x : 0.0f);
+    param->curve_out_y = bone->curve_out_y + (!rest ? pchan->curve_out_y : 0.0f);
   }
 }
 
@@ -713,8 +771,9 @@ void BKE_pchan_bbone_handles_compute(const BBoneSplineParameters *param,
       h1[1] -= length;
     }
 
-    if (normalize_v3(h1) < epsilon)
+    if (normalize_v3(h1) < epsilon) {
       copy_v3_fl3(h1, 0.0f, -1.0f, 0.0f);
+    }
 
     negate_v3(h1);
 
@@ -741,8 +800,9 @@ void BKE_pchan_bbone_handles_compute(const BBoneSplineParameters *param,
       h2[1] -= length;
     }
 
-    if (normalize_v3(h2) < epsilon)
+    if (normalize_v3(h2) < epsilon) {
       copy_v3_fl3(h2, 0.0f, 1.0f, 0.0f);
+    }
 
     /* Find the next roll to interpolate as well. */
     copy_m3_m4(mat3, param->next_mat);
@@ -785,18 +845,19 @@ void BKE_pchan_bbone_handles_compute(const BBoneSplineParameters *param,
     *r_roll2 += param->roll2;
 
     /* Extra curve x / y */
-    /* NOTE: Scale correction factors here are to compensate for some random floating-point glitches
-     *       when scaling up the bone or it's parent by a factor of approximately 8.15/6, which results
-     *       in the bone length getting scaled up too (from 1 to 8), causing the curve to flatten out.
+    /* NOTE:
+     * Scale correction factors here are to compensate for some random floating-point glitches
+     * when scaling up the bone or it's parent by a factor of approximately 8.15/6, which results
+     * in the bone length getting scaled up too (from 1 to 8), causing the curve to flatten out.
      */
     const float xscale_correction = (param->do_scale) ? param->scale[0] : 1.0f;
     const float yscale_correction = (param->do_scale) ? param->scale[2] : 1.0f;
 
-    h1[0] += param->curveInX * xscale_correction;
-    h1[2] += param->curveInY * yscale_correction;
+    h1[0] += param->curve_in_x * xscale_correction;
+    h1[2] += param->curve_in_y * yscale_correction;
 
-    h2[0] += param->curveOutX * xscale_correction;
-    h2[2] += param->curveOutY * yscale_correction;
+    h2[0] += param->curve_out_x * xscale_correction;
+    h2[2] += param->curve_out_y * yscale_correction;
   }
 }
 
@@ -805,7 +866,8 @@ static void make_bbone_spline_matrix(BBoneSplineParameters *param,
                                      float pos[3],
                                      float axis[3],
                                      float roll,
-                                     float scalefac,
+                                     float scalex,
+                                     float scaley,
                                      float result[4][4])
 {
   float mat3[3][3];
@@ -821,8 +883,8 @@ static void make_bbone_spline_matrix(BBoneSplineParameters *param,
   }
 
   /* BBone scale... */
-  mul_v3_fl(result[0], scalefac);
-  mul_v3_fl(result[2], scalefac);
+  mul_v3_fl(result[0], scalex);
+  mul_v3_fl(result[2], scaley);
 }
 
 /* Fade from first to second derivative when the handle is very short. */
@@ -886,17 +948,25 @@ int BKE_pchan_bbone_spline_compute(BBoneSplineParameters *param,
 
     /* End points require special handling to fix zero length handles. */
     ease_handle_axis(bezt_deriv1[0], bezt_deriv2[0], axis);
-    make_bbone_spline_matrix(
-        param, scalemats, bezt_controls[0], axis, roll1, param->scaleIn, result_array[0].mat);
+    make_bbone_spline_matrix(param,
+                             scalemats,
+                             bezt_controls[0],
+                             axis,
+                             roll1,
+                             param->scale_in_x,
+                             param->scale_in_y,
+                             result_array[0].mat);
 
     for (int a = 1; a < param->segments; a++) {
       evaluate_cubic_bezier(bezt_controls, bezt_points[a], cur, axis);
 
       float fac = ((float)a) / param->segments;
       float roll = interpf(roll2, roll1, fac);
-      float scalefac = interpf(param->scaleOut, param->scaleIn, fac);
+      float scalex = interpf(param->scale_out_x, param->scale_in_x, fac);
+      float scaley = interpf(param->scale_out_y, param->scale_in_y, fac);
 
-      make_bbone_spline_matrix(param, scalemats, cur, axis, roll, scalefac, result_array[a].mat);
+      make_bbone_spline_matrix(
+          param, scalemats, cur, axis, roll, scalex, scaley, result_array[a].mat);
     }
 
     negate_v3(bezt_deriv2[1]);
@@ -906,7 +976,8 @@ int BKE_pchan_bbone_spline_compute(BBoneSplineParameters *param,
                              bezt_controls[3],
                              axis,
                              roll2,
-                             param->scaleOut,
+                             param->scale_out_x,
+                             param->scale_out_y,
                              result_array[param->segments].mat);
   }
   /* Other code (e.g. display) uses matrices for the segments themselves. */
@@ -920,9 +991,11 @@ int BKE_pchan_bbone_spline_compute(BBoneSplineParameters *param,
 
       float fac = (a + 0.5f) / param->segments;
       float roll = interpf(roll2, roll1, fac);
-      float scalefac = interpf(param->scaleOut, param->scaleIn, fac);
+      float scalex = interpf(param->scale_out_x, param->scale_in_x, fac);
+      float scaley = interpf(param->scale_out_y, param->scale_in_y, fac);
 
-      make_bbone_spline_matrix(param, scalemats, prev, axis, roll, scalefac, result_array[a].mat);
+      make_bbone_spline_matrix(
+          param, scalemats, prev, axis, roll, scalex, scaley, result_array[a].mat);
       copy_v3_v3(prev, cur);
     }
   }
@@ -932,25 +1005,12 @@ int BKE_pchan_bbone_spline_compute(BBoneSplineParameters *param,
 
 /* ************ Armature Deform ******************* */
 
-typedef struct bPoseChanDeform {
-  DualQuat *dual_quat;
-} bPoseChanDeform;
-
-/* Definition of cached object bbone deformations. */
-typedef struct ObjectBBoneDeform {
-  DualQuat *dualquats;
-  bPoseChanDeform *pdef_info_array;
-  int num_pchan;
-} ObjectBBoneDeform;
-
 static void allocate_bbone_cache(bPoseChannel *pchan, int segments)
 {
   bPoseChannel_Runtime *runtime = &pchan->runtime;
 
   if (runtime->bbone_segments != segments) {
-    if (runtime->bbone_segments != 0) {
-      BKE_pose_channel_free_bbone_cache(pchan);
-    }
+    BKE_pose_channel_free_bbone_cache(runtime);
 
     runtime->bbone_segments = segments;
     runtime->bbone_rest_mats = MEM_malloc_arrayN(
@@ -1020,7 +1080,7 @@ void BKE_pchan_bbone_segments_cache_copy(bPoseChannel *pchan, bPoseChannel *pcha
   int segments = runtime_from->bbone_segments;
 
   if (segments <= 1) {
-    BKE_pose_channel_free_bbone_cache(pchan);
+    BKE_pose_channel_free_bbone_cache(&pchan->runtime);
   }
   else {
     allocate_bbone_cache(pchan, segments);
@@ -1036,7 +1096,8 @@ void BKE_pchan_bbone_segments_cache_copy(bPoseChannel *pchan, bPoseChannel *pcha
   }
 }
 
-/** Calculate index and blend factor for the two B-Bone segment nodes affecting the point at 0 <= pos <= 1. */
+/** Calculate index and blend factor for the two B-Bone segment nodes
+ * affecting the point at 0 <= pos <= 1. */
 void BKE_pchan_bbone_deform_segment_index(const bPoseChannel *pchan,
                                           float pos,
                                           int *r_index,
@@ -1071,8 +1132,9 @@ static void pchan_deform_accumulate(const DualQuat *deform_dq,
                                     DualQuat *dq_accum,
                                     float mat_accum[3][3])
 {
-  if (weight == 0.0f)
+  if (weight == 0.0f) {
     return;
+  }
 
   if (dq_accum) {
     BLI_assert(!co_accum);
@@ -1154,18 +1216,21 @@ float distfactor_to_bone(
       rad = a / l;
       rad = rad * rad2 + (1.0f - rad) * rad1;
     }
-    else
+    else {
       rad = rad1;
+    }
   }
 
   a = rad * rad;
-  if (dist_sq < a)
+  if (dist_sq < a) {
     return 1.0f;
+  }
   else {
     l = rad + rdist;
     l *= l;
-    if (rdist == 0.0f || dist_sq >= l)
+    if (rdist == 0.0f || dist_sq >= l) {
       return 0.0f;
+    }
     else {
       a = sqrtf(dist_sq) - rad;
       return 1.0f - (a * a) / (rdist * rdist);
@@ -1173,18 +1238,15 @@ float distfactor_to_bone(
   }
 }
 
-static float dist_bone_deform(bPoseChannel *pchan,
-                              const bPoseChanDeform *pdef_info,
-                              float vec[3],
-                              DualQuat *dq,
-                              float mat[3][3],
-                              const float co[3])
+static float dist_bone_deform(
+    bPoseChannel *pchan, float vec[3], DualQuat *dq, float mat[3][3], const float co[3])
 {
   Bone *bone = pchan->bone;
   float fac, contrib = 0.0;
 
-  if (bone == NULL)
+  if (bone == NULL) {
     return 0.0f;
+  }
 
   fac = distfactor_to_bone(
       co, bone->arm_head, bone->arm_tail, bone->rad_head, bone->rad_tail, bone->dist);
@@ -1193,10 +1255,13 @@ static float dist_bone_deform(bPoseChannel *pchan,
     fac *= bone->weight;
     contrib = fac;
     if (contrib > 0.0f) {
-      if (bone->segments > 1 && pchan->runtime.bbone_segments == bone->segments)
+      if (bone->segments > 1 && pchan->runtime.bbone_segments == bone->segments) {
         b_bone_deform(pchan, co, fac, vec, dq, mat);
-      else
-        pchan_deform_accumulate(pdef_info->dual_quat, pchan->chan_mat, co, fac, vec, dq, mat);
+      }
+      else {
+        pchan_deform_accumulate(
+            &pchan->runtime.deform_dual_quat, pchan->chan_mat, co, fac, vec, dq, mat);
+      }
     }
   }
 
@@ -1204,7 +1269,6 @@ static float dist_bone_deform(bPoseChannel *pchan,
 }
 
 static void pchan_bone_deform(bPoseChannel *pchan,
-                              const bPoseChanDeform *pdef_info,
                               float weight,
                               float vec[3],
                               DualQuat *dq,
@@ -1214,36 +1278,223 @@ static void pchan_bone_deform(bPoseChannel *pchan,
 {
   Bone *bone = pchan->bone;
 
-  if (!weight)
+  if (!weight) {
     return;
+  }
 
-  if (bone->segments > 1 && pchan->runtime.bbone_segments == bone->segments)
+  if (bone->segments > 1 && pchan->runtime.bbone_segments == bone->segments) {
     b_bone_deform(pchan, co, weight, vec, dq, mat);
-  else
-    pchan_deform_accumulate(pdef_info->dual_quat, pchan->chan_mat, co, weight, vec, dq, mat);
+  }
+  else {
+    pchan_deform_accumulate(
+        &pchan->runtime.deform_dual_quat, pchan->chan_mat, co, weight, vec, dq, mat);
+  }
 
   (*contrib) += weight;
 }
 
-typedef struct ArmatureBBoneDefmatsData {
-  bPoseChanDeform *pdef_info_array;
-  DualQuat *dualquats;
+typedef struct ArmatureUserdata {
+  Object *armOb;
+  Object *target;
+  const Mesh *mesh;
+  float (*vertexCos)[3];
+  float (*defMats)[3][3];
+  float (*prevCos)[3];
+
+  bool use_envelope;
   bool use_quaternion;
-} ArmatureBBoneDefmatsData;
+  bool invert_vgroup;
+  bool use_dverts;
 
-static void armature_bbone_defmats_cb(void *userdata, Link *iter, int index)
+  int armature_def_nr;
+
+  int target_totvert;
+  MDeformVert *dverts;
+
+  int defbase_tot;
+  bPoseChannel **defnrToPC;
+
+  float premat[4][4];
+  float postmat[4][4];
+} ArmatureUserdata;
+
+static void armature_vert_task(void *__restrict userdata,
+                               const int i,
+                               const ParallelRangeTLS *__restrict UNUSED(tls))
 {
-  ArmatureBBoneDefmatsData *data = userdata;
-  bPoseChannel *pchan = (bPoseChannel *)iter;
+  const ArmatureUserdata *data = userdata;
+  float(*const vertexCos)[3] = data->vertexCos;
+  float(*const defMats)[3][3] = data->defMats;
+  float(*const prevCos)[3] = data->prevCos;
+  const bool use_envelope = data->use_envelope;
+  const bool use_quaternion = data->use_quaternion;
+  const bool use_dverts = data->use_dverts;
+  const int armature_def_nr = data->armature_def_nr;
 
-  if (!(pchan->bone->flag & BONE_NO_DEFORM)) {
-    bPoseChanDeform *pdef_info = &data->pdef_info_array[index];
-    const bool use_quaternion = data->use_quaternion;
+  MDeformVert *dvert;
+  DualQuat sumdq, *dq = NULL;
+  bPoseChannel *pchan;
+  float *co, dco[3];
+  float sumvec[3], summat[3][3];
+  float *vec = NULL, (*smat)[3] = NULL;
+  float contrib = 0.0f;
+  float armature_weight = 1.0f; /* default to 1 if no overall def group */
+  float prevco_weight = 1.0f;   /* weight for optional cached vertexcos */
 
-    if (use_quaternion) {
-      pdef_info->dual_quat = &data->dualquats[index];
-      mat4_to_dquat(pdef_info->dual_quat, pchan->bone->arm_mat, pchan->chan_mat);
+  if (use_quaternion) {
+    memset(&sumdq, 0, sizeof(DualQuat));
+    dq = &sumdq;
+  }
+  else {
+    sumvec[0] = sumvec[1] = sumvec[2] = 0.0f;
+    vec = sumvec;
+
+    if (defMats) {
+      zero_m3(summat);
+      smat = summat;
     }
+  }
+
+  if (use_dverts || armature_def_nr != -1) {
+    if (data->mesh) {
+      BLI_assert(i < data->mesh->totvert);
+      dvert = data->mesh->dvert + i;
+    }
+    else if (data->dverts && i < data->target_totvert) {
+      dvert = data->dverts + i;
+    }
+    else {
+      dvert = NULL;
+    }
+  }
+  else {
+    dvert = NULL;
+  }
+
+  if (armature_def_nr != -1 && dvert) {
+    armature_weight = defvert_find_weight(dvert, armature_def_nr);
+
+    if (data->invert_vgroup) {
+      armature_weight = 1.0f - armature_weight;
+    }
+
+    /* hackish: the blending factor can be used for blending with prevCos too */
+    if (prevCos) {
+      prevco_weight = armature_weight;
+      armature_weight = 1.0f;
+    }
+  }
+
+  /* check if there's any  point in calculating for this vert */
+  if (armature_weight == 0.0f) {
+    return;
+  }
+
+  /* get the coord we work on */
+  co = prevCos ? prevCos[i] : vertexCos[i];
+
+  /* Apply the object's matrix */
+  mul_m4_v3(data->premat, co);
+
+  if (use_dverts && dvert && dvert->totweight) { /* use weight groups ? */
+    MDeformWeight *dw = dvert->dw;
+    int deformed = 0;
+    unsigned int j;
+    float acum_weight = 0;
+    for (j = dvert->totweight; j != 0; j--, dw++) {
+      const int index = dw->def_nr;
+      if (index >= 0 && index < data->defbase_tot && (pchan = data->defnrToPC[index])) {
+        float weight = dw->weight;
+        Bone *bone = pchan->bone;
+
+        deformed = 1;
+
+        if (bone && bone->flag & BONE_MULT_VG_ENV) {
+          weight *= distfactor_to_bone(
+              co, bone->arm_head, bone->arm_tail, bone->rad_head, bone->rad_tail, bone->dist);
+        }
+
+        /* check limit of weight */
+        if (data->target->type == OB_GPENCIL) {
+          if (acum_weight + weight >= 1.0f) {
+            weight = 1.0f - acum_weight;
+          }
+          acum_weight += weight;
+        }
+
+        pchan_bone_deform(pchan, weight, vec, dq, smat, co, &contrib);
+
+        /* if acumulated weight limit exceed, exit loop */
+        if ((data->target->type == OB_GPENCIL) && (acum_weight >= 1.0f)) {
+          break;
+        }
+      }
+    }
+    /* if there are vertexgroups but not groups with bones
+     * (like for softbody groups) */
+    if (deformed == 0 && use_envelope) {
+      for (pchan = data->armOb->pose->chanbase.first; pchan; pchan = pchan->next) {
+        if (!(pchan->bone->flag & BONE_NO_DEFORM)) {
+          contrib += dist_bone_deform(pchan, vec, dq, smat, co);
+        }
+      }
+    }
+  }
+  else if (use_envelope) {
+    for (pchan = data->armOb->pose->chanbase.first; pchan; pchan = pchan->next) {
+      if (!(pchan->bone->flag & BONE_NO_DEFORM)) {
+        contrib += dist_bone_deform(pchan, vec, dq, smat, co);
+      }
+    }
+  }
+
+  /* actually should be EPSILON? weight values and contrib can be like 10e-39 small */
+  if (contrib > 0.0001f) {
+    if (use_quaternion) {
+      normalize_dq(dq, contrib);
+
+      if (armature_weight != 1.0f) {
+        copy_v3_v3(dco, co);
+        mul_v3m3_dq(dco, (defMats) ? summat : NULL, dq);
+        sub_v3_v3(dco, co);
+        mul_v3_fl(dco, armature_weight);
+        add_v3_v3(co, dco);
+      }
+      else {
+        mul_v3m3_dq(co, (defMats) ? summat : NULL, dq);
+      }
+
+      smat = summat;
+    }
+    else {
+      mul_v3_fl(vec, armature_weight / contrib);
+      add_v3_v3v3(co, vec, co);
+    }
+
+    if (defMats) {
+      float pre[3][3], post[3][3], tmpmat[3][3];
+
+      copy_m3_m4(pre, data->premat);
+      copy_m3_m4(post, data->postmat);
+      copy_m3_m3(tmpmat, defMats[i]);
+
+      if (!use_quaternion) { /* quaternion already is scale corrected */
+        mul_m3_fl(smat, armature_weight / contrib);
+      }
+
+      mul_m3_series(defMats[i], post, smat, pre, tmpmat);
+    }
+  }
+
+  /* always, check above code */
+  mul_m4_v3(data->postmat, co);
+
+  /* interpolate with previous modifier position using weight group */
+  if (prevCos) {
+    float mw = 1.0f - prevco_weight;
+    vertexCos[i][0] = prevco_weight * vertexCos[i][0] + mw * co[0];
+    vertexCos[i][1] = prevco_weight * vertexCos[i][1] + mw * co[1];
+    vertexCos[i][2] = prevco_weight * vertexCos[i][2] + mw * co[2];
   }
 }
 
@@ -1258,13 +1509,10 @@ void armature_deform_verts(Object *armOb,
                            const char *defgrp_name,
                            bGPDstroke *gps)
 {
-  const bPoseChanDeform *pdef_info = NULL;
   bArmature *arm = armOb->data;
-  bPoseChannel *pchan, **defnrToPC = NULL;
-  int *defnrToPCIndex = NULL;
+  bPoseChannel **defnrToPC = NULL;
   MDeformVert *dverts = NULL;
   bDeformGroup *dg;
-  float obinv[4][4], premat[4][4], postmat[4][4];
   const bool use_envelope = (deformflag & ARM_DEF_ENVELOPE) != 0;
   const bool use_quaternion = (deformflag & ARM_DEF_QUATERNION) != 0;
   const bool invert_vgroup = (deformflag & ARM_DEF_INVERT_VGROUP) != 0;
@@ -1285,25 +1533,6 @@ void armature_deform_verts(Object *armOb,
     BLI_assert(0);
   }
 
-  invert_m4_m4(obinv, target->obmat);
-  copy_m4_m4(premat, target->obmat);
-  mul_m4_m4m4(postmat, obinv, armOb->obmat);
-  invert_m4_m4(premat, postmat);
-
-  /* Use pre-calculated bbone deformation.
-   *
-   * TODO(sergey): Make this code robust somehow when there are dependency
-   * cycles involved. */
-  ObjectBBoneDeform *bbone_deform = BKE_armature_cached_bbone_deformation_get(armOb);
-  if (bbone_deform == NULL || bbone_deform->pdef_info_array == NULL) {
-    CLOG_ERROR(&LOG,
-               "Armature does not have bbone cache %s, "
-               "usually happens due to a dependency cycle.\n",
-               armOb->id.name + 2);
-    return;
-  }
-  const bPoseChanDeform *pdef_info_array = bbone_deform->pdef_info_array;
-
   /* get the def_nr for the overall armature vertex group if present */
   armature_def_nr = defgroup_name_index(target, defgrp_name);
 
@@ -1313,19 +1542,22 @@ void armature_deform_verts(Object *armOb,
     if (target->type == OB_MESH) {
       Mesh *me = target->data;
       dverts = me->dvert;
-      if (dverts)
+      if (dverts) {
         target_totvert = me->totvert;
+      }
     }
     else if (target->type == OB_LATTICE) {
       Lattice *lt = target->data;
       dverts = lt->dvert;
-      if (dverts)
+      if (dverts) {
         target_totvert = lt->pntsu * lt->pntsv * lt->pntsw;
+      }
     }
     else if (target->type == OB_GPENCIL) {
       dverts = gps->dvert;
-      if (dverts)
+      if (dverts) {
         target_totvert = gps->totpoints;
+      }
     }
   }
 
@@ -1342,19 +1574,10 @@ void armature_deform_verts(Object *armOb,
 
       if (use_dverts) {
         defnrToPC = MEM_callocN(sizeof(*defnrToPC) * defbase_tot, "defnrToBone");
-        defnrToPCIndex = MEM_callocN(sizeof(*defnrToPCIndex) * defbase_tot, "defnrToIndex");
         /* TODO(sergey): Some considerations here:
          *
-         * - Make it more generic function, maybe even keep together with chanhash.
          * - Check whether keeping this consistent across frames gives speedup.
-         * - Don't use hash for small armatures.
          */
-        GHash *idx_hash = BLI_ghash_ptr_new("pose channel index by name");
-        int pchan_index = 0;
-        for (pchan = armOb->pose->chanbase.first; pchan != NULL;
-             pchan = pchan->next, ++pchan_index) {
-          BLI_ghash_insert(idx_hash, pchan, POINTER_FROM_INT(pchan_index));
-        }
         for (i = 0, dg = target->defbase.first; dg; i++, dg = dg->next) {
           defnrToPC[i] = BKE_pose_channel_find_name(armOb->pose, dg->name);
           /* exclude non-deforming bones */
@@ -1362,181 +1585,42 @@ void armature_deform_verts(Object *armOb,
             if (defnrToPC[i]->bone->flag & BONE_NO_DEFORM) {
               defnrToPC[i] = NULL;
             }
-            else {
-              defnrToPCIndex[i] = POINTER_AS_INT(BLI_ghash_lookup(idx_hash, defnrToPC[i]));
-            }
           }
         }
-        BLI_ghash_free(idx_hash, NULL, NULL);
       }
     }
   }
 
-  for (i = 0; i < numVerts; i++) {
-    MDeformVert *dvert;
-    DualQuat sumdq, *dq = NULL;
-    float *co, dco[3];
-    float sumvec[3], summat[3][3];
-    float *vec = NULL, (*smat)[3] = NULL;
-    float contrib = 0.0f;
-    float armature_weight = 1.0f; /* default to 1 if no overall def group */
-    float prevco_weight = 1.0f;   /* weight for optional cached vertexcos */
+  ArmatureUserdata data = {.armOb = armOb,
+                           .target = target,
+                           .mesh = mesh,
+                           .vertexCos = vertexCos,
+                           .defMats = defMats,
+                           .prevCos = prevCos,
+                           .use_envelope = use_envelope,
+                           .use_quaternion = use_quaternion,
+                           .invert_vgroup = invert_vgroup,
+                           .use_dverts = use_dverts,
+                           .armature_def_nr = armature_def_nr,
+                           .target_totvert = target_totvert,
+                           .dverts = dverts,
+                           .defbase_tot = defbase_tot,
+                           .defnrToPC = defnrToPC};
 
-    if (use_quaternion) {
-      memset(&sumdq, 0, sizeof(DualQuat));
-      dq = &sumdq;
-    }
-    else {
-      sumvec[0] = sumvec[1] = sumvec[2] = 0.0f;
-      vec = sumvec;
+  float obinv[4][4];
+  invert_m4_m4(obinv, target->obmat);
 
-      if (defMats) {
-        zero_m3(summat);
-        smat = summat;
-      }
-    }
+  mul_m4_m4m4(data.postmat, obinv, armOb->obmat);
+  invert_m4_m4(data.premat, data.postmat);
 
-    if (use_dverts || armature_def_nr != -1) {
-      if (mesh) {
-        BLI_assert(i < mesh->totvert);
-        dvert = mesh->dvert + i;
-      }
-      else if (dverts && i < target_totvert)
-        dvert = dverts + i;
-      else
-        dvert = NULL;
-    }
-    else
-      dvert = NULL;
+  ParallelRangeSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.min_iter_per_thread = 32;
+  BLI_task_parallel_range(0, numVerts, &data, armature_vert_task, &settings);
 
-    if (armature_def_nr != -1 && dvert) {
-      armature_weight = defvert_find_weight(dvert, armature_def_nr);
-
-      if (invert_vgroup)
-        armature_weight = 1.0f - armature_weight;
-
-      /* hackish: the blending factor can be used for blending with prevCos too */
-      if (prevCos) {
-        prevco_weight = armature_weight;
-        armature_weight = 1.0f;
-      }
-    }
-
-    /* check if there's any  point in calculating for this vert */
-    if (armature_weight == 0.0f)
-      continue;
-
-    /* get the coord we work on */
-    co = prevCos ? prevCos[i] : vertexCos[i];
-
-    /* Apply the object's matrix */
-    mul_m4_v3(premat, co);
-
-    if (use_dverts && dvert && dvert->totweight) { /* use weight groups ? */
-      MDeformWeight *dw = dvert->dw;
-      int deformed = 0;
-      unsigned int j;
-      float acum_weight = 0;
-      for (j = dvert->totweight; j != 0; j--, dw++) {
-        const int index = dw->def_nr;
-        if (index >= 0 && index < defbase_tot && (pchan = defnrToPC[index])) {
-          float weight = dw->weight;
-          Bone *bone = pchan->bone;
-          pdef_info = pdef_info_array + defnrToPCIndex[index];
-
-          deformed = 1;
-
-          if (bone && bone->flag & BONE_MULT_VG_ENV) {
-            weight *= distfactor_to_bone(
-                co, bone->arm_head, bone->arm_tail, bone->rad_head, bone->rad_tail, bone->dist);
-          }
-
-          /* check limit of weight */
-          if (target->type == OB_GPENCIL) {
-            if (acum_weight + weight >= 1.0f) {
-              weight = 1.0f - acum_weight;
-            }
-            acum_weight += weight;
-          }
-
-          pchan_bone_deform(pchan, pdef_info, weight, vec, dq, smat, co, &contrib);
-
-          /* if acumulated weight limit exceed, exit loop */
-          if ((target->type == OB_GPENCIL) && (acum_weight >= 1.0f)) {
-            break;
-          }
-        }
-      }
-      /* if there are vertexgroups but not groups with bones
-       * (like for softbody groups) */
-      if (deformed == 0 && use_envelope) {
-        pdef_info = pdef_info_array;
-        for (pchan = armOb->pose->chanbase.first; pchan; pchan = pchan->next, pdef_info++) {
-          if (!(pchan->bone->flag & BONE_NO_DEFORM))
-            contrib += dist_bone_deform(pchan, pdef_info, vec, dq, smat, co);
-        }
-      }
-    }
-    else if (use_envelope) {
-      pdef_info = pdef_info_array;
-      for (pchan = armOb->pose->chanbase.first; pchan; pchan = pchan->next, pdef_info++) {
-        if (!(pchan->bone->flag & BONE_NO_DEFORM))
-          contrib += dist_bone_deform(pchan, pdef_info, vec, dq, smat, co);
-      }
-    }
-
-    /* actually should be EPSILON? weight values and contrib can be like 10e-39 small */
-    if (contrib > 0.0001f) {
-      if (use_quaternion) {
-        normalize_dq(dq, contrib);
-
-        if (armature_weight != 1.0f) {
-          copy_v3_v3(dco, co);
-          mul_v3m3_dq(dco, (defMats) ? summat : NULL, dq);
-          sub_v3_v3(dco, co);
-          mul_v3_fl(dco, armature_weight);
-          add_v3_v3(co, dco);
-        }
-        else
-          mul_v3m3_dq(co, (defMats) ? summat : NULL, dq);
-
-        smat = summat;
-      }
-      else {
-        mul_v3_fl(vec, armature_weight / contrib);
-        add_v3_v3v3(co, vec, co);
-      }
-
-      if (defMats) {
-        float pre[3][3], post[3][3], tmpmat[3][3];
-
-        copy_m3_m4(pre, premat);
-        copy_m3_m4(post, postmat);
-        copy_m3_m3(tmpmat, defMats[i]);
-
-        if (!use_quaternion) /* quaternion already is scale corrected */
-          mul_m3_fl(smat, armature_weight / contrib);
-
-        mul_m3_series(defMats[i], post, smat, pre, tmpmat);
-      }
-    }
-
-    /* always, check above code */
-    mul_m4_v3(postmat, co);
-
-    /* interpolate with previous modifier position using weight group */
-    if (prevCos) {
-      float mw = 1.0f - prevco_weight;
-      vertexCos[i][0] = prevco_weight * vertexCos[i][0] + mw * co[0];
-      vertexCos[i][1] = prevco_weight * vertexCos[i][1] + mw * co[1];
-      vertexCos[i][2] = prevco_weight * vertexCos[i][2] + mw * co[2];
-    }
-  }
-
-  if (defnrToPC)
+  if (defnrToPC) {
     MEM_freeN(defnrToPC);
-  if (defnrToPCIndex)
-    MEM_freeN(defnrToPCIndex);
+  }
 }
 
 /* ************ END Armature Deform ******************* */
@@ -1557,8 +1641,9 @@ void BKE_armature_mat_world_to_pose(Object *ob, float inmat[4][4], float outmat[
   float obmat[4][4];
 
   /* prevent crashes */
-  if (ob == NULL)
+  if (ob == NULL) {
     return;
+  }
 
   /* get inverse of (armature) object's matrix  */
   invert_m4_m4(obmat, ob->obmat);
@@ -1600,13 +1685,14 @@ void BKE_bone_offset_matrix_get(const Bone *bone, float offs_bone[4][4])
   offs_bone[3][1] += bone->parent->length;
 }
 
-/* Construct the matrices (rot/scale and loc) to apply the PoseChannels into the armature (object) space.
+/* Construct the matrices (rot/scale and loc)
+ * to apply the PoseChannels into the armature (object) space.
  * I.e. (roughly) the "pose_mat(b-1) * yoffs(b-1) * d_root(b) * bone_mat(b)" in the
  *     pose_mat(b)= pose_mat(b-1) * yoffs(b-1) * d_root(b) * bone_mat(b) * chan_mat(b)
  * ...function.
  *
- * This allows to get the transformations of a bone in its object space, *before* constraints (and IK)
- * get applied (used by pose evaluation code).
+ * This allows to get the transformations of a bone in its object space,
+ * *before* constraints (and IK) get applied (used by pose evaluation code).
  * And reverse: to find pchan transformations needed to place a bone at a given loc/rot/scale
  * in object space (used by interactive transform, and snapping code).
  *
@@ -1679,8 +1765,9 @@ void BKE_bone_parent_transform_calc_from_matrices(int bone_flag,
       normalize_m4(tmat);
       mul_m4_m4m4(r_bpt->rotscale_mat, tmat, offs_bone);
     }
-    else
+    else {
       mul_m4_m4m4(r_bpt->rotscale_mat, parent_pose_mat, offs_bone);
+    }
 
     /* Compose the loc matrix for this bone. */
     /* NOTE: That version does not modify bone's loc when HINGE/NO_SCALE options are set. */
@@ -1706,9 +1793,11 @@ void BKE_bone_parent_transform_calc_from_matrices(int bone_flag,
     else if (bone_flag & (BONE_HINGE | BONE_NO_SCALE)) {
       mul_m4_m4m4(r_bpt->loc_mat, parent_pose_mat, offs_bone);
     }
-    /* Else (i.e. default, usual case), just use the same matrix for rotation/scaling, and location. */
-    else
+    /* Else (i.e. default, usual case),
+     * just use the same matrix for rotation/scaling, and location. */
+    else {
       copy_m4_m4(r_bpt->loc_mat, r_bpt->rotscale_mat);
+    }
   }
   /* Root bones. */
   else {
@@ -1720,8 +1809,9 @@ void BKE_bone_parent_transform_calc_from_matrices(int bone_flag,
       unit_m4(r_bpt->loc_mat);
       copy_v3_v3(r_bpt->loc_mat[3], offs_bone[3]);
     }
-    else
+    else {
       copy_m4_m4(r_bpt->loc_mat, r_bpt->rotscale_mat);
+    }
   }
 }
 
@@ -1831,11 +1921,40 @@ void BKE_pchan_mat3_to_rot(bPoseChannel *pchan, float mat[3][3], bool use_compat
       mat3_normalized_to_axis_angle(pchan->rotAxis, &pchan->rotAngle, mat);
       break;
     default: /* euler */
-      if (use_compat)
+      if (use_compat) {
         mat3_normalized_to_compatible_eulO(pchan->eul, pchan->eul, pchan->rotmode, mat);
-      else
+      }
+      else {
         mat3_normalized_to_eulO(pchan->eul, pchan->rotmode, mat);
+      }
       break;
+  }
+}
+
+/**
+ * Same as #BKE_object_rot_to_mat3().
+ */
+void BKE_pchan_rot_to_mat3(const bPoseChannel *pchan, float mat[3][3])
+{
+  /* rotations may either be quats, eulers (with various rotation orders), or axis-angle */
+  if (pchan->rotmode > 0) {
+    /* euler rotations (will cause gimble lock,
+     * but this can be alleviated a bit with rotation orders) */
+    eulO_to_mat3(mat, pchan->eul, pchan->rotmode);
+  }
+  else if (pchan->rotmode == ROT_MODE_AXISANGLE) {
+    /* axis-angle - not really that great for 3D-changing orientations */
+    axis_angle_to_mat3(mat, pchan->rotAxis, pchan->rotAngle);
+  }
+  else {
+    /* quats are normalized before use to eliminate scaling issues */
+    float quat[4];
+
+    /* NOTE: we now don't normalize the stored values anymore,
+     * since this was kindof evil in some cases but if this proves to be too problematic,
+     * switch back to the old system of operating directly on the stored copy. */
+    normalize_qt_qt(quat, pchan->quat);
+    quat_to_mat3(mat, quat);
   }
 }
 
@@ -1909,7 +2028,8 @@ void BKE_rotMode_change_values(
       quat_to_axis_angle(axis, angle, quat);
     }
 
-    /* when converting to axis-angle, we need a special exception for the case when there is no axis */
+    /* When converting to axis-angle,
+     * we need a special exception for the case when there is no axis. */
     if (IS_EQF(axis[0], axis[1]) && IS_EQF(axis[1], axis[2])) {
       /* for now, rotate around y-axis then (so that it simply becomes the roll) */
       axis[1] = 1.0f;
@@ -1964,50 +2084,72 @@ void mat3_vec_to_roll(const float mat[3][3], const float vec[3], float *r_roll)
 }
 
 /* Calculates the rest matrix of a bone based on its vector and a roll around that vector. */
-/* Given v = (v.x, v.y, v.z) our (normalized) bone vector, we want the rotation matrix M
- * from the Y axis (so that M * (0, 1, 0) = v).
- *   -> The rotation axis a lays on XZ plane, and it is orthonormal to v, hence to the projection of v onto XZ plane.
- *   -> a = (v.z, 0, -v.x)
+/**
+ * Given `v = (v.x, v.y, v.z)` our (normalized) bone vector, we want the rotation matrix M
+ * from the Y axis (so that `M * (0, 1, 0) = v`).
+ * - The rotation axis a lays on XZ plane, and it is orthonormal to v,
+ *   hence to the projection of v onto XZ plane.
+ * - `a = (v.z, 0, -v.x)`
+ *
  * We know a is eigenvector of M (so M * a = a).
- * Finally, we have w, such that M * w = (0, 1, 0) (i.e. the vector that will be aligned with Y axis once transformed).
+ * Finally, we have w, such that M * w = (0, 1, 0)
+ * (i.e. the vector that will be aligned with Y axis once transformed).
  * We know w is symmetric to v by the Y axis.
- *   -> w = (-v.x, v.y, -v.z)
+ * - `w = (-v.x, v.y, -v.z)`
  *
  * Solving this, we get (x, y and z being the components of v):
+ * <pre>
  *     ┌ (x^2 * y + z^2) / (x^2 + z^2),   x,   x * z * (y - 1) / (x^2 + z^2) ┐
  * M = │  x * (y^2 - 1)  / (x^2 + z^2),   y,    z * (y^2 - 1)  / (x^2 + z^2) │
  *     └ x * z * (y - 1) / (x^2 + z^2),   z,   (x^2 + z^2 * y) / (x^2 + z^2) ┘
+ * </pre>
  *
- * This is stable as long as v (the bone) is not too much aligned with +/-Y (i.e. x and z components
- * are not too close to 0).
+ * This is stable as long as v (the bone) is not too much aligned with +/-Y
+ * (i.e. x and z components are not too close to 0).
  *
- * Since v is normalized, we have x^2 + y^2 + z^2 = 1, hence x^2 + z^2 = 1 - y^2 = (1 - y)(1 + y).
+ * Since v is normalized, we have `x^2 + y^2 + z^2 = 1`,
+ * hence `x^2 + z^2 = 1 - y^2 = (1 - y)(1 + y)`.
+ *
  * This allows to simplifies M like this:
+ * <pre>
  *     ┌ 1 - x^2 / (1 + y),   x,     -x * z / (1 + y) ┐
  * M = │                -x,   y,                   -z │
  *     └  -x * z / (1 + y),   z,    1 - z^2 / (1 + y) ┘
+ * </pre>
  *
- * Written this way, we see the case v = +Y is no more a singularity. The only one remaining is the bone being
- * aligned with -Y.
+ * Written this way, we see the case v = +Y is no more a singularity.
+ * The only one
+ * remaining is the bone being aligned with -Y.
  *
- * Let's handle the asymptotic behavior when bone vector is reaching the limit of y = -1. Each of the four corner
- * elements can vary from -1 to 1, depending on the axis a chosen for doing the rotation. And the "rotation" here
- * is in fact established by mirroring XZ plane by that given axis, then inversing the Y-axis.
- * For sufficiently small x and z, and with y approaching -1, all elements but the four corner ones of M
- * will degenerate. So let's now focus on these corner elements.
+ * Let's handle
+ * the asymptotic behavior when bone vector is reaching the limit of y = -1.
+ * Each of the four corner elements can vary from -1 to 1,
+ * depending on the axis a chosen for doing the rotation.
+ * And the "rotation" here is in fact established by mirroring XZ plane by that given axis,
+ * then inversing the Y-axis.
+ * For sufficiently small x and z, and with y approaching -1,
+ * all elements but the four corner ones of M will degenerate.
+ * So let's now focus on these corner elements.
  *
- * We rewrite M so that it only contains its four corner elements, and combine the 1 / (1 + y) factor:
+ * We rewrite M so that it only contains its four corner elements,
+ * and combine the `1 / (1 + y)` factor:
+ * <pre>
  *                    ┌ 1 + y - x^2,        -x * z ┐
  * M* = 1 / (1 + y) * │                            │
  *                    └      -x * z,   1 + y - z^2 ┘
+ * </pre>
  *
- * When y is close to -1, computing 1 / (1 + y) will cause severe numerical instability, so we ignore it and
- * normalize M instead. We know y^2 = 1 - (x^2 + z^2), and y < 0, hence y = -sqrt(1 - (x^2 + z^2)).
+ * When y is close to -1, computing 1 / (1 + y) will cause severe numerical instability,
+ * so we ignore it and normalize M instead.
+ * We know `y^2 = 1 - (x^2 + z^2)`, and `y < 0`, hence `y = -sqrt(1 - (x^2 + z^2))`.
+ *
  * Since x and z are both close to 0, we apply the binomial expansion to the first order:
- * y = -sqrt(1 - (x^2 + z^2)) = -1 + (x^2 + z^2) / 2. Which gives:
+ * `y = -sqrt(1 - (x^2 + z^2)) = -1 + (x^2 + z^2) / 2`. Which gives:
+ * <pre>
  *                        ┌  z^2 - x^2,  -2 * x * z ┐
  * M* = 1 / (x^2 + z^2) * │                         │
  *                        └ -2 * x * z,   x^2 - z^2 ┘
+ * </pre>
  */
 void vec_roll_to_mat3_normalized(const float nor[3], const float roll, float mat[3][3])
 {
@@ -2138,8 +2280,9 @@ static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected
   bConstraint *con;
   int error = 0;
 
-  if (frompose == NULL)
+  if (frompose == NULL) {
     return;
+  }
 
   /* in some cases when rigs change, we cant synchronize
    * to avoid crashing check for possible errors here */
@@ -2155,8 +2298,9 @@ static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected
     }
   }
 
-  if (error)
+  if (error) {
     return;
+  }
 
   /* clear all transformation values from library */
   BKE_pose_rest(frompose);
@@ -2205,13 +2349,14 @@ static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected
         }
       }
 
-      /* constraints - proxy constraints are flushed... local ones are added after
-       *     1. extract constraints not from proxy (CONSTRAINT_PROXY_LOCAL) from pchan's constraints
-       *     2. copy proxy-pchan's constraints on-to new
-       *     3. add extracted local constraints back on top
+      /* Constraints - proxy constraints are flushed... local ones are added after
+       * 1: extract constraints not from proxy (CONSTRAINT_PROXY_LOCAL) from pchan's constraints.
+       * 2: copy proxy-pchan's constraints on-to new.
+       * 3: add extracted local constraints back on top.
        *
-       * Note for BKE_constraints_copy: when copying constraints, disable 'do_extern' otherwise
-       *                                we get the libs direct linked in this blend.
+       * Note for BKE_constraints_copy:
+       * When copying constraints, disable 'do_extern' otherwise
+       * we get the libs direct linked in this blend.
        */
       BKE_constraints_proxylocal_extract(&proxylocal_constraints, &pchan->constraints);
       BKE_constraints_copy(&pchanw.constraints, &pchanp->constraints, false);
@@ -2227,12 +2372,14 @@ static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected
           cti->get_constraint_targets(con, &targets);
 
           for (ct = targets.first; ct; ct = ct->next) {
-            if (ct->tar == from)
+            if (ct->tar == from) {
               ct->tar = ob;
+            }
           }
 
-          if (cti->flush_constraint_targets)
+          if (cti->flush_constraint_targets) {
             cti->flush_constraint_targets(con, &targets, 0);
+          }
         }
       }
 
@@ -2251,8 +2398,9 @@ static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected
       if (pchan->custom) {
         id_us_plus(&pchan->custom->id);
       }
-      if (pchanp->custom_tx)
+      if (pchanp->custom_tx) {
         pchan->custom_tx = BKE_pose_channel_find_name(pose, pchanp->custom_tx->name);
+      }
 
       /* ID-Property Syncing */
       {
@@ -2288,15 +2436,17 @@ static int rebuild_pose_bone(bPose *pose, Bone *bone, bPoseChannel *parchan, int
   for (bone = bone->childbase.first; bone; bone = bone->next) {
     counter = rebuild_pose_bone(pose, bone, pchan, counter);
     /* for quick detecting of next bone in chain, only b-bone uses it now */
-    if (bone->flag & BONE_CONNECTED)
+    if (bone->flag & BONE_CONNECTED) {
       pchan->child = BKE_pose_channel_find_name(pose, bone->name);
+    }
   }
 
   return counter;
 }
 
 /**
- * Clear pointers of object's pose (needed in remap case, since we cannot always wait for a complete pose rebuild).
+ * Clear pointers of object's pose
+ * (needed in remap case, since we cannot always wait for a complete pose rebuild).
  */
 void BKE_pose_clear_pointers(bPose *pose)
 {
@@ -2382,7 +2532,8 @@ void BKE_pose_rebuild(Main *bmain, Object *ob, bArmature *arm, const bool do_id_
   /* synchronize protected layers with proxy */
   /* HACK! To preserve 2.7x behavior that you always can pose even locked bones,
    * do not do any restoration if this is a COW temp copy! */
-  /* Switched back to just NO_MAIN tag, for some reasons (c) using COW tag was working this morning, but not anymore... */
+  /* Switched back to just NO_MAIN tag, for some reasons (c)
+   * using COW tag was working this morning, but not anymore... */
   if (ob->proxy != NULL && (ob->id.tag & LIB_TAG_NO_MAIN) == 0) {
     BKE_object_copy_proxy_drivers(ob, ob->proxy);
     pose_proxy_synchronize(ob, ob->proxy, arm->layer_protected);
@@ -2393,7 +2544,8 @@ void BKE_pose_rebuild(Main *bmain, Object *ob, bArmature *arm, const bool do_id_
   pose->flag &= ~POSE_RECALC;
   pose->flag |= POSE_WAS_REBUILT;
 
-  /* Rebuilding poses forces us to also rebuild the dependency graph, since there is one node per pose/bone... */
+  /* Rebuilding poses forces us to also rebuild the dependency graph,
+   * since there is one node per pose/bone. */
   if (bmain != NULL) {
     DEG_relations_tag_update(bmain);
   }
@@ -2402,7 +2554,7 @@ void BKE_pose_rebuild(Main *bmain, Object *ob, bArmature *arm, const bool do_id_
 /* ********************** THE POSE SOLVER ******************* */
 
 /* loc/rot/size to given mat4 */
-void BKE_pchan_to_mat4(bPoseChannel *pchan, float chan_mat[4][4])
+void BKE_pchan_to_mat4(const bPoseChannel *pchan, float chan_mat[4][4])
 {
   float smat[3][3];
   float rmat[3][3];
@@ -2411,26 +2563,8 @@ void BKE_pchan_to_mat4(bPoseChannel *pchan, float chan_mat[4][4])
   /* get scaling matrix */
   size_to_mat3(smat, pchan->size);
 
-  /* rotations may either be quats, eulers (with various rotation orders), or axis-angle */
-  if (pchan->rotmode > 0) {
-    /* euler rotations (will cause gimble lock, but this can be alleviated a bit with rotation orders) */
-    eulO_to_mat3(rmat, pchan->eul, pchan->rotmode);
-  }
-  else if (pchan->rotmode == ROT_MODE_AXISANGLE) {
-    /* axis-angle - not really that great for 3D-changing orientations */
-    axis_angle_to_mat3(rmat, pchan->rotAxis, pchan->rotAngle);
-  }
-  else {
-    /* quats are normalized before use to eliminate scaling issues */
-    float quat[4];
-
-    /* NOTE: we now don't normalize the stored values anymore, since this was kindof evil in some cases
-     * but if this proves to be too problematic, switch back to the old system of operating directly on
-     * the stored copy
-     */
-    normalize_qt_qt(quat, pchan->quat);
-    quat_to_mat3(rmat, quat);
-  }
+  /* get rotation matrix */
+  BKE_pchan_rot_to_mat3(pchan, rmat);
 
   /* calculate matrix of bone (as 3x3 matrix, but then copy the 4x4) */
   mul_m3_m3m3(tmat, rmat, smat);
@@ -2475,10 +2609,12 @@ void BKE_pose_where_is_bone(struct Depsgraph *depsgraph,
                             bool do_extra)
 {
   /* This gives a chan_mat with actions (ipos) results. */
-  if (do_extra)
+  if (do_extra) {
     BKE_pchan_calc_mat(pchan);
-  else
+  }
+  else {
     unit_m4(pchan->chan_mat);
+  }
 
   /* Construct the posemat based on PoseChannels, that we do before applying constraints. */
   /* pose_mat(b) = pose_mat(b-1) * yoffs(b-1) * d_root(b) * bone_mat(b) * chan_mat(b) */
@@ -2487,8 +2623,9 @@ void BKE_pose_where_is_bone(struct Depsgraph *depsgraph,
   /* Only rootbones get the cyclic offset (unless user doesn't want that). */
   /* XXX That could be a problem for snapping and other "reverse transform" features... */
   if (!pchan->parent) {
-    if ((pchan->bone->flag & BONE_NO_CYCLICOFFSET) == 0)
+    if ((pchan->bone->flag & BONE_NO_CYCLICOFFSET) == 0) {
       add_v3_v3(pchan->pose_mat[3], ob->pose->cyclic_offset);
+    }
   }
 
   if (do_extra) {
@@ -2537,14 +2674,17 @@ void BKE_pose_where_is(struct Depsgraph *depsgraph, Scene *scene, Object *ob)
   float imat[4][4];
   float ctime;
 
-  if (ob->type != OB_ARMATURE)
+  if (ob->type != OB_ARMATURE) {
     return;
+  }
   arm = ob->data;
 
-  if (ELEM(NULL, arm, scene))
+  if (ELEM(NULL, arm, scene)) {
     return;
+  }
   if ((ob->pose == NULL) || (ob->pose->flag & POSE_RECALC)) {
-    /* WARNING! passing NULL bmain here means we won't tag depsgraph's as dirty - hopefully this is OK. */
+    /* WARNING! passing NULL bmain here means we won't tag depsgraph's as dirty -
+     * hopefully this is OK. */
     BKE_pose_rebuild(NULL, ob, arm, true);
   }
 
@@ -2611,7 +2751,8 @@ static int minmax_armature(Object *ob, float r_min[3], float r_max[3])
 {
   bPoseChannel *pchan;
 
-  /* For now, we assume BKE_pose_where_is has already been called (hence we have valid data in pachan). */
+  /* For now, we assume BKE_pose_where_is has already been called
+   * (hence we have valid data in pachan). */
   for (pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
     minmax_v3v3_v3(r_min, r_max, pchan->pose_head);
     minmax_v3v3_v3(r_min, r_max, pchan->pose_tail);
@@ -2725,71 +2866,4 @@ bPoseChannel *BKE_armature_splineik_solver_find_root(bPoseChannel *pchan,
     rootchan = rootchan->parent;
   }
   return rootchan;
-}
-
-/* ****************************** BBone cache  ****************************** */
-
-ObjectBBoneDeform *BKE_armature_cached_bbone_deformation_get(Object *object)
-{
-  return object->runtime.cached_bbone_deformation;
-}
-
-void BKE_armature_cached_bbone_deformation_free_data(Object *object)
-{
-  ObjectBBoneDeform *bbone_deform = BKE_armature_cached_bbone_deformation_get(object);
-  if (bbone_deform == NULL) {
-    return;
-  }
-  /* Free arrays. */
-  MEM_SAFE_FREE(bbone_deform->pdef_info_array);
-  MEM_SAFE_FREE(bbone_deform->dualquats);
-  /* Tag that we've got no data, so we are safe for sequential calls to
-   * data free. */
-  bbone_deform->num_pchan = 0;
-}
-
-void BKE_armature_cached_bbone_deformation_free(Object *object)
-{
-  ObjectBBoneDeform *bbone_deform = BKE_armature_cached_bbone_deformation_get(object);
-  if (bbone_deform == NULL) {
-    return;
-  }
-  BKE_armature_cached_bbone_deformation_free_data(object);
-  MEM_freeN(bbone_deform);
-  object->runtime.cached_bbone_deformation = NULL;
-}
-
-void BKE_armature_cached_bbone_deformation_update(Object *object)
-{
-  BLI_assert(object->type == OB_ARMATURE);
-  BLI_assert(object->pose != NULL);
-  bPose *pose = object->pose;
-  const int totchan = BLI_listbase_count(&pose->chanbase);
-  const bool use_quaternion = true;
-  /* Make sure cache exists. */
-  ObjectBBoneDeform *bbone_deform = BKE_armature_cached_bbone_deformation_get(object);
-  if (bbone_deform == NULL) {
-    bbone_deform = MEM_callocN(sizeof(*bbone_deform), "bbone deform cache");
-    object->runtime.cached_bbone_deformation = bbone_deform;
-  }
-  /* Make sure arrays are allocateds at the proper size. */
-  BKE_armature_cached_bbone_deformation_free_data(object);
-  DualQuat *dualquats = NULL;
-  if (use_quaternion) {
-    dualquats = MEM_calloc_arrayN(sizeof(DualQuat), totchan, "dualquats");
-  }
-  bPoseChanDeform *pdef_info_array = MEM_calloc_arrayN(
-      sizeof(bPoseChanDeform), totchan, "bPoseChanDeform");
-  /* Calculate deofrmation matricies. */
-  ArmatureBBoneDefmatsData data = {
-      .pdef_info_array = pdef_info_array,
-      .dualquats = dualquats,
-      .use_quaternion = use_quaternion,
-  };
-  BLI_task_parallel_listbase(&pose->chanbase, &data, armature_bbone_defmats_cb, totchan > 1024);
-  /* Store pointers. */
-  bbone_deform->dualquats = dualquats;
-  atomic_cas_ptr(
-      (void **)&bbone_deform->pdef_info_array, bbone_deform->pdef_info_array, pdef_info_array);
-  bbone_deform->num_pchan = totchan;
 }

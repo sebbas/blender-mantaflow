@@ -71,7 +71,8 @@ static void cryptomatte_add(NodeCryptomatte *n, float f)
       /* Be aware that token_len still contains any trailing white space. */
       token_len = token_end - (n->matte_id + start);
 
-      /* If this has a leading bracket, assume a raw floating point number and look for the closing bracket. */
+      /* If this has a leading bracket,
+       * assume a raw floating point number and look for the closing bracket. */
       if (n->matte_id[start] == '<') {
         if (strncmp(n->matte_id + start, number, strlen(number)) == 0) {
           /* This number is already there, so continue. */
@@ -152,7 +153,8 @@ static void cryptomatte_remove(NodeCryptomatte *n, float f)
     if (token_len == 1) {
       skip = true;
     }
-    /* If this has a leading bracket, assume a raw floating point number and look for the closing bracket. */
+    /* If this has a leading bracket,
+     * assume a raw floating point number and look for the closing bracket. */
     else if (n->matte_id[start] == '<') {
       if (strncmp(n->matte_id + start, number, strlen(number)) == 0) {
         /* This number is already there, so skip it. */
@@ -276,8 +278,9 @@ static void node_copy_cryptomatte(bNodeTree *UNUSED(dest_ntree), bNode *dest_nod
   NodeCryptomatte *src_nc = src_node->storage;
   NodeCryptomatte *dest_nc = MEM_dupallocN(src_nc);
 
-  if (src_nc->matte_id)
+  if (src_nc->matte_id) {
     dest_nc->matte_id = MEM_dupallocN(src_nc->matte_id);
+  }
 
   dest_node->storage = dest_nc;
 }

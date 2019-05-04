@@ -18,7 +18,7 @@
 
 /** \file
  * \ingroup draw
-  */
+ */
 #include "BLI_rect.h"
 
 #include "DRW_render.h"
@@ -36,9 +36,9 @@
 #include "gpencil_engine.h"
 
 /* Get pixel size for render
-   * This function uses the same calculation used for viewport, because if use
-   * camera pixelsize, the result is not correct.
-   */
+ * This function uses the same calculation used for viewport, because if use
+ * camera pixelsize, the result is not correct.
+ */
 static float get_render_pixelsize(float persmat[4][4], int winx, int winy)
 {
   float v1[3], v2[3];
@@ -138,10 +138,12 @@ static void GPENCIL_render_update_viewvecs(float invproj[4][4],
 {
   /* view vectors for the corners of the view frustum.
    * Can be used to recreate the world space position easily */
-  float view_vecs[4][4] = {{-1.0f, -1.0f, -1.0f, 1.0f},
-                           {1.0f, -1.0f, -1.0f, 1.0f},
-                           {-1.0f, 1.0f, -1.0f, 1.0f},
-                           {-1.0f, -1.0f, 1.0f, 1.0f}};
+  float view_vecs[4][4] = {
+      {-1.0f, -1.0f, -1.0f, 1.0f},
+      {1.0f, -1.0f, -1.0f, 1.0f},
+      {-1.0f, 1.0f, -1.0f, 1.0f},
+      {-1.0f, -1.0f, 1.0f, 1.0f},
+  };
 
   /* convert the view vectors to view space */
   const bool is_persp = (winmat[3][3] == 0.0f);

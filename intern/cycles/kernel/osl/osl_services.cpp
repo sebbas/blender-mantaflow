@@ -733,7 +733,7 @@ bool OSLRenderServices::get_object_standard_attribute(
     return set_attribute_float3(f, type, derivatives, val);
   }
 #if 0 /* unsupported */
-  else if(name == u_particle_rotation) {
+  else if (name == u_particle_rotation) {
     int particle_id = object_particle_id(kg, sd->object);
     float4 f = particle_rotation(kg, particle_id);
     return set_attribute_float4(f, type, derivatives, val);
@@ -1017,7 +1017,7 @@ bool OSLRenderServices::texture(ustring filename,
     PtexPtr<PtexTexture> r(ptex_cache->get(filename.c_str(), error));
 
     if (!r) {
-      //std::cerr << error.c_str() << std::endl;
+      // std::cerr << error.c_str() << std::endl;
       return false;
     }
 
@@ -1373,7 +1373,7 @@ bool OSLRenderServices::trace(TraceOpt &options,
 
   /* Raytrace, leaving out shadow opaque to avoid early exit. */
   uint visibility = PATH_RAY_ALL_VISIBILITY - PATH_RAY_SHADOW_OPAQUE;
-  return scene_intersect(sd->osl_globals, ray, visibility, &tracedata->isect, NULL, 0.0f, 0.0f);
+  return scene_intersect(sd->osl_globals, ray, visibility, &tracedata->isect);
 }
 
 bool OSLRenderServices::getmessage(OSL::ShaderGlobals *sg,

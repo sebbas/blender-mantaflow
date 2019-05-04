@@ -205,7 +205,7 @@ void drw_state_set(DRWState state)
     int test;
     if (CHANGED_ANY_STORE_VAR(DRW_STATE_BLEND | DRW_STATE_BLEND_PREMUL | DRW_STATE_ADDITIVE |
                                   DRW_STATE_MULTIPLY | DRW_STATE_ADDITIVE_FULL |
-                                  DRW_STATE_BLEND_OIT,
+                                  DRW_STATE_BLEND_OIT | DRW_STATE_BLEND_PREMUL_UNDER,
                               test)) {
       if (test) {
         glEnable(GL_BLEND);
@@ -215,6 +215,9 @@ void drw_state_set(DRWState state)
                               GL_ONE_MINUS_SRC_ALPHA, /* RGB */
                               GL_ONE,
                               GL_ONE_MINUS_SRC_ALPHA); /* Alpha */
+        }
+        else if ((state & DRW_STATE_BLEND_PREMUL_UNDER) != 0) {
+          glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
         }
         else if ((state & DRW_STATE_BLEND_PREMUL) != 0) {
           glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -445,8 +448,9 @@ void DRW_state_clip_planes_set_from_rv3d(RegionView3D *rv3d)
 
 /* Extract the 8 corners from a Projection Matrix.
  * Although less accurate, this solution can be simplified as follows:
- * BKE_boundbox_init_from_minmax(&bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const float[3]){1.0f, 1.0f, 1.0f});
- * for (int i = 0; i < 8; i++) {mul_project_m4_v3(projinv, bbox.vec[i]);}
+ * BKE_boundbox_init_from_minmax(&bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const
+ * float[3]){1.0f, 1.0f, 1.0f}); for (int i = 0; i < 8; i++) {mul_project_m4_v3(projinv,
+ * bbox.vec[i]);}
  */
 static void draw_frustum_boundbox_calc(const float (*projmat)[4], BoundBox *r_bbox)
 {
@@ -498,7 +502,8 @@ static void draw_clipping_setup_from_view(void)
   /* Extract Clipping Planes */
   BoundBox bbox;
 #if 0 /* It has accuracy problems. */
-  BKE_boundbox_init_from_minmax(&bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const float[3]){1.0f, 1.0f, 1.0f});
+  BKE_boundbox_init_from_minmax(
+      &bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const float[3]){1.0f, 1.0f, 1.0f});
   for (int i = 0; i < 8; i++) {
     mul_project_m4_v3(projinv, bbox.vec[i]);
   }
@@ -616,9 +621,9 @@ static void draw_clipping_setup_from_view(void)
     float F = -1.0f, N;          /* square distance of far and near point to origin */
     float f, n; /* distance of far and near point to z axis. f is always > 0 but n can be < 0 */
     float e, s; /* far and near clipping distance (<0) */
-    float
-        c; /* slope of center line = distance of far clipping center to z axis / far clipping distance */
-    float z; /* projection of sphere center on z axis (<0) */
+    float c;    /* slope of center line = distance of far clipping center
+                 * to z axis / far clipping distance. */
+    float z;    /* projection of sphere center on z axis (<0) */
 
     /* Find farthest corner and center of far clip plane. */
     float corner[3] = {1.0f, 1.0f, 1.0f}; /* in clip space */
@@ -1230,12 +1235,13 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 
 #  define GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(_start, _count) \
     _start += _count; \
-    }
+    } \
+    ((void)0)
 
 #else
 #  define GPU_SELECT_LOAD_IF_PICKSEL(select_id)
 #  define GPU_SELECT_LOAD_IF_PICKSEL_CALL(call)
-#  define GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count)
+#  define GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count) ((void)0)
 #  define GPU_SELECT_LOAD_IF_PICKSEL_LIST(_shgroup, _start, _count) \
     _start = 0; \
     _count = _shgroup->instance_count;
@@ -1259,11 +1265,10 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
         if (shgroup->instance_count > 0) {
           uint count, start;
           draw_geometry_prepare(shgroup, NULL);
-          GPU_SELECT_LOAD_IF_PICKSEL_LIST(shgroup, start, count)
-          {
+          GPU_SELECT_LOAD_IF_PICKSEL_LIST (shgroup, start, count) {
             draw_geometry_execute_ex(shgroup, shgroup->instance_geom, start, count, true);
           }
-          GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count)
+          GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count);
         }
       }
     }
@@ -1272,11 +1277,10 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       if (shgroup->instance_count > 0) {
         uint count, start;
         draw_geometry_prepare(shgroup, NULL);
-        GPU_SELECT_LOAD_IF_PICKSEL_LIST(shgroup, start, count)
-        {
+        GPU_SELECT_LOAD_IF_PICKSEL_LIST (shgroup, start, count) {
           draw_geometry_execute_ex(shgroup, shgroup->batch_geom, start, count, false);
         }
-        GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count)
+        GPU_SELECT_LOAD_IF_PICKSEL_LIST_END(start, count);
       }
     }
   }

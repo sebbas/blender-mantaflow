@@ -96,7 +96,9 @@ typedef struct MaterialGPencilStyle {
 
   /** Type of gradient. */
   int gradient_type;
-  char _pad[4];
+
+  /** Factor used to mix texture and stroke color. */
+  float mix_stroke_factor;
 } MaterialGPencilStyle;
 
 /* MaterialGPencilStyle->flag */
@@ -111,8 +113,8 @@ typedef enum eMaterialGPencilStyle_Flag {
   GP_STYLE_COLOR_ONIONSKIN = (1 << 3),
   /* clamp texture */
   GP_STYLE_COLOR_TEX_CLAMP = (1 << 4),
-  /* mix texture */
-  GP_STYLE_COLOR_TEX_MIX = (1 << 5),
+  /* mix fill texture */
+  GP_STYLE_FILL_TEX_MIX = (1 << 5),
   /* Flip fill colors */
   GP_STYLE_COLOR_FLIP_FILL = (1 << 6),
   /* Stroke Texture is a pattern */
@@ -123,6 +125,8 @@ typedef enum eMaterialGPencilStyle_Flag {
   GP_STYLE_FILL_SHOW = (1 << 9),
   /* Don't rotate dots/boxes */
   GP_STYLE_COLOR_LOCK_DOTS = (1 << 10),
+  /* mix stroke texture */
+  GP_STYLE_STROKE_TEX_MIX = (1 << 11),
 } eMaterialGPencilStyle_Flag;
 
 typedef enum eMaterialGPencilStyle_Mode {
@@ -212,9 +216,9 @@ typedef struct Material {
                                        /* for dopesheet */
 #define MA_DS_EXPAND (1 << 1)
 /* for dopesheet (texture stack expander)
-     * NOTE: this must have the same value as other texture stacks,
-     * otherwise anim-editors will not read correctly
-     */
+ * NOTE: this must have the same value as other texture stacks,
+ * otherwise anim-editors will not read correctly
+ */
 #define MA_DS_SHOW_TEXS (1 << 2)
 
 /* ramps */

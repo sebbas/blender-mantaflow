@@ -420,11 +420,11 @@ const EnumPropertyItem rna_enum_event_type_mask_items[] = {
 
 #if 0
 static const EnumPropertyItem keymap_modifiers_items[] = {
-  {KM_ANY, "ANY", 0, "Any", ""},
-  {0, "NONE", 0, "None", ""},
-  {1, "FIRST", 0, "First", ""},
-  {2, "SECOND", 0, "Second", ""},
-  {0, NULL, 0, NULL, NULL},
+    {KM_ANY, "ANY", 0, "Any", ""},
+    {0, "NONE", 0, "None", ""},
+    {1, "FIRST", 0, "First", ""},
+    {2, "SECOND", 0, "Second", ""},
+    {0, NULL, 0, NULL, NULL},
 };
 #endif
 
@@ -847,7 +847,7 @@ static int rna_wmKeyMapItem_map_type_get(PointerRNA *ptr)
 {
   wmKeyMapItem *kmi = ptr->data;
 
-  return WM_keymap_map_type_get(kmi);
+  return WM_keymap_item_map_type_get(kmi);
 }
 
 static void rna_wmKeyMapItem_map_type_set(PointerRNA *ptr, int value)
@@ -1169,7 +1169,7 @@ static void rna_wmKeyMapItem_idname_set(PointerRNA *ptr, const char *value)
   if (!STREQ(idname, kmi->idname)) {
     BLI_strncpy(kmi->idname, idname, sizeof(kmi->idname));
 
-    WM_keymap_properties_reset(kmi, NULL);
+    WM_keymap_item_properties_reset(kmi, NULL);
   }
 }
 
@@ -1532,7 +1532,8 @@ static void rna_Operator_unregister(struct Main *bmain, StructRNA *type)
   idname = ot->idname;
   WM_operatortype_remove_ptr(ot);
 
-  /* not to be confused with the RNA_struct_free that WM_operatortype_remove calls, they are 2 different srna's */
+  /* Not to be confused with the RNA_struct_free that WM_operatortype_remove calls,
+   * they are 2 different srna's. */
   RNA_struct_free(&BLENDER_RNA, type);
 
   MEM_freeN((void *)idname);
@@ -1728,7 +1729,8 @@ static void rna_KeyMapItem_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Poi
 #else /* RNA_RUNTIME */
 
 /**
- * expose ``Operator.options`` as its own type so we can control each flags use (some are read-only).
+ * expose ``Operator.options`` as its own type so we can control each flags use
+ * (some are read-only).
  */
 static void rna_def_operator_options_runtime(BlenderRNA *brna)
 {

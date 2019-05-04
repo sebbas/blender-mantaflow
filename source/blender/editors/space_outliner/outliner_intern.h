@@ -130,6 +130,7 @@ enum {
   TE_FREE_NAME = (1 << 3),
   TE_DISABLED = (1 << 4),
   TE_DRAGGING = (1 << 5),
+  TE_CHILD_NOT_IN_COLLECTION = (1 << 6),
 };
 
 /* button events */
@@ -235,10 +236,6 @@ eOLDrawState tree_element_active(struct bContext *C,
 
 void outliner_item_do_activate_from_tree_element(
     struct bContext *C, TreeElement *te, TreeStoreElem *tselem, bool extend, bool recursive);
-int outliner_item_do_activate_from_cursor(struct bContext *C,
-                                          const int mval[2],
-                                          bool extend,
-                                          bool recursive);
 
 void outliner_item_select(struct SpaceOutliner *soops,
                           const struct TreeElement *te,

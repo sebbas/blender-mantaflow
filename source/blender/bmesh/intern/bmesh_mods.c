@@ -322,13 +322,14 @@ BMFace *BM_face_split(BMesh *bm,
  *
  * Like BM_face_split, but with an edge split by \a n intermediate points with given coordinates.
  *
- * \param bm: The bmesh
- * \param f: the original face
- * \param l_a, l_b: Vertices which define the split edge, must be different
- * \param cos: Array of coordinates for intermediate points
- * \param n: Length of \a cos (must be > 0)
- * \param r_l: pointer which will receive the BMLoop for the first split edge (from \a l_a) in the new face
- * \param example: Edge used for attributes of splitting edge, if non-NULL
+ * \param bm: The bmesh.
+ * \param f: the original face.
+ * \param l_a, l_b: Vertices which define the split edge, must be different.
+ * \param cos: Array of coordinates for intermediate points.
+ * \param n: Length of \a cos (must be > 0).
+ * \param r_l: pointer which will receive the BMLoop.
+ * for the first split edge (from \a l_a) in the new face.
+ * \param example: Edge used for attributes of splitting edge, if non-NULL.
  *
  * \return Pointer to the newly created face representing one side of the split
  * if the split is successful (and the original original face will be the
@@ -370,7 +371,8 @@ BMFace *BM_face_split_n(BMesh *bm,
 #else
   f_new = bmesh_kernel_split_face_make_edge(bm, f, l_a, l_b, &l_new, example, false);
 #endif
-  /* bmesh_kernel_split_face_make_edge returns in 'l_new' a Loop for f_new going from 'v_a' to 'v_b'.
+  /* bmesh_kernel_split_face_make_edge returns in 'l_new'
+   * a Loop for f_new going from 'v_a' to 'v_b'.
    * The radial_next is for 'f' and goes from 'v_b' to 'v_a'  */
 
   if (f_new) {
@@ -378,7 +380,8 @@ BMFace *BM_face_split_n(BMesh *bm,
     for (i = 0; i < n; i++) {
       v_new = bmesh_kernel_split_edge_make_vert(bm, v_b, e, &e_new);
       BLI_assert(v_new != NULL);
-      /* bmesh_kernel_split_edge_make_vert returns in 'e_new' the edge going from 'v_new' to 'v_b' */
+      /* bmesh_kernel_split_edge_make_vert returns in 'e_new'
+       * the edge going from 'v_new' to 'v_b'. */
       copy_v3_v3(v_new->co, cos[i]);
 
       /* interpolate the loop data for the loops with (v == v_new), using orig face */
@@ -531,14 +534,15 @@ BMEdge *BM_vert_collapse_edge(
 
   /* in this case we want to keep all faces and not join them,
    * rather just get rid of the vertex - see bug [#28645] */
-  BMVert *tv  = BM_edge_other_vert(e_kill, v_kill);
+  BMVert *tv = BM_edge_other_vert(e_kill, v_kill);
   if (tv) {
     BMEdge *e2 = bmesh_disk_edge_next(e_kill, v_kill);
     if (e2) {
       BMVert *tv2 = BM_edge_other_vert(e2, v_kill);
       if (tv2) {
         /* only action, other calls here only get the edge to return */
-        e_new = bmesh_kernel_join_edge_kill_vert(bm, e_kill, v_kill, do_del, true, kill_degenerate_faces);
+        e_new = bmesh_kernel_join_edge_kill_vert(
+            bm, e_kill, v_kill, do_del, true, kill_degenerate_faces);
       }
     }
   }
@@ -752,7 +756,7 @@ bool BM_face_validate(BMFace *face, FILE *err)
     verts[i] = l->v;
     if (l->e->v1 == l->e->v2) {
       fprintf(err, "Found bmesh edge with identical verts!\n");
-      fprintf(err, "  edge ptr: %p, vert: %p\n",  l->e, l->e->v1);
+      fprintf(err, "  edge ptr: %p, vert: %p\n", l->e, l->e->v1);
       fflush(err);
       ret = false;
     }

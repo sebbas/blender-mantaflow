@@ -365,6 +365,12 @@ static bool rna_Brush_mode_with_tool_poll(PointerRNA *ptr, PointerRNA value)
     }
     mode = OB_MODE_SCULPT;
   }
+  else if (paint_contains_brush_slot(&ts->uvsculpt->paint, tslot, &slot_index)) {
+    if (slot_index != brush->uv_sculpt_tool) {
+      return false;
+    }
+    mode = OB_MODE_EDIT;
+  }
   else if (paint_contains_brush_slot(&ts->vpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->vertexpaint_tool) {
       return false;
@@ -504,7 +510,8 @@ static void rna_ImaPaint_mode_update(bContext *C, PointerRNA *UNUSED(ptr))
     /* of course we need to invalidate here */
     BKE_texpaint_slots_refresh_object(scene, ob);
 
-    /* we assume that changing the current mode will invalidate the uv layers so we need to refresh display */
+    /* We assume that changing the current mode will invalidate the uv layers
+     * so we need to refresh display. */
     BKE_paint_proj_mesh_data_check(scene, ob, NULL, NULL, NULL, NULL);
     WM_main_add_notifier(NC_OBJECT | ND_DRAW, NULL);
   }

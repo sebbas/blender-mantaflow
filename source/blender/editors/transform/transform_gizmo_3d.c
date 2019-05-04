@@ -116,7 +116,7 @@ static struct {
     /* Regular range */
     {0.02f, 0.1f},
     /* Use a different range because we flip the dot product,
-   * also the view aligned planes are harder to see so hiding early is preferred. */
+     * also the view aligned planes are harder to see so hiding early is preferred. */
     {0.175f, 0.25f},
 };
 
@@ -352,7 +352,8 @@ static void gizmo_get_axis_color(const int axis_idx,
   else {
     bool is_plane = false;
     const int axis_idx_norm = gizmo_orientation_axis(axis_idx, &is_plane);
-    /* get alpha fac based on axis angle, to fade axis out when hiding it because it points towards view */
+    /* Get alpha fac based on axis angle,
+     * to fade axis out when hiding it because it points towards view. */
     if (axis_idx_norm < 3) {
       const float idot_min = g_tw_axis_range[is_plane].min;
       const float idot_max = g_tw_axis_range[is_plane].max;
@@ -484,26 +485,35 @@ static void calc_tw_center_with_matrix(struct TransformBounds *tbounds,
 
 static void protectflag_to_drawflags(short protectflag, short *drawflags)
 {
-  if (protectflag & OB_LOCK_LOCX)
+  if (protectflag & OB_LOCK_LOCX) {
     *drawflags &= ~MAN_TRANS_X;
-  if (protectflag & OB_LOCK_LOCY)
+  }
+  if (protectflag & OB_LOCK_LOCY) {
     *drawflags &= ~MAN_TRANS_Y;
-  if (protectflag & OB_LOCK_LOCZ)
+  }
+  if (protectflag & OB_LOCK_LOCZ) {
     *drawflags &= ~MAN_TRANS_Z;
+  }
 
-  if (protectflag & OB_LOCK_ROTX)
+  if (protectflag & OB_LOCK_ROTX) {
     *drawflags &= ~MAN_ROT_X;
-  if (protectflag & OB_LOCK_ROTY)
+  }
+  if (protectflag & OB_LOCK_ROTY) {
     *drawflags &= ~MAN_ROT_Y;
-  if (protectflag & OB_LOCK_ROTZ)
+  }
+  if (protectflag & OB_LOCK_ROTZ) {
     *drawflags &= ~MAN_ROT_Z;
+  }
 
-  if (protectflag & OB_LOCK_SCALEX)
+  if (protectflag & OB_LOCK_SCALEX) {
     *drawflags &= ~MAN_SCALE_X;
-  if (protectflag & OB_LOCK_SCALEY)
+  }
+  if (protectflag & OB_LOCK_SCALEY) {
     *drawflags &= ~MAN_SCALE_Y;
-  if (protectflag & OB_LOCK_SCALEZ)
+  }
+  if (protectflag & OB_LOCK_SCALEZ) {
     *drawflags &= ~MAN_SCALE_Z;
+  }
 }
 
 /* for pose mode */
@@ -1054,8 +1064,9 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
     if (edit) {
       point = edit->points;
       for (a = 0; a < edit->totpoint; a++, point++) {
-        if (point->flag & PEP_HIDE)
+        if (point->flag & PEP_HIDE) {
           continue;
+        }
 
         for (k = 0, ek = point->keys; k < point->totkey; k++, ek++) {
           if (ek->flag & PEK_SELECT) {
@@ -1066,8 +1077,9 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
       }
 
       /* selection center */
-      if (totsel)
+      if (totsel) {
         mul_v3_fl(tbounds->center, 1.0f / (float)totsel);  // centroid!
+      }
     }
   }
   else {
@@ -1075,8 +1087,9 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
     /* we need the one selected object, if its not active */
     base = BASACT(view_layer);
     ob = OBACT(view_layer);
-    if (base && ((base->flag & BASE_SELECTED) == 0))
+    if (base && ((base->flag & BASE_SELECTED) == 0)) {
       ob = NULL;
+    }
 
     for (base = view_layer->object_bases.first; base; base = base->next) {
       if (!BASE_SELECTED_EDITABLE(v3d, base)) {

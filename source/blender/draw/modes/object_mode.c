@@ -53,6 +53,8 @@
 #include "BKE_particle.h"
 #include "BKE_tracking.h"
 
+#include "BLI_ghash.h"
+
 #include "ED_view3d.h"
 
 #include "GPU_batch.h"
@@ -272,6 +274,8 @@ typedef struct OBJECT_ShadingGroupList {
 typedef struct OBJECT_PrivateData {
   OBJECT_ShadingGroupList sgl;
   OBJECT_ShadingGroupList sgl_ghost;
+
+  GHash *custom_shapes;
 
   /* Outlines */
   DRWShadingGroup *outlines_active;
@@ -511,6 +515,7 @@ static void OBJECT_engine_init(void *vedata)
     const bool show_axis_y = (v3d->gridflag & V3D_SHOW_Y) != 0;
     const bool show_axis_z = (v3d->gridflag & V3D_SHOW_Z) != 0;
     const bool show_floor = (v3d->gridflag & V3D_SHOW_FLOOR) != 0;
+    const bool show_ortho_grid = (v3d->gridflag & V3D_SHOW_ORTHO_GRID) != 0;
     e_data.draw_grid = show_axis_x || show_axis_y || show_axis_z || show_floor;
 
     DRW_viewport_matrix_get(winmat, DRW_MAT_WIN);
@@ -559,15 +564,15 @@ static void OBJECT_engine_init(void *vedata)
       grid_res = viewdist / grid_scale;
 
       if (ELEM(rv3d->view, RV3D_VIEW_RIGHT, RV3D_VIEW_LEFT)) {
-        e_data.draw_grid = true;
+        e_data.draw_grid = show_ortho_grid;
         e_data.grid_flag = PLANE_YZ | SHOW_AXIS_Y | SHOW_AXIS_Z | SHOW_GRID | GRID_BACK;
       }
       else if (ELEM(rv3d->view, RV3D_VIEW_TOP, RV3D_VIEW_BOTTOM)) {
-        e_data.draw_grid = true;
+        e_data.draw_grid = show_ortho_grid;
         e_data.grid_flag = PLANE_XY | SHOW_AXIS_X | SHOW_AXIS_Y | SHOW_GRID | GRID_BACK;
       }
       else if (ELEM(rv3d->view, RV3D_VIEW_FRONT, RV3D_VIEW_BACK)) {
-        e_data.draw_grid = true;
+        e_data.draw_grid = show_ortho_grid;
         e_data.grid_flag = PLANE_XZ | SHOW_AXIS_X | SHOW_AXIS_Z | SHOW_GRID | GRID_BACK;
       }
       else { /* RV3D_VIEW_USER */
@@ -948,7 +953,8 @@ static void DRW_shgroup_empty_image(OBJECT_Shaders *sh_data,
     return;
   }
 
-  /* Calling 'BKE_image_get_size' may free the texture. Get the size from 'tex' instead, see: T59347 */
+  /* Calling 'BKE_image_get_size' may free the texture. Get the size from 'tex' instead,
+   * see: T59347 */
   int size[2] = {0};
 
   const bool use_alpha_blend = (ob->empty_image_flag & OB_EMPTY_IMAGE_USE_ALPHA_BLEND) != 0;
@@ -1038,6 +1044,8 @@ static void OBJECT_cache_init(void *vedata)
   g_data->xray_enabled = XRAY_ACTIVE(draw_ctx->v3d);
   g_data->xray_enabled_and_not_wire = g_data->xray_enabled &&
                                       draw_ctx->v3d->shading.type > OB_WIRE;
+
+  g_data->custom_shapes = BLI_ghash_ptr_new(__func__);
 
   {
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
@@ -1494,7 +1502,7 @@ static void OBJECT_cache_init(void *vedata)
     psl->ob_center = DRW_pass_create("Obj Center Pass", state);
 
     outlineWidth = 1.0f * U.pixelsize;
-    size = U.obcenter_dia * U.pixelsize + outlineWidth;
+    size = UI_GetThemeValuef(TH_OBCENTER_DIA) * U.pixelsize + outlineWidth;
 
     GPUShader *sh = GPU_shader_get_builtin_shader_with_config(
         GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA, draw_ctx->sh_cfg);
@@ -1853,8 +1861,10 @@ static void camera_view3d_stereoscopy_display_extra(OBJECT_ShadingGroupList *sgl
     static float one = 1.0f;
     float plane_mat[4][4], scale_mat[4][4];
     float scale_factor[3] = {1.0f, 1.0f, 1.0f};
-    float color_plane[2][4] = {{0.0f, 0.0f, 0.0f, v3d->stereo3d_convergence_alpha},
-                               {0.0f, 0.0f, 0.0f, 1.0f}};
+    float color_plane[2][4] = {
+        {0.0f, 0.0f, 0.0f, v3d->stereo3d_convergence_alpha},
+        {0.0f, 0.0f, 0.0f, 1.0f},
+    };
 
     const float height = convergence_plane[1][1] - convergence_plane[0][1];
     const float width = convergence_plane[2][0] - convergence_plane[0][0];
@@ -1877,9 +1887,11 @@ static void camera_view3d_stereoscopy_display_extra(OBJECT_ShadingGroupList *sgl
   /* Draw convergence volume. */
   if (is_stereo3d_volume && !is_select) {
     static float one = 1.0f;
-    float color_volume[3][4] = {{0.0f, 1.0f, 1.0f, v3d->stereo3d_volume_alpha},
-                                {1.0f, 0.0f, 0.0f, v3d->stereo3d_volume_alpha},
-                                {0.0f, 0.0f, 0.0f, 1.0f}};
+    float color_volume[3][4] = {
+        {0.0f, 1.0f, 1.0f, v3d->stereo3d_volume_alpha},
+        {1.0f, 0.0f, 0.0f, v3d->stereo3d_volume_alpha},
+        {0.0f, 0.0f, 0.0f, 1.0f},
+    };
 
     for (int eye = 0; eye < 2; eye++) {
       float winmat[4][4], viewinv[4][4], viewmat[4][4], persmat[4][4], persinv[4][4];
@@ -3115,11 +3127,10 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
                             ((DRW_object_is_renderable(ob) && (ob->dt > OB_WIRE)) ||
                              (ob->dt == OB_WIRE)));
   const bool show_relations = ((draw_ctx->v3d->flag & V3D_HIDE_HELPLINES) == 0);
-  const bool hide_object_extra = ((v3d->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) != 0 &&
-                                  /* Show if this is the camera we're looking through
-           * since it's useful for moving the camera. */
-                                  (((rv3d->persp == RV3D_CAMOB) &&
-                                    ((ID *)v3d->camera == ob->id.orig_id)) == 0));
+  const bool hide_object_extra =
+      ((v3d->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) != 0 &&
+       /* Show if this is the camera we're looking through since it's useful for selecting. */
+       (((rv3d->persp == RV3D_CAMOB) && ((ID *)v3d->camera == ob->id.orig_id)) == 0));
 
   if (do_outlines) {
     if (!BKE_object_is_in_editmode(ob) &&
@@ -3284,6 +3295,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
               .bone_envelope = sgl->bone_envelope,
               .bone_axes = sgl->bone_axes,
               .relationship_lines = NULL, /* Don't draw relationship lines */
+              .custom_shapes = stl->g_data->custom_shapes,
           };
           DRW_shgroup_armature_object(ob, view_layer, passes, is_wire);
         }
@@ -3391,6 +3403,11 @@ static void OBJECT_cache_finish(void *vedata)
 
   DRW_pass_sort_shgroup_z(stl->g_data->sgl.image_empties);
   DRW_pass_sort_shgroup_z(stl->g_data->sgl_ghost.image_empties);
+
+  if (stl->g_data->custom_shapes) {
+    /* TODO(fclem): Do not free it for each frame but reuse it. Avoiding alloc cost. */
+    BLI_ghash_free(stl->g_data->custom_shapes, NULL, NULL);
+  }
 }
 
 static void OBJECT_draw_scene(void *vedata)

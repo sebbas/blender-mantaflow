@@ -91,8 +91,9 @@ WXSmoothEdge *WXFaceLayer::BuildSmoothEdge()
       return 0;
 
     // let us determine which cusp edge corresponds to the starting:
-    // We can do that because we defined that a silhouette edge had the back facing part on its right.
-    // So if the WOEdge woea is such that woea[0].dotp > 0 and woea[1].dotp < 0, it is the starting edge.
+    // We can do that because we defined that a silhouette edge had the back facing part on its
+    // right. So if the WOEdge woea is such that woea[0].dotp > 0 and woea[1].dotp < 0, it is the
+    // starting edge.
     //-------------------------------------------
 
     if (_DotP[cuspEdgesIndices[0]] > 0.0f) {
@@ -114,7 +115,8 @@ WXSmoothEdge *WXFaceLayer::BuildSmoothEdge()
     ok = true;
   }
   else if (_nNullDotP == 1) {
-    // that means that we have exactly one of the 2 extremities of our silhouette edge is a vertex of the mesh
+    // that means that we have exactly one of the 2 extremities of our silhouette edge is a vertex
+    // of the mesh
     if ((_nPosDotP == 2) || (_nPosDotP == 0)) {
       _pSmoothEdge = NULL;
       return _pSmoothEdge;
@@ -190,9 +192,11 @@ WXSmoothEdge *WXFaceLayer::BuildSmoothEdge()
   for (int i = 0; i < numberOfEdges(); i++) {
     WSFace *bface = (WSFace *)GetBordingFace(i);
     if (bface) {
-      if ((front()) ^ (bface->front())) { // fA->front XOR fB->front (true if one is 0 and the other is 1)
+      if ((front()) ^
+          (bface->front())) {  // fA->front XOR fB->front (true if one is 0 and the other is 1)
         // that means that the edge i of the face is a silhouette edge
-        // CHECK FIRST WHETHER THE EXACTSILHOUETTEEDGE HAS NOT YET BEEN BUILT ON THE OTHER FACE (1 is enough).
+        // CHECK FIRST WHETHER THE EXACTSILHOUETTEEDGE HAS
+        // NOT YET BEEN BUILT ON THE OTHER FACE (1 is enough).
         if (((WSExactFace *)bface)->exactSilhouetteEdge()) {
           // that means that this silhouette edge has already been built
           return ((WSExactFace *)bface)->exactSilhouetteEdge();
@@ -200,7 +204,7 @@ WXSmoothEdge *WXFaceLayer::BuildSmoothEdge()
         // Else we must build it
         WOEdge *woea, *woeb;
         float ta, tb;
-        if (!front()) { // is it in the right order ?
+        if (!front()) {  // is it in the right order ?
           // the order of the WOEdge index is wrong
           woea = _OEdgeList[(i + 1) % numberOfEdges()];
           if (0 == i)
@@ -288,7 +292,9 @@ WFace *WXShape::MakeFace(vector<WVertex *> &iVertexList,
 
 #if 0
   Vec3f center;
-  for (vector<WVertex *>::iterator wv = iVertexList.begin(), wvend = iVertexList.end(); wv != wvend; ++wv) {
+  for (vector<WVertex *>::iterator wv = iVertexList.begin(), wvend = iVertexList.end();
+       wv != wvend;
+       ++wv) {
     center += (*wv)->GetVertex();
   }
   center /= (float)iVertexList.size();

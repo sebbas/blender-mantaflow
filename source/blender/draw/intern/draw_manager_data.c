@@ -161,7 +161,8 @@ void DRW_shgroup_uniform_texture(DRWShadingGroup *shgroup, const char *name, con
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_TEXTURE, tex, 0, 1);
 }
 
-/* Same as DRW_shgroup_uniform_texture but is guaranteed to be bound if shader does not change between shgrp. */
+/* Same as DRW_shgroup_uniform_texture but is guaranteed to be bound if shader does not change
+ * between shgrp. */
 void DRW_shgroup_uniform_texture_persistent(DRWShadingGroup *shgroup,
                                             const char *name,
                                             const GPUTexture *tex)
@@ -178,7 +179,8 @@ void DRW_shgroup_uniform_block(DRWShadingGroup *shgroup,
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_BLOCK, ubo, 0, 1);
 }
 
-/* Same as DRW_shgroup_uniform_block but is guaranteed to be bound if shader does not change between shgrp. */
+/* Same as DRW_shgroup_uniform_block but is guaranteed to be bound if shader does not change
+ * between shgrp. */
 void DRW_shgroup_uniform_block_persistent(DRWShadingGroup *shgroup,
                                           const char *name,
                                           const GPUUniformBuffer *ubo)
@@ -634,6 +636,17 @@ void DRW_shgroup_call_generate_add(DRWShadingGroup *shgroup,
   BLI_LINKS_APPEND(&shgroup->calls, call);
 }
 
+/* This function tests if the current draw engine draws the vertex colors
+ * It is used when drawing sculpts
+ *
+ * XXX: should we use a callback to a the draw engine to retrieve this
+ *      setting, this makes the draw manager more clean? */
+static bool DRW_draw_vertex_color_active(const DRWContextState *draw_ctx)
+{
+  View3D *v3d = draw_ctx->v3d;
+  return v3d->shading.type == OB_SOLID && v3d->shading.color_type == V3D_SHADING_VERTEX_COLOR;
+}
+
 static void sculpt_draw_cb(DRWShadingGroup *shgroup,
                            void (*draw_fn)(DRWShadingGroup *shgroup, GPUBatch *geom),
                            void *user_data)
@@ -654,8 +667,16 @@ static void sculpt_draw_cb(DRWShadingGroup *shgroup,
   }
 
   if (pbvh) {
-    BKE_pbvh_draw_cb(
-        pbvh, NULL, NULL, fast_mode, false, false, (void (*)(void *, GPUBatch *))draw_fn, shgroup);
+    const bool show_vcol = DRW_draw_vertex_color_active(drwctx);
+    BKE_pbvh_draw_cb(pbvh,
+                     NULL,
+                     NULL,
+                     fast_mode,
+                     false,
+                     false,
+                     show_vcol,
+                     (void (*)(void *, GPUBatch *))draw_fn,
+                     shgroup);
   }
 }
 
@@ -679,8 +700,15 @@ static void sculpt_draw_wires_cb(DRWShadingGroup *shgroup,
   }
 
   if (pbvh) {
-    BKE_pbvh_draw_cb(
-        pbvh, NULL, NULL, fast_mode, true, false, (void (*)(void *, GPUBatch *))draw_fn, shgroup);
+    BKE_pbvh_draw_cb(pbvh,
+                     NULL,
+                     NULL,
+                     fast_mode,
+                     true,
+                     false,
+                     false,
+                     (void (*)(void *, GPUBatch *))draw_fn,
+                     shgroup);
   }
 }
 
@@ -955,8 +983,12 @@ static DRWShadingGroup *drw_shgroup_material_inputs(DRWShadingGroup *grp,
       GPUTexture *tex = NULL;
 
       if (input->ima) {
-        tex = GPU_texture_from_blender(
+        GPUTexture **tex_ref = BLI_mempool_alloc(DST.vmempool->images);
+
+        *tex_ref = tex = GPU_texture_from_blender(
             input->ima, input->iuser, GL_TEXTURE_2D, input->image_isdata);
+
+        GPU_texture_ref(tex);
       }
       else {
         /* Color Ramps */
@@ -1148,7 +1180,7 @@ void DRW_shgroup_instance_batch(DRWShadingGroup *shgroup, struct GPUBatch *batch
   /* PERF : This destroys the vaos cache so better check if it's necessary. */
   /* Note: This WILL break if batch->verts[0] is destroyed and reallocated
    * at the same address. Bindings/VAOs would remain obsolete. */
-  //if (shgroup->instancing_geom->inst != batch->verts[0])
+  // if (shgroup->instancing_geom->inst != batch->verts[0])
   GPU_batch_instbuf_set(shgroup->instance_geom, batch->verts[0], false);
 
 #ifdef USE_GPU_SELECT

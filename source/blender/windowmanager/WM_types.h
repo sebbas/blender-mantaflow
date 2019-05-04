@@ -427,7 +427,8 @@ typedef struct wmGesture {
   int modal_state;
 
   /* For modal operators which may be running idle, waiting for an event to activate the gesture.
-   * Typically this is set when the user is click-dragging the gesture (border and circle select for eg). */
+   * Typically this is set when the user is click-dragging the gesture
+   * (border and circle select for eg). */
   uint is_active : 1;
   /* Previous value of is-active (use to detect first run & edge cases). */
   uint is_active_prev : 1;
@@ -457,8 +458,8 @@ typedef struct wmEvent {
   int x, y;         /* mouse pointer position, screen coord */
   int mval[2];      /* region mouse position, name convention pre 2.5 :) */
   char utf8_buf[6]; /* from, ghost if utf8 is enabled for the platform,
-             * BLI_str_utf8_size() must _always_ be valid, check
-             * when assigning s we don't need to check on every access after */
+                     * BLI_str_utf8_size() must _always_ be valid, check
+                     * when assigning s we don't need to check on every access after */
   char ascii;       /* from ghost, fallback if utf8 isn't set */
   char pad;
 
@@ -526,7 +527,8 @@ typedef enum { /* motion progress, for modal handlers */
 typedef struct wmNDOFMotionData {
   /* awfully similar to GHOST_TEventNDOFMotionData... */
   /* Each component normally ranges from -1 to +1, but can exceed that.
-   * These use blender standard view coordinates, with positive rotations being CCW about the axis. */
+   * These use blender standard view coordinates,
+   * with positive rotations being CCW about the axis. */
   float tvec[3]; /* translation */
   float rvec[3]; /* rotation: */
   /* axis = (rx,ry,rz).normalized */

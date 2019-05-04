@@ -230,8 +230,9 @@ static bool delete_orientation_poll(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
 
-  if (ED_operator_areaactive(C) == 0)
+  if (ED_operator_areaactive(C) == 0) {
     return 0;
+  }
 
   return ((scene->orientation_slots[SCE_ORIENT_DEFAULT].type >= V3D_ORIENT_CUSTOM) &&
           (scene->orientation_slots[SCE_ORIENT_DEFAULT].index_custom != -1));
@@ -403,8 +404,9 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
   // in other words, 2D deltas are no longer good enough!
   // disable until individual 'transformers' behave better
 
-  if (event->type == NDOF_MOTION)
+  if (event->type == NDOF_MOTION) {
     return OPERATOR_PASS_THROUGH;
+  }
 #endif
 
   /* XXX insert keys are called here, and require context */
@@ -545,10 +547,9 @@ static bool transform_poll_property(const bContext *UNUSED(C),
 
   /* Proportional Editing. */
   {
-    PropertyRNA *prop_pet = RNA_struct_find_property(op->ptr, "proportional");
-    if (prop_pet && (prop_pet != prop) &&
-        (RNA_property_enum_get(op->ptr, prop_pet) == PROP_EDIT_OFF)) {
-      if (STRPREFIX(prop_id, "proportional")) {
+    PropertyRNA *prop_pet = RNA_struct_find_property(op->ptr, "use_proportional_edit");
+    if (prop_pet && (prop_pet != prop) && (RNA_property_boolean_get(op->ptr, prop_pet) == false)) {
+      if (STRPREFIX(prop_id, "proportional") || STRPREFIX(prop_id, "use_proportional")) {
         return false;
       }
     }
@@ -608,12 +609,7 @@ void Transform_Properties(struct wmOperatorType *ot, int flags)
   }
 
   if (flags & P_PROPORTIONAL) {
-    RNA_def_enum(ot->srna,
-                 "proportional",
-                 rna_enum_proportional_editing_items,
-                 0,
-                 "Proportional Editing",
-                 "");
+    RNA_def_boolean(ot->srna, "use_proportional_edit", 0, "Proportional Editing", "");
     prop = RNA_def_enum(ot->srna,
                         "proportional_edit_falloff",
                         rna_enum_proportional_falloff_items,
@@ -631,6 +627,9 @@ void Transform_Properties(struct wmOperatorType *ot, int flags)
                   "",
                   0.001f,
                   100.0f);
+
+    RNA_def_boolean(ot->srna, "use_proportional_connected", 0, "Connected", "");
+    RNA_def_boolean(ot->srna, "use_proportional_projected", 0, "Projected (2D)", "");
   }
 
   if (flags & P_SNAP) {
@@ -975,7 +974,7 @@ static void TRANSFORM_OT_tosphere(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "To Sphere";
-  //added "around mesh center" to differentiate between "MESH_OT_vertices_to_sphere()"
+  // added "around mesh center" to differentiate between "MESH_OT_vertices_to_sphere()"
   ot->description = "Move selected vertices outward in a spherical shape around mesh center";
   ot->idname = OP_TOSPHERE;
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
@@ -1161,7 +1160,7 @@ static void TRANSFORM_OT_seq_slide(struct wmOperatorType *ot)
 static void TRANSFORM_OT_rotate_normal(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Normal Rotate";
+  ot->name = "Rotate Normals";
   ot->description = "Rotate split normal of selected items";
   ot->idname = OP_NORMAL_ROTATION;
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;

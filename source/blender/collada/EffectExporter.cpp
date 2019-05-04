@@ -92,8 +92,8 @@ void EffectsExporter::exportEffects(bContext *C, Scene *sce)
 
 void EffectsExporter::set_shader_type(COLLADASW::EffectProfile &ep, Material *ma)
 {
-  ep.setShaderType(
-      COLLADASW::EffectProfile::LAMBERT);  //XXX check if BLINN and PHONG can be supported as well
+  /* XXX check if BLINN and PHONG can be supported as well */
+  ep.setShaderType(COLLADASW::EffectProfile::LAMBERT);
 }
 
 void EffectsExporter::set_transparency(COLLADASW::EffectProfile &ep, Material *ma)
@@ -198,7 +198,8 @@ void EffectsExporter::operator()(Material *ma, Object *ob)
     Image *ima = t->tex->ima;
 
     // Image not set for texture
-    if (!ima) continue;
+    if (!ima)
+      continue;
 
     std::string key(id_name(ima));
     key = translate_id(key);
@@ -206,10 +207,9 @@ void EffectsExporter::operator()(Material *ma, Object *ob)
     // create only one <sampler>/<surface> pair for each unique image
     if (im_samp_map.find(key) == im_samp_map.end()) {
       //<newparam> <sampler> <source>
-      COLLADASW::Sampler sampler(
-              COLLADASW::Sampler::SAMPLER_TYPE_2D,
-              key + COLLADASW::Sampler::SAMPLER_SID_SUFFIX,
-              key + COLLADASW::Sampler::SURFACE_SID_SUFFIX);
+      COLLADASW::Sampler sampler(COLLADASW::Sampler::SAMPLER_TYPE_2D,
+                                 key + COLLADASW::Sampler::SAMPLER_SID_SUFFIX,
+                                 key + COLLADASW::Sampler::SURFACE_SID_SUFFIX);
       sampler.setImageId(key);
       // copy values to arrays since they will live longer
       samplers[a] = sampler;
@@ -235,7 +235,8 @@ void EffectsExporter::operator()(Material *ma, Object *ob)
     key = translate_id(key);
     int i = im_samp_map[key];
     std::string uvname = strlen(t->uvname) ? t->uvname : active_uv;
-    COLLADASW::Sampler *sampler = (COLLADASW::Sampler *)samp_surf[i]; // possibly uninitialised memory ...
+    COLLADASW::Sampler *sampler = (COLLADASW::Sampler *)
+        samp_surf[i];  // possibly uninitialised memory ...
     writeTextures(ep, key, sampler, t, ima, uvname);
   }
 #endif
@@ -267,7 +268,7 @@ COLLADASW::ColorOrTexture EffectsExporter::createTexture(Image *ima,
 
   COLLADASW::Texture texture(translate_id(id_name(ima)));
   texture.setTexcoord(uv_layer_name);
-  //texture.setSurface(*surface);
+  // texture.setSurface(*surface);
   texture.setSampler(*sampler);
 
   COLLADASW::ColorOrTexture cot(texture);

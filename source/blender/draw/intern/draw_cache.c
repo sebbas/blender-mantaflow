@@ -161,9 +161,13 @@ static void UNUSED_FUNCTION(add_fancy_edge)(GPUVertBuf *vbo,
 }
 
 #if 0  /* UNUSED */
-static void add_lat_lon_vert(
-        GPUVertBuf *vbo, uint pos_id, uint nor_id,
-        uint *v_idx, const float rad, const float lat, const float lon)
+static void add_lat_lon_vert(GPUVertBuf *vbo,
+                             uint pos_id,
+                             uint nor_id,
+                             uint *v_idx,
+                             const float rad,
+                             const float lat,
+                             const float lon)
 {
   float pos[3], nor[3];
   nor[0] = sinf(lat) * cosf(lon);
@@ -178,8 +182,10 @@ static void add_lat_lon_vert(
 static GPUVertBuf *fill_arrows_vbo(const float scale)
 {
   /* Position Only 3D format */
-  static GPUVertFormat format = { 0 };
-  static struct { uint pos; } attr_id;
+  static GPUVertFormat format = {0};
+  static struct {
+    uint pos;
+  } attr_id;
   if (format.attr_len == 0) {
     attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   }
@@ -476,8 +482,9 @@ GPUBatch *DRW_cache_empty_cube_get(void)
         {1.0f, 1.0f, 1.0f},
     };
 
-    const GLubyte indices[24] = {0, 1, 1, 3, 3, 2, 2, 0, 0, 4, 4, 5,
-                                 5, 7, 7, 6, 6, 4, 1, 5, 3, 7, 2, 6};
+    const GLubyte indices[24] = {
+        0, 1, 1, 3, 3, 2, 2, 0, 0, 4, 4, 5, 5, 7, 7, 6, 6, 4, 1, 5, 3, 7, 2, 6,
+    };
 
     /* Position Only 3D format */
     static GPUVertFormat format = {0};
@@ -653,17 +660,20 @@ GPUBatch *DRW_cache_gpencil_axes_get(void)
     float v2[3] = {0.0f, 0.0f, 0.0f};
 
     /* cube data */
-    const GLfloat verts[8][3] = {{-0.25f, -0.25f, -0.25f},
-                                 {-0.25f, -0.25f, 0.25f},
-                                 {-0.25f, 0.25f, -0.25f},
-                                 {-0.25f, 0.25f, 0.25f},
-                                 {0.25f, -0.25f, -0.25f},
-                                 {0.25f, -0.25f, 0.25f},
-                                 {0.25f, 0.25f, -0.25f},
-                                 {0.25f, 0.25f, 0.25f}};
+    const GLfloat verts[8][3] = {
+        {-0.25f, -0.25f, -0.25f},
+        {-0.25f, -0.25f, 0.25f},
+        {-0.25f, 0.25f, -0.25f},
+        {-0.25f, 0.25f, 0.25f},
+        {0.25f, -0.25f, -0.25f},
+        {0.25f, -0.25f, 0.25f},
+        {0.25f, 0.25f, -0.25f},
+        {0.25f, 0.25f, 0.25f},
+    };
 
-    const GLubyte indices[24] = {0, 1, 1, 3, 3, 2, 2, 0, 0, 4, 4, 5,
-                                 5, 7, 7, 6, 6, 4, 1, 5, 3, 7, 2, 6};
+    const GLubyte indices[24] = {
+        0, 1, 1, 3, 3, 2, 2, 0, 0, 4, 4, 5, 5, 7, 7, 6, 6, 4, 1, 5, 3, 7, 2, 6,
+    };
 
     /* Position Only 3D format */
     static GPUVertFormat format = {0};
@@ -1740,11 +1750,13 @@ GPUBatch *DRW_cache_light_spot_volume_get(void)
 GPUBatch *DRW_cache_light_spot_square_get(void)
 {
   if (!SHC.drw_light_spot_square) {
-    float p[5][3] = {{0.0f, 0.0f, 0.0f},
-                     {1.0f, 1.0f, -1.0f},
-                     {1.0f, -1.0f, -1.0f},
-                     {-1.0f, -1.0f, -1.0f},
-                     {-1.0f, 1.0f, -1.0f}};
+    float p[5][3] = {
+        {0.0f, 0.0f, 0.0f},
+        {1.0f, 1.0f, -1.0f},
+        {1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f, -1.0f},
+        {-1.0f, 1.0f, -1.0f},
+    };
 
     uint v_idx = 0;
 
@@ -1777,11 +1789,13 @@ GPUBatch *DRW_cache_light_spot_square_get(void)
 GPUBatch *DRW_cache_light_spot_square_volume_get(void)
 {
   if (!SHC.drw_light_spot_square_volume) {
-    float p[5][3] = {{0.0f, 0.0f, 0.0f},
-                     {1.0f, 1.0f, -1.0f},
-                     {1.0f, -1.0f, -1.0f},
-                     {-1.0f, -1.0f, -1.0f},
-                     {-1.0f, 1.0f, -1.0f}};
+    float p[5][3] = {
+        {0.0f, 0.0f, 0.0f},
+        {1.0f, 1.0f, -1.0f},
+        {1.0f, -1.0f, -1.0f},
+        {-1.0f, -1.0f, -1.0f},
+        {-1.0f, 1.0f, -1.0f},
+    };
 
     uint v_idx = 0;
 
@@ -2039,10 +2053,10 @@ static const float bone_octahedral_verts[6][3] = {
 static const float bone_octahedral_smooth_normals[6][3] = {
     {0.0f, -1.0f, 0.0f},
 #if 0 /* creates problems for outlines when scaled */
-  { 0.943608f * M_SQRT1_2, -0.331048f,  0.943608f * M_SQRT1_2},
-  { 0.943608f * M_SQRT1_2, -0.331048f, -0.943608f * M_SQRT1_2},
-  {-0.943608f * M_SQRT1_2, -0.331048f, -0.943608f * M_SQRT1_2},
-  {-0.943608f * M_SQRT1_2, -0.331048f,  0.943608f * M_SQRT1_2},
+    {0.943608f * M_SQRT1_2, -0.331048f, 0.943608f * M_SQRT1_2},
+    {0.943608f * M_SQRT1_2, -0.331048f, -0.943608f * M_SQRT1_2},
+    {-0.943608f * M_SQRT1_2, -0.331048f, -0.943608f * M_SQRT1_2},
+    {-0.943608f * M_SQRT1_2, -0.331048f, 0.943608f * M_SQRT1_2},
 #else
     {M_SQRT1_2, 0.0f, M_SQRT1_2},
     {M_SQRT1_2, 0.0f, -M_SQRT1_2},
@@ -2055,17 +2069,13 @@ static const float bone_octahedral_smooth_normals[6][3] = {
 #if 0 /* UNUSED */
 
 static const uint bone_octahedral_wire[24] = {
-  0, 1,  1, 5,  5, 3,  3, 0,
-  0, 4,  4, 5,  5, 2,  2, 0,
-  1, 2,  2, 3,  3, 4,  4, 1,
+    0, 1, 1, 5, 5, 3, 3, 0, 0, 4, 4, 5, 5, 2, 2, 0, 1, 2, 2, 3, 3, 4, 4, 1,
 };
 
 /* aligned with bone_octahedral_wire
  * Contains adjacent normal index */
 static const uint bone_octahedral_wire_adjacent_face[24] = {
-  0, 3,  4, 7,  5, 6,  1, 2,
-  2, 3,  6, 7,  4, 5,  0, 1,
-  0, 4,  1, 5,  2, 6,  3, 7,
+    0, 3, 4, 7, 5, 6, 1, 2, 2, 3, 6, 7, 4, 5, 0, 1, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 #endif
 
@@ -2109,15 +2119,15 @@ static const uint bone_octahedral_wire_lines_adjacency[12][4] = {
 
 #if 0 /* UNUSED */
 static const uint bone_octahedral_solid_tris_adjacency[8][6] = {
-  { 0, 12,  1, 10,  2,  3},
-  { 3, 15,  4,  1,  5,  6},
-  { 6, 18,  7,  4,  8,  9},
-  { 9, 21, 10,  7, 11,  0},
+    {0, 12, 1, 10, 2, 3},
+    {3, 15, 4, 1, 5, 6},
+    {6, 18, 7, 4, 8, 9},
+    {9, 21, 10, 7, 11, 0},
 
-  {12, 22, 13,  2, 14, 17},
-  {15, 13, 16,  5, 17, 20},
-  {18, 16, 19,  8, 20, 23},
-  {21, 19, 22, 11, 23, 14},
+    {12, 22, 13, 2, 14, 17},
+    {15, 13, 16, 5, 17, 20},
+    {18, 16, 19, 8, 20, 23},
+    {21, 19, 22, 11, 23, 14},
 };
 #endif
 
@@ -2219,17 +2229,13 @@ static const float bone_box_smooth_normals[8][3] = {
 
 #if 0 /* UNUSED */
 static const uint bone_box_wire[24] = {
-  0, 1,  1, 2,  2, 3,  3, 0,
-  4, 5,  5, 6,  6, 7,  7, 4,
-  0, 4,  1, 5,  2, 6,  3, 7,
+    0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
 /* aligned with bone_octahedral_wire
  * Contains adjacent normal index */
 static const uint bone_box_wire_adjacent_face[24] = {
-  0,  2,   0,  4,   1,  6,   1,  8,
-  3, 10,   5, 10,   7, 11,   9, 11,
-  3,  8,   2,  5,   4,  7,   6,  9,
+    0, 2, 0, 4, 1, 6, 1, 8, 3, 10, 5, 10, 7, 11, 9, 11, 3, 8, 2, 5, 4, 7, 6, 9,
 };
 #endif
 
@@ -2274,23 +2280,23 @@ static const uint bone_box_wire_lines_adjacency[12][4] = {
 
 #if 0 /* UNUSED */
 static const uint bone_box_solid_tris_adjacency[12][6] = {
-  { 0,  5,  1, 14,  2,  8},
-  { 3, 26,  4, 20,  5,  1},
+    {0, 5, 1, 14, 2, 8},
+    {3, 26, 4, 20, 5, 1},
 
-  { 6,  2,  7, 16,  8, 11},
-  { 9,  7, 10, 32, 11, 24},
+    {6, 2, 7, 16, 8, 11},
+    {9, 7, 10, 32, 11, 24},
 
-  {12,  0, 13, 22, 14, 17},
-  {15, 13, 16, 30, 17,  6},
+    {12, 0, 13, 22, 14, 17},
+    {15, 13, 16, 30, 17, 6},
 
-  {18,  3, 19, 28, 20, 23},
-  {21, 19, 22, 33, 23, 12},
+    {18, 3, 19, 28, 20, 23},
+    {21, 19, 22, 33, 23, 12},
 
-  {24,  4, 25, 10, 26, 29},
-  {27, 25, 28, 34, 29, 18},
+    {24, 4, 25, 10, 26, 29},
+    {27, 25, 28, 34, 29, 18},
 
-  {30,  9, 31, 15, 32, 35},
-  {33, 31, 34, 21, 35, 27},
+    {30, 9, 31, 15, 32, 35},
+    {33, 31, 34, 21, 35, 27},
 };
 #endif
 
@@ -2499,8 +2505,10 @@ GPUBatch *DRW_cache_bone_point_get(void)
     const float lat_inc = M_PI / lat_res;
     uint v_idx = 0;
 
-    static GPUVertFormat format = { 0 };
-    static struct { uint pos, nor; } attr_id;
+    static GPUVertFormat format = {0};
+    static struct {
+      uint pos, nor;
+    } attr_id;
     if (format.attr_len == 0) {
       attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
       attr_id.nor = GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -2515,15 +2523,17 @@ GPUBatch *DRW_cache_bone_point_get(void)
       float lat = 0.0f;
       for (int j = 0; j < lat_res; j++, lat += lat_inc) {
         if (j != lat_res - 1) { /* Pole */
-          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat + lat_inc, lon + lon_inc);
+          add_lat_lon_vert(
+              vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat + lat_inc, lon + lon_inc);
           add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat + lat_inc, lon);
-          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat,           lon);
+          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat, lon);
         }
 
         if (j != 0) { /* Pole */
-          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat,           lon + lon_inc);
-          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat + lat_inc, lon + lon_inc);
-          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat,           lon);
+          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat, lon + lon_inc);
+          add_lat_lon_vert(
+              vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat + lat_inc, lon + lon_inc);
+          add_lat_lon_vert(vbo, attr_id.pos, attr_id.nor, &v_idx, rad, lat, lon);
         }
       }
     }
@@ -2755,10 +2765,14 @@ static float z_axis_name[10][2] = {
 #define S_Y 0.007f
 static float axis_marker[8][2] = {
 #if 0 /* square */
-  {-1.0f * S_X,  1.0f * S_Y}, { 1.0f * S_X,  1.0f * S_Y},
-  { 1.0f * S_X,  1.0f * S_Y}, { 1.0f * S_X, -1.0f * S_Y},
-  { 1.0f * S_X, -1.0f * S_Y}, {-1.0f * S_X, -1.0f * S_Y},
-  {-1.0f * S_X, -1.0f * S_Y}, {-1.0f * S_X,  1.0f * S_Y}
+    {-1.0f * S_X, 1.0f * S_Y},
+    {1.0f * S_X, 1.0f * S_Y},
+    {1.0f * S_X, 1.0f * S_Y},
+    {1.0f * S_X, -1.0f * S_Y},
+    {1.0f * S_X, -1.0f * S_Y},
+    {-1.0f * S_X, -1.0f * S_Y},
+    {-1.0f * S_X, -1.0f * S_Y},
+    {-1.0f * S_X, 1.0f * S_Y}
 #else /* diamond */
     {-S_X, 0.f},
     {0.f, S_Y},
@@ -3003,7 +3017,8 @@ GPUBatch *DRW_cache_bone_dof_lines_get(void)
  * We could make these more generic functions.
  * although filling 1d lines is not common.
  *
- * \note Use x coordinate to identify the vertex the vertex shader take care to place it appropriately.
+ * \note Use x coordinate to identify the vertex the vertex shader take care to place it
+ * appropriately.
  */
 
 static const float camera_coords_frame_bounds[5] = {
@@ -3269,6 +3284,12 @@ GPUBatch *DRW_cache_mesh_face_wireframe_get(Object *ob)
   return DRW_mesh_batch_cache_get_wireframes_face(ob->data);
 }
 
+GPUBatch *DRW_cache_mesh_surface_mesh_analysis_get(Object *ob)
+{
+  BLI_assert(ob->type == OB_MESH);
+  return DRW_mesh_batch_cache_get_edit_mesh_analysis(ob->data);
+}
+
 void DRW_cache_mesh_sculpt_coords_ensure(Object *ob)
 {
   BLI_assert(ob->type == OB_MESH);
@@ -3288,7 +3309,13 @@ GPUBatch *DRW_cache_curve_edge_wire_get(Object *ob)
   BLI_assert(ob->type == OB_CURVE);
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_wire_edge(cu);
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+  if (mesh_eval != NULL) {
+    return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+  }
+  else {
+    return DRW_curve_batch_cache_get_wire_edge(cu);
+  }
 }
 
 GPUBatch *DRW_cache_curve_edge_normal_get(Object *ob)
@@ -3434,7 +3461,13 @@ GPUBatch *DRW_cache_text_edge_wire_get(Object *ob)
   BLI_assert(ob->type == OB_FONT);
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_wire_edge(cu);
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+  if (mesh_eval != NULL) {
+    return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+  }
+  else {
+    return DRW_curve_batch_cache_get_wire_edge(cu);
+  }
 }
 
 GPUBatch *DRW_cache_text_surface_get(Object *ob)
@@ -3546,7 +3579,13 @@ GPUBatch *DRW_cache_surf_edge_wire_get(Object *ob)
   BLI_assert(ob->type == OB_SURF);
 
   struct Curve *cu = ob->data;
-  return DRW_curve_batch_cache_get_wire_edge(cu);
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+  if (mesh_eval != NULL) {
+    return DRW_mesh_batch_cache_get_loose_edges(mesh_eval);
+  }
+  else {
+    return DRW_curve_batch_cache_get_wire_edge(cu);
+  }
 }
 
 GPUBatch *DRW_cache_surf_face_wireframe_get(Object *ob)
@@ -4010,6 +4049,27 @@ void drw_batch_cache_generate_requested(Object *ob)
         DRW_mesh_batch_cache_create_requested(ob, mesh_eval, ts, is_paint_mode, use_hide);
       }
       DRW_curve_batch_cache_create_requested(ob);
+      break;
+    /* TODO all cases */
+    default:
+      break;
+  }
+}
+
+void DRW_batch_cache_free_old(Object *ob, int ctime)
+{
+  struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+
+  switch (ob->type) {
+    case OB_MESH:
+      DRW_mesh_batch_cache_free_old((Mesh *)ob->data, ctime);
+      break;
+    case OB_CURVE:
+    case OB_FONT:
+    case OB_SURF:
+      if (mesh_eval) {
+        DRW_mesh_batch_cache_free_old(mesh_eval, ctime);
+      }
       break;
     /* TODO all cases */
     default:

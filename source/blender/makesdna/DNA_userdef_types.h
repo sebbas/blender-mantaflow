@@ -300,12 +300,12 @@ typedef struct ThemeSpace {
   char keytype_keyframe_select[4], keytype_extreme_select[4], keytype_breakdown_select[4],
       keytype_jitter_select[4], keytype_movehold_select[4];
   char keyborder[4], keyborder_select[4];
-  char _pad4[4];
+  char _pad4[3];
 
   char console_output[4], console_input[4], console_info[4], console_error[4];
   char console_cursor[4], console_select[4];
 
-  char vertex_size, outline_width, facedot_size;
+  char vertex_size, outline_width, obcenter_dia, facedot_size;
   char noodle_curving;
 
   /* syntax for textwindow and nodes */
@@ -643,15 +643,14 @@ typedef struct UserDef {
   char _pad3[4];
   short gizmo_flag, gizmo_size;
   short edit_studio_light;
-  char _pad6[4];
+  char _pad6[2];
+  short vbotimeout, vbocollectrate;
   short textimeout, texcollectrate;
-  char _pad14[2];
   int memcachelimit;
   int prefetchframes;
   /** Control the rotation step of the view when PAD2, PAD4, PAD6&PAD8 is use. */
   float pad_rot_angle;
-  char _pad12[2];
-  short obcenter_dia;
+  char _pad12[4];
   /** Rotating view icon size. */
   short rvisize;
   /** Rotating view icon brightness. */
@@ -949,7 +948,8 @@ typedef enum eZoomFrame_Mode {
 } eZoomFrame_Mode;
 
 /** Auto-Keying flag
- * #UserDef.autokey_flag (not strictly used when autokeying only - is also used when keyframing these days)
+ * #UserDef.autokey_flag (not strictly used when autokeying only -
+ * is also used when keyframing these days).
  * \note #eAutokey_Flag is used with a macro, search for lines like IS_AUTOKEY_FLAG(INSERTAVAIL).
  */
 typedef enum eAutokey_Flag {
@@ -992,6 +992,8 @@ typedef enum eDupli_ID_Flags {
   USER_DUP_ARM = (1 << 9),
   USER_DUP_ACT = (1 << 10),
   USER_DUP_PSYS = (1 << 11),
+  USER_DUP_LIGHTPROBE = (1 << 12),
+  USER_DUP_GPENCIL = (1 << 13),
 } eDupli_ID_Flags;
 
 /** Max anti alias draw method
@@ -1103,10 +1105,9 @@ typedef enum eMultiSample_Type {
 
 /** #UserDef.image_draw_method */
 typedef enum eImageDrawMethod {
-  /* IMAGE_DRAW_METHOD_AUTO = 0, */ /* Currently unused */
+  IMAGE_DRAW_METHOD_AUTO = 0,
   IMAGE_DRAW_METHOD_GLSL = 1,
   IMAGE_DRAW_METHOD_2DTEXTURE = 2,
-  IMAGE_DRAW_METHOD_DRAWPIXELS = 3,
 } eImageDrawMethod;
 
 /** #UserDef.virtual_pixel */

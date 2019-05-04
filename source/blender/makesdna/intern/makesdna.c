@@ -61,9 +61,8 @@
 /* Included the path relative from /source/blender/ here, so we can move     */
 /* headers around with more freedom.                                         */
 static const char *includefiles[] = {
-
     /* if you add files here, please add them at the end
-   * of makesdna.c (this file) as well */
+     * of makesdna.c (this file) as well */
     "DNA_listBase.h",
     "DNA_vec_types.h",
     "DNA_ID.h",
@@ -466,7 +465,7 @@ static int add_name(const char *str)
     }
     else if (str[j] == ')') {
       DEBUG_PRINTF(3, "offsetting for brace\n");
-      ; /* don't get extra offset */
+      /* don't get extra offset */
     }
     else {
       printf("Error during tokening function pointer argument list\n");
@@ -588,8 +587,9 @@ static int preprocess_include(char *maindata, const int maindata_len)
     else if (*cp == '\n') {
       comment = 0;
     }
-    if (comment || *cp < 32 || *cp > 128)
+    if (comment || *cp < 32 || *cp > 128) {
       *cp = 32;
+    }
     cp++;
   }
 

@@ -17,7 +17,8 @@
 /** \file
  * \ingroup blenloader
  *
- * Utils to check/validate a Main is in sane state, only checks relations between datablocks and libraries for now.
+ * Utils to check/validate a Main is in sane state,
+ * only checks relations between datablocks and libraries for now.
  *
  * \note Does not *fix* anything, only reports found errors.
  */
@@ -45,7 +46,10 @@
 
 #include "readfile.h"
 
-/** Check (but do *not* fix) that all linked data-blocks are still valid (i.e. pointing to the right library). */
+/**
+ * Check (but do *not* fix) that all linked data-blocks are still valid
+ * (i.e. pointing to the right library).
+ */
 bool BLO_main_validate_libraries(Main *bmain, ReportList *reports)
 {
   ListBase mainlist;
@@ -168,10 +172,8 @@ bool BLO_main_validate_shapekeys(Main *bmain, ReportList *reports)
 
   BKE_main_lock(bmain);
 
-  FOREACH_MAIN_LISTBASE_BEGIN(bmain, lb)
-  {
-    FOREACH_MAIN_LISTBASE_ID_BEGIN(lb, id)
-    {
+  FOREACH_MAIN_LISTBASE_BEGIN (bmain, lb) {
+    FOREACH_MAIN_LISTBASE_ID_BEGIN (lb, id) {
       if (!BKE_key_idtype_support(GS(id->name))) {
         break;
       }

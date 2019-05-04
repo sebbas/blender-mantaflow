@@ -264,7 +264,9 @@ static bool bm_loop_path_build_step(BLI_mempool *vs_pool,
 
     BLI_mempool_free(vs_pool, vs);
   }
-  /* bm->elem_index_dirty |= BM_VERT; */ /* Commented because used in a loop, and this flag has already been set. */
+
+  /* Commented because used in a loop, and this flag has already been set. */
+  /* bm->elem_index_dirty |= BM_VERT; */
 
   /* lb is now full of free'd items, overwrite */
   *lb = lb_tmp;
@@ -750,8 +752,7 @@ void BM_edgeloop_expand(
     LinkData *node_curr = el_store->verts.first;
 
     int iter_prev = 0;
-    BLI_FOREACH_SPARSE_RANGE(el_store->len, (el_store_len - el_store->len), iter)
-    {
+    BLI_FOREACH_SPARSE_RANGE (el_store->len, (el_store_len - el_store->len), iter) {
       while (iter_prev < iter) {
         node_curr = node_curr->next;
         iter_prev += 1;

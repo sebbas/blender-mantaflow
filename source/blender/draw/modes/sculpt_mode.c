@@ -135,9 +135,15 @@ static void SCULPT_cache_init(void *vedata)
   }
 
   {
+    const DRWContextState *draw_ctx = DRW_context_state_get();
+    View3D *v3d = draw_ctx->v3d;
+
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_MULTIPLY;
     psl->pass = DRW_pass_create("Sculpt Pass", state);
-    stl->g_data->group_smooth = DRW_shgroup_create(e_data.shader_smooth, psl->pass);
+
+    DRWShadingGroup *shgrp = DRW_shgroup_create(e_data.shader_smooth, psl->pass);
+    DRW_shgroup_uniform_float(shgrp, "maskOpacity", &v3d->overlay.sculpt_mode_mask_opacity, 1);
+    stl->g_data->group_smooth = shgrp;
   }
 }
 
@@ -155,6 +161,7 @@ static void sculpt_draw_mask_cb(DRWShadingGroup *shgroup,
                      false,
                      false,
                      true,
+                     false,
                      (void (*)(void *, struct GPUBatch *))draw_fn,
                      shgroup);
   }
@@ -193,7 +200,8 @@ static void SCULPT_cache_populate(void *vedata, Object *ob)
       sculpt_update_pbvh_normals(ob);
 
       /* XXX, needed for dyntopo-undo (which clears).
-       * probably depsgraph should handlle? in 2.7x getting derived-mesh does this (mesh_build_data) */
+       * probably depsgraph should handlle? in 2.7x
+       * getting derived-mesh does this (mesh_build_data). */
       if (ob->sculpt->pbvh == NULL) {
         /* create PBVH immediately (would be created on the fly too,
          * but this avoids waiting on first stroke) */

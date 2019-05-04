@@ -28,8 +28,10 @@ static bNodeSocketTemplate sh_node_vect_transform_in[] = {
     {SOCK_VECTOR, 1, N_("Vector"), 0.5f, 0.5f, 0.5f, 1.0f, -10000.0f, 10000.0f, PROP_NONE},
     {-1, 0, ""}};
 
-static bNodeSocketTemplate sh_node_vect_transform_out[] = {{SOCK_VECTOR, 0, N_("Vector")},
-                                                           {-1, 0, ""}};
+static bNodeSocketTemplate sh_node_vect_transform_out[] = {
+    {SOCK_VECTOR, 0, N_("Vector")},
+    {-1, 0, ""},
+};
 
 static void node_shader_init_vect_transform(bNodeTree *UNUSED(ntree), bNode *node)
 {
@@ -102,10 +104,12 @@ static int gpu_shader_vect_transform(GPUMaterial *mat,
 
   NodeShaderVectTransform *nodeprop = (NodeShaderVectTransform *)node->storage;
 
-  if (in[0].hasinput)
+  if (in[0].hasinput) {
     inputlink = in[0].link;
-  else
+  }
+  else {
     inputlink = GPU_constant(in[0].vec);
+  }
 
   fromto = get_gpulink_matrix_from_to(nodeprop->convert_from, nodeprop->convert_to);
 
@@ -123,11 +127,13 @@ static int gpu_shader_vect_transform(GPUMaterial *mat,
       GPU_link(mat, "invert_z", out[0].link, &out[0].link);
     }
   }
-  else
+  else {
     GPU_link(mat, "set_rgb", inputlink, &out[0].link);
+  }
 
-  if (nodeprop->type == SHD_VECT_TRANSFORM_TYPE_NORMAL)
+  if (nodeprop->type == SHD_VECT_TRANSFORM_TYPE_NORMAL) {
     GPU_link(mat, "vect_normalize", out[0].link, &out[0].link);
+  }
 
   return true;
 }

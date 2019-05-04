@@ -79,7 +79,8 @@ typedef struct Vert2GeomData {
   float *dist[3];
 } Vert2GeomData;
 
-/* Data which is localized to each computed chunk (i.e. thread-safe, and with continuous subset of index range). */
+/** Data which is localized to each computed chunk
+ * (i.e. thread-safe, and with continuous subset of index range). */
 typedef struct Vert2GeomDataChunk {
   /* Read-only data */
   float last_hit_co[3][3];
@@ -110,8 +111,8 @@ static void vert2geom_task_cb_ex(void *__restrict userdata,
       /* Note that we use local proximity heuristics (to reduce the nearest search).
        *
        * If we already had an hit before in same chunk of tasks (i.e. previous vertex by index),
-       * we assume this vertex is going to have a close hit to that other vertex, so we can initiate
-       * the "nearest.dist" with the expected value to that last hit.
+       * we assume this vertex is going to have a close hit to that other vertex,
+       * so we can initiate the "nearest.dist" with the expected value to that last hit.
        * This will lead in pruning of the search tree.
        */
       nearest.dist_sq = data_chunk->is_init[i] ?
@@ -194,12 +195,15 @@ static void get_vert2geom_distance(int numVerts,
   settings.userdata_chunk_size = sizeof(data_chunk);
   BLI_task_parallel_range(0, numVerts, &data, vert2geom_task_cb_ex, &settings);
 
-  if (dist_v)
+  if (dist_v) {
     free_bvhtree_from_mesh(&treeData_v);
-  if (dist_e)
+  }
+  if (dist_e) {
     free_bvhtree_from_mesh(&treeData_e);
-  if (dist_f)
+  }
+  if (dist_f) {
     free_bvhtree_from_mesh(&treeData_f);
+  }
 }
 
 /**
@@ -245,22 +249,28 @@ static void do_map(
   }
   else if (max_d > min_d) {
     while (i-- > 0) {
-      if (weights[i] >= max_d)
+      if (weights[i] >= max_d) {
         weights[i] = 1.0f; /* most likely case first */
-      else if (weights[i] <= min_d)
+      }
+      else if (weights[i] <= min_d) {
         weights[i] = 0.0f;
-      else
+      }
+      else {
         weights[i] = (weights[i] - min_d) * range_inv;
+      }
     }
   }
   else {
     while (i-- > 0) {
-      if (weights[i] <= max_d)
+      if (weights[i] <= max_d) {
         weights[i] = 1.0f; /* most likely case first */
-      else if (weights[i] >= min_d)
+      }
+      else if (weights[i] >= min_d) {
         weights[i] = 0.0f;
-      else
+      }
+      else {
         weights[i] = (weights[i] - min_d) * range_inv;
+      }
     }
   }
 
@@ -318,8 +328,9 @@ static bool dependsOnTime(ModifierData *md)
 {
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
 
-  if (wmd->mask_texture)
+  if (wmd->mask_texture) {
     return BKE_texture_dependsOnTime(wmd->mask_texture);
+  }
   return 0;
 }
 
@@ -374,8 +385,9 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
 {
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
   /* If no vertex group, bypass. */
-  if (wmd->defgrp_name[0] == '\0')
+  if (wmd->defgrp_name[0] == '\0') {
     return 1;
+  }
   /* If no target object, bypass. */
   return (wmd->proximity_ob_target == NULL);
 }
@@ -520,10 +532,12 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         get_vert2geom_distance(numIdx, v_cos, dists_v, dists_e, dists_f, target_mesh, &loc2trgt);
         for (i = 0; i < numIdx; i++) {
           new_w[i] = dists_v ? dists_v[i] : FLT_MAX;
-          if (dists_e)
+          if (dists_e) {
             new_w[i] = min_ff(dists_e[i], new_w[i]);
-          if (dists_f)
+          }
+          if (dists_f) {
             new_w[i] = min_ff(dists_f[i], new_w[i]);
+          }
         }
 
         MEM_SAFE_FREE(dists_v);

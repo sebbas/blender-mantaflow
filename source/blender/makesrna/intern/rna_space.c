@@ -84,7 +84,13 @@ const EnumPropertyItem rna_enum_space_type_items[] = {
 
     /* Animation */
     {0, "", ICON_NONE, "Animation", ""},
-    //{SPACE_ACTION, "TIMELINE", ICON_TIME, "Timeline", "Timeline and playback controls (NOTE: Switch to 'Timeline' mode)"}, /* XXX */
+#if 0
+    {SPACE_ACTION,
+     "TIMELINE",
+     ICON_TIME,
+     "Timeline",
+     "Timeline and playback controls (NOTE: Switch to 'Timeline' mode)"}, /* XXX */
+#endif
     {SPACE_ACTION, "DOPESHEET_EDITOR", ICON_ACTION, "Dope Sheet", "Adjust timing of keyframes"},
     {SPACE_GRAPH,
      "GRAPH_EDITOR",
@@ -106,12 +112,7 @@ const EnumPropertyItem rna_enum_space_type_items[] = {
      "Python Console",
      "Interactive programmatic console for "
      "advanced editing and script development"},
-    {SPACE_INFO,
-     "INFO",
-     ICON_INFO,
-     "Info",
-     "Main menu bar and list of error messages "
-     "(drag down to expand and display)"},
+    {SPACE_INFO, "INFO", ICON_INFO, "Info", "Log of operations, warnings and error messages"},
     /* Special case: Top-bar and Status-bar aren't supposed to be a regular editor for the user. */
     {SPACE_TOPBAR,
      "TOPBAR",
@@ -191,7 +192,8 @@ const EnumPropertyItem rna_enum_space_graph_mode_items[] = {
   }
 
 #ifndef RNA_RUNTIME
-/* XXX: action-editor is currently for object-level only actions, so show that using object-icon hint */
+/* XXX: action-editor is currently for object-level only actions,
+ * so show that using object-icon hint */
 static EnumPropertyItem rna_enum_space_action_mode_all_items[] = {
     SACT_ITEM_DOPESHEET,
     SACT_ITEM_TIMELINE,
@@ -355,6 +357,7 @@ static const EnumPropertyItem rna_enum_shading_color_type_items[] = {
     {V3D_SHADING_MATERIAL_COLOR, "MATERIAL", 0, "Material", "Show material color"},
     {V3D_SHADING_OBJECT_COLOR, "OBJECT", 0, "Object", "Show object color"},
     {V3D_SHADING_RANDOM_COLOR, "RANDOM", 0, "Random", "Show random object color"},
+    {V3D_SHADING_VERTEX_COLOR, "VERTEX", 0, "Vertex", "Show active vertex color"},
     {V3D_SHADING_TEXTURE_COLOR, "TEXTURE", 0, "Texture", "Show texture"},
     {0, NULL, 0, NULL, NULL},
 };
@@ -370,7 +373,8 @@ const EnumPropertyItem rna_enum_clip_editor_mode_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-/* Actually populated dynamically trough a function, but helps for context-less access (e.g. doc, i18n...). */
+/* Actually populated dynamically trough a function,
+ * but helps for context-less access (e.g. doc, i18n...). */
 static const EnumPropertyItem buttons_context_items[] = {
     {BCONTEXT_TOOL, "TOOL", ICON_TOOL_SETTINGS, "Tool", "Active Tool and Workspace settings"},
     {BCONTEXT_SCENE, "SCENE", ICON_SCENE_DATA, "Scene", "Scene"},
@@ -549,6 +553,160 @@ static void rna_area_region_from_regiondata(PointerRNA *ptr, ScrArea **r_sa, ARe
 
   area_region_from_regiondata(sc, regiondata, r_sa, r_ar);
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Generic Region Flag Access
+ * \{ */
+
+static bool rna_Space_bool_from_region_flag_get_by_type(PointerRNA *ptr,
+                                                        const int region_type,
+                                                        const int region_flag)
+{
+  ScrArea *sa = rna_area_from_space(ptr);
+  ARegion *ar = BKE_area_find_region_type(sa, region_type);
+  if (ar) {
+    return (ar->flag & region_flag);
+  }
+  return false;
+}
+
+static void rna_Space_bool_from_region_flag_set_by_type(PointerRNA *ptr,
+                                                        const int region_type,
+                                                        const int region_flag,
+                                                        bool value)
+{
+  ScrArea *sa = rna_area_from_space(ptr);
+  ARegion *ar = BKE_area_find_region_type(sa, region_type);
+  if (ar) {
+    SET_FLAG_FROM_TEST(ar->flag, value, region_flag);
+  }
+  ED_region_tag_redraw(ar);
+}
+
+static void rna_Space_bool_from_region_flag_update_by_type(bContext *C,
+                                                           PointerRNA *ptr,
+                                                           const int region_type,
+                                                           const int region_flag)
+{
+  ScrArea *sa = rna_area_from_space(ptr);
+  ARegion *ar = BKE_area_find_region_type(sa, region_type);
+  if (ar) {
+    if (region_flag == RGN_FLAG_HIDDEN) {
+      /* Only support animation when the area is in the current context. */
+      if (ar->overlap && (sa == CTX_wm_area(C))) {
+        ED_region_visibility_change_update_animated(C, sa, ar);
+      }
+      else {
+        ED_region_visibility_change_update(C, sa, ar);
+      }
+    }
+    else if (region_flag == RGN_FLAG_HIDDEN_BY_USER) {
+      if (!(ar->flag & RGN_FLAG_HIDDEN_BY_USER) != !(ar->flag & RGN_FLAG_HIDDEN)) {
+        ED_region_toggle_hidden(C, ar);
+
+        if ((ar->flag & RGN_FLAG_HIDDEN_BY_USER) == 0) {
+          ED_area_type_hud_ensure(C, sa);
+        }
+      }
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Region Flag Access (Typed Callbacks)
+ * \{ */
+
+/* Header Region. */
+static bool rna_Space_show_region_header_get(PointerRNA *ptr)
+{
+  return !rna_Space_bool_from_region_flag_get_by_type(ptr, RGN_TYPE_HEADER, RGN_FLAG_HIDDEN);
+}
+static void rna_Space_show_region_header_set(PointerRNA *ptr, bool value)
+{
+  rna_Space_bool_from_region_flag_set_by_type(ptr, RGN_TYPE_HEADER, RGN_FLAG_HIDDEN, !value);
+
+  /* Special case, never show the tool properties when the header is invisible. */
+  bool value_for_tool_header = value;
+  if (value == true) {
+    ScrArea *sa = rna_area_from_space(ptr);
+    ARegion *ar_tool_header = BKE_area_find_region_type(sa, RGN_TYPE_TOOL_HEADER);
+    if (ar_tool_header != NULL) {
+      value = !(ar_tool_header->flag & RGN_FLAG_HIDDEN_BY_USER);
+    }
+  }
+  rna_Space_bool_from_region_flag_set_by_type(
+      ptr, RGN_TYPE_TOOL_HEADER, RGN_FLAG_HIDDEN, !value_for_tool_header);
+}
+static void rna_Space_show_region_header_update(bContext *C, PointerRNA *ptr)
+{
+  rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_HEADER, RGN_FLAG_HIDDEN);
+}
+
+/* Tool Header Region.
+ *
+ * This depends on the 'RGN_TYPE_TOOL_HEADER'
+ */
+static bool rna_Space_show_region_tool_header_get(PointerRNA *ptr)
+{
+  return !rna_Space_bool_from_region_flag_get_by_type(
+      ptr, RGN_TYPE_TOOL_HEADER, RGN_FLAG_HIDDEN_BY_USER);
+}
+static void rna_Space_show_region_tool_header_set(PointerRNA *ptr, bool value)
+{
+  rna_Space_bool_from_region_flag_set_by_type(
+      ptr, RGN_TYPE_TOOL_HEADER, RGN_FLAG_HIDDEN_BY_USER, !value);
+  rna_Space_bool_from_region_flag_set_by_type(ptr, RGN_TYPE_TOOL_HEADER, RGN_FLAG_HIDDEN, !value);
+}
+static void rna_Space_show_region_tool_header_update(bContext *C, PointerRNA *ptr)
+{
+  rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_TOOL_HEADER, RGN_FLAG_HIDDEN);
+}
+
+/* Tools Region. */
+static bool rna_Space_show_region_toolbar_get(PointerRNA *ptr)
+{
+  return !rna_Space_bool_from_region_flag_get_by_type(ptr, RGN_TYPE_TOOLS, RGN_FLAG_HIDDEN);
+}
+static void rna_Space_show_region_toolbar_set(PointerRNA *ptr, bool value)
+{
+  rna_Space_bool_from_region_flag_set_by_type(ptr, RGN_TYPE_TOOLS, RGN_FLAG_HIDDEN, !value);
+}
+static void rna_Space_show_region_toolbar_update(bContext *C, PointerRNA *ptr)
+{
+  rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_TOOLS, RGN_FLAG_HIDDEN);
+}
+
+/* UI Region */
+static bool rna_Space_show_region_ui_get(PointerRNA *ptr)
+{
+  return !rna_Space_bool_from_region_flag_get_by_type(ptr, RGN_TYPE_UI, RGN_FLAG_HIDDEN);
+}
+static void rna_Space_show_region_ui_set(PointerRNA *ptr, bool value)
+{
+  rna_Space_bool_from_region_flag_set_by_type(ptr, RGN_TYPE_UI, RGN_FLAG_HIDDEN, !value);
+}
+static void rna_Space_show_region_ui_update(bContext *C, PointerRNA *ptr)
+{
+  rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_UI, RGN_FLAG_HIDDEN);
+}
+
+/* Redo (HUD) Region */
+static bool rna_Space_show_region_hud_get(PointerRNA *ptr)
+{
+  return !rna_Space_bool_from_region_flag_get_by_type(ptr, RGN_TYPE_HUD, RGN_FLAG_HIDDEN_BY_USER);
+}
+static void rna_Space_show_region_hud_set(PointerRNA *ptr, bool value)
+{
+  rna_Space_bool_from_region_flag_set_by_type(ptr, RGN_TYPE_HUD, RGN_FLAG_HIDDEN_BY_USER, !value);
+}
+static void rna_Space_show_region_hud_update(bContext *C, PointerRNA *ptr)
+{
+  rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_HUD, RGN_FLAG_HIDDEN_BY_USER);
+}
+
+/** \} */
 
 static bool rna_Space_view2d_sync_get(PointerRNA *ptr)
 {
@@ -747,22 +905,17 @@ static void rna_RegionView3D_view_matrix_set(PointerRNA *ptr, const float *value
   ED_view3d_from_m4(mat, rv3d->ofs, rv3d->viewquat, &rv3d->dist);
 }
 
+static bool rna_RegionView3D_is_orthographic_side_view_get(PointerRNA *ptr)
+{
+  RegionView3D *rv3d = (RegionView3D *)(ptr->data);
+  return RV3D_VIEW_IS_AXIS(rv3d->view);
+}
+
 static void rna_3DViewShading_type_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   ID *id = ptr->id.data;
   if (GS(id->name) == ID_SCE) {
     return;
-  }
-
-  for (Material *ma = bmain->materials.first; ma; ma = ma->id.next) {
-    /* XXX Dependency graph does not support CD mask tracking,
-     * so we trigger  materials shading for until it's properly supported.
-     * This is to ensure material batches are all recreated when switching
-     * shading type. In the future DEG should replace this and just tag
-     * the meshes itself.
-     * This hack just tag BKE_MESH_BATCH_DIRTY_SHADING for every mesh that
-     * have a material. (see T55059) */
-    DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
   }
 
   View3DShading *shading = ptr->data;
@@ -923,6 +1076,8 @@ static const EnumPropertyItem *rna_View3DShading_color_type_itemf(bContext *UNUS
         &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_OBJECT_COLOR);
     RNA_enum_items_add_value(
         &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_RANDOM_COLOR);
+    RNA_enum_items_add_value(
+        &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_VERTEX_COLOR);
     if (shading->light != V3D_LIGHTING_MATCAP) {
       RNA_enum_items_add_value(
           &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_TEXTURE_COLOR);
@@ -1061,7 +1216,8 @@ static const EnumPropertyItem *rna_SpaceView3D_stereo3d_camera_itemf(bContext *C
 static int rna_SpaceView3D_icon_from_show_object_viewport_get(PointerRNA *ptr)
 {
   const View3D *v3d = (View3D *)ptr->data;
-  /* Ignore selection values when view is off, intent is to show if visible objects aren't selectable. */
+  /* Ignore selection values when view is off,
+   * intent is to show if visible objects aren't selectable. */
   const int view_value = (v3d->object_type_exclude_viewport != 0);
   const int select_value = (v3d->object_type_exclude_select &
                             ~v3d->object_type_exclude_viewport) != 0;
@@ -1649,7 +1805,8 @@ static void rna_SpaceDopeSheetEditor_action_update(bContext *C, PointerRNA *ptr)
              * EXCEPTION:
              * This callback runs when unlinking actions. In that case, we don't want to
              * stash the action, as the user is signalling that they want to detach it.
-             * This can be reviewed again later, but it could get annoying if we keep these instead.
+             * This can be reviewed again later,
+             * but it could get annoying if we keep these instead.
              */
             if ((adt->action->id.us <= 0) && (saction->action != NULL)) {
               /* XXX: Things here get dodgy if this action is only partially completed,
@@ -1725,14 +1882,15 @@ static void rna_SpaceDopeSheetEditor_mode_update(bContext *C, PointerRNA *ptr)
       else {
         channels_region->flag &= ~RGN_FLAG_HIDDEN;
       }
-      ED_region_visibility_change_update(C, channels_region);
+      ED_region_visibility_change_update(C, sa, channels_region);
     }
   }
 
   /* recalculate extents of channel list */
   saction->runtime.flag |= SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
 
-  /* store current mode as "old mode", so that returning from other editors doesn't always reset to "Action Editor" */
+  /* store current mode as "old mode",
+   * so that returning from other editors doesn't always reset to "Action Editor" */
   if (saction->mode != SACTCONT_TIMELINE) {
     saction->mode_prev = saction->mode;
   }
@@ -2278,6 +2436,45 @@ static const EnumPropertyItem dt_uv_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+static void rna_def_space_generic_show_region_toggles(StructRNA *srna, int region_type_mask)
+{
+  PropertyRNA *prop;
+
+#  define DEF_SHOW_REGION_PROPERTY(identifier, label, description) \
+    { \
+      prop = RNA_def_property(srna, STRINGIFY(identifier), PROP_BOOLEAN, PROP_NONE); \
+      RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE); \
+      RNA_def_property_boolean_funcs(prop, \
+                                     STRINGIFY(rna_Space_##identifier##_get), \
+                                     STRINGIFY(rna_Space_##identifier##_set)); \
+      RNA_def_property_ui_text(prop, label, description); \
+      RNA_def_property_update(prop, 0, STRINGIFY(rna_Space_##identifier##_update)); \
+    } \
+    ((void)0)
+
+  if (region_type_mask & (1 << RGN_TYPE_TOOL_HEADER)) {
+    region_type_mask &= ~(1 << RGN_TYPE_TOOL_HEADER);
+    DEF_SHOW_REGION_PROPERTY(show_region_tool_header, "Tool Header", "");
+  }
+  if (region_type_mask & (1 << RGN_TYPE_HEADER)) {
+    region_type_mask &= ~(1 << RGN_TYPE_HEADER);
+    DEF_SHOW_REGION_PROPERTY(show_region_header, "Header", "");
+  }
+  if (region_type_mask & (1 << RGN_TYPE_TOOLS)) {
+    region_type_mask &= ~(1 << RGN_TYPE_TOOLS);
+    DEF_SHOW_REGION_PROPERTY(show_region_toolbar, "Toolbar", "");
+  }
+  if (region_type_mask & (1 << RGN_TYPE_UI)) {
+    region_type_mask &= ~(1 << RGN_TYPE_UI);
+    DEF_SHOW_REGION_PROPERTY(show_region_ui, "Sidebar", "");
+  }
+  if (region_type_mask & (1 << RGN_TYPE_HUD)) {
+    region_type_mask &= ~(1 << RGN_TYPE_HUD);
+    DEF_SHOW_REGION_PROPERTY(show_region_hud, "Adjust Last Operation", "");
+  }
+  BLI_assert(region_type_mask == 0);
+}
+
 static void rna_def_space(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2291,7 +2488,8 @@ static void rna_def_space(BlenderRNA *brna)
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "spacetype");
   RNA_def_property_enum_items(prop, rna_enum_space_type_items);
-  /* When making this editable, take care for the special case of global areas (see rna_Area_type_set). */
+  /* When making this editable, take care for the special case of global areas
+   * (see rna_Area_type_set). */
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Type", "Space data type");
 
@@ -2300,6 +2498,8 @@ static void rna_def_space(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_Space_view2d_sync_get", "rna_Space_view2d_sync_set");
   RNA_def_property_ui_text(prop, "Lock Time to Other Windows", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_TIME, "rna_Space_view2d_sync_update");
+
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_HEADER));
 }
 
 /* for all spaces that use a mask */
@@ -2799,6 +2999,7 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_shading_color_type_items);
   RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_View3DShading_color_type_itemf");
   RNA_def_property_ui_text(prop, "Color", "Color Type");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "wireframe_color_type", PROP_ENUM, PROP_NONE);
@@ -2930,6 +3131,11 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag2", V3D_HIDE_OVERLAYS);
   RNA_def_property_ui_text(prop, "Show Overlays", "Display overlays like gizmos and outlines");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_GPencil_update");
+
+  prop = RNA_def_property(srna, "show_ortho_grid", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "gridflag", V3D_SHOW_ORTHO_GRID);
+  RNA_def_property_ui_text(prop, "Display Grid", "Show grid in othographic side view");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_floor", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "gridflag", V3D_SHOW_FLOOR);
@@ -3273,6 +3479,13 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
+  prop = RNA_def_property(srna, "sculpt_mode_mask_opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "overlay.sculpt_mode_mask_opacity");
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Sculpt Mask Opacity", "");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
   /* grease pencil paper settings */
   prop = RNA_def_property(srna, "show_annotation", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag2", V3D_SHOW_ANNOTATION);
@@ -3375,6 +3588,10 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceView3D", "Space");
   RNA_def_struct_sdna(srna, "View3D");
   RNA_def_struct_ui_text(srna, "3D View Space", "3D View space data");
+
+  rna_def_space_generic_show_region_toggles(srna,
+                                            ((1 << RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_TOOLS) |
+                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD)));
 
   prop = RNA_def_property(srna, "camera", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -3777,6 +3994,11 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Is Perspective", "");
   RNA_def_property_flag(prop, PROP_EDITABLE);
 
+  prop = RNA_def_property(srna, "is_orthographic_side_view", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "view", 0);
+  RNA_def_property_boolean_funcs(prop, "rna_RegionView3D_is_orthographic_side_view_get", NULL);
+  RNA_def_property_ui_text(prop, "Is Axis Aligned", "Is current view an orthographic side view");
+
   /* This isn't directly accessible from the UI, only an operator. */
   prop = RNA_def_property(srna, "use_clip_planes", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "rflag", RV3D_CLIPPING);
@@ -3874,6 +4096,10 @@ static void rna_def_space_image(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceImageEditor", "Space");
   RNA_def_struct_sdna(srna, "SpaceImage");
   RNA_def_struct_ui_text(srna, "Space Image Editor", "Image and UV editor space data");
+
+  rna_def_space_generic_show_region_toggles(srna,
+                                            ((1 << RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_TOOLS) |
+                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD)));
 
   /* image */
   prop = RNA_def_property(srna, "image", PROP_POINTER, PROP_NONE);
@@ -4103,6 +4329,8 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceSeq");
   RNA_def_struct_ui_text(srna, "Space Sequence Editor", "Sequence editor space data");
 
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI));
+
   /* view type, fairly important */
   prop = RNA_def_property(srna, "view_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "view");
@@ -4245,6 +4473,8 @@ static void rna_def_space_text(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceText");
   RNA_def_struct_ui_text(srna, "Space Text Editor", "Text editor space data");
 
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI));
+
   /* text */
   prop = RNA_def_property(srna, "text", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -4366,6 +4596,8 @@ static void rna_def_space_dopesheet(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceDopeSheetEditor", "Space");
   RNA_def_struct_sdna(srna, "SpaceAction");
   RNA_def_struct_ui_text(srna, "Space Dope Sheet Editor", "Dope Sheet space data");
+
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI));
 
   /* data */
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
@@ -4545,6 +4777,8 @@ static void rna_def_space_graph(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceGraph");
   RNA_def_struct_ui_text(srna, "Space Graph Editor", "Graph Editor space data");
 
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI));
+
   /* mode */
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "mode");
@@ -4695,6 +4929,8 @@ static void rna_def_space_nla(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceNLA", "Space");
   RNA_def_struct_sdna(srna, "SpaceNla");
   RNA_def_struct_ui_text(srna, "Space Nla Editor", "NLA editor space data");
+
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI));
 
   /* display */
   prop = RNA_def_property(srna, "show_seconds", PROP_BOOLEAN, PROP_NONE);
@@ -5487,6 +5723,8 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceNode");
   RNA_def_struct_ui_text(srna, "Space Node Editor", "Node editor space data");
 
+  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI));
+
   prop = RNA_def_property(srna, "tree_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, dummy_items);
   RNA_def_property_enum_funcs(prop,
@@ -5662,6 +5900,9 @@ static void rna_def_space_clip(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceClipEditor", "Space");
   RNA_def_struct_sdna(srna, "SpaceClip");
   RNA_def_struct_ui_text(srna, "Space Clip Editor", "Clip editor space data");
+
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
 
   /* movieclip */
   prop = RNA_def_property(srna, "clip", PROP_POINTER, PROP_NONE);

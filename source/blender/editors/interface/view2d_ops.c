@@ -1183,8 +1183,9 @@ static int view_zoomdrag_modal(bContext *C, wmOperator *op, const wmEvent *event
     vzd->dx += dx;
     vzd->dy += dy;
 
-    /* store mouse coordinates for next time, if not doing continuous zoom
-     * - continuous zoom only depends on distance of mouse to starting point to determine rate of change
+    /* Store mouse coordinates for next time, if not doing continuous zoom:
+     * - Continuous zoom only depends on distance of mouse
+     *   to starting point to determine rate of change.
      */
     if (U.viewzoom != USER_ZOOM_CONT) {  // XXX store this setting as RNA prop?
       vzd->lastx = event->x;
@@ -1647,9 +1648,11 @@ typedef struct v2dScrollerMove {
 
 /**
  * #View2DScrollers is typedef'd in UI_view2d.h
- * This is a CUT DOWN VERSION of the 'real' version, which is defined in view2d.c, as we only need focus bubble info
+ * This is a CUT DOWN VERSION of the 'real' version, which is defined in view2d.c,
+ * as we only need focus bubble info.
  *
- * \warning: The start of this struct must not change, so that it stays in sync with the 'real' version
+ * \warning: The start of this struct must not change,
+ * so that it stays in sync with the 'real' version.
  * For now, we don't need to have a separate (internal) header for structs like this...
  */
 struct View2DScrollers {
@@ -1782,8 +1785,7 @@ static void scroller_activate_init(bContext *C,
   /* 'zone' depends on where mouse is relative to bubble
    * - zooming must be allowed on this axis, otherwise, default to pan
    */
-  scrollers = UI_view2d_scrollers_calc(
-      C, v2d, NULL, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
+  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
 
   /* use a union of 'cur' & 'tot' incase the current view is far outside 'tot'. In this cases
    * moving the scroll bars has far too little effect and the view can get stuck T31476. */

@@ -250,8 +250,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   const char mpoly_flag = (ltmd->flag & MOD_SCREW_SMOOTH_SHADING) ? ME_SMOOTH : 0;
 
   /* don't do anything? */
-  if (!totvert)
+  if (!totvert) {
     return BKE_mesh_new_nomain_from_template(mesh, 0, 0, 0, 0, 0);
+  }
 
   switch (ltmd->axis) {
     case 0:
@@ -316,7 +317,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         cross_v3_v3v3(c1, cross2, axis_vec);
         cross_v3_v3v3(c2, axis_vec, c1);
 
-
         angle = angle_v3v3(cross1, c2);
 
         cross_v3_v3v3(axis_tmp, cross1, c2);
@@ -324,7 +324,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
         if (len_v3v3(axis_tmp, axis_vec) > 1.0f)
           angle = -angle;
-
       }
     }
 #endif
@@ -346,14 +345,16 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   /* multiplying the steps is a bit tricky, this works best */
   step_tot = ((step_tot + 1) * ltmd->iter) - (ltmd->iter - 1);
 
-  /* will the screw be closed?
-   * Note! smaller then FLT_EPSILON * 100 gives problems with float precision so its never closed. */
+  /* Will the screw be closed?
+   * Note! smaller then `FLT_EPSILON * 100`
+   * gives problems with float precision so its never closed. */
   if (fabsf(screw_ofs) <= (FLT_EPSILON * 100.0f) &&
       fabsf(fabsf(angle) - ((float)M_PI * 2.0f)) <= (FLT_EPSILON * 100.0f)) {
     close = 1;
     step_tot--;
-    if (step_tot < 3)
+    if (step_tot < 3) {
       step_tot = 3;
+    }
 
     maxVerts = totvert * step_tot;    /* -1 because we're joining back up */
     maxEdges = (totvert * step_tot) + /* these are the edges between new verts */
@@ -364,8 +365,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
   }
   else {
     close = 0;
-    if (step_tot < 3)
+    if (step_tot < 3) {
       step_tot = 3;
+    }
 
     maxVerts = totvert * step_tot;          /* -1 because we're joining back up */
     maxEdges = (totvert * (step_tot - 1)) + /* these are the edges between new verts */
@@ -492,7 +494,8 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
      */
 
     vert_connect = MEM_malloc_arrayN(totvert, sizeof(ScrewVertConnect), "ScrewVertConnect");
-    //vert_connect = (ScrewVertConnect *) &medge_new[totvert];  /* skip the first slice of verts */
+    /* skip the first slice of verts. */
+    // vert_connect = (ScrewVertConnect *) &medge_new[totvert];
     vc = vert_connect;
 
     /* Copy Vert Locations */
@@ -604,7 +607,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
               /*printf("\t\tVERT: %i\n", lt_iter.v);*/
               if (lt_iter.v_poin->flag) {
                 /*printf("\t\t\tBreaking Found end\n");*/
-                //endpoints[0] = endpoints[1] = SV_UNUSED;
+                // endpoints[0] = endpoints[1] = SV_UNUSED;
                 ed_loop_closed = 1; /* circle */
                 break;
               }
@@ -692,8 +695,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
               ed_loop_flip = !ed_loop_flip;
 #endif
 
-            if (angle < 0.0f)
+            if (angle < 0.0f) {
               ed_loop_flip = !ed_loop_flip;
+            }
 
             /* if its closed, we only need 1 loop */
             for (j = ed_loop_closed; j < 2; j++) {
@@ -706,8 +710,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
               /* If this is the vert off the best vert and
                * the best vert has 2 edges connected too it
                * then swap the flip direction */
-              if (j == 1 && SV_IS_VALID(vc_tmp->v[0]) && SV_IS_VALID(vc_tmp->v[1]))
+              if (j == 1 && SV_IS_VALID(vc_tmp->v[0]) && SV_IS_VALID(vc_tmp->v[1])) {
                 ed_loop_flip = !ed_loop_flip;
+              }
 
               while (lt_iter.v_poin && lt_iter.v_poin->flag != 2) {
                 /*printf("\tOrdering Vert V %i\n", lt_iter.v);*/
@@ -719,26 +724,34 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
                       /*printf("\t\t\tFlipping 0\n");*/
                       SWAP(unsigned int, lt_iter.e->v1, lt_iter.e->v2);
                     }
-                    /* else {
-                        printf("\t\t\tFlipping Not 0\n");
-                       }*/
+#if 0
+                    else {
+                      printf("\t\t\tFlipping Not 0\n");
+                    }
+#endif
                   }
                   else if (lt_iter.v == lt_iter.e->v2) {
                     if (ed_loop_flip == 1) {
                       /*printf("\t\t\tFlipping 1\n");*/
                       SWAP(unsigned int, lt_iter.e->v1, lt_iter.e->v2);
                     }
-                    /* else {
-                        printf("\t\t\tFlipping Not 1\n");
-                       }*/
+#if 0
+                    else {
+                      printf("\t\t\tFlipping Not 1\n");
+                    }
+#endif
                   }
-                  /* else {
-                      printf("\t\tIncorrect edge topology");
-                     }*/
+#if 0
+                  else {
+                    printf("\t\tIncorrect edge topology");
+                  }
+#endif
                 }
-                /* else {
-                    printf("\t\tNo Edge at this point\n");
-                   }*/
+#if 0
+                else {
+                  printf("\t\tNo Edge at this point\n");
+                }
+#endif
                 screwvert_iter_step(&lt_iter);
               }
             }
@@ -806,8 +819,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         }
 
         /* we won't be looping on this data again so copy normals here */
-        if ((angle < 0.0f) != do_flip)
+        if ((angle < 0.0f) != do_flip) {
           negate_v3(vc->no);
+        }
 
         normalize_v3(vc->no);
         normal_float_to_short_v3(mvert_new[i].no, vc->no);
@@ -843,8 +857,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
     }
     copy_m4_m3(mat, mat3);
 
-    if (screw_ofs)
+    if (screw_ofs) {
       madd_v3_v3fl(mat[3], axis_vec, screw_ofs * ((float)step / (float)(step_tot - 1)));
+    }
 
     /* copy a slice */
     CustomData_copy_data(&mesh->vdata, &result->vdata, 0, (int)varray_stride, (int)totvert);
@@ -1081,7 +1096,6 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
       ii = findEd(medge_new, maxEdges, ml_new[3].v, ml_new[0].v);
       printf("%d %d\n", ii, ml_new[3].e);
       ml_new[3].e = ii;
-
     }
   }
 #endif

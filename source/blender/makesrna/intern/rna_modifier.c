@@ -1049,8 +1049,10 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
 
 #  if 0 /* XXX Don't think we want this in modifier version... */
     if (BKE_object_pose_armature_get(ob_src)) {
-      RNA_enum_items_add_value(&item, &totitem, rna_enum_dt_layers_select_src_items, DT_LAYERS_VGROUP_SRC_BONE_SELECT);
-      RNA_enum_items_add_value(&item, &totitem, rna_enum_dt_layers_select_src_items, DT_LAYERS_VGROUP_SRC_BONE_DEFORM);
+      RNA_enum_items_add_value(
+          &item, &totitem, rna_enum_dt_layers_select_src_items, DT_LAYERS_VGROUP_SRC_BONE_SELECT);
+      RNA_enum_items_add_value(
+          &item, &totitem, rna_enum_dt_layers_select_src_items, DT_LAYERS_VGROUP_SRC_BONE_DEFORM);
     }
 #  endif
 
@@ -1298,19 +1300,6 @@ static bool rna_SurfaceDeformModifier_is_bound_get(PointerRNA *ptr)
   return (((SurfaceDeformModifierData *)ptr->data)->verts != NULL);
 }
 
-static void rna_MeshSequenceCache_object_path_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-#  ifdef WITH_ALEMBIC
-  MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)ptr->data;
-  Object *ob = (Object *)ptr->id.data;
-
-  mcmd->reader = CacheReader_open_alembic_object(
-      mcmd->cache_file->handle, mcmd->reader, ob, mcmd->object_path);
-#  endif
-
-  rna_Modifier_update(bmain, scene, ptr);
-}
-
 static bool rna_ParticleInstanceModifier_particle_system_poll(PointerRNA *ptr,
                                                               const PointerRNA value)
 {
@@ -1373,16 +1362,28 @@ static PropertyRNA *rna_def_property_subdivision_common(StructRNA *srna, const c
      "Smooth, keep corners",
      "UVs are smoothed, corners on discontinuous boundary are kept sharp"},
 #  if 0
-    {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_AND_JUNCTIONS, "PRESERVE_CORNERS_AND_JUNCTIONS", 0,
-     "Smooth, keep corners+junctions", "UVs are smoothed, corners on discontinuous boundary and "
+    {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_AND_JUNCTIONS,
+     "PRESERVE_CORNERS_AND_JUNCTIONS",
+     0,
+     "Smooth, keep corners+junctions",
+     "UVs are smoothed, corners on discontinuous boundary and "
      "junctions of 3 or more regions are kept sharp"},
-    {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE, "PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE", 0,
-     "Smooth, keep corners+junctions+concave", "UVs are smoothed, corners on discontinuous boundary, "
+    {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE,
+     "PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE",
+     0,
+     "Smooth, keep corners+junctions+concave",
+     "UVs are smoothed, corners on discontinuous boundary, "
      "junctions of 3 or more regions and darts and concave corners are kept sharp"},
-    {SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES, "PRESERVE_BOUNDARIES", 0,
-     "Smooth, keep corners", "UVs are smoothed, boundaries are kept sharp"},
-    {SUBSURF_UV_SMOOTH_ALL, "PRESERVE_BOUNDARIES", 0,
-     "Smooth all", "UVs and boundaries are smoothed"},
+    {SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES,
+     "PRESERVE_BOUNDARIES",
+     0,
+     "Smooth, keep corners",
+     "UVs are smoothed, boundaries are kept sharp"},
+    {SUBSURF_UV_SMOOTH_ALL,
+     "PRESERVE_BOUNDARIES",
+     0,
+     "Smooth all",
+     "UVs and boundaries are smoothed"},
 #  endif
     {0, NULL, 0, NULL, NULL},
   };
@@ -2105,13 +2106,15 @@ static void rna_def_modifier_armature(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_bone_envelopes", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "deformflag", ARM_DEF_ENVELOPE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Use Bone Envelopes", "Bind Bone envelopes to armature modifier");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "use_vertex_groups", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "deformflag", ARM_DEF_VGROUP);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Use Vertex Groups", "Bind vertex groups to armature modifier");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
   prop = RNA_def_property(srna, "use_deform_preserve_volume", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "deformflag", ARM_DEF_QUATERNION);
@@ -2956,9 +2959,9 @@ static void rna_def_modifier_meshdeform(BlenderRNA *brna)
   PropertyRNA *prop;
 #  if 0
   static const EnumPropertyItem prop_mode_items[] = {
-    {0, "VOLUME", 0, "Volume", "Bind to volume inside cage mesh"},
-    {1, "SURFACE", 0, "Surface", "Bind to surface of cage mesh"},
-    {0, NULL, 0, NULL, NULL},
+      {0, "VOLUME", 0, "Volume", "Bind to volume inside cage mesh"},
+      {1, "SURFACE", 0, "Surface", "Bind to surface of cage mesh"},
+      {0, NULL, 0, NULL, NULL},
   };
 #  endif
 
@@ -4109,7 +4112,8 @@ static void rna_def_modifier_screw(BlenderRNA *brna)
 #  if 0
   prop = RNA_def_property(srna, "use_angle_object", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", MOD_SCREW_OBJECT_ANGLE);
-  RNA_def_property_ui_text(prop, "Object Angle", "Use the angle between the objects rather than the fixed angle");
+  RNA_def_property_ui_text(
+      prop, "Object Angle", "Use the angle between the objects rather than the fixed angle");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 #  endif
 }
@@ -4643,8 +4647,11 @@ static void rna_def_modifier_ocean(BlenderRNA *brna)
      "Displace",
      "Displace existing geometry according to simulation"},
 #  if 0
-    {MOD_OCEAN_GEOM_SIM_ONLY, "SIM_ONLY", 0, "Sim Only",
-                              "Leaves geometry unchanged, but still runs simulation (to be used from texture)"},
+    {MOD_OCEAN_GEOM_SIM_ONLY,
+     "SIM_ONLY",
+     0,
+     "Sim Only",
+     "Leaves geometry unchanged, but still runs simulation (to be used from texture)"},
 #  endif
     {0, NULL, 0, NULL, NULL},
   };
@@ -5087,7 +5094,7 @@ static void rna_def_modifier_meshseqcache(BlenderRNA *brna)
       prop,
       "Object Path",
       "Path to the object in the Alembic archive used to lookup geometric data");
-  RNA_def_property_update(prop, 0, "rna_MeshSequenceCache_object_path_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   static const EnumPropertyItem read_flag_items[] = {
       {MOD_MESHSEQ_READ_VERT, "VERT", 0, "Vertex", ""},
@@ -5232,7 +5239,9 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
 #  if 0 /* TODO */
     {DT_TYPE_SHAPEKEY, "SHAPEKEYS", 0, "Shapekey(s)", "Transfer active or all shape keys"},
 #  endif
-#  if 0 /* XXX When SkinModifier is enabled, it seems to erase its own CD_MVERT_SKIN layer from final DM :( */
+  /* XXX When SkinModifier is enabled,
+   * it seems to erase its own CD_MVERT_SKIN layer from final DM :( */
+#  if 0
     {DT_TYPE_SKIN, "SKIN", 0, "Skin Weight", "Transfer skin weights"},
 #  endif
     {DT_TYPE_BWEIGHT_VERT, "BEVEL_WEIGHT_VERT", 0, "Bevel Weight", "Transfer bevel weights"},
@@ -5457,10 +5466,15 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
 #  if 0
-  prop = RNA_def_enum(srna, "layers_shapekey_select_src", rna_enum_dt_layers_select_src_items, DT_LAYERS_ALL_SRC,
-                      "Source Layers Selection", "Which layers to transfer, in case of multi-layers types");
+  prop = RNA_def_enum(srna,
+                      "layers_shapekey_select_src",
+                      rna_enum_dt_layers_select_src_items,
+                      DT_LAYERS_ALL_SRC,
+                      "Source Layers Selection",
+                      "Which layers to transfer, in case of multi-layers types");
   RNA_def_property_enum_sdna(prop, NULL, "layers_select_src[DT_MULTILAYER_INDEX_SHAPEKEY]");
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_DataTransferModifier_layers_select_src_itemf");
+  RNA_def_property_enum_funcs(
+      prop, NULL, NULL, "rna_DataTransferModifier_layers_select_src_itemf");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 #  endif
 
@@ -5498,10 +5512,15 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
 #  if 0
-  prop = RNA_def_enum(srna, "layers_shapekey_select_dst", rna_enum_dt_layers_select_dst_items, DT_LAYERS_NAME_DST,
-                      "Destination Layers Matching", "How to match source and destination layers");
+  prop = RNA_def_enum(srna,
+                      "layers_shapekey_select_dst",
+                      rna_enum_dt_layers_select_dst_items,
+                      DT_LAYERS_NAME_DST,
+                      "Destination Layers Matching",
+                      "How to match source and destination layers");
   RNA_def_property_enum_sdna(prop, NULL, "layers_select_dst[DT_MULTILAYER_INDEX_SHAPEKEY]");
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_DataTransferModifier_layers_select_dst_itemf");
+  RNA_def_property_enum_funcs(
+      prop, NULL, NULL, "rna_DataTransferModifier_layers_select_dst_itemf");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 #  endif
 

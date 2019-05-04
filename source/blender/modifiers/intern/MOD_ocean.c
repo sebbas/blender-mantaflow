@@ -132,7 +132,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 {
 #ifdef WITH_OCEANSIM
 #  if 0
-  const OceanModifierData *omd = (const OceanModifierData *) md;
+  const OceanModifierData *omd = (const OceanModifierData *)md;
 #  endif
   OceanModifierData *tomd = (OceanModifierData *)target;
 
@@ -434,7 +434,8 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
 
   /* displace the geometry */
 
-  /* Note: tried to parallelized that one and previous foam loop, but gives 20% slower results... odd. */
+  /* Note: tried to parallelized that one and previous foam loop,
+   * but gives 20% slower results... odd. */
   {
     const int num_verts = result->totvert;
 
@@ -481,8 +482,9 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   result = doOcean(md, ctx, mesh);
 
-  if (result != mesh)
+  if (result != mesh) {
     result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
+  }
 
   return result;
 }

@@ -1190,7 +1190,8 @@ void convert_metallic_to_specular_tinted(vec3 basecol,
 vec3 principled_sheen(float NV, vec3 basecol_tint, float sheen_tint)
 {
   float f = 1.0 - NV;
-  /* Temporary fix for T59784. Normal map seems to contain NaNs for tangent space normal maps, therefore we need to clamp value. */
+  /* Temporary fix for T59784. Normal map seems to contain NaNs for tangent space normal maps,
+   * therefore we need to clamp value. */
   f = clamp(f, 0.0, 1.0);
   /* Empirical approximation (manual curve fitting). Can be refined. */
   float sheen = f * f * f * 0.077 + f * 0.01 + 0.00026;
@@ -2770,7 +2771,9 @@ float noise_perlin(float x, float y, float z)
 
   noise_v[1] = noise_nerp(v, noise_u[0], noise_u[1]);
 
-  return noise_scale3(noise_nerp(w, noise_v[0], noise_v[1]));
+  float r = noise_scale3(noise_nerp(w, noise_v[0], noise_v[1]));
+
+  return (isinf(r)) ? 0.0 : r;
 }
 
 float noise(vec3 p)
@@ -3404,7 +3407,7 @@ void world_normals_get(out vec3 N)
     /* Shade as a cylinder. */
     cos_theta = hairThickTime / hairThickness;
   }
-  float sin_theta = sqrt(max(0.0, 1.0f - cos_theta * cos_theta));
+  float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
   N = normalize(worldNormal * sin_theta + B * cos_theta);
 #  else
   N = gl_FrontFacing ? worldNormal : -worldNormal;
@@ -3425,15 +3428,18 @@ void node_eevee_specular(vec4 diffuse,
                          out Closure result)
 {
   vec3 out_diff, out_spec, ssr_spec;
-  eevee_closure_default(normal,
-                        diffuse.rgb,
-                        specular.rgb,
-                        int(ssr_id),
-                        roughness,
-                        occlusion,
-                        out_diff,
-                        out_spec,
-                        ssr_spec);
+  eevee_closure_default_clearcoat(normal,
+                                  diffuse.rgb,
+                                  specular.rgb,
+                                  int(ssr_id),
+                                  roughness,
+                                  clearcoat_normal,
+                                  clearcoat * 0.25,
+                                  clearcoat_roughness,
+                                  occlusion,
+                                  out_diff,
+                                  out_spec,
+                                  ssr_spec);
 
   vec3 vN = normalize(mat3(ViewMatrix) * normal);
   result = CLOSURE_DEFAULT;

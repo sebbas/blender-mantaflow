@@ -152,8 +152,9 @@ void drawSnapping(const struct bContext *C, TransInfo *t)
 {
   unsigned char col[4], selectedCol[4], activeCol[4];
 
-  if (!activeSnap(t))
+  if (!activeSnap(t)) {
     return;
+  }
 
   UI_GetThemeColor3ubv(TH_TRANSFORM, col);
   col[3] = 128;
@@ -289,21 +290,23 @@ void applyProject(TransInfo *t)
     float tvec[3];
     int i;
 
-    FOREACH_TRANS_DATA_CONTAINER(t, tc)
-    {
+    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       TransData *td = tc->data;
       for (i = 0; i < tc->data_len; i++, td++) {
         float iloc[3], loc[3], no[3];
         float mval_fl[2];
 
-        if (td->flag & TD_NOACTION)
+        if (td->flag & TD_NOACTION) {
           break;
+        }
 
-        if (td->flag & TD_SKIP)
+        if (td->flag & TD_SKIP) {
           continue;
+        }
 
-        if ((t->flag & T_PROP_EDIT) && (td->factor == 0.0f))
+        if ((t->flag & T_PROP_EDIT) && (td->factor == 0.0f)) {
           continue;
+        }
 
         copy_v3_v3(iloc, td->loc);
         if (tc->use_local_mat) {
@@ -357,7 +360,7 @@ void applyProject(TransInfo *t)
           }
         }
 
-        //XXX constraintTransLim(t, td);
+        // XXX constraintTransLim(t, td);
       }
     }
   }
@@ -369,12 +372,14 @@ void applyGridAbsolute(TransInfo *t)
   GearsType grid_action;
   int i;
 
-  if (!(activeSnap(t) && (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID))))
+  if (!(activeSnap(t) && (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)))) {
     return;
+  }
 
   grid_action = BIG_GEARS;
-  if (t->modifiers & MOD_PRECISION)
+  if (t->modifiers & MOD_PRECISION) {
     grid_action = SMALL_GEARS;
+  }
 
   switch (grid_action) {
     case NO_GEARS:
@@ -388,24 +393,27 @@ void applyGridAbsolute(TransInfo *t)
       break;
   }
   /* early exit on unusable grid size */
-  if (grid_size == 0.0f)
+  if (grid_size == 0.0f) {
     return;
+  }
 
-  FOREACH_TRANS_DATA_CONTAINER(t, tc)
-  {
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td;
 
     for (i = 0, td = tc->data; i < tc->data_len; i++, td++) {
       float iloc[3], loc[3], tvec[3];
 
-      if (td->flag & TD_NOACTION)
+      if (td->flag & TD_NOACTION) {
         break;
+      }
 
-      if (td->flag & TD_SKIP)
+      if (td->flag & TD_SKIP) {
         continue;
+      }
 
-      if ((t->flag & T_PROP_EDIT) && (td->factor == 0.0f))
+      if ((t->flag & T_PROP_EDIT) && (td->factor == 0.0f)) {
         continue;
+      }
 
       copy_v3_v3(iloc, td->loc);
       if (tc->use_local_mat) {
@@ -543,8 +551,9 @@ static void initSnappingMode(TransInfo *t)
   }
   else {
     /* force project off when not supported */
-    if ((ts->snap_mode & SCE_SNAP_MODE_FACE) == 0)
+    if ((ts->snap_mode & SCE_SNAP_MODE_FACE) == 0) {
       t->tsnap.project = 0;
+    }
 
     t->tsnap.mode = ts->snap_mode;
   }
@@ -582,7 +591,8 @@ static void initSnappingMode(TransInfo *t)
     else if (t->tsnap.applySnap != NULL &&  // A snapping function actually exist
              (obedit_type == -1))           // Object Mode
     {
-      /* In "Edit Strokes" mode, Snap tool can perform snap to selected or active objects (see T49632)
+      /* In "Edit Strokes" mode,
+       * snap tool can perform snap to selected or active objects (see T49632)
        * TODO: perform self snap in gpencil_strokes */
       t->tsnap.modeSelect = (((t->options & (CTX_GPENCIL_STROKES | CTX_CURSOR)) != 0) ?
                                  SNAP_ALL :
@@ -852,10 +862,12 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
 
   if (t->spacetype == SPACE_NODE) {
     char border = t->tsnap.snapNodeBorder;
-    if (border & (NODE_LEFT | NODE_RIGHT))
+    if (border & (NODE_LEFT | NODE_RIGHT)) {
       vec[0] = point[0] - t->tsnap.snapTarget[0];
-    if (border & (NODE_BOTTOM | NODE_TOP))
+    }
+    if (border & (NODE_BOTTOM | NODE_TOP)) {
       vec[1] = point[1] - t->tsnap.snapTarget[1];
+    }
   }
   else {
     if (t->spacetype == SPACE_VIEW3D) {
@@ -922,10 +934,12 @@ static float RotationBetween(TransInfo *t, const float p1[3], const float p2[3])
 
     cross_v3_v3v3(tmp, start, end);
 
-    if (dot_v3v3(tmp, axis) < 0.0f)
+    if (dot_v3v3(tmp, axis) < 0.0f) {
       angle = -acosf(dot_v3v3(start, end));
-    else
+    }
+    else {
       angle = acosf(dot_v3v3(start, end));
+    }
   }
   else {
     float mtx[3][3];
@@ -1063,23 +1077,31 @@ static void TargetSnapOffset(TransInfo *t, TransData *td)
     float height = BLI_rctf_size_y(&node->totr);
 
 #ifdef USE_NODE_CENTER
-    if (border & NODE_LEFT)
+    if (border & NODE_LEFT) {
       t->tsnap.snapTarget[0] -= 0.5f * width;
-    if (border & NODE_RIGHT)
+    }
+    if (border & NODE_RIGHT) {
       t->tsnap.snapTarget[0] += 0.5f * width;
-    if (border & NODE_BOTTOM)
+    }
+    if (border & NODE_BOTTOM) {
       t->tsnap.snapTarget[1] -= 0.5f * height;
-    if (border & NODE_TOP)
+    }
+    if (border & NODE_TOP) {
       t->tsnap.snapTarget[1] += 0.5f * height;
+    }
 #else
-    if (border & NODE_LEFT)
+    if (border & NODE_LEFT) {
       t->tsnap.snapTarget[0] -= 0.0f;
-    if (border & NODE_RIGHT)
+    }
+    if (border & NODE_RIGHT) {
       t->tsnap.snapTarget[0] += width;
-    if (border & NODE_BOTTOM)
+    }
+    if (border & NODE_BOTTOM) {
       t->tsnap.snapTarget[1] -= height;
-    if (border & NODE_TOP)
+    }
+    if (border & NODE_TOP) {
       t->tsnap.snapTarget[1] += 0.0f;
+    }
 #endif
   }
 }
@@ -1123,8 +1145,7 @@ static void TargetSnapMedian(TransInfo *t)
     t->tsnap.snapTarget[1] = 0;
     t->tsnap.snapTarget[2] = 0;
 
-    FOREACH_TRANS_DATA_CONTAINER(t, tc)
-    {
+    FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       TransData *td = tc->data;
       int i;
       float v[3];
@@ -1160,8 +1181,7 @@ static void TargetSnapClosest(TransInfo *t)
     /* Object mode */
     if (t->flag & T_OBJECT) {
       int i;
-      FOREACH_TRANS_DATA_CONTAINER(t, tc)
-      {
+      FOREACH_TRANS_DATA_CONTAINER (t, tc) {
         TransData *td = tc->data;
         for (td = tc->data, i = 0; i < tc->data_len && td->flag & TD_SELECTED; i++, td++) {
           struct BoundBox *bb = BKE_object_boundbox_get(td->ob);
@@ -1206,8 +1226,7 @@ static void TargetSnapClosest(TransInfo *t)
       }
     }
     else {
-      FOREACH_TRANS_DATA_CONTAINER(t, tc)
-      {
+      FOREACH_TRANS_DATA_CONTAINER (t, tc) {
         TransData *td = tc->data;
         int i;
         for (i = 0; i < tc->data_len && td->flag & TD_SELECTED; i++, td++) {
@@ -1506,8 +1525,9 @@ void snapSequenceBounds(TransInfo *t, const int mval[2])
   int mframe;
   TransSeq *ts = TRANS_DATA_CONTAINER_FIRST_SINGLE(t)->custom.type.data;
   /* reuse increment, strictly speaking could be another snap mode, but leave as is */
-  if (!(t->modifiers & MOD_SNAP_INVERT))
+  if (!(t->modifiers & MOD_SNAP_INVERT)) {
     return;
+  }
 
   /* convert to frame range */
   UI_view2d_region_to_view(&t->ar->v2d, mval[0], mval[1], &xmouse, &ymouse);
@@ -1515,8 +1535,9 @@ void snapSequenceBounds(TransInfo *t, const int mval[2])
   /* now find the closest sequence */
   frame = BKE_sequencer_find_next_prev_edit(t->scene, mframe, SEQ_SIDE_BOTH, true, false, true);
 
-  if (!ts->snap_left)
+  if (!ts->snap_left) {
     frame = frame - (ts->max - ts->min);
+  }
 
   t->values[0] = frame - ts->min;
 }
@@ -1542,24 +1563,11 @@ static void applyGridIncrement(
     /* custom aspect for fcurve */
     if (t->spacetype == SPACE_GRAPH) {
       View2D *v2d = &t->ar->v2d;
-      View2DGrid *grid;
+      Scene *scene = t->scene;
       SpaceGraph *sipo = t->sa->spacedata.first;
-      int unity = V2D_UNIT_VALUES;
-      int unitx = (sipo->flag & SIPO_DRAWTIME) ? V2D_UNIT_SECONDS : V2D_UNIT_FRAMESCALE;
-
-      /* grid */
-      grid = UI_view2d_grid_calc(t->scene,
-                                 v2d,
-                                 unitx,
-                                 V2D_GRID_NOCLAMP,
-                                 unity,
-                                 V2D_GRID_NOCLAMP,
-                                 t->ar->winx,
-                                 t->ar->winy);
-
-      UI_view2d_grid_size(grid, &asp_local[0], &asp_local[1]);
-      UI_view2d_grid_free(grid);
-
+      asp_local[0] = UI_view2d_grid_resolution_x__frames_or_seconds(
+          v2d, scene, sipo->flag & SIPO_DRAWTIME);
+      asp_local[1] = UI_view2d_grid_resolution_y__values(v2d);
       asp = asp_local;
     }
   }

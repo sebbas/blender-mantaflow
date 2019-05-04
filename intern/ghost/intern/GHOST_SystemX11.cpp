@@ -88,8 +88,8 @@
 /* see [#34039] Fix Alt key glitch on Unity desktop */
 #define USE_UNITY_WORKAROUND
 
-/* Fix 'shortcut' part of keyboard reading code only ever using first defined keymap instead of active one.
- * See T47228 and D1746 */
+/* Fix 'shortcut' part of keyboard reading code only ever using first defined keymap
+ * instead of active one. See T47228 and D1746 */
 #define USE_NON_LATIN_KB_WORKAROUND
 
 static GHOST_TKey ghost_key_from_keysym(const KeySym key);
@@ -314,7 +314,8 @@ void GHOST_SystemX11::getAllDisplayDimensions(GHOST_TUns32 &width, GHOST_TUns32 
  * Create a new window.
  * The new window is added to the list of windows managed.
  * Never explicitly delete the window, use disposeWindow() instead.
- * \param   title   The name of the window (displayed in the title bar of the window if the OS supports it).
+ * \param   title   The name of the window
+ * (displayed in the title bar of the window if the OS supports it).
  * \param   left    The coordinate of the left edge of the window.
  * \param   top     The coordinate of the top edge of the window.
  * \param   width   The width the window.
@@ -355,7 +356,6 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const STR_String &title,
                                ((glSettings.flags & GHOST_glStereoVisual) != 0),
                                exclusive,
                                ((glSettings.flags & GHOST_glAlphaBackground) != 0),
-                               glSettings.numOfAASamples,
                                (glSettings.flags & GHOST_glDebugContext) != 0);
 
   if (window) {
@@ -421,7 +421,6 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext()
 
   for (int minor = 5; minor >= 0; --minor) {
     context = new GHOST_ContextGLX(false,
-                                   0,
                                    (Window)NULL,
                                    m_display,
                                    (GLXFBConfig)NULL,
@@ -439,7 +438,6 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext()
   }
 
   context = new GHOST_ContextGLX(false,
-                                 0,
                                  (Window)NULL,
                                  m_display,
                                  (GLXFBConfig)NULL,
@@ -692,14 +690,16 @@ bool GHOST_SystemX11::processEvents(bool waitForEvent)
 
             if (xev_next.type == KeyPress || xev_next.type == KeyRelease) {
               /* XK_Hyper_L/R currently unused */
-              const static KeySym modifiers[8] = {XK_Shift_L,
-                                                  XK_Shift_R,
-                                                  XK_Control_L,
-                                                  XK_Control_R,
-                                                  XK_Alt_L,
-                                                  XK_Alt_R,
-                                                  XK_Super_L,
-                                                  XK_Super_R};
+              const static KeySym modifiers[8] = {
+                  XK_Shift_L,
+                  XK_Shift_R,
+                  XK_Control_L,
+                  XK_Control_R,
+                  XK_Alt_L,
+                  XK_Alt_R,
+                  XK_Super_L,
+                  XK_Super_R,
+              };
 
               for (int i = 0; i < (sizeof(modifiers) / sizeof(*modifiers)); i++) {
                 KeyCode kc = XKeysymToKeycode(m_display, modifiers[i]);
@@ -945,18 +945,19 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
        *     - Fallback to XLookupString to get a key_sym from active user-defined keymap.
        *
        * Note that:
-       *     - This effectively 'lock' main number keys to always output number events (except when using alt-gr).
-       *     - This enforces users to use an ascii-compatible keymap with Blender - but at least it gives
-       *       predictable and consistent results.
+       *     - This effectively 'lock' main number keys to always output number events
+       *       (except when using alt-gr).
+       *     - This enforces users to use an ascii-compatible keymap with Blender -
+       *       but at least it gives predictable and consistent results.
        *
-       * Also, note that nothing in XLib sources [1] makes it obvious why those two functions give different
-       * key_sym results...
+       * Also, note that nothing in XLib sources [1] makes it obvious why those two functions give
+       * different key_sym results...
        *
        * [1] http://cgit.freedesktop.org/xorg/lib/libX11/tree/src/KeyBind.c
        */
       KeySym key_sym_str;
-      /* Mode_switch 'modifier' is AltGr - when this one or Shift are enabled, we do not want to apply
-       * that 'forced number' hack. */
+      /* Mode_switch 'modifier' is AltGr - when this one or Shift are enabled,
+       * we do not want to apply that 'forced number' hack. */
       const unsigned int mode_switch_mask = XkbKeysymToModifiers(xke->display, XK_Mode_switch);
       const unsigned int number_hack_forbidden_kmods_mask = mode_switch_mask | ShiftMask;
       if ((xke->keycode >= 10 && xke->keycode < 20) &&
@@ -974,8 +975,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
         ascii = '\0';
       }
 
-      /* Only allow a limited set of keys from XLookupKeysym, all others we take from XLookupString,
-       * unless it gives unknown key... */
+      /* Only allow a limited set of keys from XLookupKeysym,
+       * all others we take from XLookupString, unless it gives unknown key... */
       gkey = ghost_key_from_keysym_or_keycode(key_sym, m_xkb_descr, xke->keycode);
       switch (gkey) {
         case GHOST_kKeyRightAlt:
@@ -1182,7 +1183,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
       XFocusChangeEvent &xfe = xe->xfocus;
 
       /* TODO: make sure this is the correct place for activate/deactivate */
-      // printf("X: focus %s for window %d\n", xfe.type == FocusIn ? "in" : "out", (int) xfe.window);
+      // printf("X: focus %s for window %d\n",
+      //        xfe.type == FocusIn ? "in" : "out", (int) xfe.window);
 
       /* May have to look at the type of event and filter some out. */
 
@@ -1234,7 +1236,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
       }
       else {
 #ifdef WITH_XDND
-        /* try to handle drag event (if there's no such events, GHOST_HandleClientMessage will return zero) */
+        /* try to handle drag event
+         * (if there's no such events, GHOST_HandleClientMessage will return zero) */
         if (window->getDropTarget()->GHOST_HandleClientMessage(xe) == false) {
           /* Unknown client message, ignore */
         }
@@ -1268,7 +1271,8 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
             getMilliSeconds(), GHOST_kEventCursorMove, window, xce.x_root, xce.y_root);
       }
 
-      // printf("X: %s window %d\n", xce.type == EnterNotify ? "entering" : "leaving", (int) xce.window);
+      // printf("X: %s window %d\n",
+      //        xce.type == EnterNotify ? "entering" : "leaving", (int) xce.window);
 
       if (xce.type == EnterNotify)
         m_windowManager->setActiveWindow(window);
@@ -1395,9 +1399,10 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
            * around tablet surface */
           window->GetTabletData()->Active = xtablet.mode;
 
-          /* Note: This event might be generated with incomplete dataset (don't exactly know why, looks like in
-           *       some cases, if the value does not change, it is not included in subsequent XDeviceMotionEvent
-           *       events). So we have to check which values this event actually contains!
+          /* Note: This event might be generated with incomplete dataset
+           * (don't exactly know why, looks like in some cases, if the value does not change,
+           * it is not included in subsequent XDeviceMotionEvent events).
+           * So we have to check which values this event actually contains!
            */
 
 #  define AXIS_VALUE_GET(axis, val) \
@@ -1412,8 +1417,9 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
            * but I got garbage data without it. Found it in the xidump.c source --matt
            *
            * The '& 0xffff' just truncates the value to its two lowest bytes, this probably means
-           * some drivers do not properly set the whole int value? Since we convert to float afterward,
-           * I don't think we need to cast to short here, but do not have a device to check this. --mont29
+           * some drivers do not properly set the whole int value? Since we convert to float
+           * afterward, I don't think we need to cast to short here, but do not have a device to
+           * check this. --mont29
            */
           if (AXIS_VALUE_GET(3, axis_value)) {
             window->GetTabletData()->Xtilt = (short)(axis_value & 0xffff) /
@@ -2278,7 +2284,7 @@ void GHOST_SystemX11::refreshXInputDevices()
                                                   NULL;
         GHOST_TTabletMode tablet_mode = tablet_mode_from_name(device_info[i].name, device_type);
 
-        //              printf("Tablet type:'%s', name:'%s', index:%d\n", device_type, device_info[i].name, i);
+        // printf("Tablet type:'%s', name:'%s', index:%d\n", device_type, device_info[i].name, i);
 
         if (device_type) {
           XFree((void *)device_type);

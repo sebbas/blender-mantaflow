@@ -144,7 +144,8 @@ static TreeElement *outliner_drop_insert_find(bContext *C,
   te_hovered = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
 
   if (te_hovered) {
-    /* mouse hovers an element (ignoring x-axis), now find out how to insert the dragged item exactly */
+    /* Mouse hovers an element (ignoring x-axis),
+     * now find out how to insert the dragged item exactly. */
     const float margin = UI_UNIT_Y * (1.0f / 4);
 
     if (view_mval[1] < (te_hovered->ys + margin)) {
@@ -174,7 +175,8 @@ static TreeElement *outliner_drop_insert_find(bContext *C,
     }
   }
   else {
-    /* mouse doesn't hover any item (ignoring x-axis), so it's either above list bounds or below. */
+    /* Mouse doesn't hover any item (ignoring x-axis),
+     * so it's either above list bounds or below. */
     TreeElement *first = soops->tree.first;
     TreeElement *last = soops->tree.last;
 

@@ -875,10 +875,20 @@ static PyGetSetDef bpy_bmface_getseters[] = {
 };
 
 static PyGetSetDef bpy_bmloop_getseters[] = {
-    /* generic */
-    /* flags are available but not used for loops. */
-    // {(char *)"select", (getter)bpy_bm_elem_hflag_get, (setter)bpy_bm_elem_hflag_set, (char *)bpy_bm_elem_select_doc, (void *)BM_ELEM_SELECT},
-    // {(char *)"hide",   (getter)bpy_bm_elem_hflag_get, (setter)bpy_bm_elem_hflag_set, (char *)bpy_bm_elem_hide_doc,   (void *)BM_ELEM_HIDDEN},
+/* generic */
+/* flags are available but not used for loops. */
+#if 0
+    {(char *)"select",
+     (getter)bpy_bm_elem_hflag_get,
+     (setter)bpy_bm_elem_hflag_set,
+     (char *)bpy_bm_elem_select_doc,
+     (void *)BM_ELEM_SELECT},
+    {(char *)"hide",
+     (getter)bpy_bm_elem_hflag_get,
+     (setter)bpy_bm_elem_hflag_set,
+     (char *)bpy_bm_elem_hide_doc,
+     (void *)BM_ELEM_HIDDEN},
+#endif
     {(char *)"tag",
      (getter)bpy_bm_elem_hflag_get,
      (setter)bpy_bm_elem_hflag_set,
@@ -2593,8 +2603,7 @@ static PyObject *bpy_bmelemseq_index_update(BPy_BMElemSeq *self)
       int index = 0;
       const char htype = bm_iter_itype_htype_map[self->itype];
 
-      BM_ITER_BPY_BM_SEQ(ele, &iter, self)
-      {
+      BM_ITER_BPY_BM_SEQ (ele, &iter, self) {
         BM_elem_index_set(ele, index); /* set_dirty! */
         index++;
       }
@@ -2744,8 +2753,7 @@ static PyObject *bpy_bmelemseq_sort(BPy_BMElemSeq *self, PyObject *args, PyObjec
   }
 
   i = 0;
-  BM_ITER_BPY_BM_SEQ(ele, &iter, self)
-  {
+  BM_ITER_BPY_BM_SEQ (ele, &iter, self) {
     if (keyfunc != NULL) {
       PyObject *py_elem;
       PyObject *index;
@@ -3168,8 +3176,7 @@ static Py_ssize_t bpy_bmelemseq_length(BPy_BMElemSeq *self)
     BMHeader *ele;
     Py_ssize_t tot = 0;
 
-    BM_ITER_BPY_BM_SEQ(ele, &iter, self)
-    {
+    BM_ITER_BPY_BM_SEQ (ele, &iter, self) {
       tot++;
     }
     return tot;
@@ -3343,8 +3350,7 @@ static int bpy_bmelemseq_contains(BPy_BMElemSeq *self, PyObject *value)
     if (value_bm_ele->bm == self->bm) {
       BMElem *ele, *ele_test = value_bm_ele->ele;
       BMIter iter;
-      BM_ITER_BPY_BM_SEQ(ele, &iter, self)
-      {
+      BM_ITER_BPY_BM_SEQ (ele, &iter, self) {
         if (ele == ele_test) {
           return 1;
         }
@@ -4071,9 +4077,8 @@ int bpy_bm_generic_valid_check(BPy_BMGeneric *self)
      * the previous action. */
 #if 0
     if (BM_mesh_validate(self->bm) == false) {
-      PyErr_Format(PyExc_ReferenceError,
-                   "BMesh used by %.200s has become invalid",
-                   Py_TYPE(self)->tp_name);
+      PyErr_Format(
+          PyExc_ReferenceError, "BMesh used by %.200s has become invalid", Py_TYPE(self)->tp_name);
       return -1;
     }
 #endif

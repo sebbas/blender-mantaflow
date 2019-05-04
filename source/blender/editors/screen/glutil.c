@@ -58,37 +58,6 @@ void set_inverted_drawing(int enable)
   GL_TOGGLE(GL_DITHER, !enable);
 }
 
-float glaGetOneFloat(int param)
-{
-  GLfloat v;
-  glGetFloatv(param, &v);
-  return v;
-}
-
-int glaGetOneInt(int param)
-{
-  GLint v;
-  glGetIntegerv(param, &v);
-  return v;
-}
-
-void glaRasterPosSafe2f(float x, float y, float known_good_x, float known_good_y)
-{
-  GLubyte dummy = 0;
-
-  /* As long as known good coordinates are correct
-   * this is guaranteed to generate an ok raster
-   * position (ignoring potential (real) overflow
-   * issues).
-   */
-  glRasterPos2f(known_good_x, known_good_y);
-
-  /* Now shift the raster position to where we wanted
-   * it in the first place using the glBitmap trick.
-   */
-  glBitmap(0, 0, 0, 0, x - known_good_x, y - known_good_y, &dummy);
-}
-
 static int get_cached_work_texture(int *r_w, int *r_h)
 {
   static GLint texid = -1;
@@ -203,12 +172,15 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
   nsubparts_x = (img_w + (offset_x - 1)) / (offset_x);
   nsubparts_y = (img_h + (offset_y - 1)) / (offset_y);
 
-  if (format == GL_RGBA)
+  if (format == GL_RGBA) {
     components = 4;
-  else if (format == GL_RGB)
+  }
+  else if (format == GL_RGB) {
     components = 3;
-  else if (format == GL_RED)
+  }
+  else if (format == GL_RED) {
     components = 1;
+  }
   else {
     BLI_assert(!"Incompatible format passed to glaDrawPixelsTexScaled");
     return;
@@ -246,8 +218,9 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
       float rast_x = x + subpart_x * offset_x * xzoom;
       float rast_y = y + subpart_y * offset_y * yzoom;
       /* check if we already got these because we always get 2 more when doing seamless */
-      if (subpart_w <= seamless || subpart_h <= seamless)
+      if (subpart_w <= seamless || subpart_h <= seamless) {
         continue;
+      }
 
       if (use_clipping) {
         if (rast_x + (float)(subpart_w - offset_right) * xzoom * scaleX < clip_min_x ||
@@ -273,7 +246,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
                                 subpart_x * offset_x * components]);
 
         /* add an extra border of pixels so linear looks ok at edges of full image */
-        if (subpart_w < tex_w)
+        if (subpart_w < tex_w) {
           glTexSubImage2D(GL_TEXTURE_2D,
                           0,
                           subpart_w,
@@ -284,7 +257,8 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
                           GL_FLOAT,
                           &f_rect[((size_t)subpart_y) * offset_y * img_w * components +
                                   (subpart_x * offset_x + subpart_w - 1) * components]);
-        if (subpart_h < tex_h)
+        }
+        if (subpart_h < tex_h) {
           glTexSubImage2D(
               GL_TEXTURE_2D,
               0,
@@ -296,7 +270,8 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
               GL_FLOAT,
               &f_rect[(((size_t)subpart_y) * offset_y + subpart_h - 1) * img_w * components +
                       subpart_x * offset_x * components]);
-        if (subpart_w < tex_w && subpart_h < tex_h)
+        }
+        if (subpart_w < tex_w && subpart_h < tex_h) {
           glTexSubImage2D(
               GL_TEXTURE_2D,
               0,
@@ -308,6 +283,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
               GL_FLOAT,
               &f_rect[(((size_t)subpart_y) * offset_y + subpart_h - 1) * img_w * components +
                       (subpart_x * offset_x + subpart_w - 1) * components]);
+        }
       }
       else {
         glTexSubImage2D(GL_TEXTURE_2D,
@@ -321,7 +297,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
                         &uc_rect[((size_t)subpart_y) * offset_y * img_w * components +
                                  subpart_x * offset_x * components]);
 
-        if (subpart_w < tex_w)
+        if (subpart_w < tex_w) {
           glTexSubImage2D(GL_TEXTURE_2D,
                           0,
                           subpart_w,
@@ -332,7 +308,8 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
                           GL_UNSIGNED_BYTE,
                           &uc_rect[((size_t)subpart_y) * offset_y * img_w * components +
                                    (subpart_x * offset_x + subpart_w - 1) * components]);
-        if (subpart_h < tex_h)
+        }
+        if (subpart_h < tex_h) {
           glTexSubImage2D(
               GL_TEXTURE_2D,
               0,
@@ -344,7 +321,8 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
               GL_UNSIGNED_BYTE,
               &uc_rect[(((size_t)subpart_y) * offset_y + subpart_h - 1) * img_w * components +
                        subpart_x * offset_x * components]);
-        if (subpart_w < tex_w && subpart_h < tex_h)
+        }
+        if (subpart_w < tex_w && subpart_h < tex_h) {
           glTexSubImage2D(
               GL_TEXTURE_2D,
               0,
@@ -356,6 +334,7 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
               GL_UNSIGNED_BYTE,
               &uc_rect[(((size_t)subpart_y) * offset_y + subpart_h - 1) * img_w * components +
                        (subpart_x * offset_x + subpart_w - 1) * components]);
+        }
       }
 
       immBegin(GPU_PRIM_TRI_FAN, 4);
@@ -382,7 +361,8 @@ void immDrawPixelsTexScaled_clipping(IMMDrawPixelsTexState *state,
 
       /* NOTE: Weirdly enough this is only required on macOS. Without this there is some sort of
        * bleeding of data is happening from tiles which are drawn later on.
-       * This doesn't seem to be too slow, but still would be nice to have fast and nice solution. */
+       * This doesn't seem to be too slow,
+       * but still would be nice to have fast and nice solution. */
 #ifdef __APPLE__
       GPU_flush();
 #endif
@@ -525,7 +505,8 @@ float bglPolygonOffsetCalc(const float winmat[16], float viewdist, float dist)
     /* This adjustment effectively results in reducing the Z value by 0.25%.
      *
      * winmat[14] actually evaluates to `-2 * far * near / (far - near)`,
-     * is very close to -0.2 with default clip range, and is used as the coefficient multiplied by `w / z`,
+     * is very close to -0.2 with default clip range,
+     * and is used as the coefficient multiplied by `w / z`,
      * thus controlling the z dependent part of the depth value.
      */
     return winmat[14] * -0.0025f * dist;
@@ -564,31 +545,32 @@ void bglPolygonOffset(float viewdist, float dist)
 /* **** Color management helper functions for GLSL display/transform ***** */
 
 /* Draw given image buffer on a screen using GLSL for display transform */
-void glaDrawImBuf_glsl_clipping(ImBuf *ibuf,
-                                float x,
-                                float y,
-                                int zoomfilter,
-                                ColorManagedViewSettings *view_settings,
-                                ColorManagedDisplaySettings *display_settings,
-                                float clip_min_x,
-                                float clip_min_y,
-                                float clip_max_x,
-                                float clip_max_y,
-                                float zoom_x,
-                                float zoom_y)
+void ED_draw_imbuf_clipping(ImBuf *ibuf,
+                            float x,
+                            float y,
+                            int zoomfilter,
+                            ColorManagedViewSettings *view_settings,
+                            ColorManagedDisplaySettings *display_settings,
+                            float clip_min_x,
+                            float clip_min_y,
+                            float clip_max_x,
+                            float clip_max_y,
+                            float zoom_x,
+                            float zoom_y)
 {
   bool force_fallback = false;
   bool need_fallback = true;
 
   /* Early out */
-  if (ibuf->rect == NULL && ibuf->rect_float == NULL)
+  if (ibuf->rect == NULL && ibuf->rect_float == NULL) {
     return;
+  }
 
   /* Single channel images could not be transformed using GLSL yet */
   force_fallback |= ibuf->channels == 1;
 
   /* If user decided not to use GLSL, fallback to glaDrawPixelsAuto */
-  force_fallback |= (U.image_draw_method != IMAGE_DRAW_METHOD_GLSL);
+  force_fallback |= (ED_draw_imbuf_method(ibuf) != IMAGE_DRAW_METHOD_GLSL);
 
   /* Try to draw buffer using GLSL display transform */
   if (force_fallback == false) {
@@ -618,12 +600,15 @@ void glaDrawImBuf_glsl_clipping(ImBuf *ibuf,
       if (ibuf->rect_float) {
         int format = 0;
 
-        if (ibuf->channels == 3)
+        if (ibuf->channels == 3) {
           format = GL_RGB;
-        else if (ibuf->channels == 4)
+        }
+        else if (ibuf->channels == 4) {
           format = GL_RGBA;
-        else
+        }
+        else {
           BLI_assert(!"Incompatible number of channels for GLSL display");
+        }
 
         if (format != 0) {
           immDrawPixelsTex_clipping(&state,
@@ -702,65 +687,80 @@ void glaDrawImBuf_glsl_clipping(ImBuf *ibuf,
   }
 }
 
-void glaDrawImBuf_glsl(ImBuf *ibuf,
-                       float x,
-                       float y,
-                       int zoomfilter,
-                       ColorManagedViewSettings *view_settings,
-                       ColorManagedDisplaySettings *display_settings,
-                       float zoom_x,
-                       float zoom_y)
+void ED_draw_imbuf(ImBuf *ibuf,
+                   float x,
+                   float y,
+                   int zoomfilter,
+                   ColorManagedViewSettings *view_settings,
+                   ColorManagedDisplaySettings *display_settings,
+                   float zoom_x,
+                   float zoom_y)
 {
-  glaDrawImBuf_glsl_clipping(ibuf,
-                             x,
-                             y,
-                             zoomfilter,
-                             view_settings,
-                             display_settings,
-                             0.0f,
-                             0.0f,
-                             0.0f,
-                             0.0f,
-                             zoom_x,
-                             zoom_y);
+  ED_draw_imbuf_clipping(ibuf,
+                         x,
+                         y,
+                         zoomfilter,
+                         view_settings,
+                         display_settings,
+                         0.0f,
+                         0.0f,
+                         0.0f,
+                         0.0f,
+                         zoom_x,
+                         zoom_y);
 }
 
-void glaDrawImBuf_glsl_ctx_clipping(const bContext *C,
-                                    ImBuf *ibuf,
-                                    float x,
-                                    float y,
-                                    int zoomfilter,
-                                    float clip_min_x,
-                                    float clip_min_y,
-                                    float clip_max_x,
-                                    float clip_max_y,
-                                    float zoom_x,
-                                    float zoom_y)
+void ED_draw_imbuf_ctx_clipping(const bContext *C,
+                                ImBuf *ibuf,
+                                float x,
+                                float y,
+                                int zoomfilter,
+                                float clip_min_x,
+                                float clip_min_y,
+                                float clip_max_x,
+                                float clip_max_y,
+                                float zoom_x,
+                                float zoom_y)
 {
   ColorManagedViewSettings *view_settings;
   ColorManagedDisplaySettings *display_settings;
 
   IMB_colormanagement_display_settings_from_ctx(C, &view_settings, &display_settings);
 
-  glaDrawImBuf_glsl_clipping(ibuf,
-                             x,
-                             y,
-                             zoomfilter,
-                             view_settings,
-                             display_settings,
-                             clip_min_x,
-                             clip_min_y,
-                             clip_max_x,
-                             clip_max_y,
-                             zoom_x,
-                             zoom_y);
+  ED_draw_imbuf_clipping(ibuf,
+                         x,
+                         y,
+                         zoomfilter,
+                         view_settings,
+                         display_settings,
+                         clip_min_x,
+                         clip_min_y,
+                         clip_max_x,
+                         clip_max_y,
+                         zoom_x,
+                         zoom_y);
 }
 
-void glaDrawImBuf_glsl_ctx(
+void ED_draw_imbuf_ctx(
     const bContext *C, ImBuf *ibuf, float x, float y, int zoomfilter, float zoom_x, float zoom_y)
 {
-  glaDrawImBuf_glsl_ctx_clipping(
-      C, ibuf, x, y, zoomfilter, 0.0f, 0.0f, 0.0f, 0.0f, zoom_x, zoom_y);
+  ED_draw_imbuf_ctx_clipping(C, ibuf, x, y, zoomfilter, 0.0f, 0.0f, 0.0f, 0.0f, zoom_x, zoom_y);
+}
+
+int ED_draw_imbuf_method(ImBuf *ibuf)
+{
+  if (U.image_draw_method == IMAGE_DRAW_METHOD_AUTO) {
+    /* Use faster GLSL when CPU to GPU transfer is unlikely to be a bottleneck,
+     * otherwise do color management on CPU side. */
+    const size_t threshold = 2048 * 2048 * 4 * sizeof(float);
+    const size_t data_size = (ibuf->rect_float) ? sizeof(float) : sizeof(uchar);
+    const size_t size = ibuf->x * ibuf->y * ibuf->channels * data_size;
+
+    return (size > threshold) ? IMAGE_DRAW_METHOD_2DTEXTURE : IMAGE_DRAW_METHOD_GLSL;
+  }
+  else {
+    return U.image_draw_method;
+  }
 }
 
 /* don't move to GPU_immediate_util.h because this uses user-prefs

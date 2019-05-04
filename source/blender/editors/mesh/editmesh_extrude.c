@@ -347,28 +347,37 @@ static bool edbm_extrude_mesh(Object *obedit, BMEditMesh *em, wmOperator *op)
   bool changed = false;
 
   if (em->selectmode & SCE_SELECT_VERTEX) {
-    if (em->bm->totvertsel == 0)
+    if (em->bm->totvertsel == 0) {
       nr = NONE;
-    else if (em->bm->totvertsel == 1)
+    }
+    else if (em->bm->totvertsel == 1) {
       nr = VERT_ONLY;
-    else if (em->bm->totedgesel == 0)
+    }
+    else if (em->bm->totedgesel == 0) {
       nr = VERT_ONLY;
-    else
+    }
+    else {
       nr = ELEM_FLAG;
+    }
   }
   else if (em->selectmode & SCE_SELECT_EDGE) {
-    if (em->bm->totedgesel == 0)
+    if (em->bm->totedgesel == 0) {
       nr = NONE;
-    else if (em->bm->totfacesel == 0)
+    }
+    else if (em->bm->totfacesel == 0) {
       nr = EDGE_ONLY;
-    else
+    }
+    else {
       nr = ELEM_FLAG;
+    }
   }
   else {
-    if (em->bm->totfacesel == 0)
+    if (em->bm->totfacesel == 0) {
       nr = NONE;
-    else
+    }
+    else {
       nr = ELEM_FLAG;
+    }
   }
 
   switch (nr) {
@@ -431,7 +440,7 @@ void MESH_OT_extrude_region(wmOperatorType *ot)
   ot->description = "Extrude region of faces";
 
   /* api callbacks */
-  //ot->invoke = mesh_extrude_region_invoke;
+  // ot->invoke = mesh_extrude_region_invoke;
   ot->exec = edbm_extrude_region_exec;
   ot->poll = ED_operator_editmesh;
 

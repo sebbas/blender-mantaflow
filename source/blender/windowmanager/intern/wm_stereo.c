@@ -165,7 +165,7 @@ void wm_stereo3d_draw_sidebyside(wmWindow *win, int view)
       soffx = 0;
     }
   }
-  else {  //RIGHT_LEFT_ID
+  else {  // RIGHT_LEFT_ID
     if (cross_eyed) {
       soffx = 0;
     }
@@ -280,7 +280,8 @@ bool WM_stereo3d_enabled(wmWindow *win, bool skip_stereo3d_check)
 }
 
 /**
- * If needed, this adjusts \a r_mouse_xy so that drawn cursor and handled mouse position are matching visually.
+ * If needed, adjust \a r_mouse_xy
+ * so that drawn cursor and handled mouse position are matching visually.
  */
 void wm_stereo3d_mouse_offset_apply(wmWindow *win, int *r_mouse_xy)
 {

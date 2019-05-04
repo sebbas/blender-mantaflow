@@ -573,8 +573,10 @@ static void cage2d_draw_circle_handles(const rctf *r,
   }
 
   if (transform_flag & ED_GIZMO_CAGE2D_XFORM_FLAG_ROTATE) {
-    const float handle[2] = {BLI_rctf_cent_x(r),
-                             r->ymax + (margin[1] * GIZMO_MARGIN_OFFSET_SCALE)};
+    const float handle[2] = {
+        BLI_rctf_cent_x(r),
+        r->ymax + (margin[1] * GIZMO_MARGIN_OFFSET_SCALE),
+    };
     circle_fn(pos, handle[0], handle[1], rad[0], rad[1], resolu);
   }
 
@@ -935,7 +937,8 @@ static int gizmo_cage2d_modal(bContext *C,
   }
   /* For transform logic to be manageable we operate in -0.5..0.5 2D space,
    * no matter the size of the rectangle, mouse coords are scaled to unit space.
-   * The mouse coords have been projected into the matrix so we don't need to worry about axis alignment.
+   * The mouse coords have been projected into the matrix
+   * so we don't need to worry about axis alignment.
    *
    * - The cursor offset are multiplied by 'dims'.
    * - Matrix translation is also multiplied by 'dims'.
@@ -1115,8 +1118,9 @@ static void gizmo_cage2d_exit(bContext *C, wmGizmo *gz, const bool cancel)
 
   MEM_SAFE_FREE(data->dial);
 
-  if (!cancel)
+  if (!cancel) {
     return;
+  }
 
   wmGizmoProperty *gz_prop;
 

@@ -65,25 +65,7 @@ ccl_device_forceinline bool kernel_path_scene_intersect(KernelGlobals *kg,
     ray->t = kernel_data.background.ao_distance;
   }
 
-#ifdef __HAIR__
-  float difl = 0.0f, extmax = 0.0f;
-  uint lcg_state = 0;
-
-  if (kernel_data.bvh.have_curves) {
-    if ((kernel_data.cam.resolution == 1) && (state->flag & PATH_RAY_CAMERA)) {
-      float3 pixdiff = ray->dD.dx + ray->dD.dy;
-      /*pixdiff = pixdiff - dot(pixdiff, ray.D)*ray.D;*/
-      difl = kernel_data.curve.minimum_width * len(pixdiff) * 0.5f;
-    }
-
-    extmax = kernel_data.curve.maximum_width;
-    lcg_state = lcg_state_init_addrspace(state, 0x51633e2d);
-  }
-
-  bool hit = scene_intersect(kg, *ray, visibility, isect, &lcg_state, difl, extmax);
-#else
-  bool hit = scene_intersect(kg, *ray, visibility, isect, NULL, 0.0f, 0.0f);
-#endif /* __HAIR__ */
+  bool hit = scene_intersect(kg, *ray, visibility, isect);
 
 #ifdef __KERNEL_DEBUG__
   if (state->flag & PATH_RAY_CAMERA) {
@@ -455,8 +437,8 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
         }
 
         /* path termination. this is a strange place to put the termination, it's
-     * mainly due to the mixed in MIS that we use. gives too many unneeded
-     * shader evaluations, only need emission if we are going to terminate */
+         * mainly due to the mixed in MIS that we use. gives too many unneeded
+         * shader evaluations, only need emission if we are going to terminate */
         float probability = path_state_continuation_probability(kg, state, throughput);
 
         if (probability == 0.0f) {
@@ -482,7 +464,7 @@ ccl_device void kernel_path_indirect(KernelGlobals *kg,
 
 #    ifdef __SUBSURFACE__
         /* bssrdf scatter to a different location on the same object, replacing
-     * the closures with a diffuse BSDF */
+         * the closures with a diffuse BSDF */
         if (sd->flag & SD_BSSRDF) {
           if (kernel_path_subsurface_scatter(
                   kg, sd, emission_sd, L, state, ray, &throughput, &ss_indirect)) {
@@ -593,8 +575,8 @@ ccl_device_forceinline void kernel_path_integrate(KernelGlobals *kg,
         }
 
         /* path termination. this is a strange place to put the termination, it's
-     * mainly due to the mixed in MIS that we use. gives too many unneeded
-     * shader evaluations, only need emission if we are going to terminate */
+         * mainly due to the mixed in MIS that we use. gives too many unneeded
+         * shader evaluations, only need emission if we are going to terminate */
         float probability = path_state_continuation_probability(kg, state, throughput);
 
         if (probability == 0.0f) {
@@ -619,7 +601,7 @@ ccl_device_forceinline void kernel_path_integrate(KernelGlobals *kg,
 
 #  ifdef __SUBSURFACE__
         /* bssrdf scatter to a different location on the same object, replacing
-     * the closures with a diffuse BSDF */
+         * the closures with a diffuse BSDF */
         if (sd.flag & SD_BSSRDF) {
           if (kernel_path_subsurface_scatter(
                   kg, &sd, emission_sd, L, state, ray, &throughput, &ss_indirect)) {

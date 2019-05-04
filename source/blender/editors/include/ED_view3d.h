@@ -54,6 +54,7 @@ struct RenderEngineType;
 struct Scene;
 struct ScrArea;
 struct View3D;
+struct View3DShading;
 struct ViewContext;
 struct ViewLayer;
 struct WorkSpace;
@@ -524,8 +525,6 @@ void ED_view3d_viewcontext_init(struct bContext *C, struct ViewContext *vc);
 void ED_view3d_viewcontext_init_object(struct ViewContext *vc, struct Object *obact);
 void view3d_operator_needs_opengl(const struct bContext *C);
 void view3d_region_operator_needs_opengl(struct wmWindow *win, struct ARegion *ar);
-void view3d_opengl_read_pixels(
-    struct ARegion *ar, int x, int y, int w, int h, int format, int type, void *data);
 
 /* XXX should move to BLI_math */
 bool edge_inside_circle(const float cent[2],
@@ -586,16 +585,6 @@ void ED_view3d_draw_setup_view(struct wmWindow *win,
                                float winmat[4][4],
                                const struct rcti *rect);
 
-enum {
-  V3D_OFSDRAW_NONE = (0),
-
-  V3D_OFSDRAW_USE_FULL_SAMPLE = (1 << 0),
-
-  /* Only works with ED_view3d_draw_offscreen_imbuf_simple(). */
-  V3D_OFSDRAW_USE_GPENCIL = (1 << 1),
-  V3D_OFSDRAW_USE_CAMERA_DOF = (1 << 2),
-};
-
 struct ImBuf *ED_view3d_draw_offscreen_imbuf(struct Depsgraph *depsgraph,
                                              struct Scene *scene,
                                              int drawtype,
@@ -612,6 +601,7 @@ struct ImBuf *ED_view3d_draw_offscreen_imbuf(struct Depsgraph *depsgraph,
                                              char err_out[256]);
 struct ImBuf *ED_view3d_draw_offscreen_imbuf_simple(struct Depsgraph *depsgraph,
                                                     struct Scene *scene,
+                                                    struct View3DShading *shading_override,
                                                     int drawtype,
                                                     struct Object *camera,
                                                     int width,
@@ -707,7 +697,10 @@ void ED_scene_draw_fps(struct Scene *scene, int xoffset, int *yoffset);
 #if 0
 void ED_view3d_operator_properties_viewmat(struct wmOperatorType *ot);
 void ED_view3d_operator_properties_viewmat_set(struct bContext *C, struct wmOperator *op);
-void ED_view3d_operator_properties_viewmat_get(struct wmOperator *op, int *winx, int *winy, float persmat[4][4]);
+void ED_view3d_operator_properties_viewmat_get(struct wmOperator *op,
+                                               int *winx,
+                                               int *winy,
+                                               float persmat[4][4]);
 #endif
 
 /* render */

@@ -56,7 +56,9 @@
 
 #  define PROFILE_TIMER_FALLOFF 0.04
 
-#  define PROFILE_START(time_start) double time_start = PIL_check_seconds_timer();
+#  define PROFILE_START(time_start) \
+    double time_start = PIL_check_seconds_timer(); \
+    ((void)0)
 
 #  define PROFILE_END_ACCUM(time_accum, time_start) \
     { \
@@ -251,10 +253,12 @@ struct DRWShadingGroup {
     };
   };
 
-  DRWState state_extra; /* State changes for this batch only (or'd with the pass's state) */
-  DRWState
-      state_extra_disable; /* State changes for this batch only (and'd with the pass's state) */
-  uint stencil_mask;       /* Stencil mask to use for stencil test / write operations */
+  /** State changes for this batch only (or'd with the pass's state) */
+  DRWState state_extra;
+  /** State changes for this batch only (and'd with the pass's state) */
+  DRWState state_extra_disable;
+  /** Stencil mask to use for stencil test / write operations */
+  uint stencil_mask;
   DRWShadingGroupType type;
 
   /* Builtin matrices locations */
@@ -393,10 +397,11 @@ typedef struct DRWManager {
 
   /* gl_context serves as the offset for clearing only
    * the top portion of the struct so DO NOT MOVE IT! */
-  void *gl_context; /* Unique ghost context used by the draw manager. */
+  /** Unique ghost context used by the draw manager. */
+  void *gl_context;
   GPUContext *gpu_context;
-  TicketMutex
-      *gl_context_mutex; /* Mutex to lock the drw manager and avoid concurrent context usage. */
+  /** Mutex to lock the drw manager and avoid concurrent context usage. */
+  TicketMutex *gl_context_mutex;
 
   /** GPU Resource State: Memory storage between drawing. */
   struct {

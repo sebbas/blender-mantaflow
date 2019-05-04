@@ -115,66 +115,6 @@ static void image_user_refresh_scene(const bContext *C, SpaceImage *sima)
   ED_space_image_auto_set(C, sima);
 }
 
-/* ******************** manage regions ********************* */
-
-ARegion *image_has_buttons_region(ScrArea *sa)
-{
-  ARegion *ar, *arnew;
-
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_UI);
-  if (ar) {
-    return ar;
-  }
-
-  /* add subdiv level; after header */
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_HEADER);
-
-  /* is error! */
-  if (ar == NULL) {
-    return NULL;
-  }
-
-  arnew = MEM_callocN(sizeof(ARegion), "buttons for image");
-
-  BLI_insertlinkafter(&sa->regionbase, ar, arnew);
-  arnew->regiontype = RGN_TYPE_UI;
-  arnew->alignment = RGN_ALIGN_RIGHT;
-
-  arnew->flag = RGN_FLAG_HIDDEN;
-
-  return arnew;
-}
-
-ARegion *image_has_tools_region(ScrArea *sa)
-{
-  ARegion *ar, *arnew;
-
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_TOOLS);
-  if (ar) {
-    return ar;
-  }
-
-  /* add subdiv level; after buttons */
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_UI);
-
-  /* is error! */
-  if (ar == NULL) {
-    return NULL;
-  }
-
-  arnew = MEM_callocN(sizeof(ARegion), "scopes for image");
-
-  BLI_insertlinkafter(&sa->regionbase, ar, arnew);
-  arnew->regiontype = RGN_TYPE_TOOLS;
-  arnew->alignment = RGN_ALIGN_LEFT;
-
-  arnew->flag = RGN_FLAG_HIDDEN;
-
-  image_scopes_tag_refresh(sa);
-
-  return arnew;
-}
-
 /* ******************** default callbacks for image space ***************** */
 
 static SpaceLink *image_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scene))
@@ -188,12 +128,19 @@ static SpaceLink *image_new(const ScrArea *UNUSED(area), const Scene *UNUSED(sce
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
 
-  simage->iuser.ok = true;
-  simage->iuser.frames = 100;
+  BKE_imageuser_default(&simage->iuser);
   simage->iuser.flag = IMA_SHOW_STEREO | IMA_ANIM_ALWAYS;
 
   scopes_new(&simage->scopes);
   simage->sample_line_hist.height = 100;
+
+  /* tool header */
+  ar = MEM_callocN(sizeof(ARegion), "tool header for image");
+
+  BLI_addtail(&simage->regionbase, ar);
+  ar->regiontype = RGN_TYPE_TOOL_HEADER;
+  ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
+  ar->flag = RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER;
 
   /* header */
   ar = MEM_callocN(sizeof(ARegion), "header for image");
@@ -290,9 +237,6 @@ static void image_operatortypes(void)
   WM_operatortype_append(IMAGE_OT_sample);
   WM_operatortype_append(IMAGE_OT_sample_line);
   WM_operatortype_append(IMAGE_OT_curves_point_set);
-
-  WM_operatortype_append(IMAGE_OT_properties);
-  WM_operatortype_append(IMAGE_OT_toolshelf);
 
   WM_operatortype_append(IMAGE_OT_change_frame);
 
@@ -593,29 +537,26 @@ static void image_main_region_init(wmWindowManager *wm, ARegion *ar)
 
   /* mask polls mode */
   keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", 0, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   /* image paint polls for mode */
   keymap = WM_keymap_ensure(wm->defaultconf, "Curve", 0, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Paint Curve", 0, 0);
   WM_event_add_keymap_handler(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Image Paint", 0, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "UV Editor", 0, 0);
-  WM_event_add_keymap_handler(&ar->handlers, keymap);
-
-  keymap = WM_keymap_ensure(wm->defaultconf, "UV Sculpt", 0, 0);
   WM_event_add_keymap_handler(&ar->handlers, keymap);
 
   /* own keymaps */
   keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, 0);
   WM_event_add_keymap_handler(&ar->handlers, keymap);
   keymap = WM_keymap_ensure(wm->defaultconf, "Image", SPACE_IMAGE, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 }
 
 static void image_main_region_draw(const bContext *C, ARegion *ar)
@@ -630,7 +571,7 @@ static void image_main_region_draw(const bContext *C, ARegion *ar)
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View2D *v2d = &ar->v2d;
-  //View2DScrollers *scrollers;
+  // View2DScrollers *scrollers;
   float col[3];
 
   /* XXX This is in order to draw UI batches with the DRW
@@ -664,7 +605,7 @@ static void image_main_region_draw(const bContext *C, ARegion *ar)
 
   ED_region_draw_cb_draw(C, ar, REGION_DRAW_PRE_VIEW);
 
-  ED_uvedit_draw_main(sima, ar, scene, view_layer, obedit, obact, depsgraph);
+  ED_uvedit_draw_main(sima, scene, view_layer, obedit, obact, depsgraph);
 
   /* check for mask (delay draw) */
   if (ED_space_image_show_uvedit(sima, obedit)) {
@@ -742,13 +683,6 @@ static void image_main_region_draw(const bContext *C, ARegion *ar)
   WM_gizmomap_draw(ar->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
 
   draw_image_cache(C, ar);
-
-  /* scrollers? */
-#if 0
-  scrollers = UI_view2d_scrollers_calc(C, v2d, V2D_UNIT_VALUES, V2D_GRID_CLAMP, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
-  UI_view2d_scrollers_draw(C, v2d, scrollers);
-  UI_view2d_scrollers_free(scrollers);
-#endif
 }
 
 static void image_main_region_listener(
@@ -806,6 +740,33 @@ static void image_buttons_region_init(wmWindowManager *wm, ARegion *ar)
   WM_event_add_keymap_handler(&ar->handlers, keymap);
 }
 
+static void image_buttons_region_layout(const bContext *C, ARegion *ar)
+{
+  const enum eContextObjectMode mode = CTX_data_mode_enum(C);
+  const char *contexts_base[3] = {NULL};
+
+  const char **contexts = contexts_base;
+
+  SpaceImage *sima = CTX_wm_space_image(C);
+  switch (sima->mode) {
+    case SI_MODE_VIEW:
+      break;
+    case SI_MODE_PAINT:
+      ARRAY_SET_ITEMS(contexts, ".paint_common_2d", ".imagepaint_2d");
+      break;
+    case SI_MODE_MASK:
+      break;
+    case SI_MODE_UV:
+      if (mode == CTX_MODE_EDIT_MESH) {
+        ARRAY_SET_ITEMS(contexts, ".uv_sculpt");
+      }
+      break;
+  }
+
+  const bool vertical = true;
+  ED_region_panels_layout_ex(C, ar, contexts_base, -1, vertical);
+}
+
 static void image_buttons_region_draw(const bContext *C, ARegion *ar)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
@@ -832,7 +793,8 @@ static void image_buttons_region_draw(const bContext *C, ARegion *ar)
   }
   ED_space_image_release_buffer(sima, ibuf, lock);
 
-  ED_region_panels(C, ar);
+  /* Layout handles details. */
+  ED_region_panels_draw(C, ar);
 }
 
 static void image_buttons_region_listener(wmWindow *UNUSED(win),
@@ -1077,6 +1039,7 @@ void ED_spacetype_image(void)
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_FRAMES;
   art->listener = image_buttons_region_listener;
   art->init = image_buttons_region_init;
+  art->layout = image_buttons_region_layout;
   art->draw = image_buttons_region_draw;
   BLI_addhead(&st->regiontypes, art);
 
@@ -1094,6 +1057,17 @@ void ED_spacetype_image(void)
   art->snap_size = ED_region_generic_tools_region_snap_size;
   art->init = image_tools_region_init;
   art->draw = image_tools_region_draw;
+  BLI_addhead(&st->regiontypes, art);
+
+  /* regions: tool header */
+  art = MEM_callocN(sizeof(ARegionType), "spacetype image tool header region");
+  art->regionid = RGN_TYPE_TOOL_HEADER;
+  art->prefsizey = HEADERY;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
+  art->listener = image_header_region_listener;
+  art->init = image_header_region_init;
+  art->draw = image_header_region_draw;
+  art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_header;
   BLI_addhead(&st->regiontypes, art);
 
   /* regions: header */

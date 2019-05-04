@@ -173,10 +173,18 @@ const EnumPropertyItem rna_enum_constraint_type_items[] = {
      ICON_CONSTRAINT,
      "Pivot",
      "Change pivot point for transforms (buggy)"},
-    /* {CONSTRAINT_TYPE_RIGIDBODYJOINT, "RIGID_BODY_JOINT", ICON_CONSTRAINT_DATA, "Rigid Body Joint",
-                                   "Use to define a Rigid Body Constraint (for Game Engine use only)"}, */
-    /* {CONSTRAINT_TYPE_PYTHON,     "SCRIPT", ICON_CONSTRAINT_DATA, "Script",
-                               "Custom constraint(s) written in Python (Not yet implemented)"}, */
+#if 0
+    {CONSTRAINT_TYPE_RIGIDBODYJOINT,
+     "RIGID_BODY_JOINT",
+     ICON_CONSTRAINT_DATA,
+     "Rigid Body Joint",
+     "Use to define a Rigid Body Constraint (for Game Engine use only)"},
+    {CONSTRAINT_TYPE_PYTHON,
+     "SCRIPT",
+     ICON_CONSTRAINT_DATA,
+     "Script",
+     "Custom constraint(s) written in Python (Not yet implemented)"},
+#endif
     {CONSTRAINT_TYPE_SHRINKWRAP,
      "SHRINKWRAP",
      ICON_CONSTRAINT,
@@ -719,22 +727,6 @@ static void rna_Constraint_objectSolver_camera_set(PointerRNA *ptr, PointerRNA v
   else {
     data->camera = NULL;
   }
-}
-
-static void rna_Constraint_transformCache_object_path_update(Main *bmain,
-                                                             Scene *scene,
-                                                             PointerRNA *ptr)
-{
-#  ifdef WITH_ALEMBIC
-  bConstraint *con = (bConstraint *)ptr->data;
-  bTransformCacheConstraint *data = (bTransformCacheConstraint *)con->data;
-  Object *ob = (Object *)ptr->id.data;
-
-  data->reader = CacheReader_open_alembic_object(
-      data->cache_file->handle, data->reader, ob, data->object_path);
-#  endif
-
-  rna_Constraint_update(bmain, scene, ptr);
 }
 
 #else
@@ -2894,7 +2886,7 @@ static void rna_def_constraint_transform_cache(BlenderRNA *brna)
       prop,
       "Object Path",
       "Path to the object in the Alembic archive used to lookup the transform matrix");
-  RNA_def_property_update(prop, 0, "rna_Constraint_transformCache_object_path_update");
+  RNA_def_property_update(prop, 0, "rna_Constraint_update");
 }
 
 /* base struct for constraints */
@@ -2953,7 +2945,8 @@ void RNA_def_constraint(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Expanded", "Constraint's panel is expanded in UI");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 
-  /* XXX this is really an internal flag, but it may be useful for some tools to be able to access this... */
+  /* XXX this is really an internal flag,
+   * but it may be useful for some tools to be able to access this... */
   prop = RNA_def_property(srna, "is_valid", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", CONSTRAINT_DISABLE);

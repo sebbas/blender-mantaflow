@@ -154,8 +154,9 @@ static bool screen_opengl_is_multiview(OGLRender *oglrender)
   RegionView3D *rv3d = oglrender->rv3d;
   RenderData *rd = &oglrender->scene->r;
 
-  if ((rd == NULL) || ((v3d != NULL) && (rv3d == NULL)))
+  if ((rd == NULL) || ((v3d != NULL) && (rv3d == NULL))) {
     return false;
+  }
 
   return (rd->scemode & R_MULTIVIEW) &&
          ((v3d == NULL) || (rv3d->persp == RV3D_CAMOB && v3d->camera));
@@ -189,14 +190,17 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
       RenderView *rv_del = rv->next;
       BLI_remlink(&rr->views, rv_del);
 
-      if (rv_del->rectf)
+      if (rv_del->rectf) {
         MEM_freeN(rv_del->rectf);
+      }
 
-      if (rv_del->rectz)
+      if (rv_del->rectz) {
         MEM_freeN(rv_del->rectz);
+      }
 
-      if (rv_del->rect32)
+      if (rv_del->rect32) {
         MEM_freeN(rv_del->rect32);
+      }
 
       MEM_freeN(rv_del);
     }
@@ -219,14 +223,17 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 
         BLI_remlink(&rr->views, rv_del);
 
-        if (rv_del->rectf)
+        if (rv_del->rectf) {
           MEM_freeN(rv_del->rectf);
+        }
 
-        if (rv_del->rectz)
+        if (rv_del->rectz) {
           MEM_freeN(rv_del->rectz);
+        }
 
-        if (rv_del->rect32)
+        if (rv_del->rect32) {
           MEM_freeN(rv_del->rect32);
+        }
 
         MEM_freeN(rv_del);
       }
@@ -234,8 +241,9 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 
     /* create all the views that are needed */
     for (srv = rd->views.first; srv; srv = srv->next) {
-      if (BKE_scene_multiview_is_render_view_active(rd, srv) == false)
+      if (BKE_scene_multiview_is_render_view_active(rd, srv) == false) {
         continue;
+      }
 
       rv = BLI_findstring(&rr->views, srv->name, offsetof(SceneRenderView, name));
 
@@ -247,8 +255,9 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
     }
   }
 
-  if (!(is_multiview && BKE_scene_multiview_is_stereo3d(rd)))
+  if (!(is_multiview && BKE_scene_multiview_is_stereo3d(rd))) {
     oglrender->iuser.flag &= ~IMA_SHOW_STEREO;
+  }
 
   /* will only work for non multiview correctly */
   if (v3d) {
@@ -372,9 +381,10 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
       }
     }
     else {
-      draw_flags |= V3D_OFSDRAW_USE_GPENCIL;
+      draw_flags |= V3D_OFSDRAW_SHOW_ANNOTATION;
       ibuf_view = ED_view3d_draw_offscreen_imbuf_simple(depsgraph,
                                                         scene,
+                                                        NULL,
                                                         OB_SOLID,
                                                         scene->camera,
                                                         oglrender->sizex,
@@ -431,10 +441,12 @@ static void screen_opengl_render_write(OGLRender *oglrender)
 
   RE_ReleaseResultImage(oglrender->re);
 
-  if (ok)
+  if (ok) {
     printf("OpenGL Render written to '%s'\n", name);
-  else
+  }
+  else {
     printf("OpenGL Render failed to write '%s'\n", name);
+  }
 }
 
 static void UNUSED_FUNCTION(addAlphaOverFloat)(float dest[4], const float source[4])
@@ -477,8 +489,6 @@ static void screen_opengl_render_apply(const bContext *C, OGLRender *oglrender)
     for (view_id = 0; view_id < oglrender->views_len; view_id++) {
       context.view_id = view_id;
       context.gpu_offscreen = oglrender->ofs;
-      context.gpu_full_samples = oglrender->ofs_full_samples;
-
       oglrender->seq_data.ibufs_arr[view_id] = BKE_sequencer_give_ibuf(&context, CFRA, chanshown);
     }
   }
@@ -505,24 +515,6 @@ static void screen_opengl_render_apply(const bContext *C, OGLRender *oglrender)
   }
 }
 
-static bool screen_opengl_fullsample_enabled(Scene *scene)
-{
-  if (scene->r.scemode & R_FULL_SAMPLE) {
-    return true;
-  }
-  else {
-    /* XXX TODO:
-     * Technically if the hardware supports MSAA we could keep using Blender 2.7x approach.
-     * However anti-aliasing without full_sample is not playing well even in 2.7x.
-     *
-     * For example, if you enable depth of field, there is aliasing, even if the viewport is fine.
-     * For 2.8x this is more complicated because so many things rely on shader.
-     * So until we fix the gpu_framebuffer anti-aliasing suupport we need to force full sample.
-     */
-    return true;
-  }
-}
-
 static bool screen_opengl_render_init(bContext *C, wmOperator *op)
 {
   /* new render clears all callbacks */
@@ -536,8 +528,6 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   GPUOffScreen *ofs;
   OGLRender *oglrender;
   int sizex, sizey;
-  const int samples = (scene->r.mode & R_OSA) ? scene->r.osa : 0;
-  const bool full_samples = (samples != 0) && screen_opengl_fullsample_enabled(scene);
   bool is_view_context = RNA_boolean_get(op->ptr, "view_context");
   const bool is_animation = RNA_boolean_get(op->ptr, "animation");
   const bool is_sequencer = RNA_boolean_get(op->ptr, "sequencer");
@@ -551,8 +541,9 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   }
 
   /* only one render job at a time */
-  if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER))
+  if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER)) {
     return false;
+  }
 
   if (is_sequencer) {
     is_view_context = false;
@@ -585,7 +576,7 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
 
   /* corrects render size with actual size, not every card supports non-power-of-two dimensions */
   DRW_opengl_context_enable(); /* Offscreen creation needs to be done in DRW context. */
-  ofs = GPU_offscreen_create(sizex, sizey, full_samples ? 0 : samples, true, true, err_out);
+  ofs = GPU_offscreen_create(sizex, sizey, 0, true, true, err_out);
   DRW_opengl_context_disable();
 
   if (!ofs) {
@@ -598,8 +589,6 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   op->customdata = oglrender;
 
   oglrender->ofs = ofs;
-  oglrender->ofs_samples = samples;
-  oglrender->ofs_full_samples = full_samples;
   oglrender->sizex = sizex;
   oglrender->sizey = sizey;
   oglrender->bmain = CTX_data_main(C);
@@ -951,8 +940,9 @@ static bool screen_opengl_render_anim_step(bContext *C, wmOperator *op)
   RenderResult *rr;
 
   /* go to next frame */
-  if (CFRA < oglrender->nfra)
+  if (CFRA < oglrender->nfra) {
     CFRA++;
+  }
   while (CFRA < oglrender->nfra) {
     BKE_scene_graph_update_for_newframe(depsgraph, bmain);
     CFRA++;
@@ -1035,8 +1025,9 @@ static int screen_opengl_render_modal(bContext *C, wmOperator *op, const wmEvent
       return OPERATOR_FINISHED;
     case TIMER:
       /* render frame? */
-      if (oglrender->timer == event->customdata)
+      if (oglrender->timer == event->customdata) {
         break;
+      }
       ATTR_FALLTHROUGH;
     default:
       /* nothing to do */
@@ -1068,12 +1059,14 @@ static int screen_opengl_render_invoke(bContext *C, wmOperator *op, const wmEven
   OGLRender *oglrender;
   const bool anim = RNA_boolean_get(op->ptr, "animation");
 
-  if (!screen_opengl_render_init(C, op))
+  if (!screen_opengl_render_init(C, op)) {
     return OPERATOR_CANCELLED;
+  }
 
   if (anim) {
-    if (!screen_opengl_render_anim_initialize(C, op))
+    if (!screen_opengl_render_anim_initialize(C, op)) {
       return OPERATOR_CANCELLED;
+    }
   }
 
   oglrender = op->customdata;
@@ -1093,8 +1086,9 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
 {
   const bool is_animation = RNA_boolean_get(op->ptr, "animation");
 
-  if (!screen_opengl_render_init(C, op))
+  if (!screen_opengl_render_init(C, op)) {
     return OPERATOR_CANCELLED;
+  }
 
   if (!is_animation) { /* same as invoke */
     /* render image */
@@ -1106,8 +1100,9 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
   else {
     bool ret = true;
 
-    if (!screen_opengl_render_anim_initialize(C, op))
+    if (!screen_opengl_render_anim_initialize(C, op)) {
       return OPERATOR_CANCELLED;
+    }
 
     while (ret) {
       ret = screen_opengl_render_anim_step(C, op);

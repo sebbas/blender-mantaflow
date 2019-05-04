@@ -826,7 +826,8 @@ static void raycast_obj_cb(
  * Read/Write Args
  * ---------------
  *
- * \param ray_depth: maximum depth allowed for r_co, elements deeper than this value will be ignored.
+ * \param ray_depth: maximum depth allowed for r_co,
+ * elements deeper than this value will be ignored.
  *
  * Output Args
  * -----------
@@ -887,7 +888,8 @@ static bool snap_bound_box_check_dist(float min[3],
                                       float mval[2],
                                       float dist_px_sq)
 {
-  /* In vertex and edges you need to get the pixel distance from ray to BoundBox, see: T46099, T46816 */
+  /* In vertex and edges you need to get the pixel distance from ray to BoundBox,
+   * see: T46099, T46816 */
 
   struct DistProjectedAABBPrecalc data_precalc;
   dist_squared_to_projected_aabb_precalc(&data_precalc, lpmat, win_size, mval);
@@ -951,11 +953,12 @@ static void cb_mlooptri_edges_get(const int index, int v_index[3], const BVHTree
     const MEdge *ed = &medge[mloop[lt->tri[j]].e];
     unsigned int tri_edge[2] = {mloop[lt->tri[j]].v, mloop[lt->tri[j_next]].v};
     if (ELEM(ed->v1, tri_edge[0], tri_edge[1]) && ELEM(ed->v2, tri_edge[0], tri_edge[1])) {
-      //printf("real edge found\n");
+      // printf("real edge found\n");
       v_index[j] = mloop[lt->tri[j]].e;
     }
-    else
+    else {
       v_index[j] = -1;
+    }
   }
 }
 
@@ -1626,7 +1629,8 @@ static short snapCurve(SnapData *snapdata,
                                                  nu->bezt[u].vec[1],
                                                  &dist_px_sq,
                                                  r_loc);
-            /* don't snap if handle is selected (moving), or if it is aligning to a moving handle */
+            /* Don't snap if handle is selected (moving),
+             * or if it is aligning to a moving handle. */
             if (!(nu->bezt[u].f1 & SELECT) &&
                 !(nu->bezt[u].h1 & HD_ALIGN && nu->bezt[u].f3 & SELECT)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,

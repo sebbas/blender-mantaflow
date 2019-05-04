@@ -86,7 +86,8 @@ bool ExecutionGroup::canContainOperation(NodeOperation *operation)
   if (m_complex) {
     return false;
   }
-  /* complex ops can't be added to other groups (except their own, which they initialize, see above) */
+  /* complex ops can't be added to other groups (except their own, which they initialize, see
+   * above) */
   if (operation->isComplex()) {
     return false;
   }
@@ -96,8 +97,9 @@ bool ExecutionGroup::canContainOperation(NodeOperation *operation)
 
 bool ExecutionGroup::addOperation(NodeOperation *operation)
 {
-  if (!canContainOperation(operation))
+  if (!canContainOperation(operation)) {
     return false;
+  }
 
   if (!operation->isReadBufferOperation() && !operation->isWriteBufferOperation()) {
     m_complex = operation->isComplex();
@@ -187,7 +189,8 @@ void ExecutionGroup::determineNumberOfChunks()
 }
 
 /**
- * this method is called for the top execution groups. containing the compositor node or the preview node or the viewer node)
+ * this method is called for the top execution groups. containing the compositor node or the
+ * preview node or the viewer node)
  */
 void ExecutionGroup::execute(ExecutionSystem *graph)
 {
@@ -342,8 +345,9 @@ void ExecutionGroup::execute(ExecutionSystem *graph)
         startEvaluated = true;
         numberEvaluated++;
 
-        if (bTree->update_draw)
+        if (bTree->update_draw) {
           bTree->update_draw(bTree->udh);
+        }
       }
       else if (state == COM_ES_SCHEDULED) {
         finished = false;
@@ -401,8 +405,9 @@ MemoryBuffer *ExecutionGroup::constructConsolidatedMemoryBuffer(MemoryProxy *mem
 
 void ExecutionGroup::finalizeChunkExecution(int chunkNumber, MemoryBuffer **memoryBuffers)
 {
-  if (this->m_chunkExecutionStates[chunkNumber] == COM_ES_SCHEDULED)
+  if (this->m_chunkExecutionStates[chunkNumber] == COM_ES_SCHEDULED) {
     this->m_chunkExecutionStates[chunkNumber] = COM_ES_EXECUTED;
+  }
 
   atomic_add_and_fetch_u(&this->m_chunksFinished, 1);
   if (memoryBuffers) {

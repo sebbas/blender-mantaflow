@@ -1080,9 +1080,8 @@ static void do_lasso_select_node(int mcords[][2], short moves, const eSelectOp s
 
     ipoco_to_areaco_noclip(G.v2d, node_centf, node_cent);
     const bool is_select = node->flag & SELECT;
-    const bool is_inside = (
-            BLI_rcti_isect_pt_v(&rect, node_cent) &&
-            BLI_lasso_is_point_inside(mcords, moves, node_cent[0], node_cent[1]));
+    const bool is_inside = (BLI_rcti_isect_pt_v(&rect, node_cent) &&
+                            BLI_lasso_is_point_inside(mcords, moves, node_cent[0], node_cent[1]));
     const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
     if (sel_op_result != -1) {
       SET_FLAG_FROM_TEST(node->flag, sel_op_result, SELECT);
@@ -1912,8 +1911,7 @@ static bool ed_object_select_pick(bContext *C,
                   }
                 }
 
-                basact->flag |= BASE_SELECTED;
-                BKE_scene_object_base_flag_sync_from_base(basact);
+                ED_object_base_select(basact, BA_SELECT);
 
                 retval = true;
 
@@ -1946,8 +1944,7 @@ static bool ed_object_select_pick(bContext *C,
 
           /* we make the armature selected:
            * not-selected active object in posemode won't work well for tools */
-          basact->flag |= BASE_SELECTED;
-          BKE_scene_object_base_flag_sync_from_base(basact);
+          ED_object_base_select(basact, BA_SELECT);
 
           retval = true;
           WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, basact->object);
@@ -2038,8 +2035,8 @@ static bool ed_object_select_pick(bContext *C,
       }
 
       /* Set special modes for grease pencil
-         The grease pencil modes are not real modes, but a hack to make the interface
-         consistent, so need some tricks to keep UI synchronized */
+       * The grease pencil modes are not real modes, but a hack to make the interface
+       * consistent, so need some tricks to keep UI synchronized */
       // XXX: This stuff needs reviewing (Aligorith)
       if (false && (((oldbasact) && oldbasact->object->type == OB_GPENCIL) ||
                     (basact->object->type == OB_GPENCIL))) {
@@ -2214,7 +2211,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* passthrough allows tweaks
+  /* Pass-through allows tweaks
    * FINISHED to signal one operator worked
    * */
   if (retval) {
@@ -2252,9 +2249,6 @@ void VIEW3D_OT_select(wmOperatorType *ot)
 
   /* properties */
   WM_operator_properties_mouse_select(ot);
-  prop = RNA_def_boolean(
-      ot->srna, "deselect_all", 0, "Deselect", "Deselect all when nothing under the cursor");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(
       ot->srna,

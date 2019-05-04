@@ -4,7 +4,6 @@ layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 viewportSize;
 uniform vec2 viewportSizeInv;
-uniform float edgeScale;
 
 in vec4 finalColor[2];
 in vec4 finalColorOuter[2];
@@ -14,14 +13,16 @@ flat out vec4 finalColorOuter_f;
 out vec4 finalColor_f;
 noperspective out float edgeCoord_f;
 
-void do_vertex(const int i, vec4 pos, float coord, vec2 offset)
+void do_vertex(vec4 color, vec4 pos, float coord, vec2 offset)
 {
-  finalColor_f = (selectOveride[0] == 0) ? finalColor[i] : finalColor[0];
+  finalColor_f = color;
   edgeCoord_f = coord;
   gl_Position = pos;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */
   gl_Position.xy += offset * 2.0 * pos.w;
-#ifdef USE_WORLD_CLIP_PLANES
+  /* Correct but fails due to an AMD compiler bug, see: T62792.
+   * Do inline instead. */
+#if 0
   world_clip_planes_set_clip_distance(gl_in[i].gl_ClipDistance);
 #endif
   EmitVertex();
@@ -57,9 +58,9 @@ void main()
   line = abs(line) * viewportSize;
 
   finalColorOuter_f = finalColorOuter[0];
-  float half_size = sizeEdge * edgeScale;
+  float half_size = sizeEdge;
   /* Enlarge edge for flag display. */
-  half_size += (finalColorOuter_f.a > 0.0) ? max(sizeEdge * edgeScale, 1.0) : 0.0;
+  half_size += (finalColorOuter_f.a > 0.0) ? max(sizeEdge, 1.0) : 0.0;
 
 #ifdef USE_SMOOTH_WIRE
   /* Add 1 px for AA */
@@ -71,10 +72,20 @@ void main()
   bool horizontal = line.x > line.y;
   edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;
 
-  do_vertex(0, pos0, half_size, edge_ofs.xy);
-  do_vertex(0, pos0, -half_size, -edge_ofs.xy);
-  do_vertex(1, pos1, half_size, edge_ofs.xy);
-  do_vertex(1, pos1, -half_size, -edge_ofs.xy);
+#ifdef USE_WORLD_CLIP_PLANES
+  /* Due to an AMD glitch, this line was moved out of the `do_vertex`
+   * function (see T62792). */
+  world_clip_planes_set_clip_distance(gl_in[0].gl_ClipDistance);
+#endif
+  do_vertex(finalColor[0], pos0, half_size, edge_ofs.xy);
+  do_vertex(finalColor[0], pos0, -half_size, -edge_ofs.xy);
+
+#ifdef USE_WORLD_CLIP_PLANES
+  world_clip_planes_set_clip_distance(gl_in[1].gl_ClipDistance);
+#endif
+  vec4 final_color = (selectOveride[0] == 0) ? finalColor[1] : finalColor[0];
+  do_vertex(final_color, pos1, half_size, edge_ofs.xy);
+  do_vertex(final_color, pos1, -half_size, -edge_ofs.xy);
 
   EndPrimitive();
 }

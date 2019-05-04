@@ -182,8 +182,9 @@ typedef Eigen::SparseMatrix<Scalar> lMatrix;
 
 /* Constructor type that provides more convenient handling of Eigen triplets
  * for efficient construction of sparse 3x3 block matrices.
- * This should be used for building lMatrix instead of writing to such lMatrix directly (which is very inefficient).
- * After all elements have been defined using the set() method, the actual matrix can be filled using construct().
+ * This should be used for building lMatrix instead of writing to such lMatrix directly (which is
+ * very inefficient). After all elements have been defined using the set() method, the actual
+ * matrix can be filled using construct().
  */
 struct lMatrixCtor {
   lMatrixCtor()
@@ -814,7 +815,8 @@ static float calc_nor_area_tri(float nor[3],
   return normalize_v3(nor);
 }
 
-/* XXX does not support force jacobians yet, since the effector system does not provide them either */
+/* XXX does not support force jacobians yet,
+ * since the effector system does not provide them either. */
 void BPH_mass_spring_force_face_wind(
     Implicit_Data *data, int v1, int v2, int v3, const float (*winvec)[3])
 {
@@ -855,8 +857,8 @@ void BPH_mass_spring_force_edge_wind(Implicit_Data *data, int v1, int v2, const 
 
 BLI_INLINE void dfdx_spring(float to[3][3], const float dir[3], float length, float L, float k)
 {
-  // dir is unit length direction, rest is spring's restlength, k is spring constant.
-  //return  ( (I-outerprod(dir, dir))*Min(1.0f, rest/length) - I) * -k;
+  /* dir is unit length direction, rest is spring's restlength, k is spring constant. */
+  // return ((I - outerprod(dir, dir)) * Min(1.0f, rest / length) - I) * -k;
   outerproduct(to, dir, dir);
   sub_m3_m3m3(to, I, to);
 
@@ -867,13 +869,18 @@ BLI_INLINE void dfdx_spring(float to[3][3], const float dir[3], float length, fl
 
 /* unused */
 #  if 0
-BLI_INLINE void dfdx_damp(float to[3][3], const float dir[3], float length, const float vel[3], float rest, float damping)
+BLI_INLINE void dfdx_damp(float to[3][3],
+                          const float dir[3],
+                          float length,
+                          const float vel[3],
+                          float rest,
+                          float damping)
 {
   // inner spring damping   vel is the relative velocity  of the endpoints.
   //  return (I-outerprod(dir, dir)) * (-damping * -(dot(dir, vel)/Max(length, rest)));
   mul_fvectorT_fvector(to, dir, dir);
   sub_fmatrix_fmatrix(to, I, to);
-  mul_fmatrix_S(to,  (-damping * -(dot_v3v3(dir, vel) / MAX2(length, rest))));
+  mul_fmatrix_S(to, (-damping * -(dot_v3v3(dir, vel) / MAX2(length, rest))));
 }
 #  endif
 
@@ -940,8 +947,7 @@ BLI_INLINE bool spring_length(Implicit_Data *data,
 #  if 0
     if (length > L) {
       if ((clmd->sim_parms->flags & CSIMSETT_FLAG_TEARING_ENABLED) &&
-          ( ((length - L) * 100.0f / L) > clmd->sim_parms->maxspringlen))
-      {
+          (((length - L) * 100.0f / L) > clmd->sim_parms->maxspringlen)) {
         // cut spring!
         s->flags |= CSPRING_FLAG_DEACTIVATE;
         return false;

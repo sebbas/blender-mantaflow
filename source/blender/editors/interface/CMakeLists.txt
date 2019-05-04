@@ -30,8 +30,8 @@ set(INC
   ../../makesrna
   ../../python
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../../../intern/glew-mx
+  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -72,6 +72,7 @@ set(SRC
   interface_widgets.c
   resources.c
   view2d.c
+  view2d_draw.c
   view2d_ops.c
 
   interface_eyedropper_intern.h

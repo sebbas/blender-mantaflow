@@ -642,7 +642,8 @@ float Camera::world_to_raster_size(float3 P)
     float3 D = normalize(Ddiff);
     res = len(dist * dDdx - dot(dist * dDdx, D) * D);
 
-    /* Decent approx distance to frustum (doesn't handle corners correctly, but not that big of a deal) */
+    /* Decent approx distance to frustum
+     * (doesn't handle corners correctly, but not that big of a deal) */
     float f_dist = 0.0f;
 
     if (offscreen_dicing_scale > 1.0f) {
@@ -686,7 +687,8 @@ float Camera::world_to_raster_size(float3 P)
               f_dist = max(f_dist, *d);
             }
             else {
-              /* Possibly far enough behind the frustum to use distance to origin instead of edge */
+              /* Possibly far enough behind the frustum to use distance to origin instead of edge
+               */
               test_o = true;
             }
           }
@@ -716,10 +718,17 @@ float Camera::world_to_raster_size(float3 P)
     float3 raster = transform_perspective(&full_cameratoraster, make_float3(dir.x, dir.y, 0.0f));
 
     ray.t = 1.0f;
-    camera_sample_panorama(&kernel_camera, kernel_camera_motion.data(), raster.x, raster.y, 0.0f, 0.0f, &ray);
-    if(ray.t == 0.0f) {
+    camera_sample_panorama(
+        &kernel_camera, kernel_camera_motion.data(), raster.x, raster.y, 0.0f, 0.0f, &ray);
+    if (ray.t == 0.0f) {
       /* No differentials, just use from directly ahead. */
-      camera_sample_panorama(&kernel_camera, kernel_camera_motion.data(), 0.5f*full_width, 0.5f*full_height, 0.0f, 0.0f, &ray);
+      camera_sample_panorama(&kernel_camera,
+                             kernel_camera_motion.data(),
+                             0.5f * full_width,
+                             0.5f * full_height,
+                             0.0f,
+                             0.0f,
+                             &ray);
     }
 #else
     camera_sample_panorama(&kernel_camera,

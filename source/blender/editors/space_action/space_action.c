@@ -56,34 +56,6 @@
 #include "action_intern.h" /* own include */
 #include "GPU_framebuffer.h"
 
-/* ******************** manage regions ********************* */
-
-ARegion *action_has_buttons_region(ScrArea *sa)
-{
-  ARegion *ar, *arnew;
-
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_UI);
-  if (ar)
-    return ar;
-
-  /* add subdiv level; after main */
-  ar = BKE_area_find_region_type(sa, RGN_TYPE_WINDOW);
-
-  /* is error! */
-  if (ar == NULL)
-    return NULL;
-
-  arnew = MEM_callocN(sizeof(ARegion), "buttons for action");
-
-  BLI_insertlinkafter(&sa->regionbase, ar, arnew);
-  arnew->regiontype = RGN_TYPE_UI;
-  arnew->alignment = RGN_ALIGN_RIGHT;
-
-  arnew->flag = RGN_FLAG_HIDDEN;
-
-  return arnew;
-}
-
 /* ******************** default callbacks for action space ***************** */
 
 static SpaceLink *action_new(const ScrArea *sa, const Scene *scene)
@@ -194,7 +166,7 @@ static void action_main_region_init(wmWindowManager *wm, ARegion *ar)
 
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet", SPACE_ACTION, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
   keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, 0);
   WM_event_add_keymap_handler(&ar->handlers, keymap);
 }
@@ -207,11 +179,9 @@ static void action_main_region_draw(const bContext *C, ARegion *ar)
   Object *obact = CTX_data_active_object(C);
   bAnimContext ac;
   View2D *v2d = &ar->v2d;
-  View2DGrid *grid;
   View2DScrollers *scrollers;
   short marker_flag = 0;
   short cfra_flag = 0;
-  short unit = 0;
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
@@ -220,17 +190,7 @@ static void action_main_region_draw(const bContext *C, ARegion *ar)
   UI_view2d_view_ortho(v2d);
 
   /* time grid */
-  unit = (saction->flag & SACTION_DRAWTIME) ? V2D_UNIT_SECONDS : V2D_UNIT_FRAMES;
-  grid = UI_view2d_grid_calc(CTX_data_scene(C),
-                             v2d,
-                             unit,
-                             V2D_GRID_CLAMP,
-                             V2D_ARG_DUMMY,
-                             V2D_ARG_DUMMY,
-                             ar->winx,
-                             ar->winy);
-  UI_view2d_grid_draw(v2d, grid, V2D_GRIDLINES_ALL);
-  UI_view2d_grid_free(grid);
+  UI_view2d_draw_lines_x__discrete_frames_or_seconds(v2d, scene, saction->flag & SACTION_DRAWTIME);
 
   ED_region_draw_cb_draw(C, ar, REGION_DRAW_PRE_VIEW);
 
@@ -243,8 +203,9 @@ static void action_main_region_draw(const bContext *C, ARegion *ar)
   }
 
   /* current frame */
-  if (saction->flag & SACTION_DRAWTIME)
+  if (saction->flag & SACTION_DRAWTIME) {
     cfra_flag |= DRAWCFRA_UNIT_SECONDS;
+  }
   ANIM_draw_cfra(C, v2d, cfra_flag);
 
   /* markers */
@@ -252,8 +213,9 @@ static void action_main_region_draw(const bContext *C, ARegion *ar)
 
   marker_flag = ((ac.markers && (ac.markers != &ac.scene->markers)) ? DRAW_MARKERS_LOCAL : 0) |
                 DRAW_MARKERS_MARGIN;
-  if (saction->flag & SACTION_SHOW_MARKER_LINES)
+  if (saction->flag & SACTION_SHOW_MARKER_LINES) {
     marker_flag |= DRAW_MARKERS_LINES;
+  }
   ED_markers_draw(C, marker_flag);
 
   /* caches */
@@ -273,10 +235,13 @@ static void action_main_region_draw(const bContext *C, ARegion *ar)
   UI_view2d_view_restore(C);
 
   /* scrollers */
-  scrollers = UI_view2d_scrollers_calc(
-      C, v2d, NULL, unit, V2D_GRID_CLAMP, V2D_ARG_DUMMY, V2D_ARG_DUMMY);
-  UI_view2d_scrollers_draw(C, v2d, scrollers);
+  scrollers = UI_view2d_scrollers_calc(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
+
+  /* frame numbers */
+  UI_view2d_draw_scale_x__discrete_frames_or_seconds(
+      ar, v2d, &v2d->hor, scene, saction->flag & SACTION_DRAWTIME);
 
   /* draw current frame number-indicator on top of scrollers */
   if ((saction->flag & SACTION_NODRAWCFRANUM) == 0) {
@@ -297,7 +262,7 @@ static void action_channel_region_init(wmWindowManager *wm, ARegion *ar)
 
   /* own keymap */
   keymap = WM_keymap_ensure(wm->defaultconf, "Animation Channels", 0, 0);
-  WM_event_add_keymap_handler_bb(&ar->handlers, keymap, &ar->v2d.mask, &ar->winrct);
+  WM_event_add_keymap_handler_v2d_mask(&ar->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, 0);
   WM_event_add_keymap_handler(&ar->handlers, keymap);
@@ -364,22 +329,26 @@ static void action_channel_region_listener(wmWindow *UNUSED(win),
           ED_region_tag_redraw(ar);
           break;
         case ND_MODIFIER:
-          if (wmn->action == NA_RENAME)
+          if (wmn->action == NA_RENAME) {
             ED_region_tag_redraw(ar);
+          }
           break;
       }
       break;
     case NC_GPENCIL:
-      if (ELEM(wmn->action, NA_RENAME, NA_SELECTED))
+      if (ELEM(wmn->action, NA_RENAME, NA_SELECTED)) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_ID:
-      if (wmn->action == NA_RENAME)
+      if (wmn->action == NA_RENAME) {
         ED_region_tag_redraw(ar);
+      }
       break;
     default:
-      if (wmn->data == ND_KEYS)
+      if (wmn->data == ND_KEYS) {
         ED_region_tag_redraw(ar);
+      }
       break;
   }
 }
@@ -471,8 +440,9 @@ static void action_main_region_listener(wmWindow *UNUSED(win),
       }
       break;
     case NC_ID:
-      if (wmn->action == NA_RENAME)
+      if (wmn->action == NA_RENAME) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_SCREEN:
       if (ELEM(wmn->data, ND_LAYER)) {
@@ -480,8 +450,9 @@ static void action_main_region_listener(wmWindow *UNUSED(win),
       }
       break;
     default:
-      if (wmn->data == ND_KEYS)
+      if (wmn->data == ND_KEYS) {
         ED_region_tag_redraw(ar);
+      }
       break;
   }
 }
@@ -607,8 +578,8 @@ static void action_listener(wmWindow *UNUSED(win),
       break;
     case NC_OBJECT:
       switch (wmn->data) {
-        case ND_BONE_SELECT: /* selection changed, so force refresh to flush
-                                 * (needs flag set to do syncing) */
+        case ND_BONE_SELECT: /* Selection changed, so force refresh to flush
+                              * (needs flag set to do syncing). */
         case ND_BONE_ACTIVE:
           saction->runtime.flag |= SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
           ED_area_tag_refresh(sa);
@@ -689,8 +660,9 @@ static void action_header_region_listener(
   switch (wmn->category) {
     case NC_SCREEN:
       if (saction->mode == SACTCONT_TIMELINE) {
-        if (wmn->data == ND_ANIMPLAY)
+        if (wmn->data == ND_ANIMPLAY) {
           ED_region_tag_redraw(ar);
+        }
       }
       break;
     case NC_SCENE:
@@ -715,8 +687,9 @@ static void action_header_region_listener(
       }
       break;
     case NC_ID:
-      if (wmn->action == NA_RENAME)
+      if (wmn->action == NA_RENAME) {
         ED_region_tag_redraw(ar);
+      }
       break;
     case NC_ANIMATION:
       switch (wmn->data) {
@@ -728,7 +701,7 @@ static void action_header_region_listener(
           break;
 
         case ND_KEYFRAME: /* new keyframed added -> active action may have changed */
-          //saction->flag |= SACTION_TEMP_NEEDCHANSYNC;
+          // saction->flag |= SACTION_TEMP_NEEDCHANSYNC;
           ED_region_tag_redraw(ar);
           break;
       }
@@ -782,8 +755,9 @@ static void action_region_listener(wmWindow *UNUSED(win),
       }
       break;
     default:
-      if (wmn->data == ND_KEYS)
+      if (wmn->data == ND_KEYS) {
         ED_region_tag_redraw(ar);
+      }
       break;
   }
 }
@@ -792,15 +766,15 @@ static void action_refresh(const bContext *C, ScrArea *sa)
 {
   SpaceAction *saction = (SpaceAction *)sa->spacedata.first;
 
-  /* update the state of the animchannels in response to changes from the data they represent
-   * NOTE: the temp flag is used to indicate when this needs to be done, and will be cleared once handled
-   */
+  /* Update the state of the animchannels in response to changes from the data they represent
+   * NOTE: the temp flag is used to indicate when this needs to be done,
+   * and will be cleared once handled. */
   if (saction->runtime.flag & SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC) {
     ARegion *ar;
 
     /* Perform syncing of channel state incl. selection
-     * Active action setting also occurs here (as part of anim channel filtering in anim_filter.c)
-     */
+     * Active action setting also occurs here
+     * (as part of anim channel filtering in anim_filter.c). */
     ANIM_sync_animchannels_to_data(C);
     saction->runtime.flag &= ~SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
 
@@ -809,8 +783,9 @@ static void action_refresh(const bContext *C, ScrArea *sa)
      *   or else they don't update [#28962]
      */
     ED_area_tag_redraw(sa);
-    for (ar = sa->regionbase.first; ar; ar = ar->next)
+    for (ar = sa->regionbase.first; ar; ar = ar->next) {
       ED_region_tag_redraw(ar);
+    }
   }
 
   /* region updates? */

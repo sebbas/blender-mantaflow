@@ -58,7 +58,7 @@ class Controller {
   void setPassZ(float *buf, int width, int height);
   void setContext(bContext *C);
 
-  //soc
+  // soc
   void init_options();
 
   int LoadMesh(Render *re, ViewLayer *view_layer, Depsgraph *depsgraph);
@@ -94,10 +94,22 @@ class Controller {
                       vector<ViewEdge *>::iterator vedges_end);
 
 #if 0
-  NodeGroup *debugNode() {return _DebugNode;}
-  AppView *view() {return _pView;}
-  NodeGroup *debugScene() {return _DebugNode;}
-  Grid& grid() {return _Grid;}
+  NodeGroup *debugNode()
+  {
+    return _DebugNode;
+  }
+  AppView *view()
+  {
+    return _pView;
+  }
+  NodeGroup *debugScene()
+  {
+    return _DebugNode;
+  }
+  Grid &grid()
+  {
+    return _Grid;
+  }
 #endif
 
   void toggleVisibilityAlgo();
@@ -163,15 +175,15 @@ class Controller {
 
  private:
   // Main Window:
-  //AppMainWindow *_pMainWindow;
+  // AppMainWindow *_pMainWindow;
 
   // List of models currently loaded
   vector<string> _ListOfModels;
 
   // Current directories
-  //ConfigIO* _current_dirs;
+  // ConfigIO* _current_dirs;
 
-  //View
+  // View
   // 3D
   AppView *_pView;
 
@@ -183,7 +195,7 @@ class Controller {
 
   RenderMonitor *_pRenderMonitor;
 
-  //Model
+  // Model
   // Drawing Structure
   NodeGroup *_RootNode;
 
@@ -192,7 +204,7 @@ class Controller {
 
 #if 0
   // Silhouette structure:
-  std::vector<SShape*> _SShapes;
+  std::vector<SShape *> _SShapes;
   NodeGroup *_SRoot;
 
   // Silhouette
@@ -205,7 +217,7 @@ class Controller {
 #endif
 
   // debug
-  //NodeUser<ViewMap> *_ViewMapNode; // FIXME
+  // NodeUser<ViewMap> *_ViewMapNode; // FIXME
 
   // Chronometer:
   Chronometer _Chrono;
@@ -217,7 +229,7 @@ class Controller {
   int _edgeTesselationNature;
 
   FastGrid _Grid;
-  //HashGrid _Grid;
+  // HashGrid _Grid;
 
   BBox<Vec3r> _Scene3dBBox;
   unsigned int _SceneNumFaces;
@@ -229,9 +241,9 @@ class Controller {
 
   int _render_count;
 
-  //AppStyleWindow *_pStyleWindow;
-  //AppOptionsWindow *_pOptionsWindow;
-  //AppDensityCurvesWindow *_pDensityCurvesWindow;
+  // AppStyleWindow *_pStyleWindow;
+  // AppOptionsWindow *_pOptionsWindow;
+  // AppDensityCurvesWindow *_pDensityCurvesWindow;
 
   ViewMapBuilder::visibility_algo _VisibilityAlgo;
 
