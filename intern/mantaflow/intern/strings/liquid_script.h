@@ -34,7 +34,8 @@
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_variables = "\n\
+const std::string liquid_variables =
+    "\n\
 mantaMsg('Liquid variables')\n\
 narrowBandWidth_s$ID$         = 3\n\
 combineBandWidth_s$ID$        = narrowBandWidth_s$ID$ - 1\n\
@@ -52,7 +53,8 @@ smoothenNeg_s$ID$      = $MESH_SMOOTHEN_NEG$\n\
 randomness_s$ID$       = $PARTICLE_RANDOMNESS$\n\
 surfaceTension_s$ID$   = $LIQUID_SURFACE_TENSION$\n";
 
-const std::string liquid_variables_particles = "\n\
+const std::string liquid_variables_particles =
+    "\n\
 tauMin_wc_sp$ID$ = $SNDPARTICLE_TAU_MIN_WC$\n\
 tauMax_wc_sp$ID$ = $SNDPARTICLE_TAU_MAX_WC$\n\
 tauMin_ta_sp$ID$ = $SNDPARTICLE_TAU_MIN_TA$\n\
@@ -75,7 +77,8 @@ scaleFromManta_sp$ID$ = $FLUID_DOMAIN_SIZE$ / float(res_s$ID$) # resize factor f
 // GRIDS & MESH & PARTICLESYSTEM
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_alloc = "\n\
+const std::string liquid_alloc =
+    "\n\
 mantaMsg('Liquid alloc')\n\
 phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
@@ -97,7 +100,8 @@ gpi_s$ID$        = s$ID$.create(IntGrid)\n\
 liquid_data_dict_s$ID$ = dict(phiParts=phiParts_s$ID$, phi=phi_s$ID$, phiTmp=phiTmp_s$ID$)\n\
 liquid_flip_dict_s$ID$ = dict(pp=pp_s$ID$, pVel=pVel_pp$ID$)\n";
 
-const std::string liquid_alloc_mesh = "\n\
+const std::string liquid_alloc_mesh =
+    "\n\
 mantaMsg('Liquid alloc mesh')\n\
 phiParts_sm$ID$ = sm$ID$.create(LevelsetGrid)\n\
 phi_sm$ID$      = sm$ID$.create(LevelsetGrid)\n\
@@ -119,7 +123,8 @@ liquid_mesh_dict_s$ID$ = dict(lMesh=mesh_sm$ID$)\n\
 if using_speedvectors_s$ID$:\n\
     liquid_meshvel_dict_s$ID$ = dict(lVelMesh=mVel_mesh$ID$)\n";
 
-const std::string liquid_alloc_particles = "\n\
+const std::string liquid_alloc_particles =
+    "\n\
 normal_sp$ID$        = sp$ID$.create(VecGrid)\n\
 neighborRatio_sp$ID$ = sp$ID$.create(RealGrid)\n\
 trappedAir_sp$ID$    = sp$ID$.create(RealGrid)\n\
@@ -129,7 +134,8 @@ kineticEnergy_sp$ID$ = sp$ID$.create(RealGrid)\n\
 # Keep track of important objects in dict to load them later on\n\
 liquid_particles_dict_s$ID$ = dict(trappedAir=trappedAir_sp$ID$, waveCrest=waveCrest_sp$ID$, kineticEnergy=kineticEnergy_sp$ID$)\n";
 
-const std::string liquid_init_phi = "\n\
+const std::string liquid_init_phi =
+    "\n\
 # Prepare domain\n\
 phi_s$ID$.initFromFlags(flags_s$ID$)\n\
 phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
@@ -138,7 +144,8 @@ phiIn_s$ID$.initFromFlags(flags_s$ID$)\n";
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_adaptive_step = "\n\
+const std::string liquid_adaptive_step =
+    "\n\
 def liquid_adaptive_step_$ID$(framenr):\n\
     mantaMsg('Manta step, frame ' + str(framenr))\n\
     \n\
@@ -192,7 +199,8 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     \n\
     fluid_post_step_$ID$()\n";
 
-const std::string liquid_step = "\n\
+const std::string liquid_step =
+    "\n\
 def liquid_step_$ID$():\n\
     mantaMsg('Liquid step')\n\
     \n\
@@ -274,7 +282,8 @@ def liquid_step_$ID$():\n\
     adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=1., narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
     flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
 
-const std::string liquid_step_mesh = "\n\
+const std::string liquid_step_mesh =
+    "\n\
 def liquid_step_mesh_$ID$():\n\
     mantaMsg('Liquid step mesh')\n\
     \n\
@@ -305,7 +314,8 @@ def liquid_step_mesh_$ID$():\n\
     phi_sm$ID$.setBound(0.5,int(((upres_sm$ID$)*2)-2) )\n\
     phi_sm$ID$.createMesh(mesh_sm$ID$)\n";
 
-const std::string liquid_step_particles = "\n\
+const std::string liquid_step_particles =
+    "\n\
 def liquid_step_particles_$ID$():\n\
     mantaMsg('Secondary particles step')\n\
     \n\
@@ -340,27 +350,32 @@ def liquid_step_particles_$ID$():\n\
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_load_data = "\n\
+const std::string liquid_load_data =
+    "\n\
 def liquid_load_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load data')\n\
     fluid_file_import_s$ID$(dict=liquid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_load_flip = "\n\
+const std::string liquid_load_flip =
+    "\n\
 def liquid_load_flip_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load flip')\n\
     fluid_file_import_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_load_mesh = "\n\
+const std::string liquid_load_mesh =
+    "\n\
 def liquid_load_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load mesh')\n\
     fluid_file_import_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_load_meshvel = "\n\
+const std::string liquid_load_meshvel =
+    "\n\
 def liquid_load_meshvel_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load meshvel')\n\
     fluid_file_import_s$ID$(dict=liquid_meshvel_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_load_particles = "\n\
+const std::string liquid_load_particles =
+    "\n\
 def liquid_load_particles_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid load particles')\n\
     fluid_file_import_s$ID$(dict=liquid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
@@ -369,27 +384,32 @@ def liquid_load_particles_$ID$(path, framenr, file_format):\n\
 // EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_save_data = "\n\
+const std::string liquid_save_data =
+    "\n\
 def liquid_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save data')\n\
     fluid_file_export_s$ID$(dict=liquid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_save_flip = "\n\
+const std::string liquid_save_flip =
+    "\n\
 def liquid_save_flip_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save flip')\n\
     fluid_file_export_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_save_mesh = "\n\
+const std::string liquid_save_mesh =
+    "\n\
 def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh')\n\
     fluid_file_export_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_save_meshvel = "\n\
+const std::string liquid_save_meshvel =
+    "\n\
 def liquid_save_meshvel_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh vel')\n\
     fluid_file_export_s$ID$(dict=liquid_meshvel_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string liquid_save_particles = "\n\
+const std::string liquid_save_particles =
+    "\n\
 def liquid_save_particles_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save particles')\n\
     fluid_file_export_s$ID$(dict=liquid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
@@ -398,7 +418,8 @@ def liquid_save_particles_$ID$(path, framenr, file_format):\n\
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const std::string liquid_standalone = "\n\
+const std::string liquid_standalone =
+    "\n\
 # Helper function to call cache load functions\n\
 def load(frame):\n\
     fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
@@ -419,6 +440,3 @@ def step(frame):\n\
         liquid_step_mesh_$ID$()\n\
     if using_sndparts_s$ID$:\n\
         liquid_step_particles_$ID$()\n";
-
-
-

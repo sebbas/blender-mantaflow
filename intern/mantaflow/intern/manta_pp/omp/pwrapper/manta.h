@@ -15,7 +15,7 @@
 #define _MANTA_H
 
 // Remove preprocessor keywords, so there won't infere with autocompletion etc.
-#define KERNEL(...) extern int i,j,k,idx,X,Y,Z;
+#define KERNEL(...) extern int i, j, k, idx, X, Y, Z;
 #define PYTHON(...)
 #define returns(X) extern X;
 #define alias typedef

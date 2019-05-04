@@ -33,7 +33,8 @@
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_variables = "\n\
+const std::string smoke_variables =
+    "\n\
 mantaMsg('Smoke variables low')\n\
 preconditioner_s$ID$  = PcMGDynamic\n\
 using_colors_s$ID$    = $USING_COLORS$\n\
@@ -44,7 +45,8 @@ vorticity_s$ID$       = $VORTICITY$\n\
 buoyancy_dens_s$ID$   = $BUOYANCY_ALPHA$\n\
 buoyancy_heat_s$ID$   = $BUOYANCY_BETA$\n";
 
-const std::string smoke_variables_noise = "\n\
+const std::string smoke_variables_noise =
+    "\n\
 mantaMsg('Smoke variables noise')\n\
 wltStrength_s$ID$ = $WLT_STR$\n\
 octaves_s$ID$     = 0\n\
@@ -52,25 +54,30 @@ uvs_s$ID$         = 2\n\
 uv_s$ID$          = [] # list for UV grids\n\
 octaves_s$ID$     = int(math.log(upres_sn$ID$) / math.log(2.0) + 0.5) if (upres_sn$ID$ > 1) else 1\n";
 
-const std::string smoke_wavelet_noise = "\n\
+const std::string smoke_wavelet_noise =
+    "\n\
 # wavelet noise params\n\
 wltnoise_sn$ID$.posScale = vec3(int(1.0*gs_s$ID$.x)) * (1. / $NOISE_POSSCALE$)\n\
 wltnoise_sn$ID$.timeAnim = $NOISE_TIMEANIM$\n";
 
-const std::string smoke_with_heat = "\n\
+const std::string smoke_with_heat =
+    "\n\
 using_heat_s$ID$ = True\n";
 
-const std::string smoke_with_colors = "\n\
+const std::string smoke_with_colors =
+    "\n\
 using_colors_s$ID$ = True\n";
 
-const std::string smoke_with_fire = "\n\
+const std::string smoke_with_fire =
+    "\n\
 using_fire_s$ID$ = True\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_alloc = "\n\
+const std::string smoke_alloc =
+    "\n\
 mantaMsg('Smoke alloc')\n\
 shadow_s$ID$     = s$ID$.create(RealGrid)\n\
 density_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -92,7 +99,8 @@ color_b_in_s$ID$ = 0\n\
 # Keep track of important objects in dict to load them later on\n\
 smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$, densityIn=densityIn_s$ID$)\n";
 
-const std::string smoke_alloc_noise = "\n\
+const std::string smoke_alloc_noise =
+    "\n\
 mantaMsg('Smoke alloc noise')\n\
 vel_sn$ID$       = sn$ID$.create(MACGrid)\n\
 density_sn$ID$   = sn$ID$.create(RealGrid)\n\
@@ -122,7 +130,8 @@ smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 // ADDITIONAL GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_alloc_colors = "\n\
+const std::string smoke_alloc_colors =
+    "\n\
 mantaMsg('Allocating colors')\n\
 color_r_s$ID$    = s$ID$.create(RealGrid)\n\
 color_g_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -137,7 +146,8 @@ smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n\
 tmpDict_s$ID$ = dict(color_r_in=color_r_in_s$ID$, color_g_in=color_g_in_s$ID$, color_b_in=color_b_in_s$ID$)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_alloc_colors_noise = "\
+const std::string smoke_alloc_colors_noise =
+    "\
 mantaMsg('Allocating colors noise')\n\
 color_r_sn$ID$ = sn$ID$.create(RealGrid)\n\
 color_g_sn$ID$ = sn$ID$.create(RealGrid)\n\
@@ -147,7 +157,8 @@ color_b_sn$ID$ = sn$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(color_r_noise=color_r_sn$ID$, color_g_noise=color_g_sn$ID$, color_b_noise=color_b_sn$ID$)\n\
 smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_init_colors = "\n\
+const std::string smoke_init_colors =
+    "\n\
 mantaMsg('Initializing colors')\n\
 color_r_s$ID$.copyFrom(density_s$ID$) \n\
 color_r_s$ID$.multConst($COLOR_R$) \n\
@@ -156,7 +167,8 @@ color_g_s$ID$.multConst($COLOR_G$) \n\
 color_b_s$ID$.copyFrom(density_s$ID$) \n\
 color_b_s$ID$.multConst($COLOR_B$)\n";
 
-const std::string smoke_init_colors_noise = "\n\
+const std::string smoke_init_colors_noise =
+    "\n\
 mantaMsg('Initializing colors noise')\n\
 color_r_sn$ID$.copyFrom(density_sn$ID$) \n\
 color_r_sn$ID$.multConst($COLOR_R$) \n\
@@ -165,7 +177,8 @@ color_g_sn$ID$.multConst($COLOR_G$) \n\
 color_b_sn$ID$.copyFrom(density_sn$ID$) \n\
 color_b_sn$ID$.multConst($COLOR_B$)\n";
 
-const std::string smoke_alloc_heat = "\n\
+const std::string smoke_alloc_heat =
+    "\n\
 mantaMsg('Allocating heat')\n\
 heat_s$ID$   = s$ID$.create(RealGrid)\n\
 heatIn_s$ID$ = s$ID$.create(RealGrid)\n\
@@ -174,7 +187,8 @@ heatIn_s$ID$ = s$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(heat=heat_s$ID$)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_alloc_fire = "\n\
+const std::string smoke_alloc_fire =
+    "\n\
 mantaMsg('Allocating fire')\n\
 flame_s$ID$   = s$ID$.create(RealGrid)\n\
 fuel_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -188,7 +202,8 @@ smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n\
 tmpDict_s$ID$ = dict(fuelIn=fuelIn_s$ID$, reactIn=reactIn_s$ID$,)\n\
 smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string smoke_alloc_fire_noise = "\n\
+const std::string smoke_alloc_fire_noise =
+    "\n\
 mantaMsg('Allocating fire noise')\n\
 flame_sn$ID$ = sn$ID$.create(RealGrid)\n\
 fuel_sn$ID$  = sn$ID$.create(RealGrid)\n\
@@ -202,7 +217,8 @@ smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
 // PRE / POST STEP
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_pre_step_noise = "\n\
+const std::string smoke_pre_step_noise =
+    "\n\
 def smoke_pre_step_noise_$ID$():\n\
     mantaMsg('Smoke pre step noise')\n\
     \n\
@@ -225,7 +241,8 @@ def smoke_pre_step_noise_$ID$():\n\
             uv_s$ID$.append(uvGrid_s$ID$)\n\
             resetUvGrid(uv_s$ID$[i])\n";
 
-const std::string smoke_post_step_noise = "\n\
+const std::string smoke_post_step_noise =
+    "\n\
 def smoke_post_step_noise_$ID$():\n\
     mantaMsg('Smoke post step noise')\n\
     copyVec3ToReal(source=uv_s$ID$[0], targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
@@ -235,7 +252,8 @@ def smoke_post_step_noise_$ID$():\n\
 // STEP FUNCTIONS
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_adaptive_step = "\n\
+const std::string smoke_adaptive_step =
+    "\n\
 def smoke_adaptive_step_$ID$(framenr):\n\
     mantaMsg('Manta step, frame ' + str(framenr))\n\
     \n\
@@ -294,7 +312,8 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     \n\
     fluid_post_step_$ID$()\n";
 
-const std::string smoke_adaptive_step_noise = "\n\
+const std::string smoke_adaptive_step_noise =
+    "\n\
 def smoke_adaptive_step_noise_$ID$(framenr):\n\
     mantaMsg('Manta step noise, frame ' + str(framenr))\n\
     \n\
@@ -342,7 +361,8 @@ def smoke_adaptive_step_noise_$ID$(framenr):\n\
     \n\
     smoke_post_step_noise_$ID$()\n";
 
-const std::string smoke_step = "\n\
+const std::string smoke_step =
+    "\n\
 def smoke_step_$ID$():\n\
     mantaMsg('Smoke step low')\n\
     mantaMsg('Advecting density')\n\
@@ -413,7 +433,8 @@ def update_flame_$ID$():\n\
     mantaMsg('Update flame')\n\
     updateFlame(react=react_s$ID$, flame=flame_s$ID$)\n";
 
-const std::string smoke_step_noise = "\n\
+const std::string smoke_step_noise =
+    "\n\
 def step_noise_$ID$():\n\
     mantaMsg('Smoke step noise')\n\
     \n\
@@ -469,12 +490,14 @@ def update_flame_noise_$ID$():\n\
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_load_data = "\n\
+const std::string smoke_load_data =
+    "\n\
 def smoke_load_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke load data')\n\
     fluid_file_import_s$ID$(dict=smoke_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string smoke_load_noise = "\n\
+const std::string smoke_load_noise =
+    "\n\
 def smoke_load_noise_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke load noise')\n\
     fluid_file_import_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
@@ -483,12 +506,14 @@ def smoke_load_noise_$ID$(path, framenr, file_format):\n\
 // EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_save_data = "\n\
+const std::string smoke_save_data =
+    "\n\
 def smoke_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save data')\n\
     fluid_file_export_s$ID$(dict=smoke_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string smoke_save_noise = "\n\
+const std::string smoke_save_noise =
+    "\n\
 def smoke_save_noise_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save noise')\n\
     fluid_file_export_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
@@ -497,7 +522,8 @@ def smoke_save_noise_$ID$(path, framenr, file_format):\n\
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const std::string smoke_standalone = "\n\
+const std::string smoke_standalone =
+    "\n\
 # Helper function to call cache load functions\n\
 def load(frame):\n\
     fluid_load_data_$ID$(os.path.join(cache_dir, 'data'), frame, file_format_data)\n\
@@ -512,6 +538,3 @@ def step(frame):\n\
     smoke_adaptive_step_$ID$(frame)\n\
     if using_noise_s$ID$:\n\
         smoke_adaptive_step_noise_$ID$(frame)\n";
-
-
-

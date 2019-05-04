@@ -16,30 +16,30 @@
 
 #if defined(WIN32) || defined(_WIN32)
 
-	// note - we have to include these first!
-	#include <string>
-	#include <vector>
-	#include <iostream>
+// note - we have to include these first!
+#  include <string>
+#  include <vector>
+#  include <iostream>
 
 #endif
 
-// the PYTHON_DEBUG_WITH_RELEASE define enables linking with python debug libraries 
-#if (defined(_DEBUG)||(DEBUG==1)) && defined(DEBUG_PYTHON_WITH_RELEASE)
+// the PYTHON_DEBUG_WITH_RELEASE define enables linking with python debug libraries
+#if (defined(_DEBUG) || (DEBUG == 1)) && defined(DEBUG_PYTHON_WITH_RELEASE)
 
-	// special handling, disable linking with debug version of python libs
-	#undef _DEBUG
-	#define NDEBUG
-	#include <Python.h>
-	#define _DEBUG
-	#undef NDEBUG
+// special handling, disable linking with debug version of python libs
+#  undef _DEBUG
+#  define NDEBUG
+#  include <Python.h>
+#  define _DEBUG
+#  undef NDEBUG
 
 #else
-	#include <Python.h>
+#  include <Python.h>
 #endif
 
-#if NUMPY==1
-#	define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#	include "numpy/arrayobject.h" 
+#if NUMPY == 1
+#  define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#  include "numpy/arrayobject.h"
 #endif
 
 #endif

@@ -33,7 +33,8 @@
 // LIBRARIES
 //////////////////////////////////////////////////////////////////////
 
-const std::string manta_import = "\
+const std::string manta_import =
+    "\
 from manta import *\n\
 import os.path, shutil, math, sys, gc, multiprocessing, platform, time\n\
 \n\
@@ -53,7 +54,8 @@ if bpy is not None:\n\
 // DEBUG
 //////////////////////////////////////////////////////////////////////
 
-const std::string manta_debuglevel = "\n\
+const std::string manta_debuglevel =
+    "\n\
 def set_manta_debuglevel(level):\n\
     setDebugLevel(level=level)\n # level 0 = mute all output from manta\n";
 
@@ -61,23 +63,28 @@ def set_manta_debuglevel(level):\n\
 // SOLVERS
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_solver = "\n\
+const std::string fluid_solver =
+    "\n\
 mantaMsg('Solver base')\n\
 s$ID$ = Solver(name='solver_base$ID$', gridSize=gs_s$ID$, dim=dim_s$ID$)\n";
 
-const std::string fluid_solver_noise = "\n\
+const std::string fluid_solver_noise =
+    "\n\
 mantaMsg('Solver noise')\n\
 sn$ID$ = Solver(name='solver_noise$ID$', gridSize=gs_sn$ID$)\n";
 
-const std::string fluid_solver_mesh = "\n\
+const std::string fluid_solver_mesh =
+    "\n\
 mantaMsg('Solver mesh')\n\
 sm$ID$ = Solver(name='solver_mesh$ID$', gridSize=gs_sm$ID$)\n";
 
-const std::string fluid_solver_particles = "\n\
+const std::string fluid_solver_particles =
+    "\n\
 mantaMsg('Solver particles')\n\
 sp$ID$ = Solver(name='solver_particles$ID$', gridSize=gs_sp$ID$)\n";
 
-const std::string fluid_solver_guiding = "\n\
+const std::string fluid_solver_guiding =
+    "\n\
 mantaMsg('Solver guiding')\n\
 sg$ID$ = Solver(name='solver_guiding$ID$', gridSize=gs_sg$ID$)\n";
 
@@ -85,7 +92,8 @@ sg$ID$ = Solver(name='solver_guiding$ID$', gridSize=gs_sg$ID$)\n";
 // VARIABLES
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_variables = "\n\
+const std::string fluid_variables =
+    "\n\
 mantaMsg('Fluid variables')\n\
 dim_s$ID$     = $SOLVER_DIM$\n\
 res_s$ID$     = $RES$\n\
@@ -120,22 +128,26 @@ viscosity_s$ID$ = $FLUID_VISCOSITY$ / (domainSize_s$ID$*domainSize_s$ID$) # kine
 # Factor to convert blender velocities to manta velocities\n\
 toMantaUnitsFac_s$ID$ = (1.0 / (1.0 / res_s$ID$))\n # = dt/dx * 1/dt ";
 
-const std::string fluid_variables_noise = "\n\
+const std::string fluid_variables_noise =
+    "\n\
 mantaMsg('Fluid variables noise')\n\
 upres_sn$ID$  = $NOISE_SCALE$\n\
 gs_sn$ID$     = vec3($NOISE_RESX$, $NOISE_RESY$, $NOISE_RESZ$)\n";
 
-const std::string fluid_variables_mesh = "\n\
+const std::string fluid_variables_mesh =
+    "\n\
 mantaMsg('Fluid variables mesh')\n\
 upres_sm$ID$  = $MESH_SCALE$\n\
 gs_sm$ID$     = vec3($MESH_RESX$, $MESH_RESY$, $MESH_RESZ$)\n";
 
-const std::string fluid_variables_particles = "\n\
+const std::string fluid_variables_particles =
+    "\n\
 mantaMsg('Fluid variables particles')\n\
 upres_sp$ID$  = $PARTICLE_SCALE$\n\
 gs_sp$ID$     = vec3($PARTICLE_RESX$, $PARTICLE_RESY$, $PARTICLE_RESZ$)\n";
 
-const std::string fluid_variables_guiding = "\n\
+const std::string fluid_variables_guiding =
+    "\n\
 mantaMsg('Fluid variables guiding')\n\
 gs_sg$ID$   = vec3($GUIDING_RESX$, $GUIDING_RESY$, $GUIDING_RESZ$)\n\
 \n\
@@ -146,26 +158,32 @@ tau_sg$ID$   = 1.0\n\
 sigma_sg$ID$ = 0.99/tau_sg$ID$\n\
 theta_sg$ID$ = 1.0\n";
 
-const std::string fluid_with_obstacle = "\n\
+const std::string fluid_with_obstacle =
+    "\n\
 using_obstacle_s$ID$ = True\n";
 
-const std::string fluid_with_guiding = "\n\
+const std::string fluid_with_guiding =
+    "\n\
 using_guiding_s$ID$ = True\n";
 
-const std::string fluid_with_invel = "\n\
+const std::string fluid_with_invel =
+    "\n\
 using_invel_s$ID$ = True\n";
 
-const std::string fluid_with_outflow = "\n\
+const std::string fluid_with_outflow =
+    "\n\
 using_outflow_s$ID$ = True\n";
 
-const std::string fluid_with_sndparts = "\n\
+const std::string fluid_with_sndparts =
+    "\n\
 using_sndparts_s$ID$ = True\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADAPTIVE TIME STEPPING
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_adaptive_time_stepping = "\n\
+const std::string fluid_adaptive_time_stepping =
+    "\n\
 mantaMsg('Fluid adaptive time stepping')\n\
 s$ID$.frameLength = dt0_s$ID$ \n\
 s$ID$.timestepMin = s$ID$.frameLength / 10.\n\
@@ -173,14 +191,16 @@ s$ID$.timestepMax = s$ID$.frameLength\n\
 s$ID$.cfl         = cfl_cond_s$ID$\n\
 s$ID$.timestep    = s$ID$.frameLength\n";
 
-const std::string fluid_adaptive_time_stepping_noise = "\n\
+const std::string fluid_adaptive_time_stepping_noise =
+    "\n\
 mantaMsg('Fluid adaptive time stepping high')\n\
 sn$ID$.frameLength = s$ID$.frameLength\n\
 sn$ID$.timestepMin = s$ID$.timestepMin\n\
 sn$ID$.timestepMax = s$ID$.timestepMax\n\
 sn$ID$.cfl         = s$ID$.cfl\n";
 
-const std::string fluid_adapt_time_step = "\n\
+const std::string fluid_adapt_time_step =
+    "\n\
 def fluid_adapt_time_step_$ID$():\n\
     mantaMsg('Fluid adapt time step')\n\
     \n\
@@ -193,7 +213,8 @@ def fluid_adapt_time_step_$ID$():\n\
         mantaMsg('Adapt timestep, maxvel: ' + str(maxVel_s$ID$))\n\
         s$ID$.adaptTimestep(maxVel_s$ID$)\n";
 
-const std::string fluid_adapt_time_step_noise = "\n\
+const std::string fluid_adapt_time_step_noise =
+    "\n\
 def fluid_adapt_time_step_noise_$ID$():\n\
     sn$ID$.timestep    = s$ID$.timestep\n\
     sn$ID$.frameLength = dt0_s$ID$ \n\
@@ -203,7 +224,8 @@ def fluid_adapt_time_step_noise_$ID$():\n\
 // GRIDS
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_alloc = "\n\
+const std::string fluid_alloc =
+    "\n\
 mantaMsg('Fluid alloc data')\n\
 flags_s$ID$       = s$ID$.create(FlagGrid)\n\
 vel_s$ID$         = s$ID$.create(MACGrid)\n\
@@ -224,7 +246,8 @@ obvel_s$ID$       = 0\n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiIn=phiIn_s$ID$, phiOut=phiOut_s$ID$, flags=flags_s$ID$)\n";
 
-const std::string fluid_alloc_obstacle = "\n\
+const std::string fluid_alloc_obstacle =
+    "\n\
 mantaMsg('Allocating obstacle data')\n\
 numObs_s$ID$     = s$ID$.create(IntGrid)\n\
 phiObsIn_s$ID$   = s$ID$.create(LevelsetGrid)\n\
@@ -237,7 +260,8 @@ z_obvel_s$ID$    = s$ID$.create(RealGrid)\n\
 tmpDict_s$ID$ = dict(phiObsIn=phiObsIn_s$ID$)\n\
 fluid_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
 
-const std::string fluid_alloc_guiding = "\n\
+const std::string fluid_alloc_guiding =
+    "\n\
 mantaMsg('Allocating guiding data')\n\
 velT_s$ID$        = s$ID$.create(MACGrid)\n\
 weightGuide_s$ID$ = s$ID$.create(RealGrid)\n\
@@ -254,7 +278,8 @@ guidevel_sg$ID$   = sg$ID$.create(MACGrid)\n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_guiding_dict_s$ID$ = dict(guidevel=guidevel_sg$ID$)\n";
 
-const std::string fluid_alloc_invel = "\n\
+const std::string fluid_alloc_invel =
+    "\n\
 mantaMsg('Allocating initial velocity data')\n\
 invelC_s$ID$  = s$ID$.create(VecGrid)\n\
 invel_s$ID$   = s$ID$.create(MACGrid)\n\
@@ -262,11 +287,13 @@ x_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 y_invel_s$ID$ = s$ID$.create(RealGrid)\n\
 z_invel_s$ID$ = s$ID$.create(RealGrid)\n";
 
-const std::string fluid_alloc_outflow = "\n\
+const std::string fluid_alloc_outflow =
+    "\n\
 mantaMsg('Allocating outflow data')\n\
 phiOutIn_s$ID$ = s$ID$.create(LevelsetGrid)\n";
 
-const std::string fluid_alloc_sndparts = "\n\
+const std::string fluid_alloc_sndparts =
+    "\n\
 mantaMsg('Allocating snd parts low')\n\
 ppSnd_sp$ID$     = sp$ID$.create(BasicParticleSystem)\n\
 pVelSnd_pp$ID$   = ppSnd_sp$ID$.create(PdataVec3)\n\
@@ -286,7 +313,8 @@ fluid_particles_dict_s$ID$ = dict(ppSnd=ppSnd_sp$ID$, pVelSnd=pVelSnd_pp$ID$, pL
 // PRE / POST STEP
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_pre_step = "\n\
+const std::string fluid_pre_step =
+    "\n\
 def fluid_pre_step_$ID$():\n\
     mantaMsg('Fluid pre step')\n\
     x_vel_s$ID$.clear()\n\
@@ -327,7 +355,8 @@ def fluid_pre_step_$ID$():\n\
         mantaMsg('Using static preconditioner')\n\
         preconditioner_s$ID$ = PcMGStatic\n";
 
-const std::string fluid_post_step = "\n\
+const std::string fluid_post_step =
+    "\n\
 def fluid_post_step_$ID$():\n\
     mantaMsg('Fluid post step')\n\
     forces_s$ID$.clear()\n\
@@ -354,7 +383,8 @@ def fluid_post_step_$ID$():\n\
 // DESTRUCTION
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_delete_all = "\n\
+const std::string fluid_delete_all =
+    "\n\
 mantaMsg('Deleting fluid')\n\
 # Clear all helper dictionaries first\n\
 mantaMsg('Clear helper dictionaries')\n\
@@ -406,11 +436,13 @@ gc.collect()\n";
 // BAKE
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_cache_helper = "\n\
+const std::string fluid_cache_helper =
+    "\n\
 def fluid_cache_get_framenr_formatted_$ID$(framenr):\n\
     return str(framenr).zfill(4) # framenr with leading zeroes\n";
 
-const std::string fluid_bake_multiprocessing = "\n\
+const std::string fluid_bake_multiprocessing =
+    "\n\
 def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, format_noise=None, format_mesh=None, format_particles=None, format_guiding=None, path_data=None, path_noise=None, path_mesh=None, path_particles=None, path_guiding=None):\n\
     if __name__ == '__main__':\n\
         args = (framenr,)\n\
@@ -438,7 +470,8 @@ def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, 
         p$ID$.start()\n\
         p$ID$.join()\n";
 
-const std::string fluid_bake_data = "\n\
+const std::string fluid_bake_data =
+    "\n\
 def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_guiding, path_data, path_guiding):\n\
     mantaMsg('Bake fluid data')\n\
     \n\
@@ -459,7 +492,8 @@ def bake_fluid_data_$ID$(path_data, path_guiding, framenr, format_data, format_p
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, format_guiding=format_guiding, path_data=path_data, path_guiding=path_guiding)\n";
 
-const std::string fluid_bake_noise = "\n\
+const std::string fluid_bake_noise =
+    "\n\
 def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise):\n\
     mantaMsg('Bake fluid noise')\n\
     \n\
@@ -476,7 +510,8 @@ def bake_noise_$ID$(path_data, path_noise, framenr, format_data, format_noise):\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_noise_process_$ID$, framenr=framenr, format_data=format_data, format_noise=format_noise, path_data=path_data, path_noise=path_noise)\n";
 
-const std::string fluid_bake_mesh = "\n\
+const std::string fluid_bake_mesh =
+    "\n\
 def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, path_data, path_mesh):\n\
     mantaMsg('Bake fluid mesh')\n\
     \n\
@@ -499,7 +534,8 @@ def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, form
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_mesh_process_$ID$, framenr=framenr, format_data=format_data, format_mesh=format_mesh, format_particles=format_particles, path_data=path_data, path_mesh=path_mesh)\n";
 
-const std::string fluid_bake_particles = "\n\
+const std::string fluid_bake_particles =
+    "\n\
 def bake_particles_process_$ID$(framenr, format_data, format_particles, path_data, path_particles):\n\
     mantaMsg('Bake secondary particles')\n\
     \n\
@@ -524,7 +560,8 @@ def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_particles_process_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data, path_particles=path_particles)\n";
 
-const std::string fluid_bake_guiding = "\n\
+const std::string fluid_bake_guiding =
+    "\n\
 def bake_guiding_process_$ID$(framenr, format_guiding, path_guiding):\n\
     mantaMsg('Bake fluid guiding')\n\
     \n\
@@ -554,7 +591,8 @@ def bake_guiding_$ID$(path_guiding, framenr, format_guiding):\n\
 // IMPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_file_import = "\n\
+const std::string fluid_file_import =
+    "\n\
 def fluid_file_import_s$ID$(dict, path, framenr, file_format):\n\
     try:\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
@@ -569,22 +607,26 @@ def fluid_file_import_s$ID$(dict, path, framenr, file_format):\n\
         #mantaMsg(str(e))\n\
         pass # Just skip file load errors for now\n";
 
-const std::string fluid_load_particles = "\n\
+const std::string fluid_load_particles =
+    "\n\
 def fluid_load_particles_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid load particles, frame ' + str(framenr))\n\
     fluid_file_import_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string fluid_load_data = "\n\
+const std::string fluid_load_data =
+    "\n\
 def fluid_load_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid load data, frame ' + str(framenr))\n\
     fluid_file_import_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string fluid_load_guiding = "\n\
+const std::string fluid_load_guiding =
+    "\n\
 def fluid_load_guiding_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid load guiding, frame ' + str(framenr))\n\
     fluid_file_import_s$ID$(dict=fluid_guiding_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string fluid_load_vel = "\n\
+const std::string fluid_load_vel =
+    "\n\
 def fluid_load_vel_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid load vel, frame ' + str(framenr))\n\
     vel_dict = dict(vel=guidevel_sg$ID$)\n\
@@ -594,7 +636,8 @@ def fluid_load_vel_$ID$(path, framenr, file_format):\n\
 // EXPORT
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_file_export = "\n\
+const std::string fluid_file_export =
+    "\n\
 def fluid_file_export_s$ID$(dict, path, framenr, file_format, mode_override=True):\n\
     try:\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
@@ -605,17 +648,20 @@ def fluid_file_export_s$ID$(dict, path, framenr, file_format, mode_override=True
         mantaMsg(str(e))\n\
         pass # Just skip file save errors for now\n";
 
-const std::string fluid_save_particles = "\n\
+const std::string fluid_save_particles =
+    "\n\
 def fluid_save_particles_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save particles, frame ' + str(framenr))\n\
     fluid_file_export_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string fluid_save_data = "\n\
+const std::string fluid_save_data =
+    "\n\
 def fluid_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save data, frame ' + str(framenr))\n\
     fluid_file_export_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
 
-const std::string fluid_save_guiding = "\n\
+const std::string fluid_save_guiding =
+    "\n\
 def fluid_save_guiding_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save guiding, frame ' + str(framenr))\n\
     fluid_file_export_s$ID$(dict=fluid_guiding_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
@@ -624,7 +670,8 @@ def fluid_save_guiding_$ID$(path, framenr, file_format):\n\
 // STANDALONE MODE
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_standalone = "\n\
+const std::string fluid_standalone =
+    "\n\
 gui = None\n\
 if (GUI):\n\
     gui=Gui()\n\
@@ -668,53 +715,62 @@ while current_frame <= end_frame:\n\
 // SCRIPT SECTION HEADERS
 //////////////////////////////////////////////////////////////////////
 
-const std::string header_libraries = "\n\
+const std::string header_libraries =
+    "\n\
 ######################################################################\n\
 ## LIBRARIES\n\
 ######################################################################\n";
 
-const std::string header_main = "\n\
+const std::string header_main =
+    "\n\
 ######################################################################\n\
 ## MAIN\n\
 ######################################################################\n";
 
-const std::string header_prepost = "\n\
+const std::string header_prepost =
+    "\n\
 ######################################################################\n\
 ## PRE/POST STEPS\n\
 ######################################################################\n";
 
-const std::string header_steps = "\n\
+const std::string header_steps =
+    "\n\
 ######################################################################\n\
 ## STEPS\n\
 ######################################################################\n";
 
-const std::string header_import = "\n\
+const std::string header_import =
+    "\n\
 ######################################################################\n\
 ## IMPORT\n\
 ######################################################################\n";
 
-const std::string header_grids = "\n\
+const std::string header_grids =
+    "\n\
 ######################################################################\n\
 ## GRIDS\n\
 ######################################################################\n";
 
-const std::string header_solvers = "\n\
+const std::string header_solvers =
+    "\n\
 ######################################################################\n\
 ## SOLVERS\n\
 ######################################################################\n";
 
-const std::string header_variables = "\n\
+const std::string header_variables =
+    "\n\
 ######################################################################\n\
 ## VARIABLES\n\
 ######################################################################\n";
 
-const std::string header_time = "\n\
+const std::string header_time =
+    "\n\
 ######################################################################\n\
 ## ADAPTIVE TIME\n\
 ######################################################################\n";
 
-const std::string header_gridinit = "\n\
+const std::string header_gridinit =
+    "\n\
 ######################################################################\n\
 ## DOMAIN INIT\n\
 ######################################################################\n";
-

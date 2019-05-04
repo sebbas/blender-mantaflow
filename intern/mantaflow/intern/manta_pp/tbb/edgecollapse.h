@@ -1,13 +1,7 @@
 
 
-
-
-
 // DO NOT EDIT !
 // This file is generated using the MantaFlow preprocessor (prep generate).
-
-
-
 
 #line 1 "/Users/sebbas/Developer/Mantaflow/mantaflowDevelop/mantaflowgit/source/edgecollapse.h"
 /******************************************************************************
@@ -32,18 +26,27 @@
 /******************************************************************************/
 
 #ifndef _EDGECOLLAPSE_H
-#define _EDGECOLLAPSE_H
+#  define _EDGECOLLAPSE_H
 
-#include "mesh.h"
+#  include "mesh.h"
 
 namespace Manta {
 
-void CollapseEdge(Mesh& mesh, const int trinum, const int which, const Vec3 &edgevect, const Vec3 &endpoint,
-                  std::vector<int> &deletedNodes, std::map<int,bool> &taintedTris, int &numCollapses, bool doTubeCutting);
+void CollapseEdge(Mesh &mesh,
+                  const int trinum,
+                  const int which,
+                  const Vec3 &edgevect,
+                  const Vec3 &endpoint,
+                  std::vector<int> &deletedNodes,
+                  std::map<int, bool> &taintedTris,
+                  int &numCollapses,
+                  bool doTubeCutting);
 
-Vec3 ModifiedButterflySubdivision(Mesh& mesh, const Corner& ca, const Corner& cb, const Vec3& fallback);
-    
-}
+Vec3 ModifiedButterflySubdivision(Mesh &mesh,
+                                  const Corner &ca,
+                                  const Corner &cb,
+                                  const Vec3 &fallback);
+
+}  // namespace Manta
 
 #endif
-
