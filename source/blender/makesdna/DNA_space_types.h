@@ -198,7 +198,7 @@ typedef enum eSpaceButtons_Context {
 	BCONTEXT_OUTPUT = 16,
 
 	/* always as last... */
-	BCONTEXT_TOT
+	BCONTEXT_TOT,
 } eSpaceButtons_Context;
 
 /* SpaceProperties.flag */
@@ -669,7 +669,9 @@ typedef struct FileSelectParams {
 	short sort;
 	/** Display mode flag. */
 	short display;
+	short display_previous;
 	/** Filter when (flags & FILE_FILTER) is true. */
+	char _pad2[2];
 	int filter;
 
 	/** Max number of levels in dirtree to show at once, 0 to disable recursion. */

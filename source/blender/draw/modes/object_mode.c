@@ -945,12 +945,21 @@ static void DRW_shgroup_empty_image(
 	float image_aspect[2];
 	image_calc_aspect(ob->data, size, image_aspect);
 
+	char depth_mode;
+	if (DRW_state_is_depth()) {
+		/* Use the actual depth if we are doing depth tests to determine the distance to the object */
+		depth_mode = OB_EMPTY_IMAGE_DEPTH_DEFAULT;
+	}
+	else {
+		depth_mode = ob->empty_image_depth;
+	}
+
 	{
 		DRWShadingGroup *grp = DRW_shgroup_create(sh_data->object_empty_image_wire, sgl->non_meshes);
 		/* TODO(fclem) implement DRW_shgroup_uniform_vec2_copy */
 		DRW_shgroup_uniform_float_copy(grp, "aspectX", image_aspect[0]);
 		DRW_shgroup_uniform_float_copy(grp, "aspectY", image_aspect[1]);
-		DRW_shgroup_uniform_int_copy(grp, "depthMode", ob->empty_image_depth);
+		DRW_shgroup_uniform_int_copy(grp, "depthMode", depth_mode);
 		DRW_shgroup_uniform_float(grp, "size", &ob->empty_drawsize, 1);
 		DRW_shgroup_uniform_vec2(grp, "offset", ob->ima_ofs, 1);
 		DRW_shgroup_uniform_vec3(grp, "color", color, 1);
@@ -969,7 +978,7 @@ static void DRW_shgroup_empty_image(
 		                                          (use_alpha_blend) ? sgl->image_empties : sgl->non_meshes);
 		DRW_shgroup_uniform_float_copy(grp, "aspectX", image_aspect[0]);
 		DRW_shgroup_uniform_float_copy(grp, "aspectY", image_aspect[1]);
-		DRW_shgroup_uniform_int_copy(grp, "depthMode", ob->empty_image_depth);
+		DRW_shgroup_uniform_int_copy(grp, "depthMode", depth_mode);
 		DRW_shgroup_uniform_float(grp, "size", &ob->empty_drawsize, 1);
 		DRW_shgroup_uniform_vec2(grp, "offset", ob->ima_ofs, 1);
 		DRW_shgroup_uniform_texture(grp, "image", tex);
@@ -1002,8 +1011,7 @@ static void OBJECT_cache_init(void *vedata)
 	}
 
 	g_data = stl->g_data;
-	g_data->xray_enabled = XRAY_ENABLED(draw_ctx->v3d) &&
-	                       (draw_ctx->v3d->shading.type < OB_MATERIAL);
+	g_data->xray_enabled = XRAY_ACTIVE(draw_ctx->v3d);
 	g_data->xray_enabled_and_not_wire = g_data->xray_enabled && draw_ctx->v3d->shading.type > OB_WIRE;
 
 	{
@@ -1832,8 +1840,7 @@ static void camera_view3d_reconstruction(
 
 	BLI_assert(BLI_listbase_is_empty(&sgl->camera_path));
 	const bool is_solid_bundle = (v3d->bundle_drawtype == OB_EMPTY_SPHERE) &&
-	                             ((v3d->shading.type != OB_SOLID) ||
-	                              ((v3d->shading.flag & XRAY_FLAG(v3d)) == 0));
+	                             ((v3d->shading.type != OB_SOLID) || !XRAY_FLAG_ENABLED(v3d));
 
 	MovieTracking *tracking = &clip->tracking;
 	/* Index must start in 1, to mimic BKE_tracking_track_get_indexed. */
@@ -2979,7 +2986,11 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
 	        (draw_ctx->v3d->flag & V3D_SELECT_OUTLINE) && ((ob->base_flag & BASE_SELECTED) != 0) &&
 	        ((DRW_object_is_renderable(ob) && (ob->dt > OB_WIRE)) || (ob->dt == OB_WIRE)));
 	const bool show_relations = ((draw_ctx->v3d->flag & V3D_HIDE_HELPLINES) == 0);
-	const bool hide_object_extra = (v3d->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) != 0;
+	const bool hide_object_extra = (
+	        (v3d->overlay.flag & V3D_OVERLAY_HIDE_OBJECT_XTRAS) != 0 &&
+	        /* Show if this is the camera we're looking through
+	         * since it's useful for moving the camera. */
+	        (((rv3d->persp == RV3D_CAMOB) && ((ID *)v3d->camera == ob->id.orig_id)) == 0));
 
 	if (do_outlines) {
 		if (!BKE_object_is_in_editmode(ob) &&
@@ -3143,8 +3154,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
 			bArmature *arm = ob->data;
 			if (arm->edbo == NULL) {
 				if (DRW_state_is_select() || !DRW_pose_mode_armature(ob, draw_ctx->obact)) {
-					bool is_wire = (v3d->shading.type == OB_WIRE) || (ob->dt <= OB_WIRE) ||
-					               (v3d->shading.flag & XRAY_FLAG(v3d)) != 0;
+					bool is_wire = (v3d->shading.type == OB_WIRE) || (ob->dt <= OB_WIRE) || XRAY_FLAG_ENABLED(v3d);
 					DRWArmaturePasses passes = {
 					    .bone_solid = (is_wire) ? NULL : sgl->bone_solid,
 					    .bone_outline = sgl->bone_outline,
@@ -3299,7 +3309,7 @@ static void OBJECT_draw_scene(void *vedata)
 	DRW_draw_pass(psl->particle);
 	DRW_draw_pass(stl->g_data->sgl.bone_axes);
 
-	MULTISAMPLE_SYNC_DISABLE(dfbl, dtxl)
+	MULTISAMPLE_SYNC_DISABLE(dfbl, dtxl);
 
 	DRW_draw_pass(stl->g_data->sgl.image_empties);
 

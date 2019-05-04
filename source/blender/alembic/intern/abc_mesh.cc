@@ -387,12 +387,17 @@ void AbcGenericMeshWriter::do_write()
 			writeMesh(mesh);
 		}
 
-		if (needsfree) BKE_id_free(NULL, mesh);
+		if (needsfree) freeEvaluatedMesh(mesh);
 	}
 	catch (...) {
-		if (needsfree) BKE_id_free(NULL, mesh);
+		if (needsfree) freeEvaluatedMesh(mesh);
 		throw;
 	}
+}
+
+void AbcGenericMeshWriter::freeEvaluatedMesh(struct Mesh *mesh)
+{
+	BKE_id_free(NULL, mesh);
 }
 
 void AbcGenericMeshWriter::writeMesh(struct Mesh *mesh)
@@ -1019,7 +1024,7 @@ CDStreamConfig get_config(Mesh *mesh)
 {
 	CDStreamConfig config;
 
-	BLI_assert(mesh->mvert);
+	BLI_assert(mesh->mvert || mesh->totvert == 0);
 
 	config.user_data = mesh;
 	config.mvert = mesh->mvert;
@@ -1059,7 +1064,9 @@ void AbcMeshReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	m_object->data = mesh;
 
 	Mesh *read_mesh = this->read_mesh(mesh, sample_sel, MOD_MESHSEQ_READ_ALL, NULL);
-	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
+	if (read_mesh != mesh) {
+		BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
+	}
 
 	if (m_settings->validate_meshes) {
 		BKE_mesh_validate(mesh, false, false);
@@ -1342,7 +1349,9 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
 	m_object->data = mesh;
 
 	Mesh *read_mesh = this->read_mesh(mesh, sample_sel, MOD_MESHSEQ_READ_ALL, NULL);
-	BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
+	if (read_mesh != mesh) {
+		BKE_mesh_nomain_to_mesh(read_mesh, mesh, m_object, &CD_MASK_MESH, true);
+	}
 
 	ISubDSchema::Sample sample;
 	try {

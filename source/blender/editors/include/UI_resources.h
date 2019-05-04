@@ -35,7 +35,7 @@
 typedef enum {
 	/* ui */
 #include "UI_icons.h"
-	BIFICONID_LAST
+	BIFICONID_LAST,
 } BIFIconID;
 
 #define BIFICONID_FIRST  (ICON_NONE)
@@ -310,7 +310,7 @@ typedef enum ThemeColorID {
 	TH_METADATA_TEXT,
 
 	TH_EDGE_BEVEL,
-	TH_VERTEX_BEVEL
+	TH_VERTEX_BEVEL,
 } ThemeColorID;
 
 /* specific defines per space should have higher define values */
@@ -366,6 +366,7 @@ void UI_GetThemeColor3ubv(int colorid, unsigned char col[3]);
 void UI_GetThemeColor4ubv(int colorid, unsigned char col[4]);
 
 // get a theme color from specified space type
+void UI_GetThemeColorType3fv(int colorid, int spacetype, float col[3]);
 void UI_GetThemeColorType3ubv(int colorid, int spacetype, unsigned char col[3]);
 void UI_GetThemeColorType4ubv(int colorid, int spacetype, unsigned char col[4]);
 

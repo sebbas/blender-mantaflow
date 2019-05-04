@@ -61,8 +61,11 @@ struct CameraWidgetGroup {
 static bool WIDGETGROUP_camera_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	if ((v3d->flag2 & V3D_HIDE_OVERLAYS) ||
-	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)))
+	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
+		return false;
+	}
+	if ((v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_LENS) == 0 &&
+	    (v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_DOF_DIST) == 0)
 	{
 		return false;
 	}
@@ -135,6 +138,7 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 	}
 
 	struct CameraWidgetGroup *cagzgroup = gzgroup->customdata;
+	View3D *v3d = CTX_wm_view3d(C);
 	ViewLayer *view_layer = CTX_data_view_layer(C);
 	Object *ob = OBACT(view_layer);
 	Camera *ca = ob->data;
@@ -145,7 +149,9 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
 	negate_v3_v3(dir, ob->obmat[2]);
 
-	if (ca->flag & CAM_SHOWLIMITS) {
+	if ((ca->flag & CAM_SHOWLIMITS) &&
+	    (v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_DOF_DIST))
+	{
 		WM_gizmo_set_matrix_location(cagzgroup->dop_dist, ob->obmat[3]);
 		WM_gizmo_set_matrix_rotation_from_yz_axis(cagzgroup->dop_dist, ob->obmat[1], dir);
 		WM_gizmo_set_scale(cagzgroup->dop_dist, ca->drawsize);
@@ -234,6 +240,11 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 		WM_gizmo_target_property_def_rna_ptr(widget, gz_prop_type, &camera_ptr, prop, -1);
 	}
 
+	/* This could be handled more elegently (split into two gizmo groups). */
+	if ((v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_LENS) == 0) {
+		WM_gizmo_set_flag(cagzgroup->focal_len, WM_GIZMO_HIDDEN, true);
+		WM_gizmo_set_flag(cagzgroup->ortho_scale, WM_GIZMO_HIDDEN, true);
+	}
 }
 
 static void WIDGETGROUP_camera_message_subscribe(
@@ -374,9 +385,7 @@ static bool WIDGETGROUP_camera_view_poll(const bContext *C, wmGizmoGroupType *UN
 	}
 
 	View3D *v3d = CTX_wm_view3d(C);
-	if ((v3d->flag2 & V3D_HIDE_OVERLAYS) ||
-	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)))
-	{
+	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
 		return false;
 	}
 

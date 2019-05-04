@@ -1017,8 +1017,14 @@ bool RNA_struct_bl_idname_ok_or_report(ReportList *reports, const char *identifi
 	const int len_sep = strlen(sep);
 	const int len_id = strlen(identifier);
 	const char *p = strstr(identifier, sep);
+	/* TODO: make error, for now warning until add-ons update. */
+#if 1
+	const int report_level = RPT_WARNING;
+	const bool failure = true;
+#else
 	const int report_level = RPT_ERROR;
 	const bool failure = false;
+#endif
 	if (p == NULL || p == identifier || p + len_sep >= identifier + len_id) {
 		BKE_reportf(reports, report_level, "'%s' doesn't contain '%s' with prefix & suffix", identifier, sep);
 		return failure;
@@ -2057,7 +2063,7 @@ bool RNA_property_animated(PointerRNA *ptr, PropertyRNA *prop)
 }
 
 /** \note Does not take into account editable status, this has to be checked separately
- * (using RNA_property_edtiable_flag() usually). */
+ * (using #RNA_property_editable_flag() usually). */
 bool RNA_property_overridable_get(PointerRNA *ptr, PropertyRNA *prop)
 {
 	if (prop->magic == RNA_MAGIC) {
@@ -2181,7 +2187,7 @@ static void rna_property_update(bContext *C, Main *bmain, Scene *scene, PointerR
 			/* we could add NULL check, for now don't */
 			WM_msg_publish_rna(mbus, ptr, prop);
 		}
-		if (ptr->id.data != NULL) {
+		if (ptr->id.data != NULL && ((prop->flag & PROP_NO_DEG_UPDATE) == 0)) {
 			const short id_type = GS(((ID *)ptr->id.data)->name);
 			if (ID_TYPE_IS_COW(id_type)) {
 				DEG_id_tag_update(ptr->id.data, ID_RECALC_COPY_ON_WRITE);

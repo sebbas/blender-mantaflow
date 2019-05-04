@@ -99,7 +99,7 @@ typedef char DRWViewportEmptyList;
 	DRW_VIEWPORT_LIST_SIZE(*(((ty *)NULL)->fbl)), \
 	DRW_VIEWPORT_LIST_SIZE(*(((ty *)NULL)->txl)), \
 	DRW_VIEWPORT_LIST_SIZE(*(((ty *)NULL)->psl)), \
-	DRW_VIEWPORT_LIST_SIZE(*(((ty *)NULL)->stl)) \
+	DRW_VIEWPORT_LIST_SIZE(*(((ty *)NULL)->stl)), \
 }
 
 /* Use of multisample framebuffers. */
@@ -120,7 +120,7 @@ typedef char DRWViewportEmptyList;
 		DRW_multisamples_resolve(dtxl->multisample_depth, dtxl->multisample_color, true); \
 		DRW_stats_query_end(); \
 	} \
-}
+} ((void)0)
 
 #define MULTISAMPLE_SYNC_DISABLE_NO_DEPTH(dfbl, dtxl) { \
 	if (dfbl->multisample_fb != NULL) { \
@@ -129,7 +129,7 @@ typedef char DRWViewportEmptyList;
 		DRW_multisamples_resolve(dtxl->multisample_depth, dtxl->multisample_color, false); \
 		DRW_stats_query_end(); \
 	} \
-}
+} ((void)0)
 
 
 
@@ -597,9 +597,5 @@ typedef struct DRWContextState {
 } DRWContextState;
 
 const DRWContextState *DRW_context_state_get(void);
-
-#define XRAY_ALPHA(v3d)   (((v3d)->shading.type == OB_WIRE) ? (v3d)->shading.xray_alpha_wire : (v3d)->shading.xray_alpha)
-#define XRAY_FLAG(v3d)    (((v3d)->shading.type == OB_WIRE) ? V3D_SHADING_XRAY_BONE : V3D_SHADING_XRAY)
-#define XRAY_ENABLED(v3d) ((((v3d)->shading.flag & XRAY_FLAG(v3d)) != 0) && (XRAY_ALPHA(v3d) < 1.0f))
 
 #endif /* __DRW_RENDER_H__ */

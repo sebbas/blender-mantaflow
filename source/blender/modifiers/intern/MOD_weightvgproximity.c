@@ -398,7 +398,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 	}
 
 	/* Get our target object. */
-	obr = DEG_get_evaluated_object(ctx->depsgraph, wmd->proximity_ob_target);
+	obr = wmd->proximity_ob_target;
 	if (obr == NULL) {
 		return mesh;
 	}
@@ -565,12 +565,6 @@ ModifierTypeInfo modifierType_WeightVGProximity = {
 	                        eModifierTypeFlag_UsesPreview,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

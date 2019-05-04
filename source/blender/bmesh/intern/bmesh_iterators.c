@@ -44,7 +44,7 @@ const char bm_iter_itype_htype_map[BM_ITYPE_MAX] = {
 	BM_EDGE, /* BM_EDGES_OF_FACE */
 	BM_LOOP, /* BM_LOOPS_OF_FACE */
 	BM_LOOP, /* BM_LOOPS_OF_LOOP */
-	BM_LOOP  /* BM_LOOPS_OF_EDGE */
+	BM_LOOP, /* BM_LOOPS_OF_EDGE */
 };
 
 /**
@@ -584,8 +584,9 @@ void  bmiter__loop_of_loop_begin(struct BMIter__loop_of_loop *iter)
 	iter->l_first = iter->ldata;
 	iter->l_next = iter->l_first->radial_next;
 
-	if (iter->l_next == iter->l_first)
+	if (iter->l_next == iter->l_first) {
 		iter->l_next = NULL;
+	}
 }
 
 void  *bmiter__loop_of_loop_step(struct BMIter__loop_of_loop *iter)

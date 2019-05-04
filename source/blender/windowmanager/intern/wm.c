@@ -219,9 +219,11 @@ void WM_operator_handlers_clear(wmWindowManager *wm, wmOperatorType *ot)
 void WM_keyconfig_reload(bContext *C)
 {
 	if (CTX_py_init_get(C) && !G.background) {
+#ifdef WITH_PYTHON
 		BPY_execute_string(
 		        C, (const char *[]){"bpy", NULL},
 		        "bpy.utils.keyconfig_init()");
+#endif
 	}
 }
 
@@ -354,8 +356,9 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
 	wmOperator *op;
 	wmKeyConfig *keyconf;
 
-	if (wm->autosavetimer)
+	if (wm->autosavetimer) {
 		wm_autosave_timer_ended(wm);
+	}
 
 	while ((win = BLI_pophead(&wm->windows))) {
 		/* prevent draw clear to use screen */
@@ -388,7 +391,9 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
 		wm->undo_stack = NULL;
 	}
 
-	if (C && CTX_wm_manager(C) == wm) CTX_wm_manager_set(C, NULL);
+	if (C && CTX_wm_manager(C) == wm) {
+		CTX_wm_manager_set(C, NULL);
+	}
 }
 
 void wm_close_and_free_all(bContext *C, ListBase *wmlist)

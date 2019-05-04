@@ -175,6 +175,13 @@ static bool gp_data_unlink_poll(bContext *C)
 {
 	bGPdata **gpd_ptr = ED_gpencil_data_get_pointers(C, NULL);
 
+	/* only unlink annotation datablocks */
+	if ((gpd_ptr != NULL) && (*gpd_ptr != NULL)) {
+		bGPdata *gpd = (*gpd_ptr);
+		if ((gpd->flag & GP_DATA_ANNOTATIONS) == 0) {
+			return false;
+		}
+	}
 	/* if we have access to some active data, make sure there's a datablock before enabling this */
 	return (gpd_ptr && *gpd_ptr);
 }
@@ -206,9 +213,9 @@ static int gp_data_unlink_exec(bContext *C, wmOperator *op)
 void GPENCIL_OT_data_unlink(wmOperatorType *ot)
 {
 	/* identifiers */
-	ot->name = "Grease Pencil Unlink";
+	ot->name = "Annotation Unlink";
 	ot->idname = "GPENCIL_OT_data_unlink";
-	ot->description = "Unlink active Grease Pencil data-block";
+	ot->description = "Unlink active Annotation data-block";
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* callbacks */
@@ -514,7 +521,7 @@ static int gp_layer_duplicate_object_exec(bContext *C, wmOperator *op)
 			 * otherwise add the slot with the material
 			 */
 			Material *ma_src = give_current_material(ob_src, gps_src->mat_nr + 1);
-			int idx = BKE_gpencil_handle_material(bmain, ob_dst, ma_src);
+			int idx = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma_src);
 
 			/* reasign the stroke material to the right slot in destination object */
 			gps_dst->mat_nr = idx;
@@ -1372,7 +1379,7 @@ static int gp_stroke_change_color_exec(bContext *C, wmOperator *op)
 		}
 	}
 	/* try to find slot */
-	int idx = BKE_gpencil_get_material_index(ob, ma);
+	int idx = BKE_gpencil_object_material_get_index(ob, ma);
 	if (idx < 0) {
 		return OPERATOR_CANCELLED;
 	}
@@ -1718,19 +1725,26 @@ void GPENCIL_OT_vertex_group_deselect(wmOperatorType *ot)
 }
 
 /* invert */
-static int gpencil_vertex_group_invert_exec(bContext *C, wmOperator *UNUSED(op))
+static int gpencil_vertex_group_invert_exec(bContext *C, wmOperator *op)
 {
 	ToolSettings *ts = CTX_data_tool_settings(C);
 	Object *ob = CTX_data_active_object(C);
 
 	/* sanity checks */
-	if (ELEM(NULL, ts, ob, ob->data))
+	if (ELEM(NULL, ts, ob, ob->data)) {
 		return OPERATOR_CANCELLED;
+	}
 
 	MDeformVert *dvert;
 	const int def_nr = ob->actdef - 1;
-	if (!BLI_findlink(&ob->defbase, def_nr))
+	bDeformGroup *defgroup = BLI_findlink(&ob->defbase, def_nr);
+	if (defgroup == NULL) {
 		return OPERATOR_CANCELLED;
+	}
+	if (defgroup->flag & DG_LOCK_WEIGHT) {
+		BKE_report(op->reports, RPT_ERROR, "Current Vertex Group is locked");
+		return OPERATOR_CANCELLED;
+	}
 
 	CTX_DATA_BEGIN(C, bGPDstroke *, gps, editable_gpencil_strokes)
 	{
@@ -1783,15 +1797,22 @@ static int gpencil_vertex_group_smooth_exec(bContext *C, wmOperator *op)
 	Object *ob = CTX_data_active_object(C);
 
 	/* sanity checks */
-	if (ELEM(NULL, ts, ob, ob->data))
+	if (ELEM(NULL, ts, ob, ob->data)) {
 		return OPERATOR_CANCELLED;
+	}
+
+	const int def_nr = ob->actdef - 1;
+	bDeformGroup *defgroup = BLI_findlink(&ob->defbase, def_nr);
+	if (defgroup == NULL) {
+		return OPERATOR_CANCELLED;
+	}
+	if (defgroup->flag & DG_LOCK_WEIGHT) {
+		BKE_report(op->reports, RPT_ERROR, "Current Vertex Group is locked");
+		return OPERATOR_CANCELLED;
+	}
 
 	bGPDspoint *pta, *ptb, *ptc;
 	MDeformVert *dverta, *dvertb;
-
-	const int def_nr = ob->actdef - 1;
-	if (!BLI_findlink(&ob->defbase, def_nr))
-		return OPERATOR_CANCELLED;
 
 	CTX_DATA_BEGIN(C, bGPDstroke *, gps, editable_gpencil_strokes)
 	{
@@ -1864,6 +1885,187 @@ void GPENCIL_OT_vertex_group_smooth(wmOperatorType *ot)
 
 	RNA_def_float(ot->srna, "factor", 0.5f, 0.0f, 1.0, "Factor", "", 0.0f, 1.0f);
 	RNA_def_int(ot->srna, "repeat", 1, 1, 10000, "Iterations", "", 1, 200);
+}
+
+/* normalize */
+static int gpencil_vertex_group_normalize_exec(bContext *C, wmOperator *op)
+{
+	ToolSettings *ts = CTX_data_tool_settings(C);
+	Object *ob = CTX_data_active_object(C);
+
+	/* sanity checks */
+	if (ELEM(NULL, ts, ob, ob->data)) {
+		return OPERATOR_CANCELLED;
+	}
+
+	MDeformVert *dvert = NULL;
+	MDeformWeight *dw = NULL;
+	const int def_nr = ob->actdef - 1;
+	bDeformGroup *defgroup = BLI_findlink(&ob->defbase, def_nr);
+	if (defgroup == NULL) {
+		return OPERATOR_CANCELLED;
+	}
+	if (defgroup->flag & DG_LOCK_WEIGHT) {
+		BKE_report(op->reports, RPT_ERROR, "Current Vertex Group is locked");
+		return OPERATOR_CANCELLED;
+	}
+
+	CTX_DATA_BEGIN(C, bGPDstroke *, gps, editable_gpencil_strokes)
+	{
+		/* look for max value */
+		float maxvalue = 0.0f;
+		for (int i = 0; i < gps->totpoints; i++) {
+			dvert = &gps->dvert[i];
+			dw = defvert_find_index(dvert, def_nr);
+			if ((dw != NULL) &&	(dw->weight > maxvalue)) {
+				maxvalue = dw->weight;
+			}
+		}
+
+		/* normalize weights */
+		if (maxvalue > 0.0f) {
+			for (int i = 0; i < gps->totpoints; i++) {
+				dvert = &gps->dvert[i];
+				dw = defvert_find_index(dvert, def_nr);
+				if (dw != NULL) {
+					dw->weight = dw->weight / maxvalue;
+				}
+			}
+		}
+	}
+	CTX_DATA_END;
+
+	/* notifiers */
+	bGPdata *gpd = ob->data;
+	DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+	WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
+
+	return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_vertex_group_normalize(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Normalize Vertex Group";
+	ot->idname = "GPENCIL_OT_vertex_group_normalize";
+	ot->description = "Normalize weights to the active vertex group";
+
+	/* api callbacks */
+	ot->poll = gpencil_vertex_group_weight_poll;
+	ot->exec = gpencil_vertex_group_normalize_exec;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/* normalize all */
+static int gpencil_vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
+{
+	ToolSettings *ts = CTX_data_tool_settings(C);
+	Object *ob = CTX_data_active_object(C);
+	bool lock_active = RNA_boolean_get(op->ptr, "lock_active");
+
+	/* sanity checks */
+	if (ELEM(NULL, ts, ob, ob->data)) {
+		return OPERATOR_CANCELLED;
+	}
+
+	bDeformGroup *defgroup = NULL;
+	MDeformVert *dvert = NULL;
+	MDeformWeight *dw = NULL;
+	const int def_nr = ob->actdef - 1;
+	const int defbase_tot = BLI_listbase_count(&ob->defbase);
+	if (defbase_tot == 0) {
+		return OPERATOR_CANCELLED;
+	}
+
+	CTX_DATA_BEGIN(C, bGPDstroke *, gps, editable_gpencil_strokes)
+	{
+		/* verify the strokes has something to change */
+		if (gps->totpoints == 0) {
+			continue;
+		}
+		/* look for tot value */
+		float *tot_values = MEM_callocN(gps->totpoints * sizeof(float), __func__);
+
+		for (int i = 0; i < gps->totpoints; i++) {
+			dvert = &gps->dvert[i];
+			for (int v = 0; v < defbase_tot; v++) {
+				defgroup = BLI_findlink(&ob->defbase, v);
+				/* skip NULL or locked groups */
+				if ((defgroup == NULL) || (defgroup->flag & DG_LOCK_WEIGHT)) {
+					continue;
+				}
+
+				/* skip current */
+				if ((lock_active) && (v == def_nr)) {
+					continue;
+				}
+
+				dw = defvert_find_index(dvert, v);
+				if (dw != NULL) {
+					tot_values[i] += dw->weight;
+				}
+			}
+		}
+
+		/* normalize weights */
+		for (int i = 0; i < gps->totpoints; i++) {
+			if (tot_values[i] == 0.0f) {
+				continue;
+			}
+
+			dvert = &gps->dvert[i];
+			for (int v = 0; v < defbase_tot; v++) {
+				defgroup = BLI_findlink(&ob->defbase, v);
+				/* skip NULL or locked groups */
+				if ((defgroup == NULL) || (defgroup->flag & DG_LOCK_WEIGHT)) {
+					continue;
+				}
+
+				/* skip current */
+				if ((lock_active) && (v == def_nr)) {
+					continue;
+				}
+
+				dw = defvert_find_index(dvert, v);
+				if (dw != NULL) {
+					dw->weight = dw->weight / tot_values[i];
+				}
+			}
+		}
+
+		/* free temp array */
+		MEM_SAFE_FREE(tot_values);
+	}
+	CTX_DATA_END;
+
+	/* notifiers */
+	bGPdata *gpd = ob->data;
+	DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+	WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
+
+	return OPERATOR_FINISHED;
+}
+
+void GPENCIL_OT_vertex_group_normalize_all(wmOperatorType *ot)
+{
+	/* identifiers */
+	ot->name = "Normalize All Vertex Group";
+	ot->idname = "GPENCIL_OT_vertex_group_normalize_all";
+	ot->description = "Normalize all weights of all vertex groups, "
+		"so that for each vertex, the sum of all weights is 1.0";
+
+	/* api callbacks */
+	ot->poll = gpencil_vertex_group_weight_poll;
+	ot->exec = gpencil_vertex_group_normalize_all_exec;
+
+	/* flags */
+	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+	/* props */
+	RNA_def_boolean(ot->srna, "lock_active", true, "Lock Active",
+		"Keep the values of the active group while normalizing others");
 }
 
 /****************************** Join ***********************************/
@@ -2047,7 +2249,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
 
 				for (short i = 0; i < *totcol; i++) {
 					Material *tmp_ma = give_current_material(ob_src, i + 1);
-					BKE_gpencil_handle_material(bmain, ob_dst, tmp_ma);
+					BKE_gpencil_object_material_ensure(bmain, ob_dst, tmp_ma);
 				}
 
 				/* duplicate bGPDlayers  */
@@ -2082,7 +2284,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
 
 							/* reasign material. Look old material and try to find in dst */
 							ma_src = give_current_material(ob_src, gps->mat_nr + 1);
-							gps->mat_nr = BKE_gpencil_handle_material(bmain, ob_dst, ma_src);
+							gps->mat_nr = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma_src);
 
 							bGPDspoint *pt;
 							int i;

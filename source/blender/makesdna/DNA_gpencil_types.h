@@ -199,8 +199,15 @@ typedef struct bGPDstroke {
 	/** Caps mode for each stroke extreme */
 	short caps[2];
 
+	/** gradient control along y for color */
+	float gradient_f;
+	/** factor xy of shape for dots gradients */
+	float gradient_s[2];
+	char _pad_3[4];
+
 	/** Vertex weight data. */
 	struct MDeformVert *dvert;
+	void *_pad3;
 
 	bGPDstroke_Runtime runtime;
 	char _pad2[4];
@@ -234,7 +241,7 @@ typedef enum eGPDstroke_Caps {
 	GP_STROKE_CAP_ROUND = 0,
 	GP_STROKE_CAP_FLAT  = 1,
 
-	GP_STROKE_CAP_MAX
+	GP_STROKE_CAP_MAX,
 } GPDstroke_Caps;
 
 /* ***************************************** */
@@ -619,7 +626,7 @@ typedef enum eGP_DepthOrdering {
 /* draw modes (Use 2D or 3D position) */
 typedef enum eGP_DrawMode {
 	GP_DRAWMODE_2D = 0,
-	GP_DRAWMODE_3D = 1
+	GP_DRAWMODE_3D = 1,
 } eGP_DrawMode;
 
 /* ***************************************** */

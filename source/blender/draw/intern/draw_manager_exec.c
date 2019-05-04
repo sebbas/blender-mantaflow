@@ -22,8 +22,8 @@
 
 #include "draw_manager.h"
 
+#include "BLI_math_bits.h"
 #include "BLI_mempool.h"
-
 
 #include "BKE_global.h"
 
@@ -792,18 +792,20 @@ static void draw_matrices_model_prepare(DRWCallState *st)
 	if (st->matflag & DRW_CALL_MODELVIEWPROJECTION) {
 		mul_m4_m4m4(st->modelviewprojection, DST.view_data.matstate.mat[DRW_MAT_PERS], st->model);
 	}
-	if (st->matflag & (DRW_CALL_NORMALVIEW | DRW_CALL_EYEVEC)) {
+	if (st->matflag & (DRW_CALL_NORMALVIEW | DRW_CALL_NORMALVIEWINVERSE | DRW_CALL_EYEVEC)) {
 		copy_m3_m4(st->normalview, st->modelview);
 		invert_m3(st->normalview);
 		transpose_m3(st->normalview);
 	}
+	if (st->matflag & (DRW_CALL_NORMALVIEWINVERSE | DRW_CALL_EYEVEC)) {
+		invert_m3_m3(st->normalviewinverse, st->normalview);
+	}
+	/* TODO remove eye vec (unused) */
 	if (st->matflag & DRW_CALL_EYEVEC) {
 		/* Used by orthographic wires */
-		float tmp[3][3];
 		copy_v3_fl3(st->eyevec, 0.0f, 0.0f, 1.0f);
-		invert_m3_m3(tmp, st->normalview);
 		/* set eye vector, transformed to object coords */
-		mul_m3_v3(tmp, st->eyevec);
+		mul_m3_v3(st->normalviewinverse, st->eyevec);
 	}
 	/* Non view dependent */
 	if (st->matflag & DRW_CALL_MODELINVERSE) {
@@ -823,10 +825,11 @@ static void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
 	/* step 1 : bind object dependent matrices */
 	if (call != NULL) {
 		DRWCallState *state = call->state;
-		float objectinfo[3];
+		float objectinfo[4];
 		objectinfo[0] = state->objectinfo[0];
 		objectinfo[1] = call->single.ma_index; /* WATCH this is only valid for single drawcalls. */
 		objectinfo[2] = state->objectinfo[1];
+		objectinfo[3] = (state->flag & DRW_CALL_NEGSCALE) ? -1.0f : 1.0f;
 
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->model, 16, 1, (float *)state->model);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->modelinverse, 16, 1, (float *)state->modelinverse);
@@ -834,8 +837,9 @@ static void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->modelviewinverse, 16, 1, (float *)state->modelviewinverse);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)state->modelviewprojection);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->normalview, 9, 1, (float *)state->normalview);
+		GPU_shader_uniform_vector(shgroup->shader, shgroup->normalviewinverse, 9, 1, (float *)state->normalviewinverse);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->normalworld, 9, 1, (float *)state->normalworld);
-		GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 3, 1, (float *)objectinfo);
+		GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 4, 1, (float *)objectinfo);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->orcotexfac, 3, 2, (float *)state->orcotexfac);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->eye, 3, 1, (float *)state->eyevec);
 	}
@@ -849,7 +853,7 @@ static void draw_geometry_prepare(DRWShadingGroup *shgroup, DRWCall *call)
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->modelview, 16, 1, (float *)DST.view_data.matstate.mat[DRW_MAT_VIEW]);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->modelviewinverse, 16, 1, (float *)DST.view_data.matstate.mat[DRW_MAT_VIEWINV]);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->modelviewprojection, 16, 1, (float *)DST.view_data.matstate.mat[DRW_MAT_PERS]);
-		GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 3, 1, (float *)unitmat);
+		GPU_shader_uniform_vector(shgroup->shader, shgroup->objectinfo, 4, 1, (float *)unitmat);
 		GPU_shader_uniform_vector(shgroup->shader, shgroup->orcotexfac, 3, 2, (float *)shgroup->instance_orcofac);
 	}
 }
@@ -888,55 +892,97 @@ enum {
 	BIND_PERSIST = 2,      /* Release slot only after the next shader change. */
 };
 
+static void set_bound_flags(uint64_t *slots, uint64_t *persist_slots, int slot_idx, char bind_type)
+{
+	uint64_t slot = 1lu << slot_idx;
+	*slots |= slot;
+	if (bind_type == BIND_PERSIST) {
+		*persist_slots |= slot;
+	}
+}
+
+static int get_empty_slot_index(uint64_t slots)
+{
+	uint64_t empty_slots = ~slots;
+	/* Find first empty slot using bitscan. */
+	if (empty_slots != 0) {
+		if ((empty_slots & 0xFFFFFFFFlu) != 0) {
+			return (int)bitscan_forward_uint(empty_slots);
+		}
+		else {
+			return (int)bitscan_forward_uint(empty_slots >> 32) + 32;
+		}
+	}
+	else {
+		/* Greater than GPU_max_textures() */
+		return 99999;
+	}
+}
+
 static void bind_texture(GPUTexture *tex, char bind_type)
 {
-	int index;
-	char *slot_flags = DST.RST.bound_tex_slots;
-	int bind_num = GPU_texture_bound_number(tex);
-	if (bind_num == -1) {
-		for (int i = 0; i < GPU_max_textures(); ++i) {
-			index = DST.RST.bind_tex_inc = (DST.RST.bind_tex_inc + 1) % GPU_max_textures();
-			if (slot_flags[index] == BIND_NONE) {
-				if (DST.RST.bound_texs[index] != NULL) {
-					GPU_texture_unbind(DST.RST.bound_texs[index]);
-				}
-				GPU_texture_bind(tex, index);
-				DST.RST.bound_texs[index] = tex;
-				slot_flags[index] = bind_type;
-				// printf("Binds Texture %d %p\n", DST.RST.bind_tex_inc, tex);
-				return;
+	int idx = GPU_texture_bound_number(tex);
+	if (idx == -1) {
+		/* Texture isn't bound yet. Find an empty slot and bind it. */
+		idx = get_empty_slot_index(DST.RST.bound_tex_slots);
+
+		if (idx < GPU_max_textures()) {
+			GPUTexture **gpu_tex_slot = &DST.RST.bound_texs[idx];
+			/* Unbind any previous texture. */
+			if (*gpu_tex_slot != NULL) {
+				GPU_texture_unbind(*gpu_tex_slot);
 			}
+			GPU_texture_bind(tex, idx);
+			*gpu_tex_slot = tex;
 		}
-		printf("Not enough texture slots! Reduce number of textures used by your shader.\n");
+		else {
+			printf("Not enough texture slots! Reduce number of textures used by your shader.\n");
+			return;
+		}
 	}
-	slot_flags[bind_num] = bind_type;
+	else {
+		/* This texture slot was released but the tex
+		 * is still bound. Just flag the slot again. */
+		BLI_assert(DST.RST.bound_texs[idx] == tex);
+	}
+	set_bound_flags(&DST.RST.bound_tex_slots,
+	                &DST.RST.bound_tex_slots_persist,
+	                idx, bind_type);
 }
 
 static void bind_ubo(GPUUniformBuffer *ubo, char bind_type)
 {
-	int index;
-	char *slot_flags = DST.RST.bound_ubo_slots;
-	int bind_num = GPU_uniformbuffer_bindpoint(ubo);
-	if (bind_num == -1) {
-		for (int i = 0; i < GPU_max_ubo_binds(); ++i) {
-			index = DST.RST.bind_ubo_inc = (DST.RST.bind_ubo_inc + 1) % GPU_max_ubo_binds();
-			if (slot_flags[index] == BIND_NONE) {
-				if (DST.RST.bound_ubos[index] != NULL) {
-					GPU_uniformbuffer_unbind(DST.RST.bound_ubos[index]);
-				}
-				GPU_uniformbuffer_bind(ubo, index);
-				DST.RST.bound_ubos[index] = ubo;
-				slot_flags[index] = bind_type;
-				return;
+	int idx = GPU_uniformbuffer_bindpoint(ubo);
+	if (idx == -1) {
+		/* UBO isn't bound yet. Find an empty slot and bind it. */
+		idx = get_empty_slot_index(DST.RST.bound_ubo_slots);
+
+		if (idx < GPU_max_ubo_binds()) {
+			GPUUniformBuffer **gpu_ubo_slot = &DST.RST.bound_ubos[idx];
+			/* Unbind any previous UBO. */
+			if (*gpu_ubo_slot != NULL) {
+				GPU_uniformbuffer_unbind(*gpu_ubo_slot);
 			}
+			GPU_uniformbuffer_bind(ubo, idx);
+			*gpu_ubo_slot = ubo;
 		}
-		/* printf so user can report bad behavior */
-		printf("Not enough ubo slots! This should not happen!\n");
-		/* This is not depending on user input.
-		 * It is our responsibility to make sure there is enough slots. */
-		BLI_assert(0);
+		else {
+			/* printf so user can report bad behavior */
+			printf("Not enough ubo slots! This should not happen!\n");
+			/* This is not depending on user input.
+			 * It is our responsibility to make sure there is enough slots. */
+			BLI_assert(0);
+			return;
+		}
 	}
-	slot_flags[bind_num] = bind_type;
+	else {
+		/* This UBO slot was released but the UBO is
+		 * still bound here. Just flag the slot again. */
+		BLI_assert(DST.RST.bound_ubos[idx] == ubo);
+	}
+	set_bound_flags(&DST.RST.bound_ubo_slots,
+	                &DST.RST.bound_ubo_slots_persist,
+	                idx, bind_type);
 }
 
 #ifndef NDEBUG
@@ -990,37 +1036,23 @@ static bool ubo_bindings_validate(DRWShadingGroup *shgroup)
 static void release_texture_slots(bool with_persist)
 {
 	if (with_persist) {
-		memset(DST.RST.bound_tex_slots, 0x0, sizeof(*DST.RST.bound_tex_slots) * GPU_max_textures());
+		DST.RST.bound_tex_slots = 0;
+		DST.RST.bound_tex_slots_persist = 0;
 	}
 	else {
-		for (int i = 0; i < GPU_max_textures(); ++i) {
-			if (DST.RST.bound_tex_slots[i] != BIND_PERSIST) {
-				DST.RST.bound_tex_slots[i] = BIND_NONE;
-			}
-		}
+		DST.RST.bound_tex_slots &= DST.RST.bound_tex_slots_persist;
 	}
-
-	/* Reset so that slots are consistently assigned for different shader
-	 * draw calls, to avoid shader specialization/patching by the driver. */
-	DST.RST.bind_tex_inc = 0;
 }
 
 static void release_ubo_slots(bool with_persist)
 {
 	if (with_persist) {
-		memset(DST.RST.bound_ubo_slots, 0x0, sizeof(*DST.RST.bound_ubo_slots) * GPU_max_ubo_binds());
+		DST.RST.bound_ubo_slots = 0;
+		DST.RST.bound_ubo_slots_persist = 0;
 	}
 	else {
-		for (int i = 0; i < GPU_max_ubo_binds(); ++i) {
-			if (DST.RST.bound_ubo_slots[i] != BIND_PERSIST) {
-				DST.RST.bound_ubo_slots[i] = BIND_NONE;
-			}
-		}
+		DST.RST.bound_ubo_slots &= DST.RST.bound_ubo_slots_persist;
 	}
-
-	/* Reset so that slots are consistently assigned for different shader
-	 * draw calls, to avoid shader specialization/patching by the driver. */
-	DST.RST.bind_ubo_inc = 0;
 }
 
 static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
@@ -1035,7 +1067,9 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
 	bool use_tfeedback = false;
 
 	if (shader_changed) {
-		if (DST.shader) GPU_shader_unbind();
+		if (DST.shader) {
+			GPU_shader_unbind();
+		}
 		GPU_shader_bind(shgroup->shader);
 		DST.shader = shgroup->shader;
 	}
@@ -1325,7 +1359,7 @@ static void drw_draw_pass_ex(DRWPass *pass, DRWShadingGroup *start_group, DRWSha
 	}
 
 	/* Clear Bound textures */
-	for (int i = 0; i < GPU_max_textures(); i++) {
+	for (int i = 0; i < DST_MAX_SLOTS; i++) {
 		if (DST.RST.bound_texs[i] != NULL) {
 			GPU_texture_unbind(DST.RST.bound_texs[i]);
 			DST.RST.bound_texs[i] = NULL;
@@ -1333,7 +1367,7 @@ static void drw_draw_pass_ex(DRWPass *pass, DRWShadingGroup *start_group, DRWSha
 	}
 
 	/* Clear Bound Ubos */
-	for (int i = 0; i < GPU_max_ubo_binds(); i++) {
+	for (int i = 0; i < DST_MAX_SLOTS; i++) {
 		if (DST.RST.bound_ubos[i] != NULL) {
 			GPU_uniformbuffer_unbind(DST.RST.bound_ubos[i]);
 			DST.RST.bound_ubos[i] = NULL;

@@ -27,6 +27,8 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
+#include "ED_view3d.h"
+
 /* If builtin shaders are needed */
 #include "GPU_shader.h"
 
@@ -34,11 +36,13 @@
 #include "draw_mode_engines.h"
 
 /* *********** LISTS *********** */
-/* All lists are per viewport specific datas.
+/**
+ * All lists are per viewport specific datas.
  * They are all free when viewport changes engines
- * or is free itself. Use POSE_engine_init() to
- * initialize most of them and POSE_cache_init()
- * for POSE_PassList */
+ * or is free itself. Use #POSE_engine_init() to
+ * initialize most of them and #POSE_cache_init()
+ * for #POSE_PassList
+ */
 
 typedef struct POSE_PassList {
 	struct DRWPass *bone_solid[2];
@@ -198,8 +202,7 @@ static void POSE_cache_populate(void *vedata, Object *ob)
 		}
 		if (DRW_pose_mode_armature(ob, draw_ctx->obact)) {
 			int ghost = (ob->dtx & OB_DRAWXRAY) ? 1 : 0;
-			bool transp = (ppd->transparent_bones || (ob->dt <= OB_WIRE)) ||
-			              (draw_ctx->v3d->shading.flag & XRAY_FLAG(draw_ctx->v3d)) != 0;
+			bool transp = (ppd->transparent_bones || (ob->dt <= OB_WIRE)) || XRAY_FLAG_ENABLED(draw_ctx->v3d);
 
 			DRWArmaturePasses passes = {
 			    .bone_solid = (transp) ? psl->bone_transp[ghost] : psl->bone_solid[ghost],

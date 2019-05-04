@@ -57,7 +57,9 @@
 #include "BKE_main.h"
 #include "BKE_text.h"
 
-#include "CCL_api.h"
+#ifdef WITH_CYCLES
+#  include "CCL_api.h"
+#endif
 
 #include "BPY_extern.h"
 
@@ -98,8 +100,9 @@ void BPY_context_update(bContext *C)
 	/* don't do this from a non-main (e.g. render) thread, it can cause a race
 	 * condition on C->data.recursion. ideal solution would be to disable
 	 * context entirely from non-main threads, but that's more complicated */
-	if (!BLI_thread_is_main())
+	if (!BLI_thread_is_main()) {
 		return;
+	}
 
 	BPy_SetContext(C);
 	bpy_import_main_set(CTX_data_main(C));
@@ -110,8 +113,9 @@ void bpy_context_set(bContext *C, PyGILState_STATE *gilstate)
 {
 	py_call_level++;
 
-	if (gilstate)
+	if (gilstate) {
 		*gilstate = PyGILState_Ensure();
+	}
 
 	if (py_call_level == 1) {
 		BPY_context_update(C);
@@ -135,8 +139,9 @@ void bpy_context_clear(bContext *UNUSED(C), PyGILState_STATE *gilstate)
 {
 	py_call_level--;
 
-	if (gilstate)
+	if (gilstate) {
 		PyGILState_Release(*gilstate);
+	}
 
 	if (py_call_level < 0) {
 		fprintf(stderr, "ERROR: Python context internal state bug. this should not happen!\n");
@@ -163,14 +168,16 @@ void BPY_text_free_code(Text *text)
 		PyGILState_STATE gilstate;
 		bool use_gil = !PyC_IsInterpreterActive();
 
-		if (use_gil)
+		if (use_gil) {
 			gilstate = PyGILState_Ensure();
+		}
 
 		Py_DECREF((PyObject *)text->compiled);
 		text->compiled = NULL;
 
-		if (use_gil)
+		if (use_gil) {
 			PyGILState_Release(gilstate);
+		}
 	}
 }
 
@@ -184,8 +191,9 @@ void BPY_modules_update(bContext *C)
 
 	/* refreshes the main struct */
 	BPY_update_rna_module();
-	if (bpy_context_module)
+	if (bpy_context_module) {
 		bpy_context_module->ptr.data = (void *)C;
+	}
 }
 
 void BPY_context_set(bContext *C)
@@ -385,11 +393,13 @@ void BPY_python_end(void)
 	printf("*bpy stats* - ");
 	printf("tot exec: %d,  ", bpy_timer_count);
 	printf("tot run: %.4fsec,  ", bpy_timer_run_tot);
-	if (bpy_timer_count > 0)
+	if (bpy_timer_count > 0) {
 		printf("average run: %.6fsec,  ", (bpy_timer_run_tot / bpy_timer_count));
+	}
 
-	if (bpy_timer > 0.0)
+	if (bpy_timer > 0.0) {
 		printf("tot usage %.4f%%", (bpy_timer_run_tot / bpy_timer) * 100.0);
+	}
 
 	printf("\n");
 
@@ -764,8 +774,9 @@ void BPY_modules_load_user(bContext *C)
 	Text *text;
 
 	/* can happen on file load */
-	if (bmain == NULL)
+	if (bmain == NULL) {
 		return;
+	}
 
 	/* update pointers since this can run from a nested script
 	 * on file load */
@@ -816,8 +827,9 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 	PointerRNA *ptr = NULL;
 	bool done = false;
 
-	if (use_gil)
+	if (use_gil) {
 		gilstate = PyGILState_Ensure();
+	}
 
 	pyctx = (PyObject *)CTX_py_dict_get(C);
 	item = PyDict_GetItemString(pyctx, member);
@@ -884,8 +896,9 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 		CLOG_INFO(BPY_LOG_CONTEXT, 2, "'%s' found", member);
 	}
 
-	if (use_gil)
+	if (use_gil) {
 		PyGILState_Release(gilstate);
+	}
 
 	return done;
 }
@@ -985,8 +998,9 @@ PyInit_bpy(void)
 	dealloc_obj_Type.tp_dealloc = dealloc_obj_dealloc;
 	dealloc_obj_Type.tp_flags = Py_TPFLAGS_DEFAULT;
 
-	if (PyType_Ready(&dealloc_obj_Type) < 0)
+	if (PyType_Ready(&dealloc_obj_Type) < 0) {
 		return NULL;
+	}
 
 	dob = (dealloc_obj *) dealloc_obj_Type.tp_alloc(&dealloc_obj_Type, 0);
 	dob->mod = bpy_proxy; /* borrow */

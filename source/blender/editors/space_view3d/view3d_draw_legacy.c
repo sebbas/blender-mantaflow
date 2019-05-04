@@ -81,6 +81,7 @@
 #include "ED_space_api.h"
 #include "ED_screen_types.h"
 #include "ED_transform.h"
+#include "ED_view3d.h"
 
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
@@ -95,6 +96,7 @@
 #include "GPU_select.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
+#include "GPU_viewport.h"
 
 #include "RE_engine.h"
 
@@ -173,12 +175,12 @@ static void validate_object_select_id(
 		/* do nothing */
 	}
 	else if ((obact_eval && (obact_eval->mode & OB_MODE_PARTICLE_EDIT)) &&
-	         V3D_IS_ZBUF(v3d))
+	         !XRAY_ENABLED(v3d))
 	{
 		/* do nothing */
 	}
 	else if ((obedit && (obedit->mode & OB_MODE_EDIT)) &&
-	         V3D_IS_ZBUF(v3d))
+	         !XRAY_FLAG_ENABLED(v3d))
 	{
 		/* do nothing */
 	}
@@ -224,6 +226,27 @@ static void validate_object_select_id(
 void view3d_opengl_read_pixels(ARegion *ar, int x, int y, int w, int h, int format, int type, void *data)
 {
 	glReadPixels(ar->winrct.xmin + x, ar->winrct.ymin + y, w, h, format, type, data);
+}
+
+/* TODO: Creating, attaching texture, and destroying a framebuffer is quite slow.
+ *       Calling this function should be avoided during interactive drawing. */
+static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void *data)
+{
+	DefaultTextureList *dtxl = (DefaultTextureList *)GPU_viewport_texture_list_get(viewport);
+
+	GPUFrameBuffer *tmp_fb = GPU_framebuffer_create();
+	GPU_framebuffer_texture_attach(tmp_fb, dtxl->depth, 0, 0);
+	GPU_framebuffer_bind(tmp_fb);
+	glDisable(GL_SCISSOR_TEST);
+
+	glReadPixels(rect->xmin, rect->ymin,
+	             BLI_rcti_size_x(rect), BLI_rcti_size_y(rect),
+	             GL_DEPTH_COMPONENT, GL_FLOAT, data);
+
+	glEnable(GL_SCISSOR_TEST);
+	GPU_framebuffer_restore();
+
+	GPU_framebuffer_free(tmp_fb);
 }
 
 void ED_view3d_select_id_validate_with_select_mode(ViewContext *vc, short select_mode)
@@ -632,7 +655,7 @@ static void view3d_draw_bgpic(Scene *scene, Depsgraph *depsgraph,
 			float zoomx = (x2 - x1) / ibuf->x;
 			float zoomy = (y2 - y1) / ibuf->y;
 
-			/* for some reason; zoomlevels down refuses to use GL_ALPHA_SCALE */
+			/* For some reason; zoom-levels down refuses to use GL_ALPHA_SCALE. */
 			if (zoomx < 1.0f || zoomy < 1.0f) {
 				float tzoom = min_ff(zoomx, zoomy);
 				int mip = 0;
@@ -789,14 +812,14 @@ void view3d_update_depths_rect(ARegion *ar, ViewDepths *d, rcti *rect)
 	}
 
 	if (d->damaged) {
-		DRW_framebuffer_depth_read(rect, d->depths);
+		GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
+		view3d_opengl_read_Z_pixels(viewport, rect, d->depths);
 		glGetDoublev(GL_DEPTH_RANGE, d->depth_range);
 		d->damaged = false;
 	}
 }
 
-/* note, with nouveau drivers the glReadPixels() is very slow. [#24339]
- * XXX warning, not using gpu offscreen here */
+/* note, with nouveau drivers the glReadPixels() is very slow. [#24339] */
 void ED_view3d_depth_update(ARegion *ar)
 {
 	RegionView3D *rv3d = ar->regiondata;
@@ -856,8 +879,6 @@ float view3d_depth_near(ViewDepths *d)
 void ED_view3d_draw_depth_gpencil(
         Depsgraph *depsgraph, Scene *scene, ARegion *ar, View3D *v3d)
 {
-	ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
-
 	/* Setup view matrix. */
 	ED_view3d_draw_setup_view(NULL, depsgraph, scene, ar, v3d, NULL, NULL, NULL);
 
@@ -865,7 +886,8 @@ void ED_view3d_draw_depth_gpencil(
 
 	GPU_depth_test(true);
 
-	ED_gpencil_draw_view3d(NULL, scene, view_layer, depsgraph, v3d, ar, true);
+	GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
+	DRW_draw_depth_loop_gpencil(depsgraph, ar, v3d, viewport);
 
 	GPU_depth_test(false);
 }

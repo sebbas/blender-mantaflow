@@ -151,7 +151,7 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
 		EDBM_mesh_normals_update(em);
 		BKE_editmesh_tessface_calc(em);
 
-		/* Make sure the evaluated mesh is updates.
+		/* Make sure the evaluated mesh is updated.
 		 *
 		 * Most reliable way is to update the tagged objects, which will ensure
 		 * proper copy-on-write update, but also will make sure all dependent
@@ -440,7 +440,7 @@ void OBJECT_OT_proxy_make(wmOperatorType *ot)
 typedef enum eObClearParentTypes {
 	CLEAR_PARENT_ALL = 0,
 	CLEAR_PARENT_KEEP_TRANSFORM,
-	CLEAR_PARENT_INVERSE
+	CLEAR_PARENT_INVERSE,
 } eObClearParentTypes;
 
 EnumPropertyItem prop_clear_parent_types[] = {
@@ -948,6 +948,8 @@ static int parent_set_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent 
 	RNA_boolean_set(&opptr, "keep_transform", true);
 #endif
 
+	uiItemO(layout, IFACE_("Object (Without Inverse)"), ICON_NONE, "OBJECT_OT_parent_no_inverse_set");
+
 	struct {
 		bool mesh, gpencil;
 	} has_children_of_type = { 0 };
@@ -1361,9 +1363,13 @@ static bool allow_make_links_data(const int type, Object *ob_src, Object *ob_dst
 				return true;
 			}
 			break;
+		case MAKE_LINKS_DUPLICOLLECTION:
+			if (ob_dst->type == OB_EMPTY) {
+				return true;
+			}
+			break;
 		case MAKE_LINKS_ANIMDATA:
 		case MAKE_LINKS_GROUP:
-		case MAKE_LINKS_DUPLICOLLECTION:
 			return true;
 		case MAKE_LINKS_MODIFIERS:
 			if (!ELEM(OB_EMPTY, ob_src->type, ob_dst->type)) {
@@ -1598,7 +1604,7 @@ static void libblock_relink_collection(Collection *collection)
 	}
 }
 
-static void single_object_users_collection(
+static Collection *single_object_users_collection(
         Main *bmain, Scene *scene, Collection *collection,
         const int flag, const bool copy_collections, const bool is_master_collection)
 {
@@ -1619,9 +1625,26 @@ static void single_object_users_collection(
 		}
 	}
 
-	for (CollectionChild *child = collection->children.first; child; child = child->next) {
-		single_object_users_collection(bmain, scene, child->collection, flag, copy_collections, false);
+	/* Since master collection has already be duplicated as part of scene copy, we do not duplictae it here.
+	 * However, this means its children need to be re-added manually here, otherwise their parent lists are empty
+	 * (which will lead to crashes, see T63101). */
+	CollectionChild *child_next, *child = collection->children.first;
+	CollectionChild *orig_child_last = collection->children.last;
+	for (; child != NULL; child = child_next) {
+		child_next = child->next;
+		Collection *collection_child_new = single_object_users_collection(
+		                                       bmain, scene, child->collection, flag, copy_collections, false);
+		if (is_master_collection && copy_collections && child->collection != collection_child_new) {
+			BKE_collection_child_add(bmain, collection, collection_child_new);
+			BLI_remlink(&collection->children, child);
+			MEM_freeN(child);
+			if (child == orig_child_last) {
+				break;
+			}
+		}
 	}
+
+	return collection;
 }
 
 /* Warning, sets ID->newid pointers of objects and collections, but does not clear them. */
@@ -1670,9 +1693,12 @@ static void single_object_users(Main *bmain, Scene *scene, View3D *v3d, const in
 
 	/* active camera */
 	ID_NEW_REMAP(scene->camera);
-	if (v3d) ID_NEW_REMAP(v3d->camera);
+	if (v3d) {
+		ID_NEW_REMAP(v3d->camera);
+	}
 
-	BKE_scene_collection_sync(scene);
+	/* Making single user may affect other scenes if they share with current one some collections in their ViewLayer. */
+	BKE_main_collection_sync(bmain);
 }
 
 /* not an especially efficient function, only added so the single user

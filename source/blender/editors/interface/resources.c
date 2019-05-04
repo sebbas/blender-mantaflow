@@ -173,7 +173,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 					else if (theme_regionid == RGN_TYPE_CHANNELS) {
 						cp = ts->list;
 					}
-					else if (theme_regionid == RGN_TYPE_HEADER) {
+					else if (ELEM(theme_regionid, RGN_TYPE_HEADER, RGN_TYPE_FOOTER)) {
 						cp = ts->header;
 					}
 					else if (theme_regionid == RGN_TYPE_NAV_BAR) {
@@ -207,7 +207,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 					else if (theme_regionid == RGN_TYPE_CHANNELS) {
 						cp = ts->list_text;
 					}
-					else if (theme_regionid == RGN_TYPE_HEADER) {
+					else if (ELEM(theme_regionid, RGN_TYPE_HEADER, RGN_TYPE_FOOTER)) {
 						cp = ts->header_text;
 					}
 					else {
@@ -221,7 +221,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 					else if (theme_regionid == RGN_TYPE_CHANNELS) {
 						cp = ts->list_text_hi;
 					}
-					else if (theme_regionid == RGN_TYPE_HEADER) {
+					else if (ELEM(theme_regionid, RGN_TYPE_HEADER, RGN_TYPE_FOOTER)) {
 						cp = ts->header_text_hi;
 					}
 					else {
@@ -235,7 +235,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 					else if (theme_regionid == RGN_TYPE_CHANNELS) {
 						cp = ts->list_title;
 					}
-					else if (theme_regionid == RGN_TYPE_HEADER) {
+					else if (ELEM(theme_regionid, RGN_TYPE_HEADER, RGN_TYPE_FOOTER)) {
 						cp = ts->header_title;
 					}
 					else {
@@ -1151,6 +1151,16 @@ void UI_GetThemeColor4ubv(int colorid, uchar col[4])
 	col[1] = cp[1];
 	col[2] = cp[2];
 	col[3] = cp[3];
+}
+
+void UI_GetThemeColorType3fv(int colorid, int spacetype, float col[3])
+{
+	const uchar *cp;
+
+	cp = UI_ThemeGetColorPtr(theme_active, spacetype, colorid);
+	col[0] = ((float)cp[0]) / 255.0f;
+	col[1] = ((float)cp[1]) / 255.0f;
+	col[2] = ((float)cp[2]) / 255.0f;
 }
 
 void UI_GetThemeColorType3ubv(int colorid, int spacetype, uchar col[3])

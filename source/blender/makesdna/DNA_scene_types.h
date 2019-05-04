@@ -1053,7 +1053,7 @@ typedef enum eGP_Lockaxis_Types {
 	GP_LOCKAXIS_X = 1,
 	GP_LOCKAXIS_Y = 2,
 	GP_LOCKAXIS_Z = 3,
-	GP_LOCKAXIS_CURSOR = 4
+	GP_LOCKAXIS_CURSOR = 4,
 } eGP_Lockaxis_Types;
 
 /* Settings for a GPencil Stroke Sculpting Brush */
@@ -1466,8 +1466,7 @@ typedef struct ToolSettings {
 	char edge_mode;
 	char edge_mode_live_unwrap;
 
-	/* SCE_GIZMO_SHOW_* */
-	char gizmo_flag;
+	char _pad1[1];
 
 	/* Transform */
 	char transform_pivot_point;
@@ -2272,13 +2271,6 @@ enum {
 #define EDGE_MODE_TAG_BEVEL				4
 #define EDGE_MODE_TAG_FREESTYLE			5
 
-/* ToolSettings.gizmo_flag */
-enum {
-	SCE_GIZMO_SHOW_TRANSLATE = (1 << 0),
-	SCE_GIZMO_SHOW_ROTATE    = (1 << 1),
-	SCE_GIZMO_SHOW_SCALE     = (1 << 2),
-};
-
 /* ToolSettings.gpencil_flags */
 typedef enum eGPencil_Flags {
 	/* When creating new frames, the last frame gets used as the basis for the new one */
@@ -2339,14 +2331,14 @@ typedef enum eGPencil_GuideTypes {
 	GP_GUIDE_CIRCULAR = 0,
 	GP_GUIDE_RADIAL,
 	GP_GUIDE_PARALLEL,
-	GP_GUIDE_GRID
+	GP_GUIDE_GRID,
 } eGPencil_GuideTypes;
 
 /* ToolSettings.gpencil_guide_references */
 typedef enum eGPencil_Guide_Reference {
 	GP_GUIDE_REF_CURSOR = 0,
 	GP_GUIDE_REF_CUSTOM,
-	GP_GUIDE_REF_OBJECT
+	GP_GUIDE_REF_OBJECT,
 } eGPencil_Guide_Reference;
 
 /* ToolSettings.particle flag */

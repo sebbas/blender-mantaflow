@@ -147,7 +147,7 @@ typedef enum ePoseSlide_Channels {
 
 	PS_TFM_BBONE_SHAPE,          /* Bendy Bones */
 
-	PS_TFM_PROPS                 /* Custom Properties */
+	PS_TFM_PROPS,                 /* Custom Properties */
 } ePoseSlide_Channels;
 
 /* Property enum for ePoseSlide_Channels */
@@ -295,7 +295,7 @@ static void pose_slide_refresh(bContext *C, tPoseSlideOp *pso)
 
 /**
  * Although this lookup is not ideal, we won't be dealing with a lot of objects at a given time.
- * But if it comes to that we can instead store prev/next frme in the #tPChanFCurveLink.
+ * But if it comes to that we can instead store prev/next frame in the #tPChanFCurveLink.
  */
 static bool pose_frame_range_from_object_get(tPoseSlideOp *pso, Object *ob, float *prevFrameF, float *nextFrameF)
 {
@@ -704,7 +704,7 @@ static void pose_slide_apply(bContext *C, tPoseSlideOp *pso)
 	pose_slide_refresh(C, pso);
 }
 
-/* perform autokeyframing after changes were made + confirmed */
+/* perform auto-key-framing after changes were made + confirmed */
 static void pose_slide_autoKeyframe(bContext *C, tPoseSlideOp *pso)
 {
 	/* wrapper around the generic call */
@@ -1344,7 +1344,7 @@ typedef enum ePosePropagate_Termination {
 	/* only do on keyframes that are selected */
 	POSE_PROPAGATE_SELECTED_KEYS,
 	/* only do on the frames where markers are selected */
-	POSE_PROPAGATE_SELECTED_MARKERS
+	POSE_PROPAGATE_SELECTED_MARKERS,
 } ePosePropagate_Termination;
 
 /* termination data needed for some modes - assumes only one of these entries will be needed at a time */

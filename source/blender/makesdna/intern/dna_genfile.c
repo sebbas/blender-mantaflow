@@ -38,6 +38,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_memarena.h"
+#include "BLI_string.h"
 
 #ifdef WITH_DNA_GHASH
 #  include "BLI_ghash.h"
@@ -122,6 +123,7 @@
  *    - float: 4 aligned
  *    - double: 8 aligned
  *    - long: 8 aligned
+ *    - int64: 8 aligned
  *    - struct: 8 aligned
  *  - the sdna functions have several error prints builtin, always check blender running from a console.
  */
@@ -345,7 +347,9 @@ static bool init_structDNA(
 					gravity_fix = nr;
 				}
 			}
-			while (*cp) cp++;
+			while (*cp) {
+				cp++;
+			}
 			cp++;
 		}
 
@@ -373,7 +377,9 @@ static bool init_structDNA(
 		for (int nr = 0; nr < sdna->nr_types; nr++) {
 			/* WARNING! See: DNA_struct_rename_legacy_hack_static_from_alias docs. */
 			sdna->types[nr] = DNA_struct_rename_legacy_hack_static_from_alias(cp);
-			while (*cp) cp++;
+			while (*cp) {
+				cp++;
+			}
 			cp++;
 		}
 
@@ -396,7 +402,10 @@ static bool init_structDNA(
 			*r_error_message = "TLEN error in SDNA file";
 			return false;
 		}
-		if (sdna->nr_types & 1) sp++;   /* prevent BUS error */
+		/* prevent BUS error */
+		if (sdna->nr_types & 1) {
+			sp++;
+		}
 
 		/* Struct array ('STRC') */
 		data = (int *)sp;
@@ -445,8 +454,9 @@ static bool init_structDNA(
 		if (gravity_fix > -1) {
 			for (int nr = 0; nr < sdna->nr_structs; nr++) {
 				sp = sdna->structs[nr];
-				if (strcmp(sdna->types[sp[0]], "ClothSimSettings") == 0)
+				if (strcmp(sdna->types[sp[0]], "ClothSimSettings") == 0) {
 					sp[10] = SDNA_TYPE_VOID;
+				}
 			}
 		}
 	}
@@ -646,15 +656,21 @@ const char *DNA_struct_get_compareflags(const SDNA *oldsdna, const SDNA *newsdna
 					while (b > 0) {
 						str1 = newsdna->types[sp_new[0]];
 						str2 = oldsdna->types[sp_old[0]];
-						if (strcmp(str1, str2) != 0) break;
+						if (strcmp(str1, str2) != 0) {
+							break;
+						}
 
 						str1 = newsdna->names[sp_new[1]];
 						str2 = oldsdna->names[sp_old[1]];
-						if (strcmp(str1, str2) != 0) break;
+						if (strcmp(str1, str2) != 0) {
+							break;
+						}
 
 						/* same type and same name, now pointersize */
 						if (ispointer(str1)) {
-							if (oldsdna->pointer_size != newsdna->pointer_size) break;
+							if (oldsdna->pointer_size != newsdna->pointer_size) {
+								break;
+							}
 						}
 
 						b--;
@@ -703,17 +719,17 @@ const char *DNA_struct_get_compareflags(const SDNA *oldsdna, const SDNA *newsdna
  */
 static eSDNA_Type sdna_type_nr(const char *dna_type)
 {
-	if     ((strcmp(dna_type, "char") == 0) || (strcmp(dna_type, "const char") == 0))          return SDNA_TYPE_CHAR;
-	else if ((strcmp(dna_type, "uchar") == 0) || (strcmp(dna_type, "unsigned char") == 0))     return SDNA_TYPE_UCHAR;
-	else if ( strcmp(dna_type, "short") == 0)                                                  return SDNA_TYPE_SHORT;
-	else if ((strcmp(dna_type, "ushort") == 0) || (strcmp(dna_type, "unsigned short") == 0))   return SDNA_TYPE_USHORT;
-	else if ( strcmp(dna_type, "int") == 0)                                                    return SDNA_TYPE_INT;
-	else if ( strcmp(dna_type, "float") == 0)                                                  return SDNA_TYPE_FLOAT;
-	else if ( strcmp(dna_type, "double") == 0)                                                 return SDNA_TYPE_DOUBLE;
-	else if ( strcmp(dna_type, "int64_t") == 0)                                                return SDNA_TYPE_INT64;
-	else if ( strcmp(dna_type, "uint64_t") == 0)                                               return SDNA_TYPE_UINT64;
+	if      (STR_ELEM(dna_type, "char", "const char"))           { return SDNA_TYPE_CHAR; }
+	else if (STR_ELEM(dna_type, "uchar", "unsigned char"))       { return SDNA_TYPE_UCHAR; }
+	else if (STR_ELEM(dna_type, "short"))                        { return SDNA_TYPE_SHORT; }
+	else if (STR_ELEM(dna_type, "ushort", "unsigned short"))     { return SDNA_TYPE_USHORT; }
+	else if (STR_ELEM(dna_type, "int"))                          { return SDNA_TYPE_INT; }
+	else if (STR_ELEM(dna_type, "float"))                        { return SDNA_TYPE_FLOAT; }
+	else if (STR_ELEM(dna_type, "double"))                       { return SDNA_TYPE_DOUBLE; }
+	else if (STR_ELEM(dna_type, "int64_t"))                      { return SDNA_TYPE_INT64; }
+	else if (STR_ELEM(dna_type, "uint64_t"))                     { return SDNA_TYPE_UINT64; }
 	/* invalid! */
-	else                                                                                       return -1;
+	else                                                         { return -1; }
 }
 
 /**
@@ -780,10 +796,14 @@ static void cast_elem(
 			case SDNA_TYPE_INT:
 				*( (int *)curdata) = val; break;
 			case SDNA_TYPE_FLOAT:
-				if (otypenr < 2) val /= 255;
+				if (otypenr < 2) {
+					val /= 255;
+				}
 				*( (float *)curdata) = val; break;
 			case SDNA_TYPE_DOUBLE:
-				if (otypenr < 2) val /= 255;
+				if (otypenr < 2) {
+					val /= 255;
+				}
 				*( (double *)curdata) = val; break;
 			case SDNA_TYPE_INT64:
 				*( (int64_t *)curdata) = val; break;
@@ -848,9 +868,15 @@ static int elem_strcmp(const char *name, const char *oname)
 	int a = 0;
 
 	while (1) {
-		if (name[a] != oname[a]) return 1;
-		if (name[a] == '[' || oname[a] == '[') break;
-		if (name[a] == 0 || oname[a] == 0) break;
+		if (name[a] != oname[a]) {
+			return 1;
+		}
+		if (name[a] == '[' || oname[a] == '[') {
+			break;
+		}
+		if (name[a] == 0 || oname[a] == 0) {
+			break;
+		}
 		a++;
 	}
 	return 0;
@@ -896,7 +922,7 @@ static bool elem_exists(
  *
  * Passing olddata=NULL doesn't work reliably for existence checks; it will
  * return NULL both when the field is found at offset 0 and when it is not
- * found at all. For field existence checks, use elem_exists() instead.
+ * found at all. For field existence checks, use #elem_exists() instead.
  *
  * \param sdna: Old SDNA
  * \param type: Current field type name
@@ -931,7 +957,9 @@ static const char *find_elem(
 
 		if (elem_strcmp(name, oname) == 0) {  /* name equal */
 			if (strcmp(type, otype) == 0) {   /* type equal */
-				if (sppo) *sppo = old;
+				if (sppo) {
+					*sppo = old;
+				}
 				return olddata;
 			}
 
@@ -983,7 +1011,9 @@ static void reconstruct_elem(
 	while (*cp && *cp != '[') {
 		cp++; countpos++;
 	}
-	if (*cp != '[') countpos = 0;
+	if (*cp != '[') {
+		countpos = 0;
+	}
 
 	/* in old is the old struct */
 	elemcount = old[1];
@@ -1087,8 +1117,12 @@ static void reconstruct_struct(
 	unsigned int cursdna_index_last = UINT_MAX;
 
 
-	if (oldSDNAnr == -1) return;
-	if (curSDNAnr == -1) return;
+	if (oldSDNAnr == -1) {
+		return;
+	}
+	if (curSDNAnr == -1) {
+		return;
+	}
 
 	if (compflags[oldSDNAnr] == SDNA_CMP_EQUAL) {
 		/* if recursive: test for equal */
@@ -1146,7 +1180,9 @@ static void reconstruct_struct(
 
 					/* new struct array larger than old */
 					mulo--;
-					if (mulo <= 0) break;
+					if (mulo <= 0) {
+						break;
+					}
 				}
 			}
 			else {
@@ -1179,7 +1215,9 @@ void DNA_struct_switch_endian(const SDNA *oldsdna, int oldSDNAnr, char *data)
 	const char *type, *name;
 	unsigned int oldsdna_index_last = UINT_MAX;
 
-	if (oldSDNAnr == -1) return;
+	if (oldSDNAnr == -1) {
+		return;
+	}
 	firststructtypenr = *(oldsdna->structs[0]);
 
 	spo = spc = oldsdna->structs[oldSDNAnr];
@@ -1227,7 +1265,9 @@ void DNA_struct_switch_endian(const SDNA *oldsdna, int oldSDNAnr, char *data)
 					/* exception: variable called blocktype: derived from ID_  */
 					bool skip = false;
 					if (name[0] == 'b' && name[1] == 'l') {
-						if (strcmp(name, "blocktype") == 0) skip = true;
+						if (strcmp(name, "blocktype") == 0) {
+							skip = true;
+						}
 					}
 
 					if (skip == false) {

@@ -1680,7 +1680,9 @@ static void rna_def_face_map(BlenderRNA *brna)
 {
 	StructRNA *srna;
 	PropertyRNA *prop;
+
 	FunctionRNA *func;
+	PropertyRNA *parm;
 
 	srna = RNA_def_struct(brna, "FaceMap", NULL);
 	RNA_def_struct_sdna(srna, "bFaceMap");
@@ -1708,15 +1710,15 @@ static void rna_def_face_map(BlenderRNA *brna)
 	RNA_def_function_ui_description(func, "Add vertices to the group");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	/* TODO, see how array size of 0 works, this shouldnt be used */
-	prop = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
-	RNA_def_parameter_flags(prop, PROP_DYNAMIC, PARM_REQUIRED);
+	parm = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
+	RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 
 	func = RNA_def_function(srna, "remove", "rna_FaceMap_face_remove");
 	RNA_def_function_ui_description(func, "Remove a vertex from the group");
 	RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
 	/* TODO, see how array size of 0 works, this shouldnt be used */
-	prop = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
-	RNA_def_parameter_flags(prop, PROP_DYNAMIC, PARM_REQUIRED);
+	parm = RNA_def_int_array(func, "index", 1, NULL, 0, 0, "", "Index List", 0, 0);
+	RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
 }
 
 static void rna_def_material_slot(BlenderRNA *brna)
@@ -2696,17 +2698,6 @@ static void rna_def_object(BlenderRNA *brna)
 	RNA_def_property_ui_text(prop, "In Front",
 	                         "Make the object draw in front of others");
 	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-
-	/* Grease Pencil */
-#if 1 /* FIXME: Remove this code when all Open-Movie assets have been fixed */
-	prop = RNA_def_property(srna, "grease_pencil", PROP_POINTER, PROP_NONE);
-	RNA_def_property_pointer_sdna(prop, NULL, "gpd");
-	RNA_def_property_struct_type(prop, "GreasePencil");
-	RNA_def_property_pointer_funcs(prop, NULL, NULL, NULL, "rna_GPencil_datablocks_obdata_poll"); /* XXX */
-	RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
-	RNA_def_property_ui_text(prop, "Grease Pencil Data", "Grease Pencil data-block (deprecated)");
-	RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
-#endif
 
 	/* pose */
 	prop = RNA_def_property(srna, "pose_library", PROP_POINTER, PROP_NONE);

@@ -229,6 +229,10 @@ struct KeyingSet *ANIM_get_keyingset_for_autokeying(struct Scene *scene, const c
 /* Dynamically populate an enum of Keying Sets */
 const struct EnumPropertyItem *ANIM_keying_sets_enum_itemf(struct bContext *C, struct PointerRNA *ptr, struct PropertyRNA *prop, bool *r_free);
 
+/* Use to get the keying set from the int value used by enums. */
+KeyingSet *ANIM_keyingset_get_from_enum_type(struct Scene *scene, int type);
+KeyingSet *ANIM_keyingset_get_from_idname(struct Scene *scene, const char *idname);
+
 /* Check if KeyingSet can be used in the current context */
 bool ANIM_keyingset_context_ok_poll(struct bContext *C, struct KeyingSet *ks);
 
@@ -373,11 +377,12 @@ bool fcurve_frame_has_keyframe(struct FCurve *fcu, float frame, short filter);
  */
 bool fcurve_is_changed(struct PointerRNA ptr, struct PropertyRNA *prop, struct FCurve *fcu, float frame);
 
-/* Main Keyframe Checking API call:
+/**
+ * Main Keyframe Checking API call:
  * Checks whether a keyframe exists for the given ID-block one the given frame.
  * - It is recommended to call this method over the other keyframe-checkers directly,
  *   in case some detail of the implementation changes...
- * - frame: the value of this is quite often result of BKE_scene_frame_get()
+ * - frame: the value of this is quite often result of #BKE_scene_frame_get()
  */
 bool id_frame_has_keyframe(struct ID *id, float frame, short filter);
 

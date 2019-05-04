@@ -919,8 +919,10 @@ UvElement *BM_uv_element_get(UvElementMap *map, BMFace *efa, BMLoop *l)
 /** \name Data Layer Checks
  * \{ */
 
-/* last_sel, use em->act_face otherwise get the last selected face in the editselections
- * at the moment, last_sel is mainly useful for making sure the space image dosnt flicker */
+/**
+ * last_sel, use em->act_face otherwise get the last selected face in the editselections
+ * at the moment, last_sel is mainly useful for making sure the space image doesn't flicker.
+ */
 BMFace *EDBM_uv_active_face_get(BMEditMesh *em, const bool sloppy, const bool selected)
 {
 	BMFace *efa = NULL;
@@ -1039,7 +1041,7 @@ void EDBM_verts_mirror_cache_begin_ex(
 		BLI_kdtree_3d_balance(tree);
 	}
 
-#define VERT_INTPTR(_v, _i) r_index ? &r_index[_i] : BM_ELEM_CD_GET_VOID_P(_v, cd_vmirr_offset);
+#define VERT_INTPTR(_v, _i) (r_index ? &r_index[_i] : BM_ELEM_CD_GET_VOID_P(_v, cd_vmirr_offset))
 
 	BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
 		BLI_assert(BM_elem_index_get(v) == i);

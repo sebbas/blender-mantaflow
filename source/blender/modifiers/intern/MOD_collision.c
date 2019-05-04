@@ -240,6 +240,10 @@ static void deformVerts(
 	}
 }
 
+static void updateDepsgraph(ModifierData *UNUSED(md), const ModifierUpdateDepsgraphContext *ctx)
+{
+	DEG_add_modifier_to_transform_relation(ctx->node, "Collision Modifier");
+}
 
 ModifierTypeInfo modifierType_Collision = {
 	/* name */              "Collision",
@@ -251,12 +255,6 @@ ModifierTypeInfo modifierType_Collision = {
 
 	/* copyData */          NULL,
 
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
-
 	/* deformVerts */       deformVerts,
 	/* deformMatrices */    NULL,
 	/* deformVertsEM */     NULL,
@@ -267,7 +265,7 @@ ModifierTypeInfo modifierType_Collision = {
 	/* requiredDataMask */  NULL,
 	/* freeData */          freeData,
 	/* isDisabled */        NULL,
-	/* updateDepsgraph */   NULL,
+	/* updateDepsgraph */   updateDepsgraph,
 	/* dependsOnTime */     dependsOnTime,
 	/* dependsOnNormals */	NULL,
 	/* foreachObjectLink */ NULL,

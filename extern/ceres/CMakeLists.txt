@@ -256,6 +256,15 @@ set(SRC
 	internal/ceres/wall_time.h
 )
 
+set(LIB
+)
+
+if(WITH_LIBMV OR WITH_GTESTS OR (WITH_CYCLES AND WITH_CYCLES_LOGGING))
+	list(APPEND LIB
+		extern_glog
+	)
+endif()
+
 if(WITH_LIBMV_SCHUR_SPECIALIZATIONS)
 	list(APPEND SRC
 		internal/ceres/generated/partitioned_matrix_view_2_2_2.cc
@@ -319,4 +328,4 @@ if(WITH_OPENMP)
 	)
 endif()
 
-blender_add_lib(extern_ceres "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(extern_ceres "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

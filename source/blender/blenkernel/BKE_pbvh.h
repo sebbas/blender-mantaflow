@@ -132,7 +132,7 @@ void BKE_pbvh_draw_cb(
 typedef enum {
 	PBVH_FACES,
 	PBVH_GRIDS,
-	PBVH_BMESH
+	PBVH_BMESH,
 } PBVHType;
 
 PBVHType BKE_pbvh_type(const PBVH *bvh);
@@ -350,7 +350,7 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node,
 #define BKE_pbvh_vertex_iter_end \
 			} \
 		} \
-	}
+	} ((void)0)
 
 void BKE_pbvh_node_get_proxies(PBVHNode *node, PBVHProxyNode **proxies, int *proxy_count);
 void BKE_pbvh_node_free_proxies(PBVHNode *node);

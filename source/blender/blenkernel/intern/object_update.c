@@ -66,7 +66,7 @@
  *
  * Some changes done directly in evaluated object require them to be reset
  * before being re-evaluated.
- * For example, we need to call this before BKE_mesh_new_from_object(),
+ * For example, we need to call this before #BKE_mesh_new_from_object(),
  * in case we removed/added modifiers in the evaluated object.
  */
 void BKE_object_eval_reset(Object *ob_eval)
@@ -178,10 +178,10 @@ void BKE_object_handle_data_update(
 			}
 #endif
 			if (em) {
-				makeDerivedMesh(depsgraph, scene, ob, em,  &cddata_masks, false); /* was CD_MASK_BAREMESH */
+				makeDerivedMesh(depsgraph, scene, ob, em,  &cddata_masks); /* was CD_MASK_BAREMESH */
 			}
 			else {
-				makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks, false);
+				makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks);
 			}
 			break;
 		}
@@ -244,8 +244,10 @@ void BKE_object_handle_data_update(
 	BKE_object_eval_boundbox(depsgraph, ob);
 }
 
-/* TODO(sergey): Ensure that bounding box is already calculated, and move this
- * into BKE_object_synchronize_to_original(). */
+/**
+ * TODO(sergey): Ensure that bounding box is already calculated, and move this
+ * into #BKE_object_synchronize_to_original().
+ */
 void BKE_object_eval_boundbox(Depsgraph *depsgraph, Object *object)
 {
 	if (!DEG_is_active(depsgraph)) {

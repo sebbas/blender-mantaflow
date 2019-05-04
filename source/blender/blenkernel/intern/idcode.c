@@ -44,8 +44,13 @@ typedef struct {
 #define IDTYPE_FLAGS_ISLINKABLE (1 << 0)
 } IDType;
 
-/* plural need to match rna_main.c's MainCollectionDef */
-/* WARNING! Keep it in sync with i18n contexts in BLT_translation.h */
+/* Keep alignment for readability. */
+/* clang-format off */
+/**
+ * When editing enusre that:
+ * - Plural need to match rna_main.c's #MainCollectionDef.
+ * - Keep it in sync with i18n contexts in BLT_translation.h
+ */
 static IDType idtypes[] = {
 	/** ID's directly below must all be in #Main, and be kept in sync with #MAX_LIBARRAY (membership, not order) */
 	{ID_AC,   "Action",             "actions",         BLT_I18NCONTEXT_ID_ACTION,             IDTYPE_FLAGS_ISLINKABLE},
@@ -74,7 +79,7 @@ static IDType idtypes[] = {
 	{ID_PA,   "ParticleSettings",   "particles",       BLT_I18NCONTEXT_ID_PARTICLESETTINGS,   IDTYPE_FLAGS_ISLINKABLE},
 	{ID_PAL,  "Palettes",           "palettes",        BLT_I18NCONTEXT_ID_PALETTE,            IDTYPE_FLAGS_ISLINKABLE},
 	{ID_PC,   "PaintCurve",         "paint_curves",    BLT_I18NCONTEXT_ID_PAINTCURVE,         IDTYPE_FLAGS_ISLINKABLE},
-	{ID_LP,   "LightProbe",         "light_probes",    BLT_I18NCONTEXT_ID_LIGHTPROBE,         IDTYPE_FLAGS_ISLINKABLE},
+	{ID_LP,   "LightProbe",         "lightprobes",     BLT_I18NCONTEXT_ID_LIGHTPROBE,         IDTYPE_FLAGS_ISLINKABLE},
 	{ID_SCE,  "Scene",              "scenes",          BLT_I18NCONTEXT_ID_SCENE,              IDTYPE_FLAGS_ISLINKABLE},
 	{ID_SCR,  "Screen",             "screens",         BLT_I18NCONTEXT_ID_SCREEN,             IDTYPE_FLAGS_ISLINKABLE},
 	{ID_SEQ,  "Sequence",           "sequences",       BLT_I18NCONTEXT_ID_SEQUENCE,           0                      }, /* not actually ID data */
@@ -90,6 +95,7 @@ static IDType idtypes[] = {
 	/** Keep last, not an ID exactly, only include for completeness */
 	{ID_LINK_PLACEHOLDER, "Link Placeholder", "link_placeholders", BLT_I18NCONTEXT_ID_ID, 0}, /* plural is fake */
 };
+/* clang-format on */
 
 /* -1 for ID_LINK_PLACEHOLDER */
 BLI_STATIC_ASSERT((ARRAY_SIZE(idtypes) - 1 == MAX_LIBARRAY), "Missing IDType");

@@ -113,7 +113,7 @@ class VIEW3D_HT_header(Header):
                 sub.active = gpd.use_multiedit
                 sub.popover(
                     panel="VIEW3D_PT_gpencil_multi_frame",
-                    text="Multiframe"
+                    text="Multiframe",
                 )
 
             if gpd.use_stroke_edit_mode:
@@ -122,7 +122,7 @@ class VIEW3D_HT_header(Header):
 
                 row.popover(
                     panel="VIEW3D_PT_tools_grease_pencil_interpolate",
-                    text="Interpolate"
+                    text="Interpolate",
                 )
 
         VIEW3D_MT_editor_menus.draw_collapsible(context, layout)
@@ -234,7 +234,7 @@ class VIEW3D_HT_header(Header):
             )
 
         if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
-            row.prop_with_popover(
+            layout.prop_with_popover(
                 tool_settings.gpencil_sculpt,
                 "lock_axis",
                 text="",
@@ -252,17 +252,10 @@ class VIEW3D_HT_header(Header):
                 sub.active = settings.use_guide
                 sub.popover(
                     panel="VIEW3D_PT_gpencil_guide",
-                    text="Guides"
+                    text="Guides",
                 )
 
         layout.separator_spacer()
-
-        # Collection Visibility
-        layout.popover(
-            panel="VIEW3D_PT_collections",
-            icon='GROUP',
-            text="",
-        )
 
         # Viewport Settings
         layout.popover(
@@ -271,11 +264,23 @@ class VIEW3D_HT_header(Header):
             text="",
         )
 
+        # Gizmo toggle & popover.
+        row = layout.row(align=True)
+        # FIXME: place-holder icon.
+        row.prop(view, "show_gizmo", text="", toggle=True, icon='EMPTY_DATA')
+        sub = row.row(align=True)
+        sub.active = view.show_gizmo
+        sub.popover(
+            panel="VIEW3D_PT_gizmo_display",
+            text="",
+        )
+
+        # Overlay toggle & popover.
         row = layout.row(align=True)
         row.prop(overlay, "show_overlays", icon='OVERLAY', text="")
         sub = row.row(align=True)
         sub.active = overlay.show_overlays
-        sub.popover(panel="VIEW3D_PT_overlay")
+        sub.popover(panel="VIEW3D_PT_overlay", text="")
 
         row = layout.row()
         row.active = (shading.type in {'WIREFRAME', 'SOLID'}) or object_mode in {'EDIT'}
@@ -292,11 +297,10 @@ class VIEW3D_HT_header(Header):
         # show the shading popover which shows double-sided option.
 
         # sub.enabled = shading.type != 'RENDERED'
-        sub.popover(panel="VIEW3D_PT_shading")
+        sub.popover(panel="VIEW3D_PT_shading", text="")
 
 
 class VIEW3D_MT_editor_menus(Menu):
-    bl_space_type = 'VIEW3D_MT_editor_menus'
     bl_label = ""
 
     def draw(self, context):
@@ -1833,6 +1837,8 @@ class VIEW3D_MT_object_context_menu(Menu):
             if selected_objects_len > 1:
                 layout.operator("object.join")
 
+            layout.separator()
+
         elif obj.type == 'CAMERA':
             layout.operator_context = 'INVOKE_REGION_WIN'
 
@@ -1863,6 +1869,8 @@ class VIEW3D_MT_object_context_menu(Menu):
                     props.input_scale = 0.02
                     props.header_text = "DOF Distance: %.3f"
 
+            layout.separator()
+
         elif obj.type in {'CURVE', 'FONT'}:
             layout.operator_context = 'INVOKE_REGION_WIN'
 
@@ -1878,9 +1886,12 @@ class VIEW3D_MT_object_context_menu(Menu):
             props.input_scale = 0.01
             props.header_text = "Width Size: %.3f"
 
-            layout.operator("object.convert", text="Convert to Mesh").target = 'MESH'
+            layout.separator()
 
+            layout.operator("object.convert", text="Convert to Mesh").target = 'MESH'
             layout.operator_menu_enum("object.origin_set", text="Set Origin", property="type")
+
+            layout.separator()
 
         elif obj.type == 'GPENCIL':
             layout.operator("gpencil.convert", text="Convert to Path").type = 'PATH'
@@ -1888,6 +1899,8 @@ class VIEW3D_MT_object_context_menu(Menu):
             layout.operator("gpencil.convert", text="Convert to Mesh").type = 'POLY'
 
             layout.operator_menu_enum("object.origin_set", text="Set Origin", property="type")
+
+            layout.separator()
 
         elif obj.type == 'EMPTY':
             layout.operator_context = 'INVOKE_REGION_WIN'
@@ -1897,6 +1910,8 @@ class VIEW3D_MT_object_context_menu(Menu):
             props.data_path_item = "empty_display_size"
             props.input_scale = 0.01
             props.header_text = "Empty Draw Size: %.3f"
+
+            layout.separator()
 
         elif obj.type == 'LIGHT':
             light = obj.data
@@ -1960,7 +1975,7 @@ class VIEW3D_MT_object_context_menu(Menu):
                 props.input_scale = -0.01
                 props.header_text = "Spot Blend: %.2f"
 
-        layout.separator()
+            layout.separator()
 
         layout.operator("view3d.copybuffer", text="Copy Objects", icon='COPYDOWN')
         layout.operator("view3d.pastebuffer", text="Paste Objects", icon='PASTEDOWN')
@@ -1969,6 +1984,12 @@ class VIEW3D_MT_object_context_menu(Menu):
 
         layout.operator("object.duplicate_move", icon='DUPLICATE')
         layout.operator("object.duplicate_move_linked")
+
+        layout.separator()
+
+        props = layout.operator("wm.call_panel", text="Rename Active Object...")
+        props.name = "TOPBAR_PT_name"
+        props.keep_open = False
 
         layout.separator()
 
@@ -2772,6 +2793,12 @@ class VIEW3D_MT_pose_context_menu(Menu):
 
         layout.separator()
 
+        props = layout.operator("wm.call_panel", text="Rename Active Bone...")
+        props.name = "TOPBAR_PT_name"
+        props.keep_open = False
+
+        layout.separator()
+
         layout.operator("pose.paths_calculate", text="Calculate")
         layout.operator("pose.paths_clear", text="Clear")
 
@@ -2783,8 +2810,8 @@ class VIEW3D_MT_pose_context_menu(Menu):
 
         layout.separator()
 
-        layout.operator("pose.paths_calculate")
-        layout.operator("pose.paths_clear")
+        layout.operator("pose.paths_calculate", text="Calculate Motion Paths")
+        layout.operator("pose.paths_clear", text="Clear Motion Paths")
 
         layout.separator()
 
@@ -4061,6 +4088,10 @@ class VIEW3D_MT_weight_gpencil(Menu):
     def draw(self, context):
         layout = self.layout
 
+        layout.operator("gpencil.vertex_group_normalize_all", text="Normalize All")
+        layout.operator("gpencil.vertex_group_normalize", text="Normalize")
+
+        layout.separator()
         layout.operator("gpencil.vertex_group_invert", text="Invert")
         layout.operator("gpencil.vertex_group_smooth", text="Smooth")
 
@@ -4320,7 +4351,7 @@ class VIEW3D_PT_view3d_lock(Panel):
                     view, "lock_bone", lock_object.data,
                     "edit_bones" if lock_object.mode == 'EDIT'
                     else "bones",
-                    text=""
+                    text="",
                 )
         else:
             subcol.prop(view, "lock_cursor", text="Lock to 3D Cursor")
@@ -4352,9 +4383,9 @@ class VIEW3D_PT_view3d_cursor(Panel):
 
 class VIEW3D_PT_collections(Panel):
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
+    bl_region_type = 'UI'
+    bl_category = "View"
     bl_label = "Collections Visibility"
-    bl_ui_units_x = 10
 
     def _draw_collection(self, layout, view_layer, collection, index):
         need_separator = index
@@ -4485,7 +4516,8 @@ class VIEW3D_PT_shading(Panel):
             return context.scene.display.shading
 
     def draw(self, context):
-        pass
+        layout = self.layout
+        layout.label(text="Viewport Shading")
 
 
 class VIEW3D_PT_shading_lighting(Panel):
@@ -4636,26 +4668,28 @@ class VIEW3D_PT_shading_options(Panel):
             sub = row.row()
             sub.active = shading.show_xray
             sub.prop(shading, "xray_alpha", text="X-Ray")
+            #X-ray mode is off when alpha is 1.0
+            xray_active = shading.show_xray and shading.xray_alpha != 1
 
             row = col.row()
             row.prop(shading, "show_shadows", text="")
-            row.active = not shading.show_xray
+            row.active = not xray_active
             sub = row.row(align=True)
             sub.active = shading.show_shadows
             sub.prop(shading, "shadow_intensity", text="Shadow")
             sub.popover(
                 panel="VIEW3D_PT_shading_options_shadow",
                 icon='PREFERENCES',
-                text=""
+                text="",
             )
 
             col = layout.column()
 
             row = col.row()
-            row.active = not shading.show_xray
+            row.active = not xray_active
             row.prop(shading, "show_cavity")
 
-            if shading.show_cavity and not shading.show_xray:
+            if shading.show_cavity and not xray_active:
                 row.prop(shading, "cavity_type", text="Type")
 
                 if shading.cavity_type in {'WORLD', 'BOTH'}:
@@ -4666,7 +4700,7 @@ class VIEW3D_PT_shading_options(Panel):
                     sub.popover(
                         panel="VIEW3D_PT_shading_options_ssao",
                         icon='PREFERENCES',
-                        text=""
+                        text="",
                     )
 
                 if shading.cavity_type in {'SCREEN', 'BOTH'}:
@@ -4676,7 +4710,7 @@ class VIEW3D_PT_shading_options(Panel):
                     sub.prop(shading, "curvature_valley_factor", text="Valley")
 
             row = col.row()
-            row.active = not shading.show_xray
+            row.active = not xray_active
             row.prop(shading, "use_dof", text="Depth Of Field")
 
         if shading.type in {'WIREFRAME', 'SOLID'}:
@@ -4731,6 +4765,47 @@ class VIEW3D_PT_shading_options_ssao(Panel):
         col.prop(scene.display, "matcap_ssao_attenuation")
 
 
+class VIEW3D_PT_gizmo_display(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Gizmo"
+
+    def draw(self, context):
+        layout = self.layout
+
+        scene = context.scene
+        view = context.space_data
+        overlay = view.overlay
+
+        col = layout.column()
+        col.label(text="Viewport Gizmos")
+
+        col.active = view.show_gizmo
+        colsub = col.column()
+        colsub.prop(view, "show_gizmo_navigate", text="Navigate")
+        colsub.prop(view, "show_gizmo_tool", text="Active Tools")
+        colsub.prop(view, "show_gizmo_context", text="Active Object")
+
+        colsub = col.column()
+        colsub.active = view.show_gizmo_context
+        colsub.label(text="Object Gizmos")
+        colsub.prop(scene.transform_orientation_slots[1], "type", text="")
+        colsub.prop(view, "show_gizmo_object_translate", text="Move")
+        colsub.prop(view, "show_gizmo_object_rotate", text="Rotate")
+        colsub.prop(view, "show_gizmo_object_scale", text="Scale")
+
+        # Match order of object type visibility
+        colsub.label(text="Empty")
+        colsub.prop(view, "show_gizmo_empty_image", text="Image")
+        colsub.prop(view, "show_gizmo_empty_force_field", text="Force Field")
+        colsub.label(text="Light")
+        colsub.prop(view, "show_gizmo_light_size", text="Size")
+        colsub.prop(view, "show_gizmo_light_look_at", text="Look At")
+        colsub.label(text="Camera")
+        colsub.prop(view, "show_gizmo_camera_lens", text="Lens")
+        colsub.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
+
+
 class VIEW3D_PT_overlay(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
@@ -4738,34 +4813,8 @@ class VIEW3D_PT_overlay(Panel):
     bl_ui_units_x = 13
 
     def draw(self, context):
-        pass
-
-
-class VIEW3D_PT_overlay_gizmo(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = 'VIEW3D_PT_overlay'
-    bl_label = "Gizmo"
-
-    def draw_header(self, context):
-        view = context.space_data
-        self.layout.prop(view, "show_gizmo", text="")
-
-    def draw(self, context):
         layout = self.layout
-
-        view = context.space_data
-        overlay = view.overlay
-        display_all = overlay.show_overlays
-
-        col = layout.column()
-        col.active = display_all
-
-        row = col.row(align=True)
-        row.active = view.show_gizmo
-        row.prop(view, "show_gizmo_navigate", text="Navigate", toggle=True)
-        row.prop(view, "show_gizmo_context", text="Active Object", toggle=True)
-        row.prop(view, "show_gizmo_tool", text="Active Tools", toggle=True)
+        layout.label(text="Viewport Overlays")
 
 
 class VIEW3D_PT_overlay_guides(Panel):
@@ -5840,6 +5889,7 @@ class VIEW3D_PT_sculpt_context_menu(Panel):
         if capabilities.has_height:
             layout.prop(brush, "height", slider=True, text="Height")
 
+
 class TOPBAR_PT_gpencil_materials(GreasePencilMaterialsPanel, Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
@@ -6018,8 +6068,8 @@ classes = (
     VIEW3D_PT_shading_options,
     VIEW3D_PT_shading_options_shadow,
     VIEW3D_PT_shading_options_ssao,
+    VIEW3D_PT_gizmo_display,
     VIEW3D_PT_overlay,
-    VIEW3D_PT_overlay_gizmo,
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,
     VIEW3D_PT_overlay_geometry,

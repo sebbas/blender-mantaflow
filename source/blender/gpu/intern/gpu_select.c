@@ -23,6 +23,7 @@
  * Interface for accessing gpu-related methods for selection. The semantics are
  * similar to glRenderMode(GL_SELECT) from older OpenGL versions.
  */
+#include <string.h>
 #include <stdlib.h>
 
 #include "GPU_select.h"
@@ -30,6 +31,8 @@
 #include "GPU_glew.h"
 
 #include "MEM_guardedalloc.h"
+
+#include "BLI_rect.h"
 
 #include "DNA_userdef_types.h"
 
@@ -210,4 +213,39 @@ const uint *GPU_select_buffer_near(const uint *buffer, int hits)
 		buffer += 4;
 	}
 	return buffer_near;
+}
+
+/* Part of the solution copied from `rect_subregion_stride_calc`. */
+void GPU_select_buffer_stride_realign(
+        const rcti *src, const rcti *dst, uint *r_buf)
+{
+	const int x = dst->xmin - src->xmin;
+	const int y = dst->ymin - src->ymin;
+
+	BLI_assert(src->xmin <= dst->xmin && src->ymin <= dst->ymin &&
+	           src->xmax >= dst->xmax && src->ymax >= dst->ymax);
+	BLI_assert(x >= 0 && y >= 0);
+
+	const int src_x = BLI_rcti_size_x(src);
+	const int src_y = BLI_rcti_size_y(src);
+	const int dst_x = BLI_rcti_size_x(dst);
+	const int dst_y = BLI_rcti_size_y(dst);
+
+	int last_px_written = dst_x * dst_y - 1;
+	int last_px_id = src_x * (y + dst_y - 1) + (x + dst_x - 1);
+	const int skip = src_x - dst_x;
+
+	memset(&r_buf[last_px_id + 1], 0, (src_x * src_y - (last_px_id + 1)) * sizeof(*r_buf));
+
+	while (true) {
+		for (int i = dst_x; i--;) {
+			r_buf[last_px_id--] = r_buf[last_px_written--];
+		}
+		if (last_px_written < 0) {
+			break;
+		}
+		last_px_id -= skip;
+		memset(&r_buf[last_px_id + 1], 0, skip * sizeof(*r_buf));
+	}
+	memset(r_buf, 0, (last_px_id + 1) * sizeof(*r_buf));
 }

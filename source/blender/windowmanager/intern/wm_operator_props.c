@@ -64,17 +64,21 @@ void WM_operator_properties_filesel(
 		{0, NULL, 0, NULL, NULL},
 	};
 
-	if (flag & WM_FILESEL_FILEPATH)
+	if (flag & WM_FILESEL_FILEPATH) {
 		RNA_def_string_file_path(ot->srna, "filepath", NULL, FILE_MAX, "File Path", "Path to file");
+	}
 
-	if (flag & WM_FILESEL_DIRECTORY)
+	if (flag & WM_FILESEL_DIRECTORY) {
 		RNA_def_string_dir_path(ot->srna, "directory", NULL, FILE_MAX, "Directory", "Directory of the file");
+	}
 
-	if (flag & WM_FILESEL_FILENAME)
+	if (flag & WM_FILESEL_FILENAME) {
 		RNA_def_string_file_name(ot->srna, "filename", NULL, FILE_MAX, "File Name", "Name of the file");
+	}
 
-	if (flag & WM_FILESEL_FILES)
+	if (flag & WM_FILESEL_FILES) {
 		RNA_def_collection_runtime(ot->srna, "files", &RNA_OperatorFileListElement, "Files", "");
+	}
 
 	if (action == FILE_SAVE) {
 		/* note, this is only used to check if we should highlight the filename area red when the
@@ -116,8 +120,9 @@ void WM_operator_properties_filesel(
 	                   FILE_LOADLIB, FILE_SPECIAL);
 	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-	if (flag & WM_FILESEL_RELPATH)
+	if (flag & WM_FILESEL_RELPATH) {
 		RNA_def_boolean(ot->srna, "relative_path", true, "Relative Path", "Select the file relative to the blend file");
+	}
 
 	if ((filter & FILE_TYPE_IMAGE) || (filter & FILE_TYPE_MOVIE)) {
 		prop = RNA_def_boolean(ot->srna, "show_multiview", 0, "Enable Multi-View", "");
@@ -135,14 +140,18 @@ void WM_operator_properties_filesel(
 }
 
 static void wm_operator_properties_select_action_ex(wmOperatorType *ot, int default_action,
-                                                    const EnumPropertyItem *select_actions)
+                                                    const EnumPropertyItem *select_actions,
+													bool hide_gui)
 {
 	PropertyRNA *prop;
 	prop = RNA_def_enum(ot->srna, "action", select_actions, default_action, "Action", "Selection action to execute");
-	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+	if (hide_gui) {
+		RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+	}
 }
 
-void WM_operator_properties_select_action(wmOperatorType *ot, int default_action)
+void WM_operator_properties_select_action(wmOperatorType *ot, int default_action, bool hide_gui)
 {
 	static const EnumPropertyItem select_actions[] = {
 		{SEL_TOGGLE, "TOGGLE", 0, "Toggle", "Toggle selection for all elements"},
@@ -152,13 +161,13 @@ void WM_operator_properties_select_action(wmOperatorType *ot, int default_action
 		{0, NULL, 0, NULL, NULL},
 	};
 
-	wm_operator_properties_select_action_ex(ot, default_action, select_actions);
+	wm_operator_properties_select_action_ex(ot, default_action, select_actions, hide_gui);
 }
 
 /**
  * only SELECT/DESELECT
  */
-void WM_operator_properties_select_action_simple(wmOperatorType *ot, int default_action)
+void WM_operator_properties_select_action_simple(wmOperatorType *ot, int default_action, bool hide_gui)
 {
 	static const EnumPropertyItem select_actions[] = {
 		{SEL_SELECT, "SELECT", 0, "Select", "Select all elements"},
@@ -166,7 +175,7 @@ void WM_operator_properties_select_action_simple(wmOperatorType *ot, int default
 		{0, NULL, 0, NULL, NULL},
 	};
 
-	wm_operator_properties_select_action_ex(ot, default_action, select_actions);
+	wm_operator_properties_select_action_ex(ot, default_action, select_actions, hide_gui);
 }
 
 /**
@@ -182,7 +191,7 @@ void WM_operator_properties_select_random(wmOperatorType *ot)
 	        ot->srna, "seed", 0, 0, INT_MAX,
 	        "Random Seed", "Seed for the random number generator", 0, 255);
 
-	WM_operator_properties_select_action_simple(ot, SEL_SELECT);
+	WM_operator_properties_select_action_simple(ot, SEL_SELECT, false);
 }
 
 int WM_operator_properties_select_random_seed_increment_get(wmOperator *op)
@@ -201,7 +210,7 @@ int WM_operator_properties_select_random_seed_increment_get(wmOperator *op)
 
 void WM_operator_properties_select_all(wmOperatorType *ot)
 {
-	WM_operator_properties_select_action(ot, SEL_TOGGLE);
+	WM_operator_properties_select_action(ot, SEL_TOGGLE, true);
 }
 
 void WM_operator_properties_border(wmOperatorType *ot)

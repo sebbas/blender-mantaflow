@@ -140,7 +140,7 @@ static void gp_init_colors(tGPDprimitive *p)
 	MaterialGPencilStyle *gp_style = NULL;
 
 	/* use brush material */
-	p->mat = BKE_gpencil_current_input_brush_material(p->bmain, p->ob, brush);
+	p->mat = BKE_gpencil_object_material_ensure_from_active_input_brush(p->bmain, p->ob, brush);
 
 	/* assign color information to temp data */
 	gp_style = p->mat->gp_style;
@@ -319,6 +319,9 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 	/* create new temp stroke */
 	bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "Temp bGPDstroke");
 	gps->thickness = 2.0f;
+	gps->gradient_f = 1.0f;
+	gps->gradient_s[0] = 1.0f;
+	gps->gradient_s[1] = 1.0f;
 	gps->inittime = 0.0f;
 
 	/* enable recalculation flag by default */
@@ -331,7 +334,7 @@ static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 
 	gps->flag |= GP_STROKE_3DSPACE;
 
-	gps->mat_nr = BKE_gpencil_get_material_index(tgpi->ob, tgpi->mat);
+	gps->mat_nr = BKE_gpencil_object_material_get_index(tgpi->ob, tgpi->mat);
 
 	/* allocate memory for storage points, but keep empty */
 	gps->totpoints = 0;
@@ -834,7 +837,7 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 			const float fac = p2d->rnd[0] * exfactor * jitter;
 
 			/* vector */
-			float mvec[2], svec[2];;
+			float mvec[2], svec[2];
 			if (i > 0) {
 				mvec[0] = (p2d->x - (p2d - 1)->x);
 				mvec[1] = (p2d->y - (p2d - 1)->y);
@@ -1111,7 +1114,7 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
 	tgpi->gpd->runtime.tot_cp_points = 0;
 
 	/* getcolor info */
-	tgpi->mat = BKE_gpencil_current_input_toolsettings_material(bmain, tgpi->ob, ts);
+	tgpi->mat = BKE_gpencil_object_material_ensure_from_active_input_toolsettings(bmain, tgpi->ob, ts);
 
 	/* set parameters */
 	tgpi->type = RNA_enum_get(op->ptr, "type");
@@ -1199,6 +1202,7 @@ static void gpencil_primitive_interaction_end(bContext *C, wmOperator *op, wmWin
 	bGPDstroke *gps;
 
 	ToolSettings *ts = tgpi->scene->toolsettings;
+	Brush *brush = tgpi->brush;
 
 	const int def_nr = tgpi->ob->actdef - 1;
 	const bool have_weight = (bool)BLI_findlink(&tgpi->ob->defbase, def_nr);
@@ -1221,7 +1225,10 @@ static void gpencil_primitive_interaction_end(bContext *C, wmOperator *op, wmWin
 	/* prepare stroke to get transferred */
 	gps = tgpi->gpf->strokes.first;
 	if (gps) {
-		gps->thickness = tgpi->brush->size;
+		gps->thickness = brush->size;
+		gps->gradient_f = brush->gpencil_settings->gradient_f;
+		copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
+
 		gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 		gps->tot_triangles = 0;
 

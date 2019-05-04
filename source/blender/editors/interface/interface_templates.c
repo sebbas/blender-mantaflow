@@ -27,6 +27,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_cachefile_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_object_types.h"
@@ -50,8 +51,10 @@
 #include "BLF_api.h"
 #include "BLT_translation.h"
 
+#include "BKE_action.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
+#include "BKE_constraint.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier.h"
@@ -501,15 +504,14 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
 			if (id) {
 				const bool do_scene_obj = (
 				        (GS(id->name) == ID_OB) &&
-				        (template_ui->ptr.type == &RNA_SceneObjects));
+				        (template_ui->ptr.type == &RNA_LayerObjects));
 
 				/* make copy */
 				if (do_scene_obj) {
 					Main *bmain = CTX_data_main(C);
 					Scene *scene = CTX_data_scene(C);
 					ED_object_single_user(bmain, scene, (struct Object *)id);
-					DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-					WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
+					WM_event_add_notifier(C, NC_WINDOW, NULL);
 					DEG_relations_tag_update(bmain);
 				}
 				else {
@@ -711,8 +713,10 @@ static void template_ID(
 				but = uiDefIconBut(
 				        block, UI_BTYPE_BUT, 0, ICON_LIBRARY_DATA_DIRECT, 0, 0, UI_UNIT_X, UI_UNIT_Y,
 				        NULL, 0, 0, 0, 0,
-				        TIP_("Direct linked library data-block, click to make local, "
-				             "Shift + Click to create a static override"));
+				        BKE_override_static_is_enabled() ?
+				            TIP_("Direct linked library data-block, click to make local, "
+				                 "Shift + Click to create a static override") :
+				            TIP_("Direct linked library data-block, click to make local"));
 				if (disabled) {
 					UI_but_flag_enable(but, UI_BUT_DISABLED);
 				}
@@ -1939,55 +1943,6 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
 
 /************************ Constraint Template *************************/
 
-#include "DNA_constraint_types.h"
-
-#include "BKE_action.h"
-#include "BKE_constraint.h"
-
-#define B_CONSTRAINT_TEST           5
-// #define B_CONSTRAINT_CHANGETARGET   6
-
-static void do_constraint_panels(bContext *C, void *ob_pt, int event)
-{
-	Object *ob = (Object *)ob_pt;
-
-	switch (event) {
-		case B_CONSTRAINT_TEST:
-			break; /* no handling */
-#if 0	/* UNUSED */
-		case B_CONSTRAINT_CHANGETARGET:
-		{
-			Main *bmain = CTX_data_main(C);
-			if (ob->pose) {
-				BKE_pose_tag_recalc(bmain, ob->pose); /* checks & sorts pose channels */
-			}
-			DEG_relations_tag_update(bmain);
-			break;
-		}
-#endif
-		default:
-			break;
-	}
-
-	/* note: RNA updates now call this, commenting else it gets called twice.
-	 * if there are problems because of this, then rna needs changed update functions. */
-#if 0
-	object_test_constraints(ob);
-	if (ob->pose) {
-		BKE_pose_update_constraint_flags(ob->pose);
-	}
-#endif
-
-	if (ob->type == OB_ARMATURE) {
-		DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_TRANSFORM);
-	}
-	else {
-		DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
-	}
-
-	WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
-}
-
 static void constraint_active_func(bContext *UNUSED(C), void *ob_v, void *con_v)
 {
 	ED_object_constraint_set_active(ob_v, con_v);
@@ -2025,7 +1980,6 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 
 	/* unless button has own callback, it adds this callback to button */
 	block = uiLayoutGetBlock(layout);
-	UI_block_func_handle_set(block, do_constraint_panels, ob);
 	UI_block_func_set(block, constraint_active_func, ob, con);
 
 	RNA_pointer_create(&ob->id, &RNA_Constraint, con, &ptr);
@@ -2045,7 +1999,7 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 	UI_block_emboss_set(block, UI_EMBOSS);
 
 	/* name */
-	uiDefBut(block, UI_BTYPE_LABEL, B_CONSTRAINT_TEST, typestr,
+	uiDefBut(block, UI_BTYPE_LABEL, 0, typestr,
 	         xco + 0.5f * UI_UNIT_X, yco, 5 * UI_UNIT_X, 0.9f * UI_UNIT_Y, NULL, 0.0, 0.0, 0.0, 0.0, "");
 
 	if (con->flag & CONSTRAINT_DISABLE) {
@@ -2067,9 +2021,9 @@ static uiLayout *draw_constraint(uiLayout *layout, Object *ob, bConstraint *con)
 
 		/* draw a ghost icon (for proxy) and also a lock beside it,
 		 * to show that constraint is "proxy locked" */
-		uiDefIconBut(block, UI_BTYPE_BUT, B_CONSTRAINT_TEST, ICON_GHOST_ENABLED, xco + 12.2f * UI_UNIT_X, yco, 0.95f * UI_UNIT_X, 0.95f * UI_UNIT_Y,
+		uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_GHOST_ENABLED, xco + 12.2f * UI_UNIT_X, yco, 0.95f * UI_UNIT_X, 0.95f * UI_UNIT_Y,
 		             NULL, 0.0, 0.0, 0.0, 0.0, TIP_("Proxy Protected"));
-		uiDefIconBut(block, UI_BTYPE_BUT, B_CONSTRAINT_TEST, ICON_LOCKED, xco + 13.1f * UI_UNIT_X, yco, 0.95f * UI_UNIT_X, 0.95f * UI_UNIT_Y,
+		uiDefIconBut(block, UI_BTYPE_BUT, 0, ICON_LOCKED, xco + 13.1f * UI_UNIT_X, yco, 0.95f * UI_UNIT_X, 0.95f * UI_UNIT_Y,
 		             NULL, 0.0, 0.0, 0.0, 0.0, TIP_("Proxy Protected"));
 
 		UI_block_emboss_set(block, UI_EMBOSS);
@@ -2261,7 +2215,7 @@ void uiTemplatePreview(
 	if (!ui_preview) {
 		ui_preview = MEM_callocN(sizeof(uiPreview), "uiPreview");
 		BLI_strncpy(ui_preview->preview_id, preview_id, sizeof(ui_preview->preview_id));
-		ui_preview->height = (short)(UI_UNIT_Y * 5.6f);
+		ui_preview->height = (short)(UI_UNIT_Y * 7.6f);
 		BLI_addtail(&ar->ui_previews, ui_preview);
 	}
 
@@ -2303,6 +2257,8 @@ void uiTemplatePreview(
 			col = uiLayoutColumn(row, true);
 			uiLayoutSetScaleX(col, 1.5);
 			uiItemR(col, &material_ptr, "preview_render_type", UI_ITEM_R_EXPAND, "", ICON_NONE);
+			uiItemS(col);
+			uiItemR(col, &material_ptr, "use_preview_world", 0, "", ICON_WORLD);
 		}
 
 		if (pr_texture) {

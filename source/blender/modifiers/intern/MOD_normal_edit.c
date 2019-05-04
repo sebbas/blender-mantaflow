@@ -192,7 +192,7 @@ static bool polygons_check_flip(
 }
 
 static void normalEditModifier_do_radial(
-        NormalEditModifierData *enmd, const ModifierEvalContext *ctx,
+        NormalEditModifierData *enmd, const ModifierEvalContext *UNUSED(ctx),
         Object *ob, Mesh *mesh,
         short (*clnors)[2], float (*loopnors)[3], float (*polynors)[3],
         const short mix_mode, const float mix_factor, const float mix_limit,
@@ -200,7 +200,7 @@ static void normalEditModifier_do_radial(
         MVert *mvert, const int num_verts, MEdge *medge, const int num_edges,
         MLoop *mloop, const int num_loops, MPoly *mpoly, const int num_polys)
 {
-	Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, enmd->target);
+	Object *ob_target = enmd->target;
 
 	const bool do_polynors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
 	int i;
@@ -296,7 +296,7 @@ static void normalEditModifier_do_radial(
 }
 
 static void normalEditModifier_do_directional(
-        NormalEditModifierData *enmd, const ModifierEvalContext *ctx,
+        NormalEditModifierData *enmd, const ModifierEvalContext *UNUSED(ctx),
         Object *ob, Mesh *mesh,
         short (*clnors)[2], float (*loopnors)[3], float (*polynors)[3],
         const short mix_mode, const float mix_factor, const float mix_limit,
@@ -304,7 +304,7 @@ static void normalEditModifier_do_directional(
         MVert *mvert, const int num_verts, MEdge *medge, const int num_edges,
         MLoop *mloop, const int num_loops, MPoly *mpoly, const int num_polys)
 {
-	Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, enmd->target);
+	Object *ob_target = enmd->target;
 
 	const bool do_polynors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
 	const bool use_parallel_normals = (enmd->flag & MOD_NORMALEDIT_USE_DIRECTION_PARALLEL) != 0;
@@ -555,12 +555,6 @@ ModifierTypeInfo modifierType_NormalEdit = {
 	                        eModifierTypeFlag_EnableInEditmode,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

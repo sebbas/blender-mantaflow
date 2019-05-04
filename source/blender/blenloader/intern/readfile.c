@@ -45,10 +45,6 @@
 
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
-/* Allow using DNA struct members that are marked as private for read/write.
- * Note: Each header that uses this needs to define its own way of handling
- * it. There's no generic implementation, direct use does nothing. */
-#define DNA_PRIVATE_READ_WRITE_ALLOW
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -1632,7 +1628,7 @@ bool BLO_library_path_explode(const char *path, char *r_dir, char **r_group, cha
  *
  * \param filepath: The path of the file to extract thumbnail from.
  * \return The raw thumbnail
- * (MEM-allocated, as stored in file, use BKE_main_thumbnail_to_imbuf() to convert it to ImBuf image).
+ * (MEM-allocated, as stored in file, use #BKE_main_thumbnail_to_imbuf() to convert it to ImBuf image).
  */
 BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
 {
@@ -2617,8 +2613,7 @@ static void lib_link_brush(FileData *fd, Main *main)
 			brush->paint_curve = newlibadr_us(fd, brush->id.lib, brush->paint_curve);
 
 			/* link default grease pencil palette */
-			if (brush->gpencil_settings != NULL)
-			{
+			if (brush->gpencil_settings != NULL) {
 				if (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
 					brush->gpencil_settings->material = newlibadr_us(fd, brush->id.lib, brush->gpencil_settings->material);
 
@@ -5790,10 +5785,6 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 				}
 			}
 		}
-		else if (md->type == eModifierType_Multires) {
-			MultiresModifierData *mmd = (MultiresModifierData *)md;
-			mmd->subdiv = NULL;
-		}
 	}
 }
 
@@ -7178,7 +7169,7 @@ static void direct_link_area(FileData *fd, ScrArea *area)
 				direct_link_gpencil(fd, v3d->gpd);
 			}
 			v3d->localvd = newdataadr(fd, v3d->localvd);
-			v3d->properties_storage = NULL;
+			v3d->runtime.properties_storage = NULL;
 
 			/* render can be quite heavy, set to solid on load */
 			if (v3d->shading.type == OB_RENDER) {
@@ -8179,7 +8170,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
 				/* Now, since Blender always expect **latest** Main pointer from fd->mainlist to be the active library
 				 * Main pointer, where to add all non-library data-blocks found in file next, we have to switch that
 				 * 'dupli' found Main to latest position in the list!
-				 * Otherwise, you get weird disappearing linked data on a rather unconsistant basis.
+				 * Otherwise, you get weird disappearing linked data on a rather inconsistent basis.
 				 * See also T53977 for reproducible case. */
 				BLI_remlink(fd->mainlist, newmain);
 				BLI_addtail(fd->mainlist, newmain);
@@ -8938,7 +8929,7 @@ static BHead *read_libblock(FileData *fd, Main *main, BHead *bhead, const int ta
 
 	/* In undo case, most libs and linked data should be kept as is from previous state (see BLO_read_from_memfile).
 	 * However, some needed by the snapshot being read may have been removed in previous one, and would go missing.
-	 * This leads e.g. to desappearing objects in some undo/redo case, see T34446.
+	 * This leads e.g. to disappearing objects in some undo/redo case, see T34446.
 	 * That means we have to carefully check whether current lib or libdata already exits in old main, if it does
 	 * we merely copy it over into new main area, otherwise we have to do a full read of that bhead... */
 	if (fd->memfile && ELEM(bhead->code, ID_LI, ID_LINK_PLACEHOLDER)) {

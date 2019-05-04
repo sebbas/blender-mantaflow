@@ -133,7 +133,7 @@ typedef enum uiButtonActivateType {
 	BUTTON_ACTIVATE,
 	BUTTON_ACTIVATE_APPLY,
 	BUTTON_ACTIVATE_TEXT_EDITING,
-	BUTTON_ACTIVATE_OPEN
+	BUTTON_ACTIVATE_OPEN,
 } uiButtonActivateType;
 
 typedef enum uiHandleButtonState {
@@ -147,7 +147,7 @@ typedef enum uiHandleButtonState {
 	BUTTON_STATE_TEXT_SELECTING,
 	BUTTON_STATE_MENU_OPEN,
 	BUTTON_STATE_WAIT_DRAG,
-	BUTTON_STATE_EXIT
+	BUTTON_STATE_EXIT,
 } uiHandleButtonState;
 
 
@@ -1784,7 +1784,7 @@ static bool ui_but_drag_init(
 
 			/* Initialize alignment for single row/column regions,
 			 * otherwise we use the relative position of the first other button dragged over. */
-			if (ELEM(data->region->regiontype, RGN_TYPE_NAV_BAR, RGN_TYPE_HEADER)) {
+			if (ELEM(data->region->regiontype, RGN_TYPE_NAV_BAR, RGN_TYPE_HEADER, RGN_TYPE_FOOTER)) {
 				int lock_axis = -1;
 				if (ELEM(data->region->alignment, RGN_ALIGN_LEFT, RGN_ALIGN_RIGHT)) {
 					lock_axis = 0;
@@ -4786,12 +4786,10 @@ static bool ui_numedit_but_SLI(
         int mx, const bool is_horizontal, const bool is_motion,
         const bool snap, const bool shift)
 {
-	float deler, f, tempf, softmin, softmax, softrange;
+	float cursor_x_range, f, tempf, softmin, softmax, softrange;
 	int temp, lvalue;
 	bool changed = false;
 	float mx_fl, my_fl;
-	/* note, 'offs' is really from the widget drawing rounded corners see 'widget_numslider' */
-	float offs;
 
 	/* prevent unwanted drag adjustments, test motion so modifier keys refresh. */
 	if ((but->type != UI_BTYPE_SCROLL) &&
@@ -4809,20 +4807,18 @@ static bool ui_numedit_but_SLI(
 	ui_mouse_scale_warp(data, mx, mx, &mx_fl, &my_fl, shift);
 
 	if (but->type == UI_BTYPE_NUM_SLIDER) {
-		offs = (BLI_rctf_size_y(&but->rect) / 2.0f);
-		deler = BLI_rctf_size_x(&but->rect) - offs;
+		cursor_x_range = BLI_rctf_size_x(&but->rect);
 	}
 	else if (but->type == UI_BTYPE_SCROLL) {
 		const float size = (is_horizontal) ? BLI_rctf_size_x(&but->rect) : -BLI_rctf_size_y(&but->rect);
-		deler = size * (but->softmax - but->softmin) / (but->softmax - but->softmin + but->a1);
-		offs = 0.0;
+		cursor_x_range = size * (but->softmax - but->softmin) / (but->softmax - but->softmin + but->a1);
 	}
 	else {
-		offs = (BLI_rctf_size_y(&but->rect) / 2.0f);
-		deler = (BLI_rctf_size_x(&but->rect) - offs);
+		float offs = (BLI_rctf_size_y(&but->rect) / 2.0f);
+		cursor_x_range = (BLI_rctf_size_x(&but->rect) - offs);
 	}
 
-	f = (mx_fl - data->dragstartx) / deler + data->dragfstart;
+	f = (mx_fl - data->dragstartx) / cursor_x_range + data->dragfstart;
 	CLAMP(f, 0.0f, 1.0f);
 
 
@@ -4831,11 +4827,11 @@ static bool ui_numedit_but_SLI(
 	if (ui_but_is_cursor_warp(but)) {
 		/* OK but can go outside bounds */
 		if (is_horizontal) {
-			data->ungrab_mval[0] = (but->rect.xmin + offs) + (f * deler);
+			data->ungrab_mval[0] = but->rect.xmin + (f * cursor_x_range);
 			data->ungrab_mval[1] = BLI_rctf_cent_y(&but->rect);
 		}
 		else {
-			data->ungrab_mval[1] = (but->rect.ymin + offs) + (f * deler);
+			data->ungrab_mval[1] = but->rect.ymin + (f * cursor_x_range);
 			data->ungrab_mval[0] = BLI_rctf_cent_x(&but->rect);
 		}
 		BLI_rctf_clamp_pt_v(&but->rect, data->ungrab_mval);
@@ -7902,6 +7898,32 @@ static void ui_handle_button_activate(bContext *C, ARegion *ar, uiBut *but, uiBu
 	button_activate_init(C, ar, but, type);
 }
 
+/**
+ * Use for key accelerator or default key to activate the button even if its not active.
+ */
+static bool ui_handle_button_activate_by_type(bContext *C, ARegion *ar, uiBut *but)
+{
+	if (but->type == UI_BTYPE_BUT_MENU) {
+		/* mainly for operator buttons */
+		ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE_APPLY);
+	}
+	else if (ELEM(but->type, UI_BTYPE_BLOCK, UI_BTYPE_PULLDOWN)) {
+		/* open sub-menus (like right arrow key) */
+		ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE_OPEN);
+	}
+	else if (but->type == UI_BTYPE_MENU) {
+		/* activate menu items */
+		ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE);
+	}
+	else {
+#ifdef DEBUG
+		printf("%s: error, unhandled type: %u\n", __func__, but->type);
+#endif
+		return false;
+	}
+	return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -7969,7 +7991,11 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
 								data->cancel = false;
 								button_activate_state(C, but, BUTTON_STATE_EXIT);
 								retval = WM_UI_HANDLER_BREAK;
-								block->handle->menuretval = UI_RETURN_OK;
+								/* Cancel because this `but` handles all events and we don't want
+								 * the parent button's update function to do anything.
+								 *
+								 * Causes issues with buttons defined by #uiItemFullR_with_popover. */
+								block->handle->menuretval = UI_RETURN_CANCEL;
 							}
 							else if (ui_but_is_editable_as_text(but)) {
 								ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE_TEXT_EDITING);
@@ -9150,22 +9176,12 @@ static int ui_handle_menu_event(
 
 						for (but = block->buttons.first; but; but = but->next) {
 							if (!(but->flag & UI_BUT_DISABLED) && but->menu_key == event->type) {
-								if (ELEM(but->type, UI_BTYPE_BUT, UI_BTYPE_BUT_MENU)) {
-									/* mainly for operator buttons */
-									ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE_APPLY);
-								}
-								else if (ELEM(but->type, UI_BTYPE_BLOCK, UI_BTYPE_PULLDOWN)) {
-									/* open sub-menus (like right arrow key) */
-									ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE_OPEN);
-								}
-								else if (but->type == UI_BTYPE_MENU) {
-									/* activate menu items */
-									ui_handle_button_activate(C, ar, but, BUTTON_ACTIVATE);
+								if (but->type == UI_BTYPE_BUT) {
+									UI_but_execute(C, but);
 								}
 								else {
-									printf("%s: error, but->menu_key type: %u\n", __func__, but->type);
+									ui_handle_button_activate_by_type(C, ar, but);
 								}
-
 								break;
 							}
 						}
@@ -9237,10 +9253,23 @@ static int ui_handle_menu_event(
 				menu->menuretval = UI_RETURN_CANCEL;
 			}
 			else if (ELEM(event->type, RETKEY, PADENTER) && event->val == KM_PRESS) {
-				/* enter will always close this block, we let the event
-				 * get handled by the button if it is activated, otherwise we cancel */
-				if (!ui_region_find_active_but(ar)) {
-					menu->menuretval = UI_RETURN_CANCEL | UI_RETURN_POPUP_OK;
+				uiBut *but_default = ui_region_find_first_but_test_flag(ar, UI_BUT_ACTIVE_DEFAULT, UI_HIDDEN);
+				if ((but_default != NULL) && (but_default->active == NULL)) {
+					if (but_default->type == UI_BTYPE_BUT) {
+						UI_but_execute(C, but_default);
+					}
+					else {
+						ui_handle_button_activate_by_type(C, ar, but_default);
+					}
+				}
+				else {
+					uiBut *but_active = ui_region_find_active_but(ar);
+
+					/* enter will always close this block, we let the event
+					 * get handled by the button if it is activated, otherwise we cancel */
+					if (but_active == NULL) {
+						menu->menuretval = UI_RETURN_CANCEL | UI_RETURN_POPUP_OK;
+					}
 				}
 			}
 #ifdef USE_DRAG_POPUP

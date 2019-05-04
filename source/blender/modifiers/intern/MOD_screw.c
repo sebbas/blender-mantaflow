@@ -236,7 +236,7 @@ static Mesh *applyModifier(
 	MEdge *medge_orig, *med_orig, *med_new, *med_new_firstloop, *medge_new;
 	MVert *mvert_new, *mvert_orig, *mv_orig, *mv_new, *mv_new_base;
 
-	Object *ob_axis = DEG_get_evaluated_object(ctx->depsgraph, ltmd->ob_axis);
+	Object *ob_axis = ltmd->ob_axis;
 
 	ScrewVertConnect *vc, *vc_tmp, *vert_connect = NULL;
 
@@ -1134,12 +1134,6 @@ ModifierTypeInfo modifierType_Screw = {
 	                        eModifierTypeFlag_EnableInEditmode,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

@@ -23,6 +23,8 @@
 
 #include <stdlib.h>
 
+#include "MEM_guardedalloc.h"
+
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_light_types.h"
@@ -584,11 +586,27 @@ static eOLDrawState tree_element_active_posechannel(
 		if (!(pchan->bone->flag & BONE_HIDDEN_P)) {
 
 			if (set != OL_SETSEL_EXTEND) {
-				bPoseChannel *pchannel;
-				/* single select forces all other bones to get unselected */
-				for (pchannel = ob->pose->chanbase.first; pchannel; pchannel = pchannel->next) {
-					pchannel->bone->flag &= ~(BONE_TIPSEL | BONE_SELECTED | BONE_ROOTSEL);
+				/* Single select forces all other bones to get unselected. */
+				uint objects_len = 0;
+				Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(view_layer, NULL, &objects_len, OB_MODE_POSE);
+				for (uint object_index = 0; object_index < objects_len; object_index++) {
+					Object *ob_iter = BKE_object_pose_armature_get(objects[object_index]);
+
+					/* Sanity checks. */
+					if (ELEM(NULL, ob_iter, ob_iter->pose, ob_iter->data)) {
+						continue;
+					}
+
+					bPoseChannel *pchannel;
+					for (pchannel = ob_iter->pose->chanbase.first; pchannel; pchannel = pchannel->next) {
+						pchannel->bone->flag &= ~(BONE_TIPSEL | BONE_SELECTED | BONE_ROOTSEL);
+					}
+
+					if (ob != ob_iter) {
+						DEG_id_tag_update(ob_iter->data, ID_RECALC_SELECT);
+					}
 				}
+				MEM_freeN(objects);
 			}
 
 			if ((set == OL_SETSEL_EXTEND) && (pchan->bone->flag & BONE_SELECTED)) {
@@ -668,7 +686,7 @@ static eOLDrawState tree_element_active_bone(
 
 
 /* ebones only draw in editmode armature */
-static void tree_element_active_ebone__sel(bContext *C, Object *obedit, bArmature *arm, EditBone *ebone, short sel)
+static void tree_element_active_ebone__sel(bContext *C, bArmature *arm, EditBone *ebone, short sel)
 {
 	if (sel) {
 		ebone->flag |= BONE_SELECTED | BONE_ROOTSEL | BONE_TIPSEL;
@@ -685,35 +703,36 @@ static void tree_element_active_ebone__sel(bContext *C, Object *obedit, bArmatur
 			ebone->parent->flag &= ~BONE_TIPSEL;
 		}
 	}
-
-	WM_event_add_notifier(C, NC_OBJECT | ND_BONE_ACTIVE, obedit);
+	WM_event_add_notifier(C, NC_OBJECT | ND_BONE_ACTIVE, CTX_data_edit_object(C));
 }
 static eOLDrawState tree_element_active_ebone(
-        bContext *C, TreeElement *te, TreeStoreElem *UNUSED(tselem), const eOLSetState set, bool recursive)
+        bContext *C, ViewLayer *view_layer, TreeElement *te, TreeStoreElem *tselem, const eOLSetState set, bool recursive)
 {
-	Object *obedit = CTX_data_edit_object(C);
-	BLI_assert(obedit != NULL);
-	bArmature *arm = obedit->data;
+	bArmature *arm = (bArmature *)tselem->id;
 	EditBone *ebone = te->directdata;
 	eOLDrawState status = OL_DRAWSEL_NONE;
 
 	if (set != OL_SETSEL_NONE) {
 		if (set == OL_SETSEL_NORMAL) {
 			if (!(ebone->flag & BONE_HIDDEN_A)) {
-				ED_armature_edit_deselect_all(obedit);
-				tree_element_active_ebone__sel(C, obedit, arm, ebone, true);
+				uint bases_len = 0;
+				Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(view_layer, NULL, &bases_len);
+				ED_armature_edit_deselect_all_multi_ex(bases, bases_len);
+				MEM_freeN(bases);
+
+				tree_element_active_ebone__sel(C, arm, ebone, true);
 				status = OL_DRAWSEL_NORMAL;
 			}
 		}
 		else if (set == OL_SETSEL_EXTEND) {
 			if (!(ebone->flag & BONE_HIDDEN_A)) {
 				if (!(ebone->flag & BONE_SELECTED)) {
-					tree_element_active_ebone__sel(C, obedit, arm, ebone, true);
+					tree_element_active_ebone__sel(C, arm, ebone, true);
 					status = OL_DRAWSEL_NORMAL;
 				}
 				else {
 					/* entirely selected, so de-select */
-					tree_element_active_ebone__sel(C, obedit, arm, ebone, false);
+					tree_element_active_ebone__sel(C, arm, ebone, false);
 					status = OL_DRAWSEL_NONE;
 				}
 			}
@@ -964,7 +983,7 @@ eOLDrawState tree_element_type_active(
 		case TSE_BONE:
 			return tree_element_active_bone(C, view_layer, te, tselem, set, recursive);
 		case TSE_EBONE:
-			return tree_element_active_ebone(C, te, tselem, set, recursive);
+			return tree_element_active_ebone(C, view_layer, te, tselem, set, recursive);
 		case TSE_MODIFIER:
 			return tree_element_active_modifier(C, scene, view_layer, te, tselem, set);
 		case TSE_LINKED_OB:

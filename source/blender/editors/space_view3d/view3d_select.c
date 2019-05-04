@@ -618,6 +618,7 @@ static void do_lasso_select_mesh__doSelectVert(void *userData, BMVert *eve, cons
 	const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
 	if (sel_op_result != -1) {
 		BM_vert_select_set(data->vc->em->bm, eve, sel_op_result);
+		data->is_changed = true;
 	}
 }
 static void do_lasso_select_mesh__doSelectEdge_pass0(
@@ -634,6 +635,7 @@ static void do_lasso_select_mesh__doSelectEdge_pass0(
 	if (sel_op_result != -1) {
 		BM_edge_select_set(data->vc->em->bm, eed, sel_op_result);
 		data->is_done = true;
+		data->is_changed = true;
 	}
 }
 static void do_lasso_select_mesh__doSelectEdge_pass1(
@@ -648,6 +650,7 @@ static void do_lasso_select_mesh__doSelectEdge_pass1(
 	const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
 	if (sel_op_result != -1) {
 		BM_edge_select_set(data->vc->em->bm, eed, sel_op_result);
+		data->is_changed = true;
 	}
 }
 
@@ -662,6 +665,7 @@ static void do_lasso_select_mesh__doSelectFace(void *userData, BMFace *efa, cons
 	const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
 	if (sel_op_result != -1) {
 		BM_face_select_set(data->vc->em->bm, efa, sel_op_result);
+		data->is_changed = true;
 	}
 }
 
@@ -696,7 +700,7 @@ static bool do_lasso_select_mesh(
 
 	if (ts->selectmode & SCE_SELECT_VERTEX) {
 		if (bbsel) {
-			data.is_changed = edbm_backbuf_check_and_select_verts(vc->em, sel_op);
+			data.is_changed |= edbm_backbuf_check_and_select_verts(vc->em, sel_op);
 		}
 		else {
 			mesh_foreachScreenVert(vc, do_lasso_select_mesh__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
@@ -712,7 +716,7 @@ static bool do_lasso_select_mesh(
 
 	if (ts->selectmode & SCE_SELECT_FACE) {
 		if (bbsel) {
-			data.is_changed = edbm_backbuf_check_and_select_faces(vc->em, sel_op);
+			data.is_changed |= edbm_backbuf_check_and_select_faces(vc->em, sel_op);
 		}
 		else {
 			mesh_foreachScreenFace(vc, do_lasso_select_mesh__doSelectFace, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
@@ -939,7 +943,7 @@ static void do_lasso_select_meshobject__doSelectVert(void *userData, MVert *mv, 
 }
 static bool do_lasso_select_paintvert(ViewContext *vc, const int mcords[][2], short moves, const eSelectOp sel_op)
 {
-	const bool use_zbuf = V3D_IS_ZBUF(vc->v3d);
+	const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
 	Object *ob = vc->obact;
 	Mesh *me = ob->data;
 	rcti rect;
@@ -1061,22 +1065,22 @@ static bool view3d_lasso_select(
 
 	if (vc->obedit == NULL) { /* Object Mode */
 		if (BKE_paint_select_face_test(ob)) {
-			changed_multi = do_lasso_select_paintface(vc, mcords, moves, sel_op);
+			changed_multi |= do_lasso_select_paintface(vc, mcords, moves, sel_op);
 		}
 		else if (BKE_paint_select_vert_test(ob)) {
-			changed_multi = do_lasso_select_paintvert(vc, mcords, moves, sel_op);
+			changed_multi |= do_lasso_select_paintvert(vc, mcords, moves, sel_op);
 		}
 		else if (ob && (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT))) {
 			/* pass */
 		}
 		else if (ob && (ob->mode & OB_MODE_PARTICLE_EDIT)) {
-			changed_multi = PE_lasso_select(C, mcords, moves, sel_op);
+			changed_multi |= PE_lasso_select(C, mcords, moves, sel_op);
 		}
 		else if (ob && (ob->mode & OB_MODE_POSE)) {
-			changed_multi = do_lasso_select_pose(vc, mcords, moves, sel_op);
+			changed_multi |= do_lasso_select_pose(vc, mcords, moves, sel_op);
 		}
 		else {
-			changed_multi = do_lasso_select_objects(vc, mcords, moves, sel_op);
+			changed_multi |= do_lasso_select_objects(vc, mcords, moves, sel_op);
 		}
 	}
 	else { /* Edit Mode */
@@ -1468,7 +1472,7 @@ static int mixed_bones_object_selectbuffer_extended(
 
 	/* define if we use solid nearest select or not */
 	if (use_cycle) {
-		if (v3d->shading.type > OB_WIRE) {
+		if (!XRAY_ACTIVE(v3d)) {
 			do_nearest = true;
 			if (len_manhattan_v2v2_int(mval, last_mval) <= WM_EVENT_CURSOR_MOTION_THRESHOLD) {
 				do_nearest = false;
@@ -1477,7 +1481,7 @@ static int mixed_bones_object_selectbuffer_extended(
 		copy_v2_v2_int(last_mval, mval);
 	}
 	else {
-		if (v3d->shading.type > OB_WIRE) {
+		if (!XRAY_ACTIVE(v3d)) {
 			do_nearest = true;
 		}
 	}
@@ -1626,7 +1630,7 @@ Base *ED_view3d_give_base_under_cursor(bContext *C, const int mval[2])
 
 	ED_view3d_viewcontext_init(C, &vc);
 
-	const bool do_nearest = (vc.v3d->shading.type > OB_WIRE);
+	const bool do_nearest = !XRAY_ACTIVE(vc.v3d);
 	const int hits = mixed_bones_object_selectbuffer(
 	        &vc, buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest);
 
@@ -1992,7 +1996,7 @@ static bool ed_wpaint_vertex_select_pick(
         bool extend, bool deselect, bool toggle, Object *obact)
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	const bool use_zbuf = V3D_IS_ZBUF(v3d);
+	const bool use_zbuf = !XRAY_ENABLED(v3d);
 
 	Mesh *me = obact->data; /* already checked for NULL */
 	uint index = 0;
@@ -2242,15 +2246,11 @@ static void do_paintvert_box_select__doSelectVert(void *userData, MVert *mv, con
 static bool do_paintvert_box_select(
         ViewContext *vc, const rcti *rect, const eSelectOp sel_op)
 {
-	const bool use_zbuf = V3D_IS_ZBUF(vc->v3d);
+	const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
 	Mesh *me;
-	MVert *mvert;
-	unsigned int *rt;
-	int a, index;
-	char *selar;
 
 	me = vc->obact->data;
-	if ((me == NULL) || (me->totvert == 0) || BLI_rcti_is_empty(rect)) {
+	if ((me == NULL) || (me->totvert == 0)) {
 		return OPERATOR_CANCELLED;
 	}
 
@@ -2259,7 +2259,15 @@ static bool do_paintvert_box_select(
 		changed |= paintvert_deselect_all_visible(vc->obact, SEL_DESELECT, false);
 	}
 
-	if (use_zbuf) {
+	if (BLI_rcti_is_empty(rect)) {
+		/* pass */
+	}
+	else if (use_zbuf) {
+		MVert *mvert;
+		unsigned int *rt;
+		int a, index;
+		char *selar;
+
 		selar = MEM_callocN(me->totvert + 1, "selar");
 
 		uint buf_len;
@@ -2475,7 +2483,7 @@ static bool do_mesh_box_select(
 
 	if (ts->selectmode & SCE_SELECT_VERTEX) {
 		if (bbsel) {
-			data.is_changed = edbm_backbuf_check_and_select_verts(vc->em, sel_op);
+			data.is_changed |= edbm_backbuf_check_and_select_verts(vc->em, sel_op);
 		}
 		else {
 			mesh_foreachScreenVert(vc, do_mesh_box_select__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
@@ -2491,7 +2499,7 @@ static bool do_mesh_box_select(
 
 	if (ts->selectmode & SCE_SELECT_FACE) {
 		if (bbsel) {
-			data.is_changed = edbm_backbuf_check_and_select_faces(vc->em, sel_op);
+			data.is_changed |= edbm_backbuf_check_and_select_faces(vc->em, sel_op);
 		}
 		else {
 			mesh_foreachScreenFace(vc, do_mesh_box_select__doSelectFace, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
@@ -3092,7 +3100,7 @@ static void paint_vertsel_circle_select_doSelectVert(void *userData, MVert *mv, 
 static bool paint_vertsel_circle_select(ViewContext *vc, const eSelectOp sel_op, const int mval[2], float rad)
 {
 	BLI_assert(ELEM(sel_op, SEL_OP_SET, SEL_OP_ADD, SEL_OP_SUB));
-	const bool use_zbuf = V3D_IS_ZBUF(vc->v3d);
+	const bool use_zbuf = !XRAY_ENABLED(vc->v3d);
 	Object *ob = vc->obact;
 	Mesh *me = ob->data;
 	bool bbsel;
@@ -3201,8 +3209,7 @@ static bool lattice_circle_select(ViewContext *vc, const eSelectOp sel_op, const
 	view3d_userdata_circleselect_init(&data, vc, select, mval, rad);
 
 	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
-		Curve *curve = vc->obedit->data;
-		data.is_changed |= ED_curve_deselect_all(curve->editnurb);
+		data.is_changed |= ED_lattice_flags_set(vc->obedit, 0);
 	}
 	ED_view3d_init_mats_rv3d(vc->obedit, vc->rv3d); /* for foreach's screen/vert projection */
 

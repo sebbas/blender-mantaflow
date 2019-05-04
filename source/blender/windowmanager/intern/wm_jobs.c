@@ -146,19 +146,25 @@ static wmJob *wm_job_find(wmWindowManager *wm, void *owner, const int job_type)
 	wmJob *wm_job;
 
 	if (owner && job_type) {
-		for (wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next)
-			if (wm_job->owner == owner && wm_job->job_type == job_type)
+		for (wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next) {
+			if (wm_job->owner == owner && wm_job->job_type == job_type) {
 				return wm_job;
+			}
+		}
 	}
 	else if (owner) {
-		for (wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next)
-			if (wm_job->owner == owner)
+		for (wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next) {
+			if (wm_job->owner == owner) {
 				return wm_job;
+			}
+		}
 	}
 	else if (job_type) {
-		for (wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next)
-			if (wm_job->job_type == job_type)
+		for (wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next) {
+			if (wm_job->job_type == job_type) {
 				return wm_job;
+			}
+		}
 	}
 
 	return NULL;
@@ -220,10 +226,45 @@ float WM_jobs_progress(wmWindowManager *wm, void *owner)
 {
 	wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
 
-	if (wm_job && wm_job->flag & WM_JOB_PROGRESS)
+	if (wm_job && wm_job->flag & WM_JOB_PROGRESS) {
 		return wm_job->progress;
+	}
 
 	return 0.0;
+}
+
+static void wm_jobs_update_progress_bars(wmWindowManager *wm)
+{
+	float total_progress = 0.f;
+	float jobs_progress = 0;
+
+	for (wmJob *wm_job = wm->jobs.first; wm_job; wm_job = wm_job->next) {
+		if (wm_job->threads.first && !wm_job->ready) {
+			if (wm_job->flag & WM_JOB_PROGRESS) {
+				/* accumulate global progress for running jobs */
+				jobs_progress++;
+				total_progress += wm_job->progress;
+			}
+		}
+	}
+
+	/* if there are running jobs, set the global progress indicator */
+	if (jobs_progress > 0) {
+		wmWindow *win;
+		float progress = total_progress / (float)jobs_progress;
+
+		for (win = wm->windows.first; win; win = win->next) {
+			WM_progress_set(win, progress);
+		}
+	}
+	else {
+		wmWindow *win;
+
+		for (win = wm->windows.first; win; win = win->next) {
+			WM_progress_clear(win);
+		}
+	}
+
 }
 
 /* time that job started */
@@ -231,8 +272,9 @@ double WM_jobs_starttime(wmWindowManager *wm, void *owner)
 {
 	wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
 
-	if (wm_job && wm_job->flag & WM_JOB_PROGRESS)
+	if (wm_job && wm_job->flag & WM_JOB_PROGRESS) {
 		return wm_job->start_time;
+	}
 
 	return 0;
 }
@@ -241,8 +283,9 @@ char *WM_jobs_name(wmWindowManager *wm, void *owner)
 {
 	wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
 
-	if (wm_job)
+	if (wm_job) {
 		return wm_job->name;
+	}
 
 	return NULL;
 }
@@ -251,8 +294,9 @@ void *WM_jobs_customdata(wmWindowManager *wm, void *owner)
 {
 	wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
 
-	if (wm_job)
+	if (wm_job) {
 		return WM_jobs_customdata_get(wm_job);
+	}
 
 	return NULL;
 }
@@ -261,8 +305,9 @@ void *WM_jobs_customdata_from_type(wmWindowManager *wm, int job_type)
 {
 	wmJob *wm_job = wm_job_find(wm, NULL, job_type);
 
-	if (wm_job)
+	if (wm_job) {
 		return WM_jobs_customdata_get(wm_job);
+	}
 
 	return NULL;
 }
@@ -291,8 +336,9 @@ void *WM_jobs_customdata_get(wmJob *wm_job)
 void WM_jobs_customdata_set(wmJob *wm_job, void *customdata, void (*free)(void *))
 {
 	/* pending job? just free */
-	if (wm_job->customdata)
+	if (wm_job->customdata) {
 		wm_job->free(wm_job->customdata);
+	}
 
 	wm_job->customdata = customdata;
 	wm_job->free = free;
@@ -353,14 +399,18 @@ static void wm_jobs_test_suspend_stop(wmWindowManager *wm, wmJob *test)
 			}
 
 			/* if new job is not render, then check for same startjob */
-			if (0 == (test->flag & WM_JOB_EXCL_RENDER))
-				if (wm_job->startjob != test->startjob)
+			if (0 == (test->flag & WM_JOB_EXCL_RENDER)) {
+				if (wm_job->startjob != test->startjob) {
 					continue;
+				}
+			}
 
 			/* if new job is render, any render job should be stopped */
-			if (test->flag & WM_JOB_EXCL_RENDER)
-				if (0 == (wm_job->flag & WM_JOB_EXCL_RENDER))
+			if (test->flag & WM_JOB_EXCL_RENDER) {
+				if (0 == (wm_job->flag & WM_JOB_EXCL_RENDER)) {
 					continue;
+				}
+			}
 
 			suspend = true;
 
@@ -402,8 +452,9 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
 				wm_job->customdata = NULL;
 				wm_job->running = true;
 
-				if (wm_job->initjob)
+				if (wm_job->initjob) {
 					wm_job->initjob(wm_job->run_customdata);
+				}
 
 				wm_job->stop = false;
 				wm_job->ready = false;
@@ -416,8 +467,9 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
 			}
 
 			/* restarted job has timer already */
-			if (wm_job->wt == NULL)
+			if (wm_job->wt == NULL) {
 				wm_job->wt = WM_event_add_timer(wm, wm_job->win, TIMERJOBS, wm_job->timestep);
+			}
 
 			wm_job->start_time = PIL_check_seconds_timer();
 		}
@@ -438,6 +490,8 @@ static void wm_job_free(wmWindowManager *wm, wmJob *wm_job)
 /* stop job, end thread, free data completely */
 static void wm_jobs_kill_job(wmWindowManager *wm, wmJob *wm_job)
 {
+	bool update_progress = (wm_job->flag & WM_JOB_PROGRESS) != 0;
+
 	if (wm_job->running) {
 		/* signal job to end */
 		wm_job->stop = true;
@@ -446,19 +500,28 @@ static void wm_jobs_kill_job(wmWindowManager *wm, wmJob *wm_job)
 		BLI_threadpool_end(&wm_job->threads);
 		WM_job_main_thread_lock_acquire(wm_job);
 
-		if (wm_job->endjob)
+		if (wm_job->endjob) {
 			wm_job->endjob(wm_job->run_customdata);
+		}
 	}
 
-	if (wm_job->wt)
+	if (wm_job->wt) {
 		WM_event_remove_timer(wm, wm_job->win, wm_job->wt);
-	if (wm_job->customdata)
+	}
+	if (wm_job->customdata) {
 		wm_job->free(wm_job->customdata);
-	if (wm_job->run_customdata)
+	}
+	if (wm_job->run_customdata) {
 		wm_job->run_free(wm_job->run_customdata);
+	}
 
 	/* remove wm_job */
 	wm_job_free(wm, wm_job);
+
+	/* Update progress bars in windows. */
+	if (update_progress) {
+		wm_jobs_update_progress_bars(wm);
+	}
 }
 
 /* wait until every job ended */
@@ -466,8 +529,9 @@ void WM_jobs_kill_all(wmWindowManager *wm)
 {
 	wmJob *wm_job;
 
-	while ((wm_job = wm->jobs.first))
+	while ((wm_job = wm->jobs.first)) {
 		wm_jobs_kill_job(wm, wm_job);
+	}
 
 }
 
@@ -479,8 +543,9 @@ void WM_jobs_kill_all_except(wmWindowManager *wm, void *owner)
 	for (wm_job = wm->jobs.first; wm_job; wm_job = next_job) {
 		next_job = wm_job->next;
 
-		if (wm_job->owner != owner)
+		if (wm_job->owner != owner) {
 			wm_jobs_kill_job(wm, wm_job);
+		}
 	}
 }
 
@@ -492,9 +557,11 @@ void WM_jobs_kill_type(struct wmWindowManager *wm, void *owner, int job_type)
 	for (wm_job = wm->jobs.first; wm_job; wm_job = next_job) {
 		next_job = wm_job->next;
 
-		if (!owner || wm_job->owner == owner)
-			if (job_type == WM_JOB_TYPE_ANY || wm_job->job_type == job_type)
+		if (!owner || wm_job->owner == owner) {
+			if (job_type == WM_JOB_TYPE_ANY || wm_job->job_type == job_type) {
 				wm_jobs_kill_job(wm, wm_job);
+			}
+		}
 	}
 }
 
@@ -548,8 +615,6 @@ void wm_jobs_timer_ended(wmWindowManager *wm, wmTimer *wt)
 void wm_jobs_timer(const bContext *C, wmWindowManager *wm, wmTimer *wt)
 {
 	wmJob *wm_job, *wm_jobnext;
-	float total_progress = 0.f;
-	float jobs_progress = 0;
 
 	for (wm_job = wm->jobs.first; wm_job; wm_job = wm_jobnext) {
 		wm_jobnext = wm_job->next;
@@ -564,19 +629,23 @@ void wm_jobs_timer(const bContext *C, wmWindowManager *wm, wmTimer *wt)
 
 				/* always call note and update when ready */
 				if (wm_job->do_update || wm_job->ready) {
-					if (wm_job->update)
+					if (wm_job->update) {
 						wm_job->update(wm_job->run_customdata);
-					if (wm_job->note)
+					}
+					if (wm_job->note) {
 						WM_event_add_notifier(C, wm_job->note, NULL);
+					}
 
-					if (wm_job->flag & WM_JOB_PROGRESS)
+					if (wm_job->flag & WM_JOB_PROGRESS) {
 						WM_event_add_notifier(C, NC_WM | ND_JOB, NULL);
+					}
 					wm_job->do_update = false;
 				}
 
 				if (wm_job->ready) {
-					if (wm_job->endjob)
+					if (wm_job->endjob) {
 						wm_job->endjob(wm_job->run_customdata);
+					}
 
 					/* free own data */
 					wm_job->run_free(wm_job->run_customdata);
@@ -597,8 +666,9 @@ void wm_jobs_timer(const bContext *C, wmWindowManager *wm, wmTimer *wt)
 					BLI_threadpool_end(&wm_job->threads);
 					WM_job_main_thread_lock_acquire(wm_job);
 
-					if (wm_job->endnote)
+					if (wm_job->endnote) {
 						WM_event_add_notifier(C, wm_job->endnote, NULL);
+					}
 
 					WM_event_add_notifier(C, NC_WM | ND_JOB, NULL);
 
@@ -615,41 +685,15 @@ void wm_jobs_timer(const bContext *C, wmWindowManager *wm, wmTimer *wt)
 						wm_job_free(wm, wm_job);
 					}
 				}
-				else if (wm_job->flag & WM_JOB_PROGRESS) {
-					/* accumulate global progress for running jobs */
-					jobs_progress++;
-					total_progress += wm_job->progress;
-				}
 			}
 			else if (wm_job->suspended) {
 				WM_jobs_start(wm, wm_job);
 			}
 		}
-		else if (wm_job->threads.first && !wm_job->ready) {
-			if (wm_job->flag & WM_JOB_PROGRESS) {
-				/* accumulate global progress for running jobs */
-				jobs_progress++;
-				total_progress += wm_job->progress;
-			}
-		}
 	}
 
-
-	/* if there are running jobs, set the global progress indicator */
-	if (jobs_progress > 0) {
-		wmWindow *win;
-		float progress = total_progress / (float)jobs_progress;
-
-		for (win = wm->windows.first; win; win = win->next)
-			WM_progress_set(win, progress);
-	}
-	else {
-		wmWindow *win;
-
-		for (win = wm->windows.first; win; win = win->next)
-			WM_progress_clear(win);
-	}
-
+	/* Update progress bars in windows. */
+	wm_jobs_update_progress_bars(wm);
 }
 
 bool WM_jobs_has_running(wmWindowManager *wm)

@@ -131,8 +131,8 @@ static PyTypeObject bpy_lib_Type = {
 	NULL,                       /* inquiry tp_clear; */
 
 	/***  Assigned meaning in release 2.1 ***/
-	/*** rich comparisons ***/
-	NULL, /* subclassed */		/* richcmpfunc tp_richcompare; */
+	/*** rich comparisons (subclassed) ***/
+	NULL, /* richcmpfunc tp_richcompare; */
 
 	/***  weak reference enabler ***/
 	0,
@@ -476,8 +476,9 @@ int BPY_library_load_module(PyObject *mod_par)
 	/* some compilers don't like accessing this directly, delay assignment */
 	bpy_lib_Type.tp_getattro = PyObject_GenericGetAttr;
 
-	if (PyType_Ready(&bpy_lib_Type) < 0)
+	if (PyType_Ready(&bpy_lib_Type) < 0) {
 		return -1;
+	}
 
 	return 0;
 }

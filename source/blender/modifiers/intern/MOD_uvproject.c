@@ -109,7 +109,7 @@ typedef struct Projector {
 
 static Mesh *uvprojectModifier_do(
         UVProjectModifierData *umd,
-        const ModifierEvalContext *ctx,
+        const ModifierEvalContext *UNUSED(ctx),
         Object *ob, Mesh *mesh)
 {
 	float (*coords)[3], (*co)[3];
@@ -128,7 +128,7 @@ static Mesh *uvprojectModifier_do(
 
 	for (i = 0; i < umd->num_projectors; ++i) {
 		if (umd->projectors[i] != NULL) {
-			projectors[num_projectors++].ob = DEG_get_evaluated_object(ctx->depsgraph, umd->projectors[i]);
+			projectors[num_projectors++].ob = umd->projectors[i];
 		}
 	}
 
@@ -322,12 +322,6 @@ ModifierTypeInfo modifierType_UVProject = {
 	                        eModifierTypeFlag_EnableInEditmode,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

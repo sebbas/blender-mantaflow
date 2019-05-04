@@ -36,10 +36,10 @@ typedef enum {
 	GPU_BATCH_READY_TO_FORMAT,
 	GPU_BATCH_READY_TO_BUILD,
 	GPU_BATCH_BUILDING,
-	GPU_BATCH_READY_TO_DRAW
+	GPU_BATCH_READY_TO_DRAW,
 } GPUBatchPhase;
 
-#define GPU_BATCH_VBO_MAX_LEN 3
+#define GPU_BATCH_VBO_MAX_LEN 4
 #define GPU_BATCH_VAO_STATIC_LEN 3
 #define GPU_BATCH_VAO_DYN_ALLOC_COUNT 16
 
@@ -106,7 +106,7 @@ void GPU_batch_copy(GPUBatch *batch_dst, GPUBatch *batch_src);
 #define GPU_batch_init(batch, prim, verts, elem) \
 	GPU_batch_init_ex(batch, prim, verts, elem, 0)
 
-void GPU_batch_clear(GPUBatch *); /* Same as discard but does not free. */
+void GPU_batch_clear(GPUBatch *); /* Same as discard but does not free. (does not clal free callback) */
 void GPU_batch_discard(GPUBatch *); /* verts & elem are not discarded */
 
 void GPU_batch_vao_cache_clear(GPUBatch *);

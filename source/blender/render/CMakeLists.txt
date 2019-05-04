@@ -70,6 +70,9 @@ set(SRC
 	intern/include/zbuf.h
 )
 
+set(LIB
+)
+
 if(WITH_PYTHON)
 	add_definitions(-DWITH_PYTHON)
 	list(APPEND INC
@@ -78,6 +81,9 @@ if(WITH_PYTHON)
 endif()
 
 if(WITH_IMAGE_OPENEXR)
+	list(APPEND LIB
+		bf_imbuf_openexr
+	)
 	add_definitions(-DWITH_OPENEXR)
 endif()
 
@@ -88,6 +94,9 @@ endif()
 if(WITH_FREESTYLE)
 	list(APPEND INC
 		../freestyle
+	)
+	list(APPEND LIB
+		bf_freestyle
 	)
 	add_definitions(-DWITH_FREESTYLE)
 endif()
@@ -104,4 +113,4 @@ if(APPLE)
 	endif()
 endif()
 
-blender_add_lib_nolist(bf_render "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib_nolist(bf_render "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -320,6 +320,25 @@ def km_window(params):
             ("wm.search_menu", {"type": 'F', "value": 'PRESS', "oskey": True}, None),
         ])
 
+    if params.legacy:
+        # Old shorctus
+        items.extend([
+            ("wm.save_homefile", {"type": 'U', "value": 'PRESS', "ctrl": True}, None),
+            ("wm.open_mainfile", {"type": 'F1', "value": 'PRESS'}, None),
+            ("wm.link", {"type": 'O', "value": 'PRESS', "ctrl": True, "alt": True}, None),
+            ("wm.append", {"type": 'F1', "value": 'PRESS', "shift": True}, None),
+            ("wm.save_mainfile", {"type": 'W', "value": 'PRESS', "ctrl": True}, None),
+            ("wm.save_as_mainfile", {"type": 'F2', "value": 'PRESS'}, None),
+            ("wm.save_as_mainfile", {"type": 'S', "value": 'PRESS', "ctrl": True, "alt": True},
+             {"properties": [("copy", True)]}),
+            ("wm.window_new", {"type": 'W', "value": 'PRESS', "ctrl": True, "alt": True}, None),
+            ("wm.window_fullscreen_toggle", {"type": 'F11', "value": 'PRESS', "alt": True}, None),
+            ("wm.doc_view_manual_ui_context", {"type": 'F1', "value": 'PRESS', "alt": True}, None),
+            ("wm.search_menu", {"type": 'SPACE', "value": 'PRESS'}, None),
+            ("wm.redraw_timer", {"type": 'T', "value": 'PRESS', "ctrl": True, "alt": True}, None),
+            ("wm.debug_menu", {"type": 'D', "value": 'PRESS', "ctrl": True, "alt": True}, None),
+        ])
+
     items.extend([
         # File operations
         ("wm.read_homefile", {"type": 'N', "value": 'PRESS', "ctrl": True}, None),
@@ -389,25 +408,6 @@ def km_window(params):
             )
         else:
             assert False
-
-    else:
-        # Old shorctus
-        items.extend([
-            ("wm.window_new", {"type": 'W', "value": 'PRESS', "ctrl": True, "alt": True}, None),
-            ("wm.save_homefile", {"type": 'U', "value": 'PRESS', "ctrl": True}, None),
-            ("wm.open_mainfile", {"type": 'F1', "value": 'PRESS'}, None),
-            ("wm.link", {"type": 'O', "value": 'PRESS', "ctrl": True, "alt": True}, None),
-            ("wm.append", {"type": 'F1', "value": 'PRESS', "shift": True}, None),
-            ("wm.save_mainfile", {"type": 'W', "value": 'PRESS', "ctrl": True}, None),
-            ("wm.save_as_mainfile", {"type": 'F2', "value": 'PRESS'}, None),
-            ("wm.save_as_mainfile", {"type": 'S', "value": 'PRESS', "ctrl": True, "alt": True},
-             {"properties": [("copy", True)]}),
-            ("wm.window_fullscreen_toggle", {"type": 'F11', "value": 'PRESS', "alt": True}, None),
-            ("wm.doc_view_manual_ui_context", {"type": 'F1', "value": 'PRESS', "alt": True}, None),
-            ("wm.search_menu", {"type": 'SPACE', "value": 'PRESS'}, None),
-            ("wm.redraw_timer", {"type": 'T', "value": 'PRESS', "ctrl": True, "alt": True}, None),
-            ("wm.debug_menu", {"type": 'D', "value": 'PRESS', "ctrl": True, "alt": True}, None),
-        ])
 
     return keymap
 
@@ -530,6 +530,21 @@ def km_header(_params):
 
     items.extend([
         ("screen.header_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
+def km_footer(_params):
+    items = []
+    keymap = (
+        "Footer",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("screen.footer_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -801,6 +816,15 @@ def km_uv_editor(params):
          {"properties": [("data_path", 'tool_settings.snap_uv_element')]}),
         op_menu("IMAGE_MT_uvs_context_menu", params.context_menu_event),
     ])
+
+    # Fallback for MMB emulation
+    if params.use_mouse_emulate_3_button and params.select_mouse == 'LEFTMOUSE':
+        items.extend([
+            ("uv.select_loop", {"type": params.select_mouse, "value": 'DOUBLE_CLICK'},
+             {"properties": [("extend", False)]}),
+            ("uv.select_loop", {"type": params.select_mouse, "value": 'DOUBLE_CLICK', "alt": True},
+             {"properties": [("extend", True)]}),
+        ])
 
     # 3D cursor
     if params.cursor_tweak_event:
@@ -1101,11 +1125,9 @@ def km_view3d(params):
         # New pie menus.
         items.extend([
             ("wm.context_toggle", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("data_path", 'space_data.show_gizmo_tool')]}),
+             {"properties": [("data_path", 'space_data.show_gizmo_context')]}),
             op_menu_pie("VIEW3D_MT_pivot_pie", {"type": 'PERIOD', "value": 'PRESS'}),
             op_menu_pie("VIEW3D_MT_orientations_pie", {"type": 'COMMA', "value": 'PRESS'}),
-            ("wm.context_toggle", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("data_path", 'space_data.show_gizmo_tool')]}),
             op_menu_pie(
                 "VIEW3D_MT_shading_pie" if not params.use_v3d_shade_ex_pie else
                 "VIEW3D_MT_shading_ex_pie",
@@ -1162,7 +1184,7 @@ def km_view3d(params):
             ("wm.context_toggle", {"type": 'COMMA', "value": 'PRESS', "alt": True},
              {"properties": [("data_path", 'tool_settings.use_transform_pivot_point_align')]}),
             ("wm.context_toggle", {"type": 'SPACE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("data_path", 'space_data.show_gizmo_tool')]}),
+             {"properties": [("data_path", 'space_data.show_gizmo_context')]}),
             ("wm.context_set_enum", {"type": 'PERIOD', "value": 'PRESS'},
              {"properties": [("data_path", 'tool_settings.transform_pivot_point'), ("value", 'CURSOR')]}),
             ("wm.context_set_enum", {"type": 'PERIOD', "value": 'PRESS', "ctrl": True},
@@ -1786,6 +1808,8 @@ def km_file_browser_main(_params):
         ("file.select_all", {"type": 'A', "value": 'PRESS'}, None),
         ("file.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("file.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY'}, None),
+        ("file.select_box", {"type": 'EVT_TWEAK_L', "value": 'ANY', "shift": True},
+         {"properties": [("mode", 'ADD')]}),
         ("file.rename", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True}, None),
         ("file.highlight", {"type": 'MOUSEMOVE', "value": 'ANY', "any": True}, None),
         ("file.filenum", {"type": 'NUMPAD_PLUS', "value": 'PRESS'},
@@ -3006,6 +3030,8 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("transform.shear", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("transform.transform", {"type": 'S', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'GPENCIL_SHRINKFATTEN')]}),
+        ("transform.transform", {"type": 'F', "value": 'PRESS', "shift": True},
+         {"properties": [("mode", 'GPENCIL_OPACITY')]}),
         # Proportonal editing
         *_template_items_proportional_editing(connected=True),
         # Add menu
@@ -4363,6 +4389,15 @@ def km_transform_modal_map(_params):
         ("INSERTOFS_TOGGLE_DIR", {"type": 'T', "value": 'PRESS'}, None),
     ])
 
+    return keymap
+
+
+def km_transform_gizmo(_params):
+    keymap = (
+        "Transform Gizmo Context",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": _template_items_gizmo_tweak_value()},
+    )
     return keymap
 
 
@@ -6030,6 +6065,7 @@ def generate_keymaps(params=None):
         km_screen(params),
         km_screen_editing(params),
         km_header(params),
+        km_footer(params),
         km_view2d(params),
         km_view2d_buttons_list(params),
         km_user_interface(params),
@@ -6125,6 +6161,7 @@ def generate_keymaps(params=None):
 
         # Gizmos.
         km_gizmos(params),
+        km_transform_gizmo(params),
         km_backdrop_transform_widget_tweak_modal_map(params),
         km_backdrop_crop_widget(params),
         km_backdrop_crop_widget_tweak_modal_map(params),

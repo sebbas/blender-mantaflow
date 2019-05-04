@@ -757,11 +757,11 @@ void GPENCIL_OT_duplicate(wmOperatorType *ot)
 /* ************** Extrude Selected Strokes **************** */
 
 /* helper to copy a point to temp area */
-static void copy_point(
+static void copy_move_point(
         bGPDstroke *gps,
         bGPDspoint *temp_points,
         MDeformVert *temp_dverts,
-        int from_idx, int to_idx)
+        int from_idx, int to_idx, const bool copy)
 {
 	bGPDspoint *pt = &temp_points[from_idx];
 	bGPDspoint *pt_final = &gps->points[to_idx];
@@ -779,7 +779,13 @@ static void copy_point(
 		MDeformVert *dvert_final = &gps->dvert[to_idx];
 
 		dvert_final->totweight = dvert->totweight;
-		dvert_final->dw = dvert->dw;
+		/* if copy, duplicate memory, otherwise move only the pointer */
+		if (copy) {
+			dvert_final->dw = MEM_dupallocN(dvert->dw);
+		}
+		else {
+			dvert_final->dw = dvert->dw;
+		}
 	}
 }
 
@@ -794,7 +800,7 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
 	const bool do_last = ((pt_last->flag & GP_SPOINT_SELECT) && (pt_start != pt_last));
 	const bool do_stroke = (do_first || do_last);
 
-	/* review points in the midle of stroke to create new strokes */
+	/* review points in the middle of stroke to create new strokes */
 	for (int i = 0; i < gps->totpoints; i++) {
 		/* skip first and last point */
 		if ((i == 0) || (i == gps->totpoints - 1)) {
@@ -822,7 +828,7 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
 			BLI_insertlinkafter(&gpf->strokes, gps, gps_new);
 
 			/* copy selected point data to new stroke */
-			copy_point(gps_new, gps->points, gps->dvert, i, 0);
+			copy_move_point(gps_new, gps->points, gps->dvert, i, 0, true);
 
 			/* deselect orinal point */
 			pt->flag &= ~GP_SPOINT_SELECT;
@@ -863,14 +869,14 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
 
 		/* move points to new position */
 		for (int i = 0; i < oldtotpoints; i++) {
-			copy_point(gps, temp_points, temp_dverts, i, i2);
+			copy_move_point(gps, temp_points, temp_dverts, i, i2, false);
 			i2++;
 		}
 		gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
 		/* if first point, add new point at the begining */
 		if (do_first) {
-			copy_point(gps, temp_points, temp_dverts, 0, 0);
+			copy_move_point(gps, temp_points, temp_dverts, 0, 0, true);
 			/* deselect old */
 			pt = &gps->points[1];
 			pt->flag &= ~GP_SPOINT_SELECT;
@@ -881,9 +887,9 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
 
 		/* if last point, add new point at the end */
 		if (do_last) {
-			copy_point(
+			copy_move_point(
 			        gps, temp_points, temp_dverts,
-			        oldtotpoints - 1, gps->totpoints - 1);
+			        oldtotpoints - 1, gps->totpoints - 1, true);
 
 			/* deselect old */
 			pt = &gps->points[gps->totpoints - 2];
@@ -1074,7 +1080,7 @@ GHash *gp_copybuf_validate_colormap(bContext *C)
 		char *ma_name = BLI_ghashIterator_getValue(&gh_iter);
 		Material *ma = BLI_ghash_lookup(name_to_ma, ma_name);
 
-		BKE_gpencil_handle_material(bmain, ob, ma);
+		BKE_gpencil_object_material_ensure(bmain, ob, ma);
 
 		/* Store this mapping (for use later when pasting) */
 		if (!BLI_ghash_haskey(new_colors, POINTER_FROM_INT(*key))) {
@@ -1328,7 +1334,7 @@ static int gp_strokes_paste_exec(bContext *C, wmOperator *op)
 
 				/* Remap material */
 				Material *ma = BLI_ghash_lookup(new_colors, POINTER_FROM_INT(new_stroke->mat_nr));
-				new_stroke->mat_nr = BKE_gpencil_get_material_index(ob, ma);
+				new_stroke->mat_nr = BKE_gpencil_object_material_get_index(ob, ma);
 				BLI_assert(new_stroke->mat_nr >= 0); /* have to add the material first */
 			}
 		}
@@ -3951,7 +3957,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 
 							/* add duplicate materials */
 							ma = give_current_material(ob, gps->mat_nr + 1); /* XXX same material can be in multiple slots */
-							idx = BKE_gpencil_handle_material(bmain, ob_dst, ma);
+							idx = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma);
 
 							/* selected points mode */
 							if (mode == GP_SEPARATE_POINT) {
@@ -4023,7 +4029,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
 						continue;
 					}
 					ma = give_current_material(ob, gps->mat_nr + 1);
-					gps->mat_nr = BKE_gpencil_handle_material(bmain, ob_dst, ma);
+					gps->mat_nr = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma);
 				}
 			}
 		}

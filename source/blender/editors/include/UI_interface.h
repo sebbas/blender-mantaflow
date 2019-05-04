@@ -172,26 +172,31 @@ enum {
 
 /* but->flag - general state flags. */
 enum {
-	/** warning, the first 6 flags are internal. */
+	/** Warning, the first 6 flags are internal. */
 	UI_BUT_ICON_SUBMENU    = 1 << 6,
 	UI_BUT_ICON_PREVIEW    = 1 << 7,
 
 	UI_BUT_NODE_LINK       = 1 << 8,
 	UI_BUT_NODE_ACTIVE     = 1 << 9,
 	UI_BUT_DRAG_LOCK       = 1 << 10,
-	/** grayed out and uneditable */
+	/** Grayed out and un-editable. */
 	UI_BUT_DISABLED        = 1 << 11,
 
 	UI_BUT_ANIMATED        = 1 << 13,
 	UI_BUT_ANIMATED_KEY    = 1 << 14,
 	UI_BUT_DRIVEN          = 1 << 15,
 	UI_BUT_REDALERT        = 1 << 16,
-	/** grayed out but still editable */
+	/** Grayed out but still editable. */
 	UI_BUT_INACTIVE        = 1 << 17,
 	UI_BUT_LAST_ACTIVE     = 1 << 18,
 	UI_BUT_UNDO            = 1 << 19,
 	UI_BUT_IMMEDIATE       = 1 << 20,
 	UI_BUT_NO_UTF8         = 1 << 21,
+
+	/** For popups, pressing return activates this button, overriding the highlighted button.
+	 * For non-popups this is just used as a display hint for the user to let them
+	 * know the action which is activated when pressing return (file selector for eg). */
+	UI_BUT_ACTIVE_DEFAULT = 1 << 23,
 
 	/** This but is "inside" a list item (currently used to change theme colors). */
 	UI_BUT_LIST_ITEM       = 1 << 24,
@@ -287,7 +292,7 @@ typedef enum {
 	UI_BUT_POIN_INT = 96,
 	UI_BUT_POIN_FLOAT = 128,
 /*	UI_BUT_POIN_FUNCTION = 192, */ /*UNUSED*/
-	UI_BUT_POIN_BIT = 256  /* OR'd with a bit index*/
+	UI_BUT_POIN_BIT = 256,  /* OR'd with a bit index*/
 } eButPointerType;
 
 /* requires (but->poin != NULL) */
@@ -1053,6 +1058,7 @@ void uiLayoutSetContextFromBut(uiLayout *layout, uiBut *but);
 
 void uiLayoutSetOperatorContext(uiLayout *layout, int opcontext);
 void uiLayoutSetActive(uiLayout *layout, bool active);
+void uiLayoutSetActiveDefault(uiLayout *layout, bool active_default);
 void uiLayoutSetActivateInit(uiLayout *layout, bool active);
 void uiLayoutSetEnabled(uiLayout *layout, bool enabled);
 void uiLayoutSetRedAlert(uiLayout *layout, bool redalert);
@@ -1069,6 +1075,7 @@ int uiLayoutGetLocalDir(const uiLayout *layout);
 
 int uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
+bool uiLayoutGetActiveDefault(uiLayout *layout);
 bool uiLayoutGetActivateInit(uiLayout *layout);
 bool uiLayoutGetEnabled(uiLayout *layout);
 bool uiLayoutGetRedAlert(uiLayout *layout);

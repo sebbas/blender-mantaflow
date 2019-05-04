@@ -927,8 +927,6 @@ static void create_subd_mesh(Scene *scene,
 	sdparams.dicing_rate = max(0.1f, RNA_float_get(&cobj, "dicing_rate") * dicing_rate);
 	sdparams.max_level = max_subdivisions;
 
-	scene->dicing_camera->update(scene);
-	sdparams.camera = scene->dicing_camera;
 	sdparams.objecttoworld = get_transform(b_ob.matrix_world());
 }
 
@@ -1075,6 +1073,8 @@ Mesh *BlenderSync::sync_mesh(BL::Depsgraph& b_depsgraph,
 	/* ensure we only sync instanced meshes once */
 	if(mesh_synced.find(mesh) != mesh_synced.end())
 		return mesh;
+
+	progress.set_sync_status("Synchronizing object", b_ob.name());
 
 	mesh_synced.insert(mesh);
 

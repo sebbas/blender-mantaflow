@@ -564,6 +564,36 @@ static void do_version_collection_propagate_lib_to_children(Collection *collecti
 	}
 }
 
+/** convert old annotations colors */
+static void do_versions_fix_annotations(bGPdata *gpd)
+{
+	for (const bGPDpalette *palette = gpd->palettes.first; palette; palette = palette->next) {
+		for (bGPDpalettecolor *palcolor = palette->colors.first; palcolor; palcolor = palcolor->next) {
+			/* fix layers */
+			for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+				/* unlock/unhide layer */
+				gpl->flag &= ~GP_LAYER_LOCKED;
+				gpl->flag &= ~GP_LAYER_HIDE;
+				/* set opacity to 1 */
+				gpl->opacity = 1.0f;
+				/* disable tint */
+				gpl->tintcolor[3] = 0.0f;
+
+				for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+					for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+						if ((gps->colorname[0] != '\0') &&
+							(STREQ(gps->colorname, palcolor->info)))
+						{
+							/* copy color settings */
+							copy_v4_v4(gpl->color, palcolor->color);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void do_versions_after_linking_280(Main *bmain)
 {
 	bool use_collection_compat_28 = true;
@@ -650,6 +680,30 @@ void do_versions_after_linking_280(Main *bmain)
 							tselem->id = layer->layer_collections.first;
 							tselem->nr = tselem->used = 0;
 							tselem->flag &= ~TSE_CLOSED;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 0)) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *space = sa->spacedata.first; space; space = space->next) {
+					if (space->spacetype == SPACE_IMAGE) {
+						SpaceImage *sima = (SpaceImage *)space;
+						if ((sima) && (sima->gpd)) {
+							sima->gpd->flag |= GP_DATA_ANNOTATIONS;
+							do_versions_fix_annotations(sima->gpd);
+						}
+					}
+					if (space->spacetype == SPACE_CLIP) {
+						SpaceClip *spclip = (SpaceClip *)space;
+						MovieClip *clip = spclip->clip;
+						if ((clip) && (clip->gpd)) {
+							clip->gpd->flag |= GP_DATA_ANNOTATIONS;
+							do_versions_fix_annotations(clip->gpd);
 						}
 					}
 				}
@@ -1434,7 +1488,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 							scene->eevee.flag &= ~_flag; \
 						} \
 					} \
-				}
+				} ((void)0)
 
 #define EEVEE_GET_INT(_props, _name) \
 				{ \
@@ -1442,7 +1496,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					if (_idprop != NULL) { \
 						scene->eevee._name = IDP_Int(_idprop); \
 					} \
-				}
+				} ((void)0)
 
 #define EEVEE_GET_FLOAT(_props, _name) \
 				{ \
@@ -1450,7 +1504,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 					if (_idprop != NULL) { \
 						scene->eevee._name = IDP_Float(_idprop); \
 					} \
-				}
+				} ((void)0)
 
 #define EEVEE_GET_FLOAT_ARRAY(_props, _name, _length) \
 				{ \
@@ -1461,7 +1515,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 							scene->eevee._name [_i] = _values[_i]; \
 						} \
 					} \
-				}
+				} ((void)0)
 
 				IDProperty *props = IDP_GetPropertyFromGroup(scene->layer_properties, RE_engine_id_BLENDER_EEVEE);
 				EEVEE_GET_BOOL(props, volumetric_enable, SCE_EEVEE_VOLUMETRIC_ENABLED);
@@ -1773,12 +1827,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 			for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
 				scene->eevee.gi_irradiance_draw_size = 0.1f;
 				scene->eevee.gi_cubemap_draw_size = 0.3f;
-			}
-		}
-
-		for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-			if (scene->toolsettings->gizmo_flag == 0) {
-				scene->toolsettings->gizmo_flag = SCE_GIZMO_SHOW_TRANSLATE | SCE_GIZMO_SHOW_ROTATE | SCE_GIZMO_SHOW_SCALE;
 			}
 		}
 
@@ -2908,9 +2956,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 		}
 	}
 
-	{
-		/* Versioning code until next subversion bump goes here. */
-
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 52)) {
 		LISTBASE_FOREACH (ParticleSettings *, part, &bmain->particles) {
 			/* Replace deprecated PART_DRAW_BB by PART_DRAW_NOT */
 			if (part->ren_as == PART_DRAW_BB) {
@@ -2945,5 +2991,172 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 				}
 			}
 		} FOREACH_NODETREE_END;
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 53)) {
+		for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
+			/* Eevee: Keep material appearance consistent with previous behavior. */
+			if (!mat->use_nodes || !mat->nodetree || mat->blend_method == MA_BM_SOLID) {
+				mat->blend_shadow = MA_BS_SOLID;
+			}
+		}
+
+		/* grease pencil default animation channel color */
+		{
+			for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+				if (gpd->flag & GP_DATA_ANNOTATIONS) {
+					continue;
+				}
+				for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+					/* default channel color */
+					ARRAY_SET_ITEMS(gpl->color, 0.2f, 0.2f, 0.2f);
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 54)) {
+		for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+			bool is_first_subdiv = true;
+			for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+				if (md->type == eModifierType_Subsurf) {
+					SubsurfModifierData *smd = (SubsurfModifierData *)md;
+					if (is_first_subdiv) {
+						smd->flags |= eSubsurfModifierFlag_UseCrease;
+					}
+					else {
+						smd->flags &= ~eSubsurfModifierFlag_UseCrease;
+					}
+					is_first_subdiv = false;
+				}
+				else if (md->type == eModifierType_Multires) {
+					MultiresModifierData *mmd = (MultiresModifierData *)md;
+					if (is_first_subdiv) {
+						mmd->flags |= eMultiresModifierFlag_UseCrease;
+					}
+					else {
+						mmd->flags &= ~eMultiresModifierFlag_UseCrease;
+					}
+					is_first_subdiv = false;
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 55)) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_TEXT) {
+						ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+						ARegion *ar = MEM_callocN(sizeof(ARegion), "footer for text");
+
+						/* Remove multiple footers that were added by mistake. */
+						ARegion *ar_footer, *ar_next;
+						for (ar_footer = regionbase->first; ar_footer; ar_footer = ar_next) {
+							ar_next = ar_footer->next;
+							if (ar_footer->regiontype == RGN_TYPE_FOOTER) {
+								BLI_freelinkN(regionbase, ar_footer);
+							}
+						}
+
+						/* Add footer. */
+						ARegion *ar_header = NULL;
+
+						for (ar_header = regionbase->first; ar_header; ar_header = ar_header->next) {
+							if (ar_header->regiontype == RGN_TYPE_HEADER) {
+								break;
+							}
+						}
+						BLI_assert(ar_header);
+
+						BLI_insertlinkafter(regionbase, ar_header, ar);
+
+						ar->regiontype = RGN_TYPE_FOOTER;
+						ar->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_TOP : RGN_ALIGN_BOTTOM;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 56)) {
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+				for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_VIEW3D) {
+						View3D *v3d = (View3D *)sl;
+						v3d->gizmo_show_armature = V3D_GIZMO_SHOW_ARMATURE_BBONE | V3D_GIZMO_SHOW_ARMATURE_ROLL;
+						v3d->gizmo_show_empty = V3D_GIZMO_SHOW_EMPTY_IMAGE | V3D_GIZMO_SHOW_EMPTY_FORCE_FIELD;
+						v3d->gizmo_show_light = V3D_GIZMO_SHOW_LIGHT_SIZE | V3D_GIZMO_SHOW_LIGHT_LOOK_AT;
+						v3d->gizmo_show_camera = V3D_GIZMO_SHOW_CAMERA_LENS | V3D_GIZMO_SHOW_CAMERA_DOF_DIST;
+					}
+				}
+			}
+		}
+	}
+
+	if (!MAIN_VERSION_ATLEAST(bmain, 280, 57)) {
+		/* Enable Show Interpolation in dopesheet by default. */
+		for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+			for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+				for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+					if (sl->spacetype == SPACE_ACTION) {
+						SpaceAction *saction = (SpaceAction *)sl;
+						if ((saction->flag & SACTION_SHOW_EXTREMES) == 0) {
+							saction->flag |= SACTION_SHOW_INTERPOLATION;
+						}
+					}
+				}
+			}
+		}
+
+		/* init grease pencil brush gradients */
+		if (!DNA_struct_elem_find(fd->filesdna, "BrushGpencilSettings", "float", "gradient_f")) {
+			for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
+				if (brush->gpencil_settings != NULL) {
+					BrushGpencilSettings *gp = brush->gpencil_settings;
+					gp->gradient_f = 1.0f;
+					gp->gradient_s[0] = 1.0f;
+					gp->gradient_s[1] = 1.0f;
+				}
+			}
+		}
+
+		/* init grease pencil stroke gradients */
+		if (!DNA_struct_elem_find(fd->filesdna, "bGPDstroke", "float", "gradient_f")) {
+			for (bGPdata *gpd = bmain->gpencils.first; gpd; gpd = gpd->id.next) {
+				for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
+					for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
+						for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
+							gps->gradient_f = 1.0f;
+							gps->gradient_s[0] = 1.0f;
+							gps->gradient_s[1] = 1.0f;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	{
+		if (!DNA_struct_elem_find(fd->filesdna, "bSplineIKConstraint", "short", "yScaleMode")) {
+			for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
+				if (ob->pose) {
+					for (bPoseChannel *pchan = ob->pose->chanbase.first; pchan; pchan = pchan->next) {
+						for (bConstraint *con = pchan->constraints.first; con; con = con->next) {
+							if (con->type == CONSTRAINT_TYPE_SPLINEIK) {
+								bSplineIKConstraint *data = (bSplineIKConstraint *)con->data;
+								if ((data->flag & CONSTRAINT_SPLINEIK_SCALE_LIMITED) == 0) {
+									data->yScaleMode = CONSTRAINT_SPLINEIK_YS_FIT_CURVE;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		/* Versioning code until next subversion bump goes here. */
 	}
 }

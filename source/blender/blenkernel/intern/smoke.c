@@ -88,10 +88,8 @@
 #endif
 
 #ifdef WITH_MANTA
-#	include "manta_fluid_API.h"
-#endif
 
-#ifdef WITH_MANTA
+#include "manta_fluid_API.h"
 
 #include "BLI_task.h"
 #include "BLI_kdtree.h"

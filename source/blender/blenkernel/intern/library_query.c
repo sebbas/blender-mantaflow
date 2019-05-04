@@ -581,7 +581,7 @@ static void library_foreach_ID_link(
 				}
 				data.cb_flag = data_cb_flag;
 
-				CALLBACK_INVOKE(object->gpd, IDWALK_CB_USER);
+				/* Note that ob->gpd is deprecated, so no need to handle it here. */
 				CALLBACK_INVOKE(object->instance_collection, IDWALK_CB_USER);
 
 				if (object->pd) {
@@ -783,7 +783,7 @@ static void library_foreach_ID_link(
 					CALLBACK_INVOKE(child->collection, IDWALK_CB_NEVER_SELF | IDWALK_CB_USER);
 				}
 				for (CollectionParent *parent = collection->parents.first; parent; parent = parent->next) {
-					CALLBACK_INVOKE(parent->collection, IDWALK_CB_NEVER_SELF);
+					CALLBACK_INVOKE(parent->collection, IDWALK_CB_NEVER_SELF | IDWALK_CB_LOOPBACK);
 				}
 				break;
 			}
@@ -1294,7 +1294,7 @@ bool BKE_library_ID_is_indirectly_used(Main *bmain, void *idv)
 }
 
 /**
- * Combine \a BKE_library_ID_is_locally_used() and \a BKE_library_ID_is_indirectly_used() in a single call.
+ * Combine #BKE_library_ID_is_locally_used() and #BKE_library_ID_is_indirectly_used() in a single call.
  */
 void BKE_library_ID_test_usages(Main *bmain, void *idv, bool *is_used_local, bool *is_used_linked)
 {

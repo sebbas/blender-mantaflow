@@ -163,7 +163,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 		return result;
 	}
 
-	Object *other = DEG_get_evaluated_object(ctx->depsgraph, bmd->object);
+	Object *other = bmd->object;
 	mesh_other = BKE_modifier_get_evaluated_mesh_from_evaluated_object(other, false);
 	if (mesh_other) {
 		Object *object = ctx->object;
@@ -337,12 +337,6 @@ ModifierTypeInfo modifierType_Boolean = {
 	                        eModifierTypeFlag_UsesPointCache,
 
 	/* copyData */          modifier_copyData_generic,
-
-	/* deformVerts_DM */    NULL,
-	/* deformMatrices_DM */ NULL,
-	/* deformVertsEM_DM */  NULL,
-	/* deformMatricesEM_DM*/NULL,
-	/* applyModifier_DM */  NULL,
 
 	/* deformVerts */       NULL,
 	/* deformMatrices */    NULL,

@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 20137Blender Foundation.
+ * The Original Code is Copyright (C) 2017 Blender Foundation.
  * All rights reserved.
  */
 
@@ -697,6 +697,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
 					update_pose_orig_pointers(object_orig->pose,
 					                          object_cow->pose);
 				}
+				BKE_pose_pchan_index_rebuild(object_cow->pose);
 			}
 			update_particles_after_copy(object_orig, object_cow);
 			update_modifiers_orig_pointers(object_orig, object_cow);

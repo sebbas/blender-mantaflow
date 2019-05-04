@@ -550,7 +550,7 @@ static void BRUSH_OT_uv_sculpt_tool_set(wmOperatorType *ot)
 typedef enum {
 	STENCIL_TRANSLATE,
 	STENCIL_SCALE,
-	STENCIL_ROTATE
+	STENCIL_ROTATE,
 } StencilControlMode;
 
 typedef enum {
@@ -815,8 +815,11 @@ static void BRUSH_OT_stencil_control(wmOperatorType *ot)
 	/* flags */
 	ot->flag = 0;
 
-	RNA_def_enum(ot->srna, "mode", stencil_control_items, STENCIL_TRANSLATE, "Tool", "");
-	RNA_def_enum(ot->srna, "texmode", stencil_texture_items, STENCIL_PRIMARY, "Tool", "");
+	PropertyRNA *prop;
+	prop = RNA_def_enum(ot->srna, "mode", stencil_control_items, STENCIL_TRANSLATE, "Tool", "");
+	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+	prop = RNA_def_enum(ot->srna, "texmode", stencil_texture_items, STENCIL_PRIMARY, "Tool", "");
+	RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 

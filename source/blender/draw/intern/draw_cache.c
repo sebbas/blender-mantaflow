@@ -705,8 +705,14 @@ GPUBatch *DRW_cache_object_edge_detection_get(Object *ob, bool *r_is_manifold)
 	switch (ob->type) {
 		case OB_MESH:
 			return DRW_cache_mesh_edge_detection_get(ob, r_is_manifold);
-
-		/* TODO, should match 'DRW_cache_object_surface_get' */
+		case OB_CURVE:
+			return DRW_cache_curve_edge_detection_get(ob, r_is_manifold);
+		case OB_SURF:
+			return DRW_cache_surf_edge_detection_get(ob, r_is_manifold);
+		case OB_FONT:
+			return DRW_cache_text_edge_detection_get(ob, r_is_manifold);
+		case OB_MBALL:
+			return DRW_cache_mball_edge_detection_get(ob, r_is_manifold);
 		default:
 			return NULL;
 	}
@@ -2745,9 +2751,10 @@ static const float staticSine[16] = {
 	0.994521895368f, 1.0f,
 };
 
-#define set_vert(a, b, quarter) \
-        copy_v2_fl2(pos, (quarter % 2 == 0) ? -(a) : (a), (quarter < 2) ? -(b) : (b)); \
-        GPU_vertbuf_attr_set(vbo, attr_id.pos, v++, pos);
+#define set_vert(a, b, quarter) { \
+		copy_v2_fl2(pos, (quarter % 2 == 0) ? -(a) : (a), (quarter < 2) ? -(b) : (b)); \
+		GPU_vertbuf_attr_set(vbo, attr_id.pos, v++, pos); \
+	} ((void)0)
 
 GPUBatch *DRW_cache_bone_dof_sphere_get(void)
 {
@@ -3179,6 +3186,19 @@ GPUBatch *DRW_cache_curve_face_wireframe_get(Object *ob)
 	}
 }
 
+GPUBatch *DRW_cache_curve_edge_detection_get(Object *ob, bool *r_is_manifold)
+{
+	BLI_assert(ob->type == OB_CURVE);
+	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_edge_detection(mesh_eval, r_is_manifold);
+	}
+	else {
+		return DRW_curve_batch_cache_get_edge_detection(cu, r_is_manifold);
+	}
+}
+
 /* Return list of batches */
 GPUBatch **DRW_cache_curve_surface_shaded_get(
         Object *ob, struct GPUMaterial **gpumat_array, uint gpumat_array_len)
@@ -3205,6 +3225,12 @@ GPUBatch *DRW_cache_mball_surface_get(Object *ob)
 {
 	BLI_assert(ob->type == OB_MBALL);
 	return DRW_metaball_batch_cache_get_triangles_with_normals(ob);
+}
+
+GPUBatch *DRW_cache_mball_edge_detection_get(Object *ob, bool *r_is_manifold)
+{
+	BLI_assert(ob->type == OB_MBALL);
+	return DRW_metaball_batch_cache_get_edge_detection(ob, r_is_manifold);
 }
 
 GPUBatch *DRW_cache_mball_face_wireframe_get(Object *ob)
@@ -3248,6 +3274,22 @@ GPUBatch *DRW_cache_text_surface_get(Object *ob)
 	}
 	else {
 		return DRW_curve_batch_cache_get_triangles_with_normals(cu);
+	}
+}
+
+GPUBatch *DRW_cache_text_edge_detection_get(Object *ob, bool *r_is_manifold)
+{
+	BLI_assert(ob->type == OB_FONT);
+	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (cu->editfont && (cu->flag & CU_FAST)) {
+		return NULL;
+	}
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_edge_detection(mesh_eval, r_is_manifold);
+	}
+	else {
+		return DRW_curve_batch_cache_get_edge_detection(cu, r_is_manifold);
 	}
 }
 
@@ -3340,6 +3382,19 @@ GPUBatch *DRW_cache_surf_face_wireframe_get(Object *ob)
 	}
 	else {
 		return DRW_curve_batch_cache_get_wireframes_face(cu);
+	}
+}
+
+GPUBatch *DRW_cache_surf_edge_detection_get(Object *ob, bool *r_is_manifold)
+{
+	BLI_assert(ob->type == OB_SURF);
+	struct Curve *cu = ob->data;
+	struct Mesh *mesh_eval = ob->runtime.mesh_eval;
+	if (mesh_eval != NULL) {
+		return DRW_mesh_batch_cache_get_edge_detection(mesh_eval, r_is_manifold);
+	}
+	else {
+		return DRW_curve_batch_cache_get_edge_detection(cu, r_is_manifold);
 	}
 }
 
@@ -3753,10 +3808,11 @@ void drw_batch_cache_generate_requested(Object *ob)
 	const enum eContextObjectMode mode = CTX_data_mode_enum_ex(
 	        draw_ctx->object_edit, draw_ctx->obact, draw_ctx->object_mode);
 	const bool is_paint_mode = ELEM(mode, CTX_MODE_PAINT_TEXTURE, CTX_MODE_PAINT_VERTEX, CTX_MODE_PAINT_WEIGHT);
+
 	const bool use_hide = (
 	        (ob->type == OB_MESH) &&
 	        ((is_paint_mode && (ob == draw_ctx->obact) &&
-	          (BKE_paint_select_face_test(ob) || BKE_paint_select_vert_test(ob))) ||
+	          DRW_object_use_hide_faces(ob)) ||
 	         ((mode == CTX_MODE_EDIT_MESH) && BKE_object_is_in_editmode(ob))));
 
 	struct Mesh *mesh_eval = ob->runtime.mesh_eval;

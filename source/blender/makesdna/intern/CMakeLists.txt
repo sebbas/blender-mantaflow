@@ -63,10 +63,12 @@ add_custom_command(
 	OUTPUT
 		${CMAKE_CURRENT_BINARY_DIR}/dna.c
 		${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
+		${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
 	COMMAND
 		"$<TARGET_FILE:makesdna>"
 		${CMAKE_CURRENT_BINARY_DIR}/dna.c
 		${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
+		${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
 		${CMAKE_SOURCE_DIR}/source/blender/makesdna/
 	DEPENDS makesdna
 )
@@ -83,21 +85,26 @@ set(INC_SYS
 )
 
 set(SRC
-	dna_utils.c
 	dna_genfile.c
+	dna_utils.c
 	${CMAKE_CURRENT_BINARY_DIR}/dna.c
+	${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
 	${SRC_DNA_INC}
 
 	dna_utils.h
 )
 
+set(LIB
+)
+
 set_source_files_properties(
 	${CMAKE_CURRENT_BINARY_DIR}/dna.c
 	${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
+	${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
 	PROPERTIES GENERATED TRUE
 )
 
-blender_add_lib(bf_dna "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_dna "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 
 # -----------------------------------------------------------------------------
@@ -121,4 +128,7 @@ set(SRC
 	../../blenlib/intern/listbase.c
 )
 
-blender_add_lib(bf_dna_blenlib "${SRC}" "${INC}" "${INC_SYS}")
+set(LIB
+)
+
+blender_add_lib(bf_dna_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

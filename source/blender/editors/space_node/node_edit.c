@@ -837,7 +837,6 @@ typedef struct NodeSizeWidget {
 	float oldlocx, oldlocy;
 	float oldoffsetx, oldoffsety;
 	float oldwidth, oldheight;
-	float oldminiwidth;
 	int directions;
 } NodeSizeWidget;
 
@@ -848,8 +847,8 @@ static void node_resize_init(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 	NodeSizeWidget *nsw = MEM_callocN(sizeof(NodeSizeWidget), "size widget op data");
 
 	op->customdata = nsw;
-	nsw->mxstart = snode->cursor[0];
-	nsw->mystart = snode->cursor[1];
+	nsw->mxstart = snode->cursor[0] * UI_DPI_FAC;
+	nsw->mystart = snode->cursor[1] * UI_DPI_FAC;
 
 	/* store old */
 	nsw->oldlocx = node->locx;
@@ -858,7 +857,6 @@ static void node_resize_init(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 	nsw->oldoffsety = node->offsety;
 	nsw->oldwidth = node->width;
 	nsw->oldheight = node->height;
-	nsw->oldminiwidth = node->miniwidth;
 	nsw->directions = dir;
 
 	WM_cursor_modal_set(CTX_wm_window(C), node_get_resize_cursor(dir));
@@ -890,21 +888,12 @@ static int node_resize_modal(bContext *C, wmOperator *op, const wmEvent *event)
 			dy = (my - nsw->mystart) / UI_DPI_FAC;
 
 			if (node) {
-				/* width can use node->width or node->miniwidth (hidden nodes) */
 				float *pwidth;
 				float oldwidth, widthmin, widthmax;
-				/* ignore hidden flag for frame nodes */
-				bool use_hidden = (node->type != NODE_FRAME);
-				if (use_hidden && node->flag & NODE_HIDDEN) {
-					pwidth = &node->miniwidth;
-					oldwidth = nsw->oldminiwidth;
-					widthmin = 0.0f;
-				}
-				else {
-					pwidth = &node->width;
-					oldwidth = nsw->oldwidth;
-					widthmin = node->typeinfo->minwidth;
-				}
+
+				pwidth = &node->width;
+				oldwidth = nsw->oldwidth;
+				widthmin = node->typeinfo->minwidth;
 				widthmax = node->typeinfo->maxwidth;
 
 				{
@@ -2245,6 +2234,9 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
 
 	ntreeUpdateTree(CTX_data_main(C), ntree);
 
+	snode_notify(C, snode);
+	snode_dag_update(C, snode);
+
 	WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, NULL);
 
 	return OPERATOR_FINISHED;
@@ -2293,6 +2285,9 @@ static int ntree_socket_remove_exec(bContext *C, wmOperator *UNUSED(op))
 	}
 
 	ntreeUpdateTree(CTX_data_main(C), ntree);
+
+	snode_notify(C, snode);
+	snode_dag_update(C, snode);
 
 	WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, NULL);
 
@@ -2368,6 +2363,9 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
 	}
 
 	ntreeUpdateTree(CTX_data_main(C), ntree);
+
+	snode_notify(C, snode);
+	snode_dag_update(C, snode);
 
 	WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, NULL);
 

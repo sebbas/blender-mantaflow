@@ -59,6 +59,8 @@ extern struct DrawEngineType draw_engine_eevee_type;
 #  define SHADER_IRRADIANCE "#define IRRADIANCE_HL2\n"
 #endif
 
+/* Macro causes over indentation. */
+/* clang-format off */
 #define SHADER_DEFINES \
 	"#define EEVEE_ENGINE\n" \
 	"#define MAX_PROBE " STRINGIFY(MAX_PROBE) "\n" \
@@ -70,6 +72,7 @@ extern struct DrawEngineType draw_engine_eevee_type;
 	"#define MAX_SHADOW_CASCADE " STRINGIFY(MAX_SHADOW_CASCADE) "\n" \
 	"#define MAX_CASCADE_NUM " STRINGIFY(MAX_CASCADE_NUM) "\n" \
 	SHADER_IRRADIANCE
+/* clang-format on */
 
 #define SWAP_DOUBLE_BUFFERS() {                                       \
 	if (effects->swap_double_buffer) {                                \
@@ -822,6 +825,9 @@ typedef struct EEVEE_PrivateData {
 	/* LookDev Settings */
 	int studiolight_index;
 	float studiolight_rot_z;
+	int studiolight_cubemap_res;
+	float studiolight_glossy_clamp;
+	float studiolight_filter_quality;
 
 } EEVEE_PrivateData; /* Transient data */
 

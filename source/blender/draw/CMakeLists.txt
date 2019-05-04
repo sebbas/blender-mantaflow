@@ -41,6 +41,7 @@ set(INC
 
 	../../../intern/glew-mx
 	../../../intern/guardedalloc
+	../../../intern/atomic
 )
 
 set(INC_SYS
@@ -148,6 +149,12 @@ set(SRC
 	engines/external/external_engine.h
 	engines/workbench/workbench_engine.h
 	engines/workbench/workbench_private.h
+)
+
+set(LIB
+	bf_blenkernel
+	bf_blenlib
+	bf_windowmanager
 )
 
 data_to_c_simple(engines/eevee/shaders/ambient_occlusion_lib.glsl SRC)
@@ -354,4 +361,4 @@ if(WITH_FREESTYLE)
 	add_definitions(-DWITH_FREESTYLE)
 endif()
 
-blender_add_lib(bf_draw "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_draw "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

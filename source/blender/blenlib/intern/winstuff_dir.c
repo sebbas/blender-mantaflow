@@ -54,9 +54,10 @@ struct __dirstream {
 	struct dirent direntry;
 };
 
-/* Note: MinGW (FREE_WINDOWS) has opendir() and _wopendir(), and only the
- * latter accepts a path name of wchar_t type.  Rather than messing up with
- * extra #ifdef's here and there, Blender's own implementations of opendir()
+/**
+ * \note MinGW (FREE_WINDOWS) has #opendir() and #_wopendir(), and only the
+ * latter accepts a path name of #wchar_t type. Rather than messing up with
+ * extra #ifdef's here and there, Blender's own implementations of #opendir()
  * and related functions are used to properly support paths with non-ASCII
  * characters. (kjym3)
  */
@@ -89,7 +90,9 @@ static char *BLI_alloc_utf_8_from_16(wchar_t *in16, size_t add)
 {
 	size_t bsize = count_utf_8_from_16(in16);
 	char *out8 = NULL;
-	if (!bsize) return NULL;
+	if (!bsize) {
+		return NULL;
+	}
 	out8 = (char *)MEM_mallocN(sizeof(char) * (bsize + add), "UTF-8 String");
 	conv_utf_16_to_8(in16, out8, bsize);
 	return out8;
@@ -99,7 +102,9 @@ static wchar_t *UNUSED_FUNCTION(BLI_alloc_utf16_from_8) (char *in8, size_t add)
 {
 	size_t bsize = count_utf_16_from_8(in8);
 	wchar_t *out16 = NULL;
-	if (!bsize) return NULL;
+	if (!bsize) {
+		return NULL;
+	}
 	out16 = (wchar_t *) MEM_mallocN(sizeof(wchar_t) * (bsize + add), "UTF-16 String");
 	conv_utf_8_to_16(in8, out16, bsize);
 	return out16;
@@ -118,8 +123,9 @@ struct dirent *readdir(DIR *dp)
 		wchar_t *path_16 = alloc_utf16_from_8(dp->path, 0);
 		dp->handle = FindFirstFileW(path_16, &(dp->data));
 		free(path_16);
-		if (dp->handle == INVALID_HANDLE_VALUE)
+		if (dp->handle == INVALID_HANDLE_VALUE) {
 			return NULL;
+		}
 
 		dp->direntry.d_name = BLI_alloc_utf_8_from_16(dp->data.cFileName, 0);
 
@@ -137,8 +143,12 @@ struct dirent *readdir(DIR *dp)
 
 int closedir(DIR *dp)
 {
-	if (dp->direntry.d_name) MEM_freeN(dp->direntry.d_name);
-	if (dp->handle != INVALID_HANDLE_VALUE) FindClose(dp->handle);
+	if (dp->direntry.d_name) {
+		MEM_freeN(dp->direntry.d_name);
+	}
+	if (dp->handle != INVALID_HANDLE_VALUE) {
+		FindClose(dp->handle);
+	}
 
 	MEM_freeN(dp);
 

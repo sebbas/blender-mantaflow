@@ -51,9 +51,10 @@
 static bool WIDGETGROUP_light_spot_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	if ((v3d->flag2 & V3D_HIDE_OVERLAYS) ||
-	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)))
-	{
+	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
+		return false;
+	}
+	if ((v3d->gizmo_show_light & V3D_GIZMO_SHOW_LIGHT_SIZE) == 0) {
 		return false;
 	}
 
@@ -161,7 +162,10 @@ static void gizmo_area_light_prop_matrix_set(
 static bool WIDGETGROUP_light_area_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	if (v3d->flag2 & V3D_HIDE_OVERLAYS) {
+	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
+		return false;
+	}
+	if ((v3d->gizmo_show_light & V3D_GIZMO_SHOW_LIGHT_SIZE) == 0) {
 		return false;
 	}
 
@@ -244,7 +248,10 @@ void VIEW3D_GGT_light_area(wmGizmoGroupType *gzgt)
 static bool WIDGETGROUP_light_target_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
 	View3D *v3d = CTX_wm_view3d(C);
-	if (v3d->flag2 & V3D_HIDE_OVERLAYS) {
+	if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
+		return false;
+	}
+	if ((v3d->gizmo_show_light & V3D_GIZMO_SHOW_LIGHT_LOOK_AT) == 0) {
 		return false;
 	}
 

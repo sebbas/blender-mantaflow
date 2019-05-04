@@ -319,8 +319,7 @@ void BKE_constraint_mat_convertspace(
 			{
 				/* local + parent to pose */
 				if (pchan->bone) {
-					copy_m4_m4(diff_mat, pchan->bone->arm_mat);
-					mul_m4_m4m4(mat, mat, diff_mat);
+					mul_m4_m4m4(mat, pchan->bone->arm_mat, mat);
 				}
 
 				/* use pose-space as stepping stone for other spaces */
@@ -592,57 +591,24 @@ static void constraint_target_to_mat4(Object *ob, const char *substring, float m
 				Mat4 *bbone = pchan->runtime.bbone_pose_mats;
 				float tempmat[4][4];
 				float loc[3], fac;
+				int index;
 
 				/* figure out which segment(s) the headtail value falls in */
-				fac = (float)pchan->bone->segments * headtail;
-
-				if (fac >= pchan->bone->segments - 1) {
-					/* special case: end segment doesn't get created properly... */
-					float pt[3], sfac;
-					int index;
-
-					/* bbone points are in bonespace, so need to move to posespace first */
-					index = pchan->bone->segments - 1;
-					mul_v3_m4v3(pt, pchan->pose_mat, bbone[index].mat[3]);
-
-					/* interpolate between last segment point and the endpoint */
-					sfac = fac - (float)(pchan->bone->segments - 1); /* fac is just the "leftover" between penultimate and last points */
-					interp_v3_v3v3(loc, pt, pchan->pose_tail, sfac);
-				}
-				else {
-					/* get indices for finding interpolating between points along the bbone */
-					float pt_a[3], pt_b[3], pt[3];
-					int   index_a, index_b;
-
-					index_a = floorf(fac);
-					CLAMP(index_a, 0, MAX_BBONE_SUBDIV - 1);
-
-					index_b = ceilf(fac);
-					CLAMP(index_b, 0, MAX_BBONE_SUBDIV - 1);
-
-					/* interpolate between these points */
-					copy_v3_v3(pt_a, bbone[index_a].mat[3]);
-					copy_v3_v3(pt_b, bbone[index_b].mat[3]);
-
-					interp_v3_v3v3(pt, pt_a, pt_b, fac - floorf(fac));
-
-					/* move the point from bone local space to pose space... */
-					mul_v3_m4v3(loc, pchan->pose_mat, pt);
-				}
+				BKE_pchan_bbone_deform_segment_index(pchan, headtail, &index, &fac);
 
 				/* apply full transformation of the segment if requested */
 				if (full_bbone) {
-					int index = floorf(fac);
-					CLAMP(index, 0, pchan->bone->segments - 1);
+					interp_m4_m4m4(tempmat, bbone[index].mat, bbone[index + 1].mat, fac);
 
-					mul_m4_m4m4(tempmat, pchan->pose_mat, bbone[index].mat);
+					mul_m4_m4m4(tempmat, pchan->pose_mat, tempmat);
 				}
+				/* only interpolate location */
 				else {
-					copy_m4_m4(tempmat, pchan->pose_mat);
-				}
+					interp_v3_v3v3(loc, bbone[index].mat[3], bbone[index + 1].mat[3], fac);
 
-				/* use interpolated distance for subtarget */
-				copy_v3_v3(tempmat[3], loc);
+					copy_m4_m4(tempmat, pchan->pose_mat);
+					mul_v3_m4v3(tempmat[3], pchan->pose_mat, loc);
+				}
 
 				mul_m4_m4m4(mat, ob->obmat, tempmat);
 			}
@@ -697,7 +663,7 @@ static bConstraintTypeInfo CTI_CONSTRNAME = {
 	constrname_get_tars, /* get constraint targets */
 	constrname_flush_tars, /* flush constraint targets */
 	constrname_get_tarmat, /* get target matrix */
-	constrname_evaluate /* evaluate */
+	constrname_evaluate, /* evaluate */
 };
 #endif
 
@@ -950,7 +916,7 @@ static bConstraintTypeInfo CTI_CHILDOF = {
 	childof_get_tars, /* get constraint targets */
 	childof_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get a target matrix */
-	childof_evaluate /* evaluate */
+	childof_evaluate, /* evaluate */
 };
 
 /* -------- TrackTo Constraint ------- */
@@ -1128,7 +1094,7 @@ static bConstraintTypeInfo CTI_TRACKTO = {
 	trackto_get_tars, /* get constraint targets */
 	trackto_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	trackto_evaluate /* evaluate */
+	trackto_evaluate, /* evaluate */
 };
 
 /* --------- Inverse-Kinematics --------- */
@@ -1221,7 +1187,7 @@ static bConstraintTypeInfo CTI_KINEMATIC = {
 	kinematic_get_tars, /* get constraint targets */
 	kinematic_flush_tars, /* flush constraint targets */
 	kinematic_get_tarmat, /* get target matrix */
-	NULL /* evaluate - solved as separate loop */
+	NULL, /* evaluate - solved as separate loop */
 };
 
 /* -------- Follow-Path Constraint ---------- */
@@ -1392,7 +1358,7 @@ static bConstraintTypeInfo CTI_FOLLOWPATH = {
 	followpath_get_tars, /* get constraint targets */
 	followpath_flush_tars, /* flush constraint targets */
 	followpath_get_tarmat, /* get target matrix */
-	followpath_evaluate /* evaluate */
+	followpath_evaluate, /* evaluate */
 };
 
 /* --------- Limit Location --------- */
@@ -1440,7 +1406,7 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	loclimit_evaluate /* evaluate */
+	loclimit_evaluate, /* evaluate */
 };
 
 /* -------- Limit Rotation --------- */
@@ -1497,7 +1463,7 @@ static bConstraintTypeInfo CTI_ROTLIMIT = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	rotlimit_evaluate /* evaluate */
+	rotlimit_evaluate, /* evaluate */
 };
 
 /* --------- Limit Scale --------- */
@@ -1556,7 +1522,7 @@ static bConstraintTypeInfo CTI_SIZELIMIT = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	sizelimit_evaluate /* evaluate */
+	sizelimit_evaluate, /* evaluate */
 };
 
 /* ----------- Copy Location ------------- */
@@ -1646,7 +1612,7 @@ static bConstraintTypeInfo CTI_LOCLIKE = {
 	loclike_get_tars, /* get constraint targets */
 	loclike_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	loclike_evaluate /* evaluate */
+	loclike_evaluate, /* evaluate */
 };
 
 /* ----------- Copy Rotation ------------- */
@@ -1758,7 +1724,7 @@ static bConstraintTypeInfo CTI_ROTLIKE = {
 	rotlike_get_tars, /* get constraint targets */
 	rotlike_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	rotlike_evaluate /* evaluate */
+	rotlike_evaluate, /* evaluate */
 };
 
 /* ---------- Copy Scale ---------- */
@@ -1853,7 +1819,7 @@ static bConstraintTypeInfo CTI_SIZELIKE = {
 	sizelike_get_tars, /* get constraint targets */
 	sizelike_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	sizelike_evaluate /* evaluate */
+	sizelike_evaluate, /* evaluate */
 };
 
 /* ----------- Copy Transforms ------------- */
@@ -1914,7 +1880,7 @@ static bConstraintTypeInfo CTI_TRANSLIKE = {
 	translike_get_tars, /* get constraint targets */
 	translike_flush_tars, /* flush constraint targets */
 	default_get_tarmat_full_bbone, /* get target matrix */
-	translike_evaluate /* evaluate */
+	translike_evaluate, /* evaluate */
 };
 
 /* ---------- Maintain Volume ---------- */
@@ -1971,7 +1937,7 @@ static bConstraintTypeInfo CTI_SAMEVOL = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	samevolume_evaluate /* evaluate */
+	samevolume_evaluate, /* evaluate */
 };
 
 /* ----------- Python Constraint -------------- */
@@ -2091,7 +2057,7 @@ static bConstraintTypeInfo CTI_PYTHON = {
 	pycon_get_tars, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	pycon_get_tarmat, /* get target matrix */
-	pycon_evaluate /* evaluate */
+	pycon_evaluate, /* evaluate */
 };
 
 /* ----------- Armature Constraint -------------- */
@@ -2155,10 +2121,31 @@ static void armdef_get_tarmat(struct Depsgraph *UNUSED(depsgraph),
 	}
 }
 
+static void armdef_accumulate_matrix(float obmat[4][4], float iobmat[4][4], float basemat[4][4], float bonemat[4][4], float weight, float r_sum_mat[4][4], DualQuat *r_sum_dq)
+{
+	if (weight == 0.0f)
+		return;
+
+	/* Convert the selected matrix into object space. */
+	float mat[4][4];
+	mul_m4_series(mat, obmat, bonemat, iobmat);
+
+	/* Accumulate the transformation. */
+	if (r_sum_dq != NULL) {
+		DualQuat tmpdq;
+
+		mat4_to_dquat(&tmpdq, basemat, mat);
+		add_weighted_dq_dq(r_sum_dq, &tmpdq, weight);
+	}
+	else {
+		madd_m4_m4m4fl(r_sum_mat, r_sum_mat, mat, weight);
+	}
+}
+
 /* Compute and accumulate transformation for a single target bone. */
 static void armdef_accumulate_bone(bConstraintTarget *ct, bPoseChannel *pchan, const float wco[3], bool force_envelope, float *r_totweight, float r_sum_mat[4][4], DualQuat *r_sum_dq)
 {
-	float mat[4][4], iobmat[4][4], basemat[4][4], co[3];
+	float iobmat[4][4], basemat[4][4], co[3];
 	Bone *bone = pchan->bone;
 	float weight = ct->weight;
 
@@ -2172,6 +2159,11 @@ static void armdef_accumulate_bone(bConstraintTarget *ct, bPoseChannel *pchan, c
 		                             bone->rad_head, bone->rad_tail, bone->dist);
 	}
 
+	/* Compute the quaternion base matrix. */
+	if (r_sum_dq != NULL) {
+		mul_m4_series(basemat, ct->tar->obmat, bone->arm_mat, iobmat);
+	}
+
 	/* Find the correct bone transform matrix in world space. */
 	if (bone->segments > 1 && bone->segments == pchan->runtime.bbone_segments) {
 		Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
@@ -2182,34 +2174,21 @@ static void armdef_accumulate_bone(bConstraintTarget *ct, bPoseChannel *pchan, c
 		 * Need to transform co back to bonespace, only need y. */
 		float y = iamat[0][1] * co[0] + iamat[1][1] * co[1] + iamat[2][1] * co[2] + iamat[3][1];
 
-		float segment = bone->length / ((float)bone->segments);
-		int a = (int)(y / segment);
+		/* Blend the matrix. */
+		int index;
+		float blend;
+		BKE_pchan_bbone_deform_segment_index(pchan, y / bone->length, &index, &blend);
 
-		CLAMP(a, 0, bone->segments - 1);
-
-		/* Convert the selected matrix into object space. */
-		mul_m4_series(mat, ct->tar->obmat, b_bone_mats[a + 1].mat, iobmat);
+		armdef_accumulate_matrix(ct->tar->obmat, iobmat, basemat, b_bone_mats[index + 1].mat, weight * (1.0f - blend), r_sum_mat, r_sum_dq);
+		armdef_accumulate_matrix(ct->tar->obmat, iobmat, basemat, b_bone_mats[index + 2].mat, weight * blend, r_sum_mat, r_sum_dq);
 	}
 	else {
 		/* Simple bone. This requires DEG_OPCODE_BONE_DONE dependency due to chan_mat. */
-		mul_m4_series(mat, ct->tar->obmat, pchan->chan_mat, iobmat);
+		armdef_accumulate_matrix(ct->tar->obmat, iobmat, basemat, pchan->chan_mat, weight, r_sum_mat, r_sum_dq);
 	}
 
-	/* Accumulate the transformation. */
+	/* Accumulate the weight. */
 	*r_totweight += weight;
-
-	if (r_sum_dq != NULL) {
-		DualQuat tmpdq;
-
-		mul_m4_series(basemat, ct->tar->obmat, bone->arm_mat, iobmat);
-
-		mat4_to_dquat(&tmpdq, basemat, mat);
-		add_weighted_dq_dq(r_sum_dq, &tmpdq, weight);
-	}
-	else {
-		mul_m4_fl(mat, weight);
-		add_m4_m4m4(r_sum_mat, r_sum_mat, mat);
-	}
 }
 
 static void armdef_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
@@ -2284,7 +2263,7 @@ static bConstraintTypeInfo CTI_ARMATURE = {
 	armdef_get_tars, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	armdef_get_tarmat, /* get target matrix */
-	armdef_evaluate /* evaluate */
+	armdef_evaluate, /* evaluate */
 };
 
 /* -------- Action Constraint ----------- */
@@ -2448,7 +2427,7 @@ static bConstraintTypeInfo CTI_ACTION = {
 	actcon_get_tars, /* get constraint targets */
 	actcon_flush_tars, /* flush constraint targets */
 	actcon_get_tarmat, /* get target matrix */
-	actcon_evaluate /* evaluate */
+	actcon_evaluate, /* evaluate */
 };
 
 /* --------- Locked Track ---------- */
@@ -2756,7 +2735,7 @@ static bConstraintTypeInfo CTI_LOCKTRACK = {
 	locktrack_get_tars, /* get constraint targets */
 	locktrack_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	locktrack_evaluate /* evaluate */
+	locktrack_evaluate, /* evaluate */
 };
 
 /* ---------- Limit Distance Constraint ----------- */
@@ -2890,7 +2869,7 @@ static bConstraintTypeInfo CTI_DISTLIMIT = {
 	distlimit_get_tars, /* get constraint targets */
 	distlimit_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get a target matrix */
-	distlimit_evaluate /* evaluate */
+	distlimit_evaluate, /* evaluate */
 };
 
 /* ---------- Stretch To ------------ */
@@ -3102,7 +3081,7 @@ static bConstraintTypeInfo CTI_STRETCHTO = {
 	stretchto_get_tars, /* get constraint targets */
 	stretchto_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	stretchto_evaluate /* evaluate */
+	stretchto_evaluate, /* evaluate */
 };
 
 /* ---------- Floor ------------ */
@@ -3246,7 +3225,7 @@ static bConstraintTypeInfo CTI_MINMAX = {
 	minmax_get_tars, /* get constraint targets */
 	minmax_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	minmax_evaluate /* evaluate */
+	minmax_evaluate, /* evaluate */
 };
 
 /* -------- Clamp To ---------- */
@@ -3412,7 +3391,7 @@ static bConstraintTypeInfo CTI_CLAMPTO = {
 	clampto_get_tars, /* get constraint targets */
 	clampto_flush_tars, /* flush constraint targets */
 	clampto_get_tarmat, /* get target matrix */
-	clampto_evaluate /* evaluate */
+	clampto_evaluate, /* evaluate */
 };
 
 /* ---------- Transform Constraint ----------- */
@@ -3575,7 +3554,7 @@ static bConstraintTypeInfo CTI_TRANSFORM = {
 	transform_get_tars, /* get constraint targets */
 	transform_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get a target matrix */
-	transform_evaluate /* evaluate */
+	transform_evaluate, /* evaluate */
 };
 
 /* ---------- Shrinkwrap Constraint ----------- */
@@ -3788,7 +3767,7 @@ static bConstraintTypeInfo CTI_SHRINKWRAP = {
 	shrinkwrap_get_tars, /* get constraint targets */
 	shrinkwrap_flush_tars, /* flush constraint targets */
 	shrinkwrap_get_tarmat, /* get a target matrix */
-	shrinkwrap_evaluate /* evaluate */
+	shrinkwrap_evaluate, /* evaluate */
 };
 
 /* --------- Damped Track ---------- */
@@ -3949,7 +3928,7 @@ static bConstraintTypeInfo CTI_DAMPTRACK = {
 	damptrack_get_tars, /* get constraint targets */
 	damptrack_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	damptrack_evaluate /* evaluate */
+	damptrack_evaluate, /* evaluate */
 };
 
 /* ----------- Spline IK ------------ */
@@ -3980,6 +3959,8 @@ static void splineik_new_data(void *cdata)
 	data->bulge = 1.0;
 	data->bulge_max = 1.0f;
 	data->bulge_min = 1.0f;
+
+	data->yScaleMode = CONSTRAINT_SPLINEIK_YS_FIT_CURVE;
 }
 
 static void splineik_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
@@ -4039,7 +4020,7 @@ static bConstraintTypeInfo CTI_SPLINEIK = {
 	splineik_get_tars, /* get constraint targets */
 	splineik_flush_tars, /* flush constraint targets */
 	splineik_get_tarmat, /* get target matrix */
-	NULL /* evaluate - solved as separate loop */
+	NULL, /* evaluate - solved as separate loop */
 };
 
 /* ----------- Pivot ------------- */
@@ -4163,7 +4144,7 @@ static bConstraintTypeInfo CTI_PIVOT = {
 	pivotcon_get_tars, /* get constraint targets */
 	pivotcon_flush_tars, /* flush constraint targets */
 	default_get_tarmat, /* get target matrix */
-	pivotcon_evaluate /* evaluate */
+	pivotcon_evaluate, /* evaluate */
 };
 
 /* ----------- Follow Track ------------- */
@@ -4413,7 +4394,7 @@ static bConstraintTypeInfo CTI_FOLLOWTRACK = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	followtrack_evaluate /* evaluate */
+	followtrack_evaluate, /* evaluate */
 };
 
 /* ----------- Camre Solver ------------- */
@@ -4470,7 +4451,7 @@ static bConstraintTypeInfo CTI_CAMERASOLVER = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	camerasolver_evaluate /* evaluate */
+	camerasolver_evaluate, /* evaluate */
 };
 
 /* ----------- Object Solver ------------- */
@@ -4546,7 +4527,7 @@ static bConstraintTypeInfo CTI_OBJECTSOLVER = {
 	NULL, /* get constraint targets */
 	NULL, /* flush constraint targets */
 	NULL, /* get target matrix */
-	objectsolver_evaluate /* evaluate */
+	objectsolver_evaluate, /* evaluate */
 };
 
 /* ----------- Transform Cache ------------- */
@@ -4572,10 +4553,12 @@ static void transformcache_evaluate(bConstraint *con, bConstraintOb *cob, ListBa
 	const float frame = DEG_get_ctime(cob->depsgraph);
 	const float time = BKE_cachefile_time_offset(cache_file, frame, FPS);
 
-	BKE_cachefile_ensure_handle(G.main, cache_file);
+	/* Must always load ABC handle on original. */
+	CacheFile *cache_file_orig = (CacheFile *)DEG_get_original_id(&cache_file->id);
+	BKE_cachefile_ensure_handle(G.main, cache_file_orig);
 
 	if (!data->reader) {
-		data->reader = CacheReader_open_alembic_object(cache_file->handle,
+		data->reader = CacheReader_open_alembic_object(cache_file_orig->handle,
 		                                               data->reader,
 		                                               cob->ob,
 		                                               data->object_path);
@@ -4635,7 +4618,7 @@ static bConstraintTypeInfo CTI_TRANSFORM_CACHE = {
 	NULL,  /* get constraint targets */
 	NULL,  /* flush constraint targets */
 	NULL,  /* get target matrix */
-	transformcache_evaluate  /* evaluate */
+	transformcache_evaluate,  /* evaluate */
 };
 
 /* ************************* Constraints Type-Info *************************** */
@@ -4727,15 +4710,18 @@ const bConstraintTypeInfo *BKE_constraint_typeinfo_get(bConstraint *con)
 
 /* ---------- Data Management ------- */
 
-/* helper function for BKE_constraint_free_data() - unlinks references */
+/**
+ * Helper function for #BKE_constraint_free_data() - unlinks references.
+ */
 static void con_unlink_refs_cb(bConstraint *UNUSED(con), ID **idpoin, bool is_reference, void *UNUSED(userData))
 {
 	if (*idpoin && is_reference)
 		id_us_min(*idpoin);
 }
 
-/* Free data of a specific constraint if it has any info.
- * be sure to run BIK_clear_data() when freeing an IK constraint,
+/**
+ * Free data of a specific constraint if it has any info.
+ * be sure to run #BIK_clear_data() when freeing an IK constraint,
  * unless DAG_relations_tag_update is called.
  */
 void BKE_constraint_free_data_ex(bConstraint *con, bool do_id_user)

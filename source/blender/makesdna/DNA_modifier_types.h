@@ -88,7 +88,7 @@ typedef enum ModifierType {
 	eModifierType_MeshSequenceCache = 52,
 	eModifierType_SurfaceDeform     = 53,
 	eModifierType_WeightedNormal	= 54,
-	NUM_MODIFIER_TYPES
+	NUM_MODIFIER_TYPES,
 } ModifierType;
 
 typedef enum ModifierMode {
@@ -99,7 +99,7 @@ typedef enum ModifierMode {
 	eModifierMode_Expanded          = (1 << 4),
 	eModifierMode_Virtual           = (1 << 5),
 	eModifierMode_ApplyOnSpline     = (1 << 6),
-	eModifierMode_DisableTemporary  = (1u << 31)
+	eModifierMode_DisableTemporary  = (1u << 31),
 } ModifierMode;
 
 typedef struct ModifierData {
@@ -144,6 +144,7 @@ typedef enum {
 	eSubsurfModifierFlag_ControlEdges = (1 << 2),
 	/* DEPRECATED, ONLY USED FOR DO-VERSIONS */
 	eSubsurfModifierFlag_SubsurfUv_DEPRECATED    = (1 << 3),
+	eSubsurfModifierFlag_UseCrease   =  (1 << 4),
 } SubsurfModifierFlag;
 
 typedef enum {
@@ -954,14 +955,13 @@ typedef struct MultiresModifierData {
 	short quality;
 	short uv_smooth;
 	char _pad2[4];
-	struct Subdiv *subdiv;
-	void *_pad3;
 } MultiresModifierData;
 
 typedef enum {
 	eMultiresModifierFlag_ControlEdges = (1 << 0),
 	/* DEPRECATED, only used for versioning. */
 	eMultiresModifierFlag_PlainUv_DEPRECATED      = (1 << 1),
+	eMultiresModifierFlag_UseCrease    =  (1 << 2),
 } MultiresModifierFlag;
 
 typedef struct FluidsimModifierData {

@@ -38,6 +38,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 
+#include "ED_view3d.h"
 
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -307,15 +308,17 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
 	workbench_private_data_get_light_direction(wpd, light_direction);
 
 	if (!e_data.checker_depth_sh) {
-		workbench_forward_outline_shaders_ensure(wpd, draw_ctx->sh_cfg);
-
 		e_data.checker_depth_sh = DRW_shader_create_fullscreen(
 		        datatoc_workbench_checkerboard_depth_frag_glsl, NULL);
 	}
+
+	workbench_forward_outline_shaders_ensure(wpd, draw_ctx->sh_cfg);
+
 	workbench_volume_engine_init();
 	workbench_fxaa_engine_init();
 	workbench_taa_engine_init(vedata);
 
+	workbench_forward_outline_shaders_ensure(wpd, draw_ctx->sh_cfg);
 	workbench_forward_choose_shaders(wpd, draw_ctx->sh_cfg);
 
 	const float *viewport_size = DRW_viewport_size_get();
@@ -381,7 +384,7 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
 
 	/* TODO(campbell): displays but masks geometry,
 	 * only use with wire or solid-without-xray for now. */
-	if (((wpd->shading.type != OB_WIRE && XRAY_FLAG(wpd) == 0)) &&
+	if ((wpd->shading.type != OB_WIRE && !XRAY_FLAG_ENABLED(wpd)) &&
 	    (draw_ctx->rv3d && (draw_ctx->rv3d->rflag & RV3D_CLIPPING) && draw_ctx->rv3d->clipbb))
 	{
 		psl->background_pass = DRW_pass_create(
@@ -407,7 +410,7 @@ void workbench_forward_engine_init(WORKBENCH_Data *vedata)
 			noise_offset = fmodf(noise_offset + 1.0f / 8.0f, 1.0f);
 		}
 
-		if (wpd->shading.flag & XRAY_FLAG(wpd)) {
+		if (XRAY_FLAG_ENABLED(wpd)) {
 			blend_threshold = 1.0f - XRAY_ALPHA(wpd) * 0.9f;
 		}
 

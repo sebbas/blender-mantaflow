@@ -205,6 +205,9 @@ static void applyAlign(TransInfo *t, const int mval[2]);
 
 static void initSeqSlide(TransInfo *t);
 static void applySeqSlide(TransInfo *t, const int mval[2]);
+
+static void initGPOpacity(TransInfo *t);
+static void applyGPOpacity(TransInfo *t, const int mval[2]);
 /* end transform callbacks */
 
 
@@ -1664,7 +1667,7 @@ typedef enum {
 	UP,
 	DOWN,
 	LEFT,
-	RIGHT
+	RIGHT,
 } ArrowDirection;
 
 #define POS_INDEX 0
@@ -2035,7 +2038,7 @@ static void drawTransformPixel(const struct bContext *C, ARegion *ar, void *arg)
 		ViewLayer *view_layer = t->view_layer;
 		Object *ob = OBACT(view_layer);
 
-		/* draw autokeyframing hint in the corner
+		/* draw auto-key-framing hint in the corner
 		 * - only draw if enabled (advanced users may be distracted/annoyed),
 		 *   for objects that will be autokeyframed (no point otherwise),
 		 *   AND only for the active region (as showing all is too overwhelming)
@@ -2410,6 +2413,10 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			wmKeyMapItem *kmi;
 
 			for (kmi = t->keymap->items.first; kmi; kmi = kmi->next) {
+				if (kmi->flag & KMI_INACTIVE) {
+					continue;
+				}
+
 				if (kmi->propvalue == TFM_MODAL_SNAP_INV_ON && kmi->val == KM_PRESS) {
 					if ((ELEM(kmi->type, LEFTCTRLKEY, RIGHTCTRLKEY) &&   event->ctrl)  ||
 					    (ELEM(kmi->type, LEFTSHIFTKEY, RIGHTSHIFTKEY) && event->shift) ||
@@ -2612,6 +2619,9 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 			break;
 		case TFM_NORMAL_ROTATION:
 			initNormalRotation(t);
+			break;
+		case TFM_GPENCIL_OPACITY:
+			initGPOpacity(t);
 			break;
 	}
 
@@ -5525,6 +5535,84 @@ static void applyGPShrinkFatten(TransInfo *t, const int UNUSED(mval[2]))
 }
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/* Transform (GPencil Opacity) */
+
+/** \name Transform GPencil Strokes Opacity
+ * \{ */
+
+static void initGPOpacity(TransInfo *t)
+{
+	t->mode = TFM_GPENCIL_OPACITY;
+	t->transform = applyGPOpacity;
+
+	initMouseInputMode(t, &t->mouse, INPUT_SPRING);
+
+	t->idx_max = 0;
+	t->num.idx_max = 0;
+	t->snap[0] = 0.0f;
+	t->snap[1] = 0.1f;
+	t->snap[2] = t->snap[1] * 0.1f;
+
+	copy_v3_fl(t->num.val_inc, t->snap[1]);
+	t->num.unit_sys = t->scene->unit.system;
+	t->num.unit_type[0] = B_UNIT_NONE;
+
+	t->flag |= T_NO_ZERO;
+#ifdef USE_NUM_NO_ZERO
+	t->num.val_flag[0] |= NUM_NO_ZERO;
+#endif
+
+	t->flag |= T_NO_CONSTRAINT;
+}
+
+static void applyGPOpacity(TransInfo *t, const int UNUSED(mval[2]))
+{
+	float ratio;
+	int i;
+	char str[UI_MAX_DRAW_STR];
+
+	ratio = t->values[0];
+
+	snapGridIncrement(t, &ratio);
+
+	applyNumInput(&t->num, &ratio);
+
+	t->values[0] = ratio;
+
+	/* header print for NumInput */
+	if (hasNumInput(&t->num)) {
+		char c[NUM_STR_REP_LEN];
+
+		outputNumInput(&(t->num), c, &t->scene->unit);
+		BLI_snprintf(str, sizeof(str), IFACE_("Opacity: %s"), c);
+	}
+	else {
+		BLI_snprintf(str, sizeof(str), IFACE_("Opacity: %3f"), ratio);
+	}
+
+	FOREACH_TRANS_DATA_CONTAINER(t, tc) {
+		TransData *td = tc->data;
+		for (i = 0; i < tc->data_len; i++, td++) {
+			if (td->flag & TD_NOACTION)
+				break;
+
+			if (td->flag & TD_SKIP)
+				continue;
+
+			if (td->val) {
+				*td->val = td->ival * ratio;
+				/* apply PET */
+				*td->val = (*td->val * td->factor) + ((1.0f - td->factor) * td->ival);
+				CLAMP(*td->val, 0.0f, 1.0f);
+			}
+		}
+	}
+
+	ED_area_status_text(t->sa, str);
+}
+/** \} */
+
 
 /* -------------------------------------------------------------------- */
 /* Transform (Push/Pull) */
@@ -7094,7 +7182,7 @@ static bool createEdgeSlideVerts_double_side(TransInfo *t, TransDataContainer *t
 	if (t->spacetype == SPACE_VIEW3D) {
 		v3d = t->sa ? t->sa->spacedata.first : NULL;
 		rv3d = t->ar ? t->ar->regiondata : NULL;
-		use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE && v3d->shading.type > OB_WIRE);
+		use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE && !XRAY_ENABLED(v3d));
 	}
 
 	calcEdgeSlide_mval_range(t, tc, sld, sv_table, loop_nr, mval, use_occlude_geometry, true);
@@ -7289,7 +7377,7 @@ static bool createEdgeSlideVerts_single_side(TransInfo *t, TransDataContainer *t
 	if (t->spacetype == SPACE_VIEW3D) {
 		v3d = t->sa ? t->sa->spacedata.first : NULL;
 		rv3d = t->ar ? t->ar->regiondata : NULL;
-		use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE && v3d->shading.type > OB_WIRE);
+		use_occlude_geometry = (v3d && TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->dt > OB_WIRE && !XRAY_ENABLED(v3d));
 	}
 
 	calcEdgeSlide_mval_range(t, tc, sld, sv_table, loop_nr, mval, use_occlude_geometry, false);

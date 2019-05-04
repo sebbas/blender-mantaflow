@@ -93,7 +93,7 @@ typedef enum eGP_StrokeAdd_Result {
 	GP_STROKEADD_INVALID    = -2,       /* error occurred - insufficient info to do so */
 	GP_STROKEADD_OVERFLOW   = -1,       /* error occurred - cannot fit any more points */
 	GP_STROKEADD_NORMAL,                /* point was successfully added */
-	GP_STROKEADD_FULL                   /* cannot add any more points to buffer */
+	GP_STROKEADD_FULL,                   /* cannot add any more points to buffer */
 } eGP_StrokeAdd_Result;
 
 /* Runtime flags */
@@ -681,6 +681,9 @@ static void gp_stroke_newfrombuffer(tGPsdata *p)
 	/* copy appropriate settings for stroke */
 	gps->totpoints = totelem;
 	gps->thickness = gpl->thickness;
+	gps->gradient_f = 1.0f;
+	gps->gradient_s[0] = 1.0f;
+	gps->gradient_s[1] = 1.0f;
 	gps->flag = gpd->runtime.sbuffer_sflag;
 	gps->inittime = p->inittime;
 
@@ -1423,34 +1426,8 @@ static void gp_paint_initstroke(tGPsdata *p, eGPencil_PaintModes paintmode, Deps
 				break;
 			}
 			case SPACE_NODE:
-			{
-				p->gpd->runtime.sbuffer_sflag |= GP_STROKE_2DSPACE;
-				break;
-			}
 			case SPACE_SEQ:
-			{
-				p->gpd->runtime.sbuffer_sflag |= GP_STROKE_2DSPACE;
-				break;
-			}
 			case SPACE_IMAGE:
-			{
-				SpaceImage *sima = (SpaceImage *)p->sa->spacedata.first;
-
-				/* only set these flags if the image editor doesn't have an image active,
-				 * otherwise user will be confused by strokes not appearing after they're drawn
-				 *
-				 * Admittedly, this is a bit hacky, but it works much nicer from an ergonomic standpoint!
-				 */
-				if (ELEM(NULL, sima, sima->image)) {
-					/* make strokes be drawn in screen space */
-					p->gpd->runtime.sbuffer_sflag &= ~GP_STROKE_2DSPACE;
-					*(p->align_flag) &= ~GP_PROJECT_VIEWSPACE;
-				}
-				else {
-					p->gpd->runtime.sbuffer_sflag |= GP_STROKE_2DSPACE;
-				}
-				break;
-			}
 			case SPACE_CLIP:
 			{
 				p->gpd->runtime.sbuffer_sflag |= GP_STROKE_2DSPACE;

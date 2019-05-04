@@ -93,7 +93,9 @@
 
 #include "view3d_intern.h"  /* own include */
 
-/* ******************** general functions ***************** */
+/* -------------------------------------------------------------------- */
+/** \name General Functions
+ * \{ */
 
 /**
  * \note keep this synced with #ED_view3d_mats_rv3d_backup/#ED_view3d_mats_rv3d_restore
@@ -294,7 +296,11 @@ void ED_view3d_draw_setup_view(
 	}
 }
 
-/* ******************** view border ***************** */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Draw View Border
+ * \{ */
 
 static void view3d_camera_border(
         const Scene *scene, struct Depsgraph *depsgraph,
@@ -745,7 +751,8 @@ void ED_view3d_draw_depth(
 
 	GPU_depth_test(true);
 
-	DRW_draw_depth_loop(depsgraph, ar, v3d);
+	GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
+	DRW_draw_depth_loop(depsgraph, ar, v3d, viewport);
 
 	if (rv3d->rflag & RV3D_CLIPPING) {
 		ED_view3d_clipping_disable();
@@ -1005,8 +1012,6 @@ static void draw_rotation_guide(const RegionView3D *rv3d)
 }
 #endif /* WITH_INPUT_NDOF */
 
-/* ******************** info ***************** */
-
 /**
  * Render and camera border
  */
@@ -1025,8 +1030,14 @@ static void view3d_draw_border(const bContext *C, ARegion *ar)
 	}
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Draw Text & Info
+ * \{ */
+
 /**
- * Grease Pencil
+ * Draw Info
  */
 static void view3d_draw_grease_pencil(const bContext *UNUSED(C))
 {
@@ -1279,8 +1290,6 @@ static void draw_selected_name(Scene *scene, ViewLayer *view_layer, Object *ob, 
 	BLF_disable(font_id, BLF_SHADOW);
 }
 
-/* ******************** view loop ***************** */
-
 /**
  * Information drawn on top of the solid plates and composed data
  */
@@ -1315,7 +1324,6 @@ void view3d_draw_region_info(const bContext *C, ARegion *ar)
 	BLF_batch_draw_begin();
 
 	if ((U.uiflag & USER_SHOW_GIZMO_AXIS) ||
-	    (v3d->flag2 & V3D_HIDE_OVERLAYS) ||
 	    /* No need to display gizmo and this info. */
 	    (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_NAVIGATE)))
 	{
@@ -1366,6 +1374,12 @@ void view3d_draw_region_info(const bContext *C, ARegion *ar)
 	BLF_batch_draw_end();
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Draw Viewport Contents
+ * \{ */
+
 static void view3d_draw_view(const bContext *C, ARegion *ar)
 {
 	ED_view3d_draw_setup_view(CTX_wm_window(C), CTX_data_depsgraph(C), CTX_data_scene(C), ar, CTX_wm_view3d(C), NULL, NULL, NULL);
@@ -1407,6 +1421,8 @@ void view3d_main_region_draw(const bContext *C, ARegion *ar)
 	v3d->flag |= V3D_INVALID_BACKBUF;
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Offscreen Drawing
  * \{ */
@@ -1438,7 +1454,7 @@ void ED_view3d_draw_offscreen(
         View3D *v3d, ARegion *ar, int winx, int winy,
         float viewmat[4][4], float winmat[4][4],
         bool do_sky, bool UNUSED(is_persp), const char *viewname,
-        GPUFXSettings *UNUSED(fx_settings),
+        GPUFXSettings *UNUSED(fx_settings), const bool do_color_management,
         GPUOffScreen *ofs, GPUViewport *viewport)
 {
 	RegionView3D *rv3d = ar->regiondata;
@@ -1484,7 +1500,7 @@ void ED_view3d_draw_offscreen(
 	/* main drawing call */
 	DRW_draw_render_loop_offscreen(
 	        depsgraph, engine_type, ar, v3d,
-	        do_sky, ofs, viewport);
+	        do_sky, do_color_management, ofs, viewport);
 
 	/* restore size */
 	ar->winx = bwinx;
@@ -1587,12 +1603,13 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(
 	}
 
 	if ((samples && use_full_sample) == 0) {
+		const bool do_color_management = (ibuf->rect_float == NULL);
 		/* Single-pass render, common case */
 		ED_view3d_draw_offscreen(
 		        depsgraph, scene, drawtype,
 		        v3d, ar, sizex, sizey, NULL, winmat,
 		        draw_sky, !is_ortho, viewname,
-		        &fx_settings, ofs, NULL);
+		        &fx_settings, do_color_management, ofs, NULL);
 
 		if (ibuf->rect_float) {
 			GPU_offscreen_read_pixels(ofs, GL_FLOAT, ibuf->rect_float);
@@ -1617,7 +1634,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(
 		        depsgraph, scene, drawtype,
 		        v3d, ar, sizex, sizey, NULL, winmat,
 		        draw_sky, !is_ortho, viewname,
-		        &fx_settings, ofs, viewport);
+		        &fx_settings, false, ofs, viewport);
 		GPU_offscreen_read_pixels(ofs, GL_FLOAT, accum_buffer);
 
 		/* skip the first sample */
@@ -1632,7 +1649,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(
 			        depsgraph, scene, drawtype,
 			        v3d, ar, sizex, sizey, NULL, winmat_jitter,
 			        draw_sky, !is_ortho, viewname,
-			        &fx_settings, ofs, viewport);
+			        &fx_settings, false, ofs, viewport);
 			GPU_offscreen_read_pixels(ofs, GL_FLOAT, rect_temp);
 
 			uint i = sizex * sizey * 4;
@@ -1791,6 +1808,5 @@ bool ED_view3d_clipping_test(const RegionView3D *rv3d, const float co[3], const 
 {
 	return view3d_clipping_test(co, is_local ? rv3d->clip_local : rv3d->clip);
 }
-
 
 /** \} */

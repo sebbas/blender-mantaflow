@@ -123,15 +123,24 @@ static void planar_pool_ensure_alloc(EEVEE_Data *vedata, int num_planar_ref)
 	// ViewLayer *view_layer = draw_ctx->view_layer;
 	float screen_percentage = 1.0f;
 
-	int width = (int)(viewport_size[0] * screen_percentage);
-	int height = (int)(viewport_size[1] * screen_percentage);
+	int width = max_ii(1, (int)(viewport_size[0] * screen_percentage));
+	int height = max_ii(1, (int)(viewport_size[1] * screen_percentage));
+
+	/* Fix case were the pool was allocated width the dummy size (1,1,1). */
+	if (txl->planar_pool && (num_planar_ref > 0) &&
+	    (GPU_texture_width(txl->planar_pool) != width ||
+	     GPU_texture_height(txl->planar_pool) != height))
+	{
+		DRW_TEXTURE_FREE_SAFE(txl->planar_pool);
+		DRW_TEXTURE_FREE_SAFE(txl->planar_depth);
+	}
 
 	/* We need an Array texture so allocate it ourself */
 	if (!txl->planar_pool) {
 		if (num_planar_ref > 0) {
-			txl->planar_pool = DRW_texture_create_2d_array(width, height, max_ff(1, num_planar_ref),
+			txl->planar_pool = DRW_texture_create_2d_array(width, height, max_ii(1, num_planar_ref),
 			                                                 GPU_R11F_G11F_B10F, DRW_TEX_FILTER | DRW_TEX_MIPMAP, NULL);
-			txl->planar_depth = DRW_texture_create_2d_array(width, height, max_ff(1, num_planar_ref),
+			txl->planar_depth = DRW_texture_create_2d_array(width, height, max_ii(1, num_planar_ref),
 			                                                GPU_DEPTH_COMPONENT24, 0, NULL);
 		}
 		else if (num_planar_ref == 0) {
@@ -657,16 +666,17 @@ static void lightbake_planar_compute_render_matrices(
         EEVEE_PlanarReflection *eplanar, DRWMatrixState *r_matstate,
         const float viewmat[4][4], const float winmat[4][4])
 {
+	/* Temporal sampling jitter should be already applied to the DRW_MAT_WIN. */
+	copy_m4_m4(r_matstate->winmat, winmat);
+	/* Invert X to avoid flipping the triangle facing direction. */
+	r_matstate->winmat[0][0] = -r_matstate->winmat[0][0];
+	r_matstate->winmat[1][0] = -r_matstate->winmat[1][0];
+	r_matstate->winmat[2][0] = -r_matstate->winmat[2][0];
+	r_matstate->winmat[3][0] = -r_matstate->winmat[3][0];
 	/* Reflect Camera Matrix. */
 	mul_m4_m4m4(r_matstate->viewmat, viewmat, eplanar->mtx);
-	/* Invert X to avoid flipping the triangle facing direction. */
-	r_matstate->viewmat[0][0] = -r_matstate->viewmat[0][0];
-	r_matstate->viewmat[1][0] = -r_matstate->viewmat[1][0];
-	r_matstate->viewmat[2][0] = -r_matstate->viewmat[2][0];
-	r_matstate->viewmat[3][0] = -r_matstate->viewmat[3][0];
 	/* Apply Projection Matrix. */
-	/* Temporal sampling jitter should be already applied to the DRW_MAT_WIN. */
-	mul_m4_m4m4(r_matstate->persmat, winmat, r_matstate->viewmat);
+	mul_m4_m4m4(r_matstate->persmat, r_matstate->winmat, r_matstate->viewmat);
 }
 
 static void eevee_lightprobes_extract_from_cache(EEVEE_LightProbesInfo *pinfo, LightCache *lcache)
@@ -894,6 +904,7 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
 	GPU_framebuffer_bind(fbl->planarref_fb);
 	GPU_framebuffer_clear_depth(fbl->planarref_fb, 1.0);
 
+	float prev_background_alpha = vedata->stl->g_data->background_alpha;
 	vedata->stl->g_data->background_alpha = 1.0f;
 
 	/* Slight modification: we handle refraction as normal
@@ -932,6 +943,8 @@ static void lightbake_render_scene_reflected(int layer, EEVEE_BakeRenderData *us
 	/* Restore */
 	txl->planar_pool = tmp_planar_pool;
 	txl->planar_depth = tmp_planar_depth;
+
+	vedata->stl->g_data->background_alpha = prev_background_alpha;
 }
 
 static void eevee_lightbake_render_scene_to_planars(

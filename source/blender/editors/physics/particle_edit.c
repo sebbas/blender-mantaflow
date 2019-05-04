@@ -38,6 +38,7 @@
 #include "BLI_math.h"
 #include "BLI_lasso_2d.h"
 #include "BLI_listbase.h"
+#include "BLI_rect.h"
 #include "BLI_kdtree.h"
 #include "BLI_rand.h"
 #include "BLI_task.h"
@@ -446,7 +447,7 @@ static void PE_set_view3d_data(bContext *C, PEData *data)
 
 	ED_view3d_viewcontext_init(C, &data->vc);
 
-	if (V3D_IS_ZBUF(data->vc.v3d)) {
+	if (!XRAY_ENABLED(data->vc.v3d)) {
 		if (data->vc.v3d->flag & V3D_INVALID_BACKBUF) {
 			/* needed or else the draw matrix can be incorrect */
 			view3d_operator_needs_opengl(C);
@@ -503,7 +504,7 @@ static bool key_test_depth(const PEData *data, const float co[3], const int scre
 	float depth;
 
 	/* nothing to do */
-	if (!V3D_IS_ZBUF(v3d))
+	if (XRAY_ENABLED(v3d))
 		return true;
 
 	/* used to calculate here but all callers have  the screen_co already, so pass as arg */
@@ -1813,7 +1814,7 @@ void PARTICLE_OT_select_roots(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* properties */
-	WM_operator_properties_select_action(ot, SEL_SELECT);
+	WM_operator_properties_select_action(ot, SEL_SELECT, true);
 }
 
 /************************ select tip operator ************************/
@@ -1883,7 +1884,7 @@ void PARTICLE_OT_select_tips(wmOperatorType *ot)
 	ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
 	/* properties */
-	WM_operator_properties_select_action(ot, SEL_SELECT);
+	WM_operator_properties_select_action(ot, SEL_SELECT, true);
 }
 
 /*********************** select random operator ************************/
@@ -1926,7 +1927,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
 			LOOP_VISIBLE_POINTS {
 				int flag = ((BLI_rng_get_float(rng) < randfac) == select) ? SEL_SELECT : SEL_DESELECT;
 				LOOP_KEYS {
-					data.is_changed = select_action_apply(point, key, flag);
+					data.is_changed |= select_action_apply(point, key, flag);
 				}
 			}
 			break;
@@ -1934,7 +1935,7 @@ static int select_random_exec(bContext *C, wmOperator *op)
 			LOOP_VISIBLE_POINTS {
 				LOOP_VISIBLE_KEYS {
 					int flag = ((BLI_rng_get_float(rng) < randfac) == select) ? SEL_SELECT : SEL_DESELECT;
-					data.is_changed = select_action_apply(point, key, flag);
+					data.is_changed |= select_action_apply(point, key, flag);
 				}
 			}
 			break;
@@ -2066,7 +2067,14 @@ bool PE_box_select(bContext *C, const rcti *rect, const int sel_op)
 	if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
 		data.is_changed = PE_deselect_all_visible_ex(edit);
 	}
-	for_mouse_hit_keys(&data, select_key_op, PSEL_ALL_KEYS);
+
+	if (BLI_rcti_is_empty(rect)) {
+		/* pass */
+	}
+	else {
+		for_mouse_hit_keys(&data, select_key_op, PSEL_ALL_KEYS);
+	}
+
 	if (data.is_changed) {
 		PE_update_selection(data.depsgraph, scene, ob, 1);
 		WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_SELECTED, ob);
@@ -3965,7 +3973,7 @@ static int brush_add(const bContext *C, PEData *data, short number)
 	}
 	BLI_assert(mesh);
 
-	/* Calculate positions of new particles to add, based on brush interseciton
+	/* Calculate positions of new particles to add, based on brush intersection
 	 * with object. New particle data is assigned to a corresponding to check
 	 * index element of add_pars array. This means, that add_pars is a sparse
 	 * array.
@@ -3993,7 +4001,7 @@ static int brush_add(const bContext *C, PEData *data, short number)
 	BLI_task_parallel_range(0, number, &iter_data, brush_add_count_iter, &settings);
 
 	/* Convert add_parse to a dense array, where all new particles are in the
-	 * beginnign of the array.
+	 * beginning of the array.
 	 */
 	n = iter_data.num_added;
 	for (int current_iter = 0, new_index = 0; current_iter < number; current_iter++) {
@@ -4798,8 +4806,11 @@ void PE_create_particle_edit(
 	edit = (psys) ? psys->edit : cache->edit;
 
 	if (!edit) {
-		ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
-		psys_copy_particles(psys, psys_eval);
+		ParticleSystem *psys_eval = NULL;
+		if (psys) {
+			psys_eval = psys_eval_get(depsgraph, ob, psys);
+			psys_copy_particles(psys, psys_eval);
+		}
 
 		totpoint = psys ? psys->totpart : (int)((PTCacheMem *)cache->mem_cache.first)->totpoint;
 

@@ -290,12 +290,8 @@ Alembic::AbcGeom::IXform AbcObjectReader::xform()
 		return IXform(abc_parent, Alembic::AbcGeom::kWrapExisting);
 	}
 
-	/* Should not happen. */
-	std::cerr << "AbcObjectReader::xform(): "
-	          << "unable to find IXform for Alembic object '"
-	          << m_iobject.getFullName() << "'\n";
-	BLI_assert(false);
-
+	/* This can happen in certain cases. For example, MeshLab exports
+	 * point clouds without parent XForm. */
 	return IXform();
 }
 
@@ -304,6 +300,8 @@ void AbcObjectReader::read_matrix(float r_mat[4][4], const float time,
 {
 	IXform ixform = xform();
 	if (!ixform) {
+		unit_m4(r_mat);
+		is_constant = true;
 		return;
 	}
 
@@ -323,8 +321,13 @@ void AbcObjectReader::read_matrix(float r_mat[4][4], const float time,
 		 * all parent matrices in the Alembic file, we assume that the Blender
 		 * parent object is already updated for the current timekey, and use its
 		 * world matrix. */
-		BLI_assert(m_object->parent);
-		mul_m4_m4m4(r_mat, m_object->parent->obmat, r_mat);
+		if (m_object->parent) {
+			mul_m4_m4m4(r_mat, m_object->parent->obmat, r_mat);
+		}
+		else {
+			/* This can happen if the user deleted the parent object. */
+			unit_m4(r_mat);
+		}
 	}
 	else {
 		/* Only apply scaling to root objects, parenting will propagate it. */

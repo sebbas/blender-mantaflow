@@ -227,4 +227,7 @@ set(SRC
 	${MANTA_PP}/vortexsheet.h.reg.cpp
 )
 
-blender_add_lib(bf_intern_mantaflow "${SRC}" "${INC}" "${INC_SYS}")
+set(LIB
+)
+
+blender_add_lib(bf_intern_mantaflow "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

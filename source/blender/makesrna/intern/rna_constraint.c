@@ -115,8 +115,8 @@ static const EnumPropertyItem target_space_pchan_items[] = {
 	                            "The transformation of the target is only evaluated in the Pose Space, "
 	                            "the target armature object transformation is ignored"},
 	{CONSTRAINT_SPACE_PARLOCAL, "LOCAL_WITH_PARENT", 0, "Local With Parent",
-	                            "The transformation of the target bone is evaluated relative its local "
-	                            "coordinate system, with the parent transformation added"},
+	                            "The transformation of the target bone is evaluated relative to its rest pose "
+	                            "local coordinate system, thus including the parent-induced transformation"},
 	{CONSTRAINT_SPACE_LOCAL,    "LOCAL", 0, "Local Space",
 	                            "The transformation of the target is evaluated relative to its local "
 	                            "coordinate system"},
@@ -129,8 +129,8 @@ static const EnumPropertyItem owner_space_pchan_items[] = {
 	{CONSTRAINT_SPACE_POSE,     "POSE", 0, "Pose Space",
 	                            "The constraint is applied in Pose Space, the object transformation is ignored"},
 	{CONSTRAINT_SPACE_PARLOCAL, "LOCAL_WITH_PARENT", 0, "Local With Parent",
-	                            "The constraint is applied relative to the local coordinate system of the object, "
-	                            "with the parent transformation added"},
+	                            "The constraint is applied relative to the rest pose local coordinate system "
+	                            "of the bone, thus including the parent-induced transformation"},
 	{CONSTRAINT_SPACE_LOCAL,    "LOCAL", 0, "Local Space",
 	                            "The constraint is applied relative to the local coordinate system of the object"},
 	{0, NULL, 0, NULL, NULL},
@@ -2262,6 +2262,15 @@ static void rna_def_constraint_spline_ik(BlenderRNA *brna)
 		{0, NULL, 0, NULL, NULL},
 	};
 
+	static const EnumPropertyItem splineik_y_scale_mode[] = {
+		{CONSTRAINT_SPLINEIK_YS_NONE, "NONE", 0, "None", "Don't scale in the Y axis"},
+		{CONSTRAINT_SPLINEIK_YS_FIT_CURVE, "FIT_CURVE", 0, "Fit Curve",
+	                                       "Scale the bones to fit the entire length of the curve"},
+		{CONSTRAINT_SPLINEIK_YS_ORIGINAL, "BONE_ORIGINAL", 0, "Bone Original",
+		                                  "Use the original Y scale of the bone"},
+		{0, NULL, 0, NULL, NULL},
+	};
+
 	srna = RNA_def_struct(brna, "SplineIKConstraint", "Constraint");
 	RNA_def_struct_ui_text(srna, "Spline IK Constraint", "Align 'n' bones along a curve");
 	RNA_def_struct_sdna_from(srna, "bSplineIKConstraint", "data");
@@ -2308,11 +2317,6 @@ static void rna_def_constraint_spline_ik(BlenderRNA *brna)
 	                         "Ignore the relative lengths of the bones when fitting to the curve");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
-	prop = RNA_def_property(srna, "use_y_stretch", PROP_BOOLEAN, PROP_NONE);
-	RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", CONSTRAINT_SPLINEIK_SCALE_LIMITED);
-	RNA_def_property_ui_text(prop, "Y Stretch", "Stretch the Y axis of the bones to fit the curve");
-	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
-
 	prop = RNA_def_property(srna, "use_curve_radius", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", CONSTRAINT_SPLINEIK_NO_CURVERAD);
 	RNA_def_property_ui_text(prop, "Use Curve Radius",
@@ -2326,6 +2330,15 @@ static void rna_def_constraint_spline_ik(BlenderRNA *brna)
 	RNA_def_property_enum_items(prop, splineik_xz_scale_mode);
 	RNA_def_property_ui_text(prop, "XZ Scale Mode",
 	                         "Method used for determining the scaling of the X and Z axes of the bones");
+	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+	/* y scaling mode */
+	prop = RNA_def_property(srna, "y_scale_mode", PROP_ENUM, PROP_NONE);
+	RNA_def_property_enum_sdna(prop, NULL, "yScaleMode");
+	RNA_def_property_enum_items(prop, splineik_y_scale_mode);
+	RNA_def_property_ui_text(prop, "Y Scale Mode",
+	                         "Method used for determining the scaling of the Y axis of the bones, "
+	                         "on top of the shape and scaling of the curve itself");
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
 	/* volume presevation for "volumetric" scale mode */
@@ -2641,6 +2654,7 @@ void RNA_def_constraint(BlenderRNA *brna)
 	RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
 	prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_EXPAND);
 	RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
 	RNA_def_property_ui_text(prop, "Expanded", "Constraint's panel is expanded in UI");
@@ -2655,9 +2669,10 @@ void RNA_def_constraint(BlenderRNA *brna)
 	/* TODO: setting this to true must ensure that all others in stack are turned off too... */
 	prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_ACTIVE);
-	RNA_def_property_ui_text(prop, "Active", "Constraint is the one being edited ");
+	RNA_def_property_ui_text(prop, "Active", "Constraint is the one being edited");
 
 	prop = RNA_def_property(srna, "is_proxy_local", PROP_BOOLEAN, PROP_NONE);
+	RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 	RNA_def_property_boolean_sdna(prop, NULL, "flag", CONSTRAINT_PROXY_LOCAL);
 	RNA_def_property_ui_text(prop, "Proxy Local",
 	                         "Constraint was added in this proxy instance (i.e. did not belong to source Armature)");

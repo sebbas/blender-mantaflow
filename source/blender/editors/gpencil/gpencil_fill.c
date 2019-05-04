@@ -1011,13 +1011,15 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 	/* create new stroke */
 	bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "bGPDstroke");
 	gps->thickness = brush->size;
+	gps->gradient_f = brush->gpencil_settings->gradient_f;
+	copy_v2_v2(gps->gradient_s, brush->gpencil_settings->gradient_s);
 	gps->inittime = 0.0f;
 
 	/* the polygon must be closed, so enabled cyclic */
 	gps->flag |= GP_STROKE_CYCLIC;
 	gps->flag |= GP_STROKE_3DSPACE;
 
-	gps->mat_nr = BKE_gpencil_handle_material(tgpf->bmain, tgpf->ob, tgpf->mat);
+	gps->mat_nr = BKE_gpencil_object_material_ensure(tgpf->bmain, tgpf->ob, tgpf->mat);
 
 	/* allocate memory for storage points */
 	gps->totpoints = tgpf->sbuffer_size;
@@ -1150,19 +1152,28 @@ static void gpencil_fill_draw_3d(const bContext *C, ARegion *UNUSED(ar), void *a
 /* check if context is suitable for filling */
 static bool gpencil_fill_poll(bContext *C)
 {
+	Object *obact = CTX_data_active_object(C);
+
 	if (ED_operator_regionactive(C)) {
 		ScrArea *sa = CTX_wm_area(C);
 		if (sa->spacetype == SPACE_VIEW3D) {
-			return 1;
+			if ((obact == NULL) ||
+			    (obact->type != OB_GPENCIL) ||
+			    (obact->mode != OB_MODE_PAINT_GPENCIL))
+			{
+				return false;
+			}
+
+			return true;
 		}
 		else {
 			CTX_wm_operator_poll_msg_set(C, "Active region not valid for filling operator");
-			return 0;
+			return false;
 		}
 	}
 	else {
 		CTX_wm_operator_poll_msg_set(C, "Active region not set");
-		return 0;
+		return false;
 	}
 }
 
@@ -1213,7 +1224,7 @@ static tGPDfill *gp_session_init_fill(bContext *C, wmOperator *UNUSED(op))
 	int totcol = tgpf->ob->totcol;
 
 	/* get color info */
-	Material *ma = BKE_gpencil_current_input_brush_material(bmain, tgpf->ob, brush);
+	Material *ma = BKE_gpencil_object_material_ensure_from_active_input_brush(bmain, tgpf->ob, brush);
 
 	tgpf->mat = ma;
 

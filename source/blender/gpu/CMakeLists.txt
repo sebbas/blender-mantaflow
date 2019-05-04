@@ -124,6 +124,15 @@ set(SRC
 	intern/gpu_vertex_format_private.h
 )
 
+set(LIB
+)
+
+if(NOT WITH_SYSTEM_GLEW)
+	list(APPEND LIB
+		${BLENDER_GLEW_LIBRARIES}
+	)
+endif()
+
 data_to_c_simple(shaders/gpu_shader_depth_only_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_uniform_color_frag.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_checker_frag.glsl SRC)
@@ -256,4 +265,4 @@ if(WITH_IMAGE_DDS)
 	add_definitions(-DWITH_DDS)
 endif()
 
-blender_add_lib(bf_gpu "${SRC}" "${INC}" "${INC_SYS}")
+blender_add_lib(bf_gpu "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
