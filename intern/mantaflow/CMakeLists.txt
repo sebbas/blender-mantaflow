@@ -25,16 +25,22 @@
 
 set(MANTAVERSION "0.12")
 
-if(WITH_OPENMP)
+set(MANTA_DEP
+  intern/manta_develop/dependencies
+)
+set(MANTA_HLP
+  intern/manta_develop/helper
+)
+set(MANTA_PP
+  intern/manta_develop/preprocessed/tbb
+)
+add_definitions(-DTBB=1)
+
+if(WITH_OPENMP AND WITH_MANTA_OMP)
   set(MANTA_PP
-    intern/manta_pp/omp
+    intern/manta_develop/preprocessed/omp
   )
   add_definitions(-DOPENMP=1)
-else()
-  set(MANTA_PP
-    intern/manta_pp/tbb
-  )
-  add_definitions(-DTBB=1)
 endif()
 
 if(WITH_OPENVDB)
@@ -48,8 +54,9 @@ set(INC
   ${MANTA_PP}/fileio
   ${MANTA_PP}/python
   ${MANTA_PP}/plugin
-  ${MANTA_PP}/pwrapper
-  ${MANTA_PP}/util
+  ${MANTA_HLP}/pwrapper
+  ${MANTA_HLP}/util
+  ${MANTA_DEP}/cnpy
   ../../source/blender/makesdna
   ../../source/blender/blenlib
 )
@@ -61,13 +68,8 @@ endif()
 set(INC_SYS
   ${PYTHON_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
+  ${TBB_INCLUDE_DIRS}
 )
-
-if(NOT WITH_OPENMP)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-endif()
 
 if(WITH_OPENVDB)
   list(APPEND INC_SYS
@@ -88,6 +90,9 @@ set(SRC
   intern/strings/fluid_script.h
   intern/strings/smoke_script.h
   intern/strings/liquid_script.h
+
+  ${MANTA_DEP}/cnpy/cnpy.cpp
+  ${MANTA_DEP}/cnpy/cnpy.h
 
   ${MANTA_PP}/commonkernels.h
   ${MANTA_PP}/commonkernels.h.reg
@@ -164,27 +169,17 @@ set(SRC
   ${MANTA_PP}/plugin/initplugins.cpp
   ${MANTA_PP}/plugin/kepsilon.cpp
   ${MANTA_PP}/plugin/meshplugins.cpp
+# TODO (sebbas): add numpy to libraries
 #   ${MANTA_PP}/plugin/numpyconvert.cpp
   ${MANTA_PP}/plugin/pressure.cpp
   ${MANTA_PP}/plugin/ptsplugins.cpp
-  ${MANTA_PP}/plugin/secondaryparticles
-  ${MANTA_PP}/plugin/sndparticles.cpp
+  ${MANTA_PP}/plugin/secondaryparticles.cpp
   ${MANTA_PP}/plugin/surfaceturbulence.cpp
+# TODO (sebbas): add numpy to libraries
 #   ${MANTA_PP}/plugin/tfplugins.cpp
   ${MANTA_PP}/plugin/vortexplugins.cpp
   ${MANTA_PP}/plugin/waveletturbulence.cpp
   ${MANTA_PP}/plugin/waves.cpp
-  ${MANTA_PP}/pwrapper/manta.h
-#   ${MANTA_PP}/pwrapper/numpyWrap.cpp
-#   ${MANTA_PP}/pwrapper/numpyWrap.h
-  ${MANTA_PP}/pwrapper/pclass.cpp
-  ${MANTA_PP}/pwrapper/pclass.h
-  ${MANTA_PP}/pwrapper/pconvert.cpp
-  ${MANTA_PP}/pwrapper/pconvert.h
-  ${MANTA_PP}/pwrapper/pvec3.cpp
-  ${MANTA_PP}/pwrapper/pythonInclude.h
-  ${MANTA_PP}/pwrapper/registry.cpp
-  ${MANTA_PP}/pwrapper/registry.h
   ${MANTA_PP}/python/defines.py
   ${MANTA_PP}/python/defines.py.reg
   ${MANTA_PP}/python/defines.py.reg.cpp
@@ -202,21 +197,6 @@ set(SRC
   ${MANTA_PP}/turbulencepart.h
   ${MANTA_PP}/turbulencepart.h.reg
   ${MANTA_PP}/turbulencepart.h.reg.cpp
-  ${MANTA_PP}/util/integrator.h
-  ${MANTA_PP}/util/interpol.h
-  ${MANTA_PP}/util/interpolHigh.h
-  ${MANTA_PP}/util/matrixbase.h
-  ${MANTA_PP}/util/mcubes.h
-  ${MANTA_PP}/util/quaternion.h
-  ${MANTA_PP}/util/randomstream.h
-  ${MANTA_PP}/util/rcmatrix.h
-  ${MANTA_PP}/util/simpleimage.cpp
-  ${MANTA_PP}/util/simpleimage.h
-  ${MANTA_PP}/util/solvana.h
-  ${MANTA_PP}/util/vector4d.cpp
-  ${MANTA_PP}/util/vector4d.h
-  ${MANTA_PP}/util/vectorbase.cpp
-  ${MANTA_PP}/util/vectorbase.h
   ${MANTA_PP}/vortexpart.cpp
   ${MANTA_PP}/vortexpart.h
   ${MANTA_PP}/vortexpart.h.reg
@@ -225,6 +205,34 @@ set(SRC
   ${MANTA_PP}/vortexsheet.h
   ${MANTA_PP}/vortexsheet.h.reg
   ${MANTA_PP}/vortexsheet.h.reg.cpp
+
+  ${MANTA_HLP}/pwrapper/manta.h
+# TODO (sebbas): add numpy to libraries
+#  ${MANTA_HLP}/pwrapper/numpyWrap.cpp
+#  ${MANTA_HLP}/pwrapper/numpyWrap.h
+  ${MANTA_HLP}/pwrapper/pclass.cpp
+  ${MANTA_HLP}/pwrapper/pclass.h
+  ${MANTA_HLP}/pwrapper/pconvert.cpp
+  ${MANTA_HLP}/pwrapper/pconvert.h
+  ${MANTA_HLP}/pwrapper/pvec3.cpp
+  ${MANTA_HLP}/pwrapper/pythonInclude.h
+  ${MANTA_HLP}/pwrapper/registry.cpp
+  ${MANTA_HLP}/pwrapper/registry.h
+  ${MANTA_HLP}/util/integrator.h
+  ${MANTA_HLP}/util/interpol.h
+  ${MANTA_HLP}/util/interpolHigh.h
+  ${MANTA_HLP}/util/matrixbase.h
+  ${MANTA_HLP}/util/mcubes.h
+  ${MANTA_HLP}/util/quaternion.h
+  ${MANTA_HLP}/util/randomstream.h
+  ${MANTA_HLP}/util/rcmatrix.h
+  ${MANTA_HLP}/util/simpleimage.cpp
+  ${MANTA_HLP}/util/simpleimage.h
+  ${MANTA_HLP}/util/solvana.h
+  ${MANTA_HLP}/util/vector4d.cpp
+  ${MANTA_HLP}/util/vector4d.h
+  ${MANTA_HLP}/util/vectorbase.cpp
+  ${MANTA_HLP}/util/vectorbase.h
 )
 
 set(LIB

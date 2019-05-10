@@ -300,6 +300,7 @@ endif()
 # Modifiers
 option(WITH_MOD_FLUID           "Enable Elbeem Modifier (Fluid Simulation)" ON)
 option(WITH_MOD_MANTA           "Enable Mantaflow Fluid Simulation Framework" ON)
+option(WITH_MANTA_OMP           "Enable Mantaflow OpenMP support (instead of default TBB support)" OFF)
 option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 # option(WITH_MOD_CLOTH_ELTOPO    "Enable Experimental cloth solver" OFF)  # this is now only available in a branch
 # mark_as_advanced(WITH_MOD_CLOTH_ELTOPO)
