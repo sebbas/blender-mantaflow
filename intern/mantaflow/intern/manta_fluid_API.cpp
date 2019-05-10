@@ -681,6 +681,10 @@ extern "C" float *smoke_get_react_in(FLUID *smoke)
 {
   return smoke->getReactIn();
 }
+extern "C" float *smoke_get_emission_in(FLUID *smoke)
+{
+  return smoke->getEmissionIn();
+}
 
 extern "C" int smoke_has_heat(FLUID *smoke)
 {

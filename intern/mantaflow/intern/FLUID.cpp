@@ -112,6 +112,7 @@ FLUID::FLUID(int *res, SmokeModifierData *smd) : mCurrentID(++solverID)
   mColorBIn = NULL;
   mFuelIn = NULL;
   mReactIn = NULL;
+  mEmissionIn = NULL;
 
   // Smoke high res grids
   mDensityHigh = NULL;
@@ -2339,6 +2340,8 @@ void FLUID::updatePointers()
         pyObjectToString(callPythonFunction("densityIn" + solver_ext, func)));
     mShadow = (float *)stringToPointer(
         pyObjectToString(callPythonFunction("shadow" + solver_ext, func)));
+    mEmissionIn = (float *)stringToPointer(
+        pyObjectToString(callPythonFunction("emissionIn" + solver_ext, func)));
 
     if (mUsingHeat) {
       mHeat = (float *)stringToPointer(

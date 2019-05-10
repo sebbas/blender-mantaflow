@@ -296,13 +296,14 @@ extern "C" {
 
 
  struct KnApplyEmission : public KernelBase {
- KnApplyEmission(const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, bool isAbsolute, int type) :  KernelBase(&flags,0) ,flags(flags),target(target),source(source),isAbsolute(isAbsolute),type(type)   {
+ KnApplyEmission(const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, const Grid<Real>* emissionTexture, bool isAbsolute, int type) :  KernelBase(&flags,0) ,flags(flags),target(target),source(source),emissionTexture(emissionTexture),isAbsolute(isAbsolute),type(type)   {
  runMessage(); run(); }
-  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, bool isAbsolute, int type ) const {
-	// if type is given, ony check apply emission when celltype matches type from flaggrid
+  inline void op(int i, int j, int k, const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, const Grid<Real>* emissionTexture, bool isAbsolute, int type ) const {
+	// if type is given, only apply emission when celltype matches type from flaggrid
+	// and if emission texture is given, only apply emission when some emission is present at cell (important for emit from particles)
 	bool isInflow = (type & FlagGrid::TypeInflow && flags.isInflow(i,j,k));
 	bool isOutflow = (type & FlagGrid::TypeOutflow && flags.isOutflow(i,j,k));
-	if (type && !isInflow && !isOutflow) return;
+	if ( (type && !isInflow && !isOutflow) && (emissionTexture && !(*emissionTexture)(i,j,k)) ) return;
 
 	if (isAbsolute)
 		target(i,j,k) = source(i,j,k);
@@ -314,29 +315,31 @@ extern "C" {
  return target; }
  typedef Grid<Real> type1;inline const Grid<Real>& getArg2() {
  return source; }
- typedef Grid<Real> type2;inline bool& getArg3() {
+ typedef Grid<Real> type2;inline const Grid<Real>* getArg3() {
+ return emissionTexture; }
+ typedef Grid<Real> type3;inline bool& getArg4() {
  return isAbsolute; }
- typedef bool type3;inline int& getArg4() {
+ typedef bool type4;inline int& getArg5() {
  return type; }
- typedef int type4; void runMessage() { debMsg("Executing kernel KnApplyEmission ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {
+ typedef int type5; void runMessage() { debMsg("Executing kernel KnApplyEmission ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void operator() (const tbb::blocked_range<IndexInt>& __r) const {
   const int _maxX = maxX; const int _maxY = maxY; if (maxZ>1) {
- for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,target,source,isAbsolute,type); }
+ for (int k=__r.begin(); k!=(int)__r.end(); k++) for (int j=0; j<_maxY; j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,target,source,emissionTexture,isAbsolute,type); }
  else {
- const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,target,source,isAbsolute,type); }
+ const int k=0; for (int j=__r.begin(); j!=(int)__r.end(); j++) for (int i=0; i<_maxX; i++) op(i,j,k,flags,target,source,emissionTexture,isAbsolute,type); }
   }
  void run() {
   if (maxZ>1) tbb::parallel_for (tbb::blocked_range<IndexInt>(minZ, maxZ), *this); else tbb::parallel_for (tbb::blocked_range<IndexInt>(0, maxY), *this);  }
-  const FlagGrid& flags; Grid<Real>& target; const Grid<Real>& source; bool isAbsolute; int type;   }
+  const FlagGrid& flags; Grid<Real>& target; const Grid<Real>& source; const Grid<Real>* emissionTexture; bool isAbsolute; int type;   }
 ;
 
 //! Add emission values
 //isAbsolute: whether to add emission values to existing, or replace
-void applyEmission(FlagGrid& flags, Grid<Real>& target, Grid<Real>& source, bool isAbsolute=true, int type=0) {
-	KnApplyEmission(flags, target, source, isAbsolute, type);
+void applyEmission(FlagGrid& flags, Grid<Real>& target, Grid<Real>& source, Grid<Real>* emissionTexture=NULL, bool isAbsolute=true, int type=0) {
+	KnApplyEmission(flags, target, source, emissionTexture, isAbsolute, type);
 } static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "applyEmission" , !noTiming ); PyObject *_retval = 0; {
- ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",2,&_lock); bool isAbsolute = _args.getOpt<bool >("isAbsolute",3,true,&_lock); int type = _args.getOpt<int >("type",4,0,&_lock);   _retval = getPyNone(); applyEmission(flags,target,source,isAbsolute,type);  _args.check(); }
+ ArgLocker _lock; FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& target = *_args.getPtr<Grid<Real> >("target",1,&_lock); Grid<Real>& source = *_args.getPtr<Grid<Real> >("source",2,&_lock); Grid<Real>* emissionTexture = _args.getPtrOpt<Grid<Real> >("emissionTexture",3,NULL,&_lock); bool isAbsolute = _args.getOpt<bool >("isAbsolute",4,true,&_lock); int type = _args.getOpt<int >("type",5,0,&_lock);   _retval = getPyNone(); applyEmission(flags,target,source,emissionTexture,isAbsolute,type);  _args.check(); }
  pbFinalizePlugin(parent,"applyEmission", !noTiming ); return _retval; }
  catch(std::exception& e) {
  pbSetError("applyEmission",e.what()); return 0; }

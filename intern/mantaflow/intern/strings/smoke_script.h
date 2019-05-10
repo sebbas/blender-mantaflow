@@ -80,6 +80,7 @@ const std::string smoke_alloc =
     "\n\
 mantaMsg('Smoke alloc')\n\
 shadow_s$ID$     = s$ID$.create(RealGrid)\n\
+emissionIn_s$ID$ = s$ID$.create(RealGrid)\n\
 density_s$ID$    = s$ID$.create(RealGrid)\n\
 densityIn_s$ID$  = s$ID$.create(RealGrid)\n\
 heat_s$ID$       = 0 # allocated dynamically\n\
@@ -288,18 +289,18 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     flags_s$ID$.fillGrid()\n\
     \n\
     mantaMsg('Smoke inflow')\n\
-    applyEmission(flags=flags_s$ID$, target=density_s$ID$, source=densityIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+    applyEmission(flags=flags_s$ID$, target=density_s$ID$, source=densityIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
     if using_heat_s$ID$:\n\
-        applyEmission(flags=flags_s$ID$, target=heat_s$ID$, source=heatIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=heat_s$ID$, source=heatIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
     \n\
     if using_colors_s$ID$:\n\
-        applyEmission(flags=flags_s$ID$, target=color_r_s$ID$, source=color_r_in_s$ID$, type=FlagInflow|FlagOutflow)\n\
-        applyEmission(flags=flags_s$ID$, target=color_g_s$ID$, source=color_g_in_s$ID$, type=FlagInflow|FlagOutflow)\n\
-        applyEmission(flags=flags_s$ID$, target=color_b_s$ID$, source=color_b_in_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=color_r_s$ID$, source=color_r_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=color_g_s$ID$, source=color_g_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=color_b_s$ID$, source=color_b_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
     \n\
     if using_fire_s$ID$:\n\
-        applyEmission(flags=flags_s$ID$, target=fuel_s$ID$, source=fuelIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-        applyEmission(flags=flags_s$ID$, target=react_s$ID$, source=reactIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=fuel_s$ID$, source=fuelIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        applyEmission(flags=flags_s$ID$, target=react_s$ID$, source=reactIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
     \n\
     mantaMsg('Smoke step / s$ID$.frame: ' + str(s$ID$.frame))\n\
     if using_fire_s$ID$:\n\
@@ -384,7 +385,7 @@ def smoke_step_$ID$():\n\
         advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=color_b_s$ID$, order=2)\n\
     \n\
     mantaMsg('Advecting velocity')\n\
-    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2, openBounds=doOpen_s$ID$, boundaryWidth=boundaryWidth_s$ID$)\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=vel_s$ID$, order=2)\n\
     \n\
     if doOpen_s$ID$ or using_outflow_s$ID$:\n\
         resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\

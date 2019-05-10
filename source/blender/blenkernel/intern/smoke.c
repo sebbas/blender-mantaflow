@@ -2814,11 +2814,17 @@ BLI_INLINE void apply_inflow_fields(SmokeFlowSettings *sfs,
                                     float *color_r,
                                     float *color_g,
                                     float *color_b,
-                                    float *phi)
+                                    float *phi,
+                                    float *emission)
 {
   /* add inflow */
   if (phi) {
     phi[index] = distance_value;
+  }
+
+  /* save emission value for manta inflow */
+  if (emission) {
+    emission[index] = emission_value;
   }
 
   /* add smoke inflow */
@@ -3154,6 +3160,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
   float *color_b_in = smoke_get_color_b_in(sds->fluid);
   float *fuel_in = smoke_get_fuel_in(sds->fluid);
   float *react_in = smoke_get_react_in(sds->fluid);
+  float *emission_in = smoke_get_emission_in(sds->fluid);
 
   float *velx_initial = fluid_get_in_velocity_x(sds->fluid);
   float *vely_initial = fluid_get_in_velocity_y(sds->fluid);
@@ -3249,7 +3256,8 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                   color_r_in,
                                   color_g_in,
                                   color_b_in,
-                                  phi_in);
+                                  phi_in,
+                                  emission_in);
             }
             else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_INFLOW ||
                      sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY) {  // inflow
@@ -3266,7 +3274,8 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                     color_r_in,
                                     color_g_in,
                                     color_b_in,
-                                    phi_in);
+                                    phi_in,
+                                    emission_in);
                 /* initial velocity */
                 if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
                   velx_initial[d_index] = velocity_map[e_index * 3];

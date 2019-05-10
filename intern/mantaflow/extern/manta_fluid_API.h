@@ -160,6 +160,7 @@ float *smoke_get_color_g_in(struct FLUID *smoke);
 float *smoke_get_color_b_in(struct FLUID *smoke);
 float *smoke_get_fuel_in(struct FLUID *smoke);
 float *smoke_get_react_in(struct FLUID *smoke);
+float *smoke_get_emission_in(struct FLUID *smoke);
 int smoke_has_heat(struct FLUID *smoke);
 int smoke_has_fuel(struct FLUID *smoke);
 int smoke_has_colors(struct FLUID *smoke);

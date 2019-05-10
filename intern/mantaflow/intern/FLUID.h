@@ -315,6 +315,10 @@ struct FLUID {
   {
     return mReactIn;
   }
+  inline float *getEmissionIn()
+  {
+    return mEmissionIn;
+  }
 
   inline float *getDensityHigh()
   {
@@ -706,6 +710,7 @@ struct FLUID {
   float *mHeatIn;
   float *mFuelIn;
   float *mReactIn;
+  float *mEmissionIn;
   float *mColorRIn;
   float *mColorGIn;
   float *mColorBIn;
