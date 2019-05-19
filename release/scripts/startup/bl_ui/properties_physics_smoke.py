@@ -24,7 +24,6 @@ from bpy.types import (
     Menu,
 )
 from .properties_physics_common import (
-    point_cache_ui,
     effector_weights_ui,
 )
 
@@ -1041,7 +1040,7 @@ class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
 
     def draw(self, context):
         domain = context.smoke.domain_settings
-        effector_weights_ui(self, context, domain.effector_weights, 'SMOKE')
+        effector_weights_ui(self, domain.effector_weights, 'SMOKE')
 
 class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
     bl_label = "Viewport Display"
