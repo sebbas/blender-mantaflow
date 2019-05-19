@@ -65,6 +65,7 @@
 #define DISPLAY_BUFFER_CHANNELS 4
 
 /* ** list of all supported color spaces, displays and views */
+static char global_role_data[MAX_COLORSPACE_NAME];
 static char global_role_scene_linear[MAX_COLORSPACE_NAME];
 static char global_role_color_picking[MAX_COLORSPACE_NAME];
 static char global_role_texture_painting[MAX_COLORSPACE_NAME];
@@ -488,6 +489,7 @@ static void colormanage_load_config(OCIO_ConstConfigRcPtr *config)
   const char *name;
 
   /* get roles */
+  colormanage_role_color_space_name_get(config, global_role_data, OCIO_ROLE_DATA, NULL);
   colormanage_role_color_space_name_get(
       config, global_role_scene_linear, OCIO_ROLE_SCENE_LINEAR, NULL);
   colormanage_role_color_space_name_get(
@@ -1055,13 +1057,19 @@ void colormanage_imbuf_make_linear(ImBuf *ibuf, const char *from_colorspace)
 
   if (ibuf->rect_float) {
     const char *to_colorspace = global_role_scene_linear;
+    const bool predivide = IMB_alpha_affects_rgb(ibuf);
 
     if (ibuf->rect) {
       imb_freerectImBuf(ibuf);
     }
 
-    IMB_colormanagement_transform(
-        ibuf->rect_float, ibuf->x, ibuf->y, ibuf->channels, from_colorspace, to_colorspace, true);
+    IMB_colormanagement_transform(ibuf->rect_float,
+                                  ibuf->x,
+                                  ibuf->y,
+                                  ibuf->channels,
+                                  from_colorspace,
+                                  to_colorspace,
+                                  predivide);
   }
 }
 
@@ -1260,6 +1268,8 @@ void IMB_colormanagement_validate_settings(const ColorManagedDisplaySettings *di
 const char *IMB_colormanagement_role_colorspace_name_get(int role)
 {
   switch (role) {
+    case COLOR_ROLE_DATA:
+      return global_role_data;
     case COLOR_ROLE_SCENE_LINEAR:
       return global_role_scene_linear;
     case COLOR_ROLE_COLOR_PICKING:
@@ -1341,6 +1351,48 @@ const char *IMB_colormanagement_get_rect_colorspace(ImBuf *ibuf)
   }
 }
 
+bool IMB_colormanagement_space_is_data(ColorSpace *colorspace)
+{
+  return (colorspace && colorspace->is_data);
+}
+
+static void colormanage_ensure_srgb_scene_linear_info(ColorSpace *colorspace)
+{
+  if (!colorspace->info.cached) {
+    OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
+    OCIO_ConstColorSpaceRcPtr *ocio_colorspace = OCIO_configGetColorSpace(config,
+                                                                          colorspace->name);
+
+    bool is_scene_linear, is_srgb;
+    OCIO_colorSpaceIsBuiltin(config, ocio_colorspace, &is_scene_linear, &is_srgb);
+
+    OCIO_colorSpaceRelease(ocio_colorspace);
+    OCIO_configRelease(config);
+
+    colorspace->info.is_scene_linear = is_scene_linear;
+    colorspace->info.is_srgb = is_srgb;
+    colorspace->info.cached = true;
+  }
+}
+
+bool IMB_colormanagement_space_is_scene_linear(ColorSpace *colorspace)
+{
+  colormanage_ensure_srgb_scene_linear_info(colorspace);
+  return (colorspace && colorspace->info.is_scene_linear);
+}
+
+bool IMB_colormanagement_space_is_srgb(ColorSpace *colorspace)
+{
+  colormanage_ensure_srgb_scene_linear_info(colorspace);
+  return (colorspace && colorspace->info.is_srgb);
+}
+
+bool IMB_colormanagement_space_name_is_data(const char *name)
+{
+  ColorSpace *colorspace = colormanage_colorspace_get_named(name);
+  return (colorspace && colorspace->is_data);
+}
+
 /*********************** Threaded display buffer transform routines *************************/
 
 typedef struct DisplayBufferThread {
@@ -1359,6 +1411,7 @@ typedef struct DisplayBufferThread {
   int channels;
   float dither;
   bool is_data;
+  bool predivide;
 
   const char *byte_colorspace;
   const char *float_colorspace;
@@ -1423,6 +1476,7 @@ static void display_buffer_init_handle(void *handle_v,
   handle->channels = channels;
   handle->dither = dither;
   handle->is_data = is_data;
+  handle->predivide = IMB_alpha_affects_rgb(ibuf);
 
   handle->byte_colorspace = init_data->byte_colorspace;
   handle->float_colorspace = init_data->float_colorspace;
@@ -1440,6 +1494,7 @@ static void display_buffer_apply_get_linear_buffer(DisplayBufferThread *handle,
 
   bool is_data = handle->is_data;
   bool is_data_display = handle->cm_processor->is_data_result;
+  bool predivide = handle->predivide;
 
   if (!handle->buffer) {
     unsigned char *byte_buffer = handle->byte_buffer;
@@ -1488,7 +1543,7 @@ static void display_buffer_apply_get_linear_buffer(DisplayBufferThread *handle,
 
     if (!is_data && !is_data_display) {
       IMB_colormanagement_transform(
-          linear_buffer, width, height, channels, from_colorspace, to_colorspace, true);
+          linear_buffer, width, height, channels, from_colorspace, to_colorspace, predivide);
     }
 
     *is_straight_alpha = false;
@@ -1544,13 +1599,13 @@ static void *do_display_buffer_apply_thread(void *handle_v)
     }
   }
   else {
-    bool is_straight_alpha, predivide;
+    bool is_straight_alpha;
     float *linear_buffer = MEM_mallocN(((size_t)channels) * width * height * sizeof(float),
                                        "color conversion linear buffer");
 
     display_buffer_apply_get_linear_buffer(handle, height, linear_buffer, &is_straight_alpha);
 
-    predivide = is_straight_alpha == false;
+    bool predivide = handle->predivide && (is_straight_alpha == false);
 
     if (is_data) {
       /* special case for data buffers - no color space conversions,
@@ -2108,6 +2163,69 @@ void IMB_colormanagement_colorspace_to_scene_linear(float *buffer,
     }
 
     OCIO_PackedImageDescRelease(img);
+  }
+}
+
+void IMB_colormanagement_imbuf_to_srgb_texture(unsigned char *out_buffer,
+                                               const int offset_x,
+                                               const int offset_y,
+                                               const int width,
+                                               const int height,
+                                               const struct ImBuf *ibuf,
+                                               const bool compress_as_srgb)
+{
+  /* Convert byte buffer for texture storage on the GPU. These have builtin
+   * support for converting sRGB to linear, which allows us to store textures
+   * without precision or performance loss at minimal memory usage. */
+  BLI_assert(ibuf->rect && ibuf->rect_float == NULL);
+
+  OCIO_ConstProcessorRcPtr *processor = NULL;
+  if (compress_as_srgb && ibuf->rect_colorspace &&
+      !IMB_colormanagement_space_is_srgb(ibuf->rect_colorspace)) {
+    processor = colorspace_to_scene_linear_processor(ibuf->rect_colorspace);
+  }
+
+  /* TODO(brecht): make this multithreaded, or at least process in batches. */
+  const unsigned char *in_buffer = (unsigned char *)ibuf->rect;
+  const bool use_premultiply = IMB_alpha_affects_rgb(ibuf);
+
+  for (int y = 0; y < height; y++) {
+    const size_t in_offset = (offset_y + y) * ibuf->x + offset_x;
+    const size_t out_offset = y * width;
+    const unsigned char *in = in_buffer + in_offset * 4;
+    unsigned char *out = out_buffer + out_offset * 4;
+
+    if (processor) {
+      /* Convert to scene linear, to sRGB and premultiply. */
+      for (int x = 0; x < width; x++, in += 4, out += 4) {
+        float pixel[4];
+        rgba_uchar_to_float(pixel, in);
+        OCIO_processorApplyRGB(processor, pixel);
+        linearrgb_to_srgb_v3_v3(pixel, pixel);
+        if (use_premultiply) {
+          mul_v3_fl(pixel, pixel[3]);
+        }
+        rgba_float_to_uchar(out, pixel);
+      }
+    }
+    else if (use_premultiply) {
+      /* Premultiply only. */
+      for (int x = 0; x < width; x++, in += 4, out += 4) {
+        out[0] = (in[0] * in[3]) >> 8;
+        out[1] = (in[1] * in[3]) >> 8;
+        out[2] = (in[2] * in[3]) >> 8;
+        out[3] = in[3];
+      }
+    }
+    else {
+      /* Copy only. */
+      for (int x = 0; x < width; x++, in += 4, out += 4) {
+        out[0] = in[0];
+        out[1] = in[1];
+        out[2] = in[2];
+        out[3] = in[3];
+      }
+    }
   }
 }
 

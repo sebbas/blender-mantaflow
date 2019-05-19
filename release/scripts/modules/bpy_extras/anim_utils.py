@@ -104,7 +104,7 @@ def bake_action_objects_iter(
         if frame is None:
             break
         scene.frame_set(frame)
-        scene.update()
+        bpy.context.view_layer.update()
         for iter in iter_all:
             iter.send(frame)
     scene.frame_set(frame_back)
@@ -158,7 +158,8 @@ def bake_action_iter(
         'bbone_curveinx', 'bbone_curveoutx',
         'bbone_curveiny', 'bbone_curveouty',
         'bbone_rollin', 'bbone_rollout',
-        'bbone_scalein', 'bbone_scaleout',
+        'bbone_scaleinx', 'bbone_scaleoutx',
+        'bbone_scaleiny', 'bbone_scaleouty',
         'bbone_easein', 'bbone_easeout'
     ]
 

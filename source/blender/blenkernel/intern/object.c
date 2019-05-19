@@ -469,6 +469,7 @@ void BKE_object_free_derived_caches(Object *ob)
     ob->runtime.mesh_deform_eval = NULL;
   }
 
+  BKE_object_to_mesh_clear(ob);
   BKE_object_free_curve_cache(ob);
 
   /* clear grease pencil data */
@@ -1467,7 +1468,7 @@ Object *BKE_object_copy(Main *bmain, const Object *ob)
 
 /** Perform deep-copy of object and its 'children' data-blocks (obdata, materials, actions, etc.).
  *
- * \param dupflag Controls which sub-data are also duplicated
+ * \param dupflag: Controls which sub-data are also duplicated
  * (see #eDupli_ID_Flags in DNA_userdef_types.h).
  *
  * \note This function does not do any remapping to new IDs, caller must do it
@@ -1951,7 +1952,6 @@ void BKE_object_make_proxy(Main *bmain, Object *ob, Object *target, Object *cob)
   /* copy IDProperties */
   if (ob->id.properties) {
     IDP_FreeProperty(ob->id.properties);
-    MEM_freeN(ob->id.properties);
     ob->id.properties = NULL;
   }
   if (target->id.properties) {
@@ -4486,4 +4486,33 @@ void BKE_object_type_set_empty_for_versioning(Object *ob)
     ob->pose = NULL;
   }
   ob->mode = OB_MODE_OBJECT;
+}
+
+/* Updates select_id of all objects in the given bmain. */
+void BKE_object_update_select_id(struct Main *bmain)
+{
+  Object *ob = bmain->objects.first;
+  int select_id = 1;
+  while (ob) {
+    ob->runtime.select_id = select_id++;
+    ob = ob->id.next;
+  }
+}
+
+Mesh *BKE_object_to_mesh(Object *object)
+{
+  BKE_object_to_mesh_clear(object);
+
+  Mesh *mesh = BKE_mesh_new_from_object(object);
+  object->runtime.object_as_temp_mesh = mesh;
+  return mesh;
+}
+
+void BKE_object_to_mesh_clear(Object *object)
+{
+  if (object->runtime.object_as_temp_mesh == NULL) {
+    return;
+  }
+  BKE_id_free(NULL, object->runtime.object_as_temp_mesh);
+  object->runtime.object_as_temp_mesh = NULL;
 }

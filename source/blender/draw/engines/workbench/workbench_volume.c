@@ -53,6 +53,7 @@ static struct {
 
 extern char datatoc_workbench_volume_vert_glsl[];
 extern char datatoc_workbench_volume_frag_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
 static GPUShader *volume_shader_get(bool slice, bool coba, bool cubic)
 {
@@ -77,8 +78,11 @@ static GPUShader *volume_shader_get(bool slice, bool coba, bool cubic)
     char *defines = BLI_dynstr_get_cstring(ds);
     BLI_dynstr_free(ds);
 
-    e_data.volume_sh[id] = DRW_shader_create(
-        datatoc_workbench_volume_vert_glsl, NULL, datatoc_workbench_volume_frag_glsl, defines);
+    e_data.volume_sh[id] = DRW_shader_create_with_lib(datatoc_workbench_volume_vert_glsl,
+                                                      NULL,
+                                                      datatoc_workbench_volume_frag_glsl,
+                                                      datatoc_common_view_lib_glsl,
+                                                      defines);
 
     MEM_freeN(defines);
   }
@@ -207,10 +211,10 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
   DRW_shgroup_uniform_float_copy(grp, "densityScale", 10.0f * sds->display_thickness);
 
   if (use_slice) {
-    DRW_shgroup_call_object_add(grp, DRW_cache_quad_get(), ob);
+    DRW_shgroup_call_object(grp, DRW_cache_quad_get(), ob);
   }
   else {
-    DRW_shgroup_call_object_add(grp, DRW_cache_cube_get(), ob);
+    DRW_shgroup_call_object(grp, DRW_cache_cube_get(), ob);
   }
 
   BLI_addtail(&wpd->smoke_domains, BLI_genericNodeN(smd));

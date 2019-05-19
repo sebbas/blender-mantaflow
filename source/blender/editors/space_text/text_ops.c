@@ -101,7 +101,7 @@ static char *buf_tabs_to_spaces(const char *in_buf, const int tab_size)
   }
 
   /* Allocate output before with extra space for expanded tabs. */
-  const int out_size = strlen(in_buf) + num_tabs * (tab_size - 1);
+  const int out_size = strlen(in_buf) + num_tabs * (tab_size - 1) + 1;
   char *out_buf = MEM_mallocN(out_size * sizeof(char), __func__);
 
   /* Fill output buffer. */
@@ -247,7 +247,7 @@ static int text_new_exec(bContext *C, wmOperator *UNUSED(op))
 
   if (prop) {
     RNA_id_pointer_create(&text->id, &idptr);
-    RNA_property_pointer_set(&ptr, prop, idptr);
+    RNA_property_pointer_set(NULL, &ptr, prop, idptr);
     RNA_property_update(C, &ptr, prop);
   }
   else if (st) {
@@ -326,7 +326,7 @@ static int text_open_exec(bContext *C, wmOperator *op)
 
   if (pprop->prop) {
     RNA_id_pointer_create(&text->id, &idptr);
-    RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr);
+    RNA_property_pointer_set(NULL, &pprop->ptr, pprop->prop, idptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
   else if (st) {

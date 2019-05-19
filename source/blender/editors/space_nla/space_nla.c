@@ -40,6 +40,7 @@
 #include "ED_anim_api.h"
 #include "ED_markers.h"
 #include "ED_screen.h"
+#include "ED_time_scrub_ui.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -47,6 +48,7 @@
 
 #include "RNA_access.h"
 
+#include "UI_interface.h"
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
@@ -69,6 +71,7 @@ static SpaceLink *nla_new(const ScrArea *sa, const Scene *scene)
 
   /* set auto-snapping settings */
   snla->autosnap = SACTSNAP_FRAME;
+  snla->flag = SNLA_SHOW_MARKER_LINES;
 
   /* header */
   ar = MEM_callocN(sizeof(ARegion), "header for nla");
@@ -116,7 +119,7 @@ static SpaceLink *nla_new(const ScrArea *sa, const Scene *scene)
 
   ar->v2d.minzoom = 0.01f;
   ar->v2d.maxzoom = 50;
-  ar->v2d.scroll = (V2D_SCROLL_BOTTOM | V2D_SCROLL_SCALE_HORIZONTAL);
+  ar->v2d.scroll = (V2D_SCROLL_BOTTOM | V2D_SCROLL_HORIZONTAL_HANDLES);
   ar->v2d.scroll |= (V2D_SCROLL_RIGHT);
   ar->v2d.keepzoom = V2D_LOCKZOOM_Y;
   ar->v2d.keepofs = V2D_KEEPOFS_Y;
@@ -201,6 +204,9 @@ static void nla_channel_region_draw(const bContext *C, ARegion *ar)
     draw_nla_channel_list(C, &ac, ar);
   }
 
+  /* channel filter next to scrubbing area */
+  ED_channel_search_draw(C, ar, ac.ads);
+
   /* reset view matrix */
   UI_view2d_view_restore(C);
 
@@ -284,20 +290,12 @@ static void nla_main_region_draw(const bContext *C, ARegion *ar)
   /* reset view matrix */
   UI_view2d_view_restore(C);
 
+  ED_scrubbing_draw(ar, scene, snla->flag & SNLA_DRAWTIME, true);
+
   /* scrollers */
   scrollers = UI_view2d_scrollers_calc(v2d, NULL);
   UI_view2d_scrollers_draw(v2d, scrollers);
   UI_view2d_scrollers_free(scrollers);
-
-  /* frame numbers */
-  UI_view2d_draw_scale_x__discrete_frames_or_seconds(
-      ar, v2d, &v2d->hor, scene, snla->flag & SNLA_DRAWTIME, TH_TEXT);
-
-  /* draw current frame number-indicator on top of scrollers */
-  if ((snla->flag & SNLA_NODRAWCFRANUM) == 0) {
-    UI_view2d_view_orthoSpecial(ar, v2d, 1);
-    ANIM_draw_cfra_number(C, v2d, cfra_flag);
-  }
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -614,7 +612,7 @@ void ED_spacetype_nla(void)
   art->draw = nla_main_region_draw;
   art->listener = nla_main_region_listener;
   art->message_subscribe = nla_main_region_message_subscribe;
-  art->keymapflag = ED_KEYMAP_VIEW2D | ED_KEYMAP_MARKERS | ED_KEYMAP_ANIMATION | ED_KEYMAP_FRAMES;
+  art->keymapflag = ED_KEYMAP_VIEW2D | ED_KEYMAP_ANIMATION | ED_KEYMAP_FRAMES;
 
   BLI_addhead(&st->regiontypes, art);
 
@@ -645,7 +643,7 @@ void ED_spacetype_nla(void)
   /* regions: UI buttons */
   art = MEM_callocN(sizeof(ARegionType), "spacetype nla region");
   art->regionid = RGN_TYPE_UI;
-  art->prefsizex = 200;
+  art->prefsizex = UI_SIDEBAR_PANEL_WIDTH;
   art->keymapflag = ED_KEYMAP_UI;
   art->listener = nla_region_listener;
   art->init = nla_buttons_region_init;

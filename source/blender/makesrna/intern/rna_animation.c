@@ -72,6 +72,43 @@ const EnumPropertyItem rna_enum_keying_flag_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+/* Contains additional flags suitable for use in Python API functions. */
+const EnumPropertyItem rna_enum_keying_flag_items_api[] = {
+    {INSERTKEY_NEEDED,
+     "INSERTKEY_NEEDED",
+     0,
+     "Only Needed",
+     "Only insert keyframes where they're needed in the relevant F-Curves"},
+    {INSERTKEY_MATRIX,
+     "INSERTKEY_VISUAL",
+     0,
+     "Visual Keying",
+     "Insert keyframes based on 'visual transforms'"},
+    {INSERTKEY_XYZ2RGB,
+     "INSERTKEY_XYZ_TO_RGB",
+     0,
+     "XYZ=RGB Colors",
+     "Color for newly added transformation F-Curves (Location, Rotation, Scale) "
+     "and also Color is based on the transform axis"},
+    {INSERTKEY_REPLACE,
+     "INSERTKEY_REPLACE",
+     0,
+     "Replace Existing",
+     "Only replace existing keyframes"},
+    {INSERTKEY_AVAILABLE,
+     "INSERTKEY_AVAILABLE",
+     0,
+     "Only Available",
+     "Don't create F-Curves when they don't already exist"},
+    {INSERTKEY_CYCLE_AWARE,
+     "INSERTKEY_CYCLE_AWARE",
+     0,
+     "Cycle Aware Keying",
+     "When inserting into a curve with cyclic extrapolation, remap the keyframe inside "
+     "the cycle time range, and if changing an end key, also update the other one"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include "BLI_math_base.h"
@@ -114,7 +151,9 @@ static int rna_AnimData_action_editable(PointerRNA *ptr, const char **UNUSED(r_i
     return PROP_EDITABLE;
 }
 
-static void rna_AnimData_action_set(PointerRNA *ptr, PointerRNA value)
+static void rna_AnimData_action_set(struct ReportList *UNUSED(reports),
+                                    PointerRNA *ptr,
+                                    PointerRNA value)
 {
   ID *ownerId = (ID *)ptr->id.data;
 
@@ -424,7 +463,9 @@ static PointerRNA rna_KeyingSet_active_ksPath_get(PointerRNA *ptr)
       ptr, &RNA_KeyingSetPath, BLI_findlink(&ks->paths, ks->active_path - 1));
 }
 
-static void rna_KeyingSet_active_ksPath_set(PointerRNA *ptr, PointerRNA value)
+static void rna_KeyingSet_active_ksPath_set(struct ReportList *UNUSED(reports),
+                                            PointerRNA *ptr,
+                                            PointerRNA value)
 {
   KeyingSet *ks = (KeyingSet *)ptr->data;
   KS_Path *ksp = (KS_Path *)value.data;
@@ -575,7 +616,9 @@ static PointerRNA rna_NlaTrack_active_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_NlaTrack, track);
 }
 
-static void rna_NlaTrack_active_set(PointerRNA *ptr, PointerRNA value)
+static void rna_NlaTrack_active_set(struct ReportList *UNUSED(reports),
+                                    PointerRNA *ptr,
+                                    PointerRNA value)
 {
   AnimData *adt = (AnimData *)ptr->data;
   NlaTrack *track = (NlaTrack *)value.data;
@@ -1266,6 +1309,9 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Use NLA Tweak Mode", "Whether to enable or disable tweak mode in NLA");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, "rna_AnimData_update");
+
+  /* Animation Data API */
+  RNA_api_animdata(srna);
 }
 
 /* --- */

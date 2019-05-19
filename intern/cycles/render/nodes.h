@@ -100,10 +100,10 @@ class ImageTextureNode : public ImageSlotTextureNode {
   }
 
   /* Parameters. */
-  bool use_alpha;
   ustring filename;
   void *builtin_data;
   ustring colorspace;
+  ImageAlphaType alpha_type;
   NodeImageProjection projection;
   InterpolationType interpolation;
   ExtensionType extension;
@@ -141,10 +141,10 @@ class EnvironmentTextureNode : public ImageSlotTextureNode {
   }
 
   /* Parameters. */
-  bool use_alpha;
   ustring filename;
   void *builtin_data;
   ustring colorspace;
+  ImageAlphaType alpha_type;
   NodeEnvironmentProjection projection;
   InterpolationType interpolation;
   bool animated;
@@ -487,6 +487,7 @@ class PrincipledBsdfNode : public BsdfBaseNode {
  public:
   SHADER_NODE_CLASS(PrincipledBsdfNode)
 
+  void expand(ShaderGraph *graph);
   bool has_surface_bssrdf();
   bool has_bssrdf_bump();
   void compile(SVMCompiler &compiler,
@@ -515,6 +516,8 @@ class PrincipledBsdfNode : public BsdfBaseNode {
   float surface_mix_weight;
   ClosureType distribution, distribution_orig;
   ClosureType subsurface_method;
+  float3 emission;
+  float alpha;
 
   bool has_integrator_dependency();
   void attributes(Shader *shader, AttributeRequestSet *attributes);

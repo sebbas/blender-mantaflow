@@ -1,6 +1,4 @@
 
-uniform mat4 ModelViewProjectionMatrix;
-
 in vec3 pos;
 in float color;
 
@@ -47,7 +45,8 @@ vec3 weight_to_rgb(float weight)
 
 void main()
 {
-  gl_Position = ModelViewProjectionMatrix * vec4(pos, 1.0);
+  vec3 world_pos = point_object_to_world(pos);
+  gl_Position = point_world_to_ndc(world_pos);
 
 #ifdef USE_WEIGHT
   finalColor = vec4(weight_to_rgb(color), 1.0);

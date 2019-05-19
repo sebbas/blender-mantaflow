@@ -33,7 +33,7 @@ extern "C" {
 /**
  * Creates a "handle" for a C++ GHOST object.
  * A handle is just an opaque pointer to an empty struct.
- * In the API the pointer is casted to the actual C++ class.
+ * In the API the pointer is cast to the actual C++ class.
  * The 'name' argument to the macro is the name of the handle to create.
  */
 
@@ -904,17 +904,6 @@ extern void GHOST_putClipboard(GHOST_TInt8 *buffer, int selection);
  * \return current status (1 -visible, 0 - hidden)
  */
 extern int GHOST_toggleConsole(int action);
-
-/**
- * Confirms quitting he program when there is just one window left open
- * in the application
- */
-extern int GHOST_confirmQuit(GHOST_WindowHandle windowhandle);
-
-/**
- * Informs if the system provides native dialogs (eg. confirm quit)
- */
-extern int GHOST_SupportsNativeDialogs(void);
 
 /**
  * Use native pixel size (MacBook pro 'retina'), if supported.

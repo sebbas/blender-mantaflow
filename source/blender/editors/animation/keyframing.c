@@ -1307,8 +1307,8 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
    * - if we're replacing keyframes only, DO NOT create new F-Curves if they do not exist yet
    *   but still try to get the F-Curve if it exists...
    */
-  FCurve *fcu = verify_fcurve(
-      bmain, act, group, ptr, rna_path, array_index, (flag & INSERTKEY_REPLACE) == 0);
+  bool can_create_curve = (flag & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) == 0;
+  FCurve *fcu = verify_fcurve(bmain, act, group, ptr, rna_path, array_index, can_create_curve);
 
   /* we may not have a F-Curve when we're replacing only... */
   if (fcu) {
@@ -1432,7 +1432,7 @@ short insert_keyframe(Main *bmain,
     /* Key the entire array. */
     if (array_index == -1 || force_all) {
       /* In force mode, if any of the curves succeeds, drop the replace mode and restart. */
-      if (force_all && (flag & INSERTKEY_REPLACE) != 0) {
+      if (force_all && (flag & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0) {
         int exclude = -1;
 
         for (array_index = 0; array_index < value_count; array_index++) {
@@ -1455,7 +1455,7 @@ short insert_keyframe(Main *bmain,
         }
 
         if (exclude != -1) {
-          flag &= ~INSERTKEY_REPLACE;
+          flag &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
 
           for (array_index = 0; array_index < value_count; array_index++) {
             if (array_index != exclude) {
@@ -1557,8 +1557,7 @@ static bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
     delete_fcurve_key(fcu, i, 1);
 
     /* Only delete curve too if it won't be doing anything anymore */
-    if ((fcu->totvert == 0) &&
-        (list_has_suitable_fmodifier(&fcu->modifiers, 0, FMI_TYPE_GENERATE_CURVE) == 0)) {
+    if (BKE_fcurve_is_empty(fcu)) {
       ANIM_fcurve_delete_from_animdata(NULL, adt, fcu);
     }
 

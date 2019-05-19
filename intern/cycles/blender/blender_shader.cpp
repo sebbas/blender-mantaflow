@@ -90,6 +90,12 @@ template<typename NodeType> static ExtensionType get_image_extension(NodeType &b
   return (ExtensionType)validate_enum_value(value, EXTENSION_NUM_TYPES, EXTENSION_REPEAT);
 }
 
+static ImageAlphaType get_image_alpha_type(BL::Image &b_image)
+{
+  int value = b_image.alpha_mode();
+  return (ImageAlphaType)validate_enum_value(value, IMAGE_ALPHA_NUM_TYPES, IMAGE_ALPHA_AUTO);
+}
+
 /* Graph */
 
 static BL::NodeSocket get_node_output(BL::Node &b_node, const string &name)
@@ -651,8 +657,11 @@ static ShaderNode *add_node(Scene *scene,
         image->builtin_data = NULL;
       }
 
+      PointerRNA colorspace_ptr = b_image.colorspace_settings().ptr;
+      image->colorspace = get_enum_identifier(colorspace_ptr, "name");
+
       image->animated = b_image_node.image_user().use_auto_refresh();
-      image->use_alpha = b_image.use_alpha();
+      image->alpha_type = get_image_alpha_type(b_image);
 
       /* TODO: restore */
       /* TODO(sergey): Does not work properly when we change builtin type. */
@@ -662,17 +671,10 @@ static ShaderNode *add_node(Scene *scene,
                                                image->builtin_data,
                                                get_image_interpolation(b_image_node),
                                                get_image_extension(b_image_node),
-                                               image->use_alpha);
+                                               image->use_alpha,
+                                               image->colorspace);
       }
 #endif
-    }
-    switch (b_image_node.color_space()) {
-      case BL::ShaderNodeTexImage::color_space_NONE:
-        image->colorspace = u_colorspace_raw;
-        break;
-      case BL::ShaderNodeTexImage::color_space_COLOR:
-        image->colorspace = u_colorspace_auto;
-        break;
     }
     image->projection = (NodeImageProjection)b_image_node.projection();
     image->interpolation = get_image_interpolation(b_image_node);
@@ -703,8 +705,11 @@ static ShaderNode *add_node(Scene *scene,
         env->builtin_data = NULL;
       }
 
+      PointerRNA colorspace_ptr = b_image.colorspace_settings().ptr;
+      env->colorspace = get_enum_identifier(colorspace_ptr, "name");
+
       env->animated = b_env_node.image_user().use_auto_refresh();
-      env->use_alpha = b_image.use_alpha();
+      env->alpha_type = get_image_alpha_type(b_image);
 
       /* TODO: restore */
       /* TODO(sergey): Does not work properly when we change builtin type. */
@@ -714,17 +719,10 @@ static ShaderNode *add_node(Scene *scene,
                                                env->builtin_data,
                                                get_image_interpolation(b_env_node),
                                                EXTENSION_REPEAT,
-                                               env->use_alpha);
+                                               env->use_alpha,
+                                               env->colorspace);
       }
 #endif
-    }
-    switch (b_env_node.color_space()) {
-      case BL::ShaderNodeTexEnvironment::color_space_NONE:
-        env->colorspace = u_colorspace_raw;
-        break;
-      case BL::ShaderNodeTexEnvironment::color_space_COLOR:
-        env->colorspace = u_colorspace_auto;
-        break;
     }
     env->interpolation = get_image_interpolation(b_env_node);
     env->projection = (NodeEnvironmentProjection)b_env_node.projection();
@@ -876,7 +874,7 @@ static ShaderNode *add_node(Scene *scene,
                                              point_density->builtin_data,
                                              point_density->interpolation,
                                              EXTENSION_CLIP,
-                                             true,
+                                             IMAGE_ALPHA_AUTO,
                                              u_colorspace_raw);
     }
     node = point_density;
@@ -1362,16 +1360,7 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, bool update_all)
   }
 
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
-
-  /* when doing preview render check for BI's transparency settings,
-   * this is so because Blender's preview render routines are not able
-   * to tweak all cycles's settings depending on different circumstances
-   */
-  if (b_engine.is_preview() == false)
-    background->transparent = get_boolean(cscene, "film_transparent");
-  else
-    background->transparent = b_scene.render().alpha_mode() ==
-                              BL::RenderSettings::alpha_mode_TRANSPARENT;
+  background->transparent = b_scene.render().film_transparent();
 
   if (background->transparent) {
     background->transparent_glass = get_boolean(cscene, "film_transparent_glass");
@@ -1417,16 +1406,9 @@ void BlenderSync::sync_lights(BL::Depsgraph &b_depsgraph, bool update_all)
         add_nodes(scene, b_engine, b_data, b_depsgraph, b_scene, graph, b_ntree);
       }
       else {
-        float strength = 1.0f;
-
-        if (b_light.type() == BL::Light::type_POINT || b_light.type() == BL::Light::type_SPOT ||
-            b_light.type() == BL::Light::type_AREA) {
-          strength = 100.0f;
-        }
-
         EmissionNode *emission = new EmissionNode();
-        emission->color = get_float3(b_light.color());
-        emission->strength = strength;
+        emission->color = make_float3(1.0f, 1.0f, 1.0f);
+        emission->strength = 1.0f;
         graph->add(emission);
 
         ShaderNode *out = graph->output();

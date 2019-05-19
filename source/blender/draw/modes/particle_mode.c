@@ -27,6 +27,8 @@
 
 #include "BKE_pointcache.h"
 
+#include "BLI_string_utils.h"
+
 #include "GPU_shader.h"
 
 #include "draw_common.h"
@@ -39,6 +41,7 @@
 extern char datatoc_particle_strand_vert_glsl[];
 extern char datatoc_particle_strand_frag_glsl[];
 extern char datatoc_common_globals_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
 /* *********** LISTS *********** */
 
@@ -86,23 +89,23 @@ typedef struct PARTICLE_PrivateData {
 static void particle_engine_init(void *UNUSED(vedata))
 {
   if (!e_data.strands_shader) {
-    e_data.strands_shader = DRW_shader_create_with_lib(datatoc_particle_strand_vert_glsl,
-                                                       NULL,
-                                                       datatoc_particle_strand_frag_glsl,
-                                                       datatoc_common_globals_lib_glsl,
-                                                       "");
+    char *lib = BLI_string_joinN(datatoc_common_globals_lib_glsl, datatoc_common_view_lib_glsl);
+
+    e_data.strands_shader = DRW_shader_create_with_lib(
+        datatoc_particle_strand_vert_glsl, NULL, datatoc_particle_strand_frag_glsl, lib, "");
 
     e_data.strands_weight_shader = DRW_shader_create_with_lib(datatoc_particle_strand_vert_glsl,
                                                               NULL,
                                                               datatoc_particle_strand_frag_glsl,
-                                                              datatoc_common_globals_lib_glsl,
+                                                              lib,
                                                               "#define USE_WEIGHT");
 
     e_data.points_shader = DRW_shader_create_with_lib(datatoc_particle_strand_vert_glsl,
                                                       NULL,
                                                       datatoc_particle_strand_frag_glsl,
-                                                      datatoc_common_globals_lib_glsl,
+                                                      lib,
                                                       "#define USE_POINTS");
+    MEM_freeN(lib);
   }
 }
 
@@ -120,10 +123,9 @@ static void particle_cache_init(void *vedata)
   }
 
   /* Create a pass */
-  psl->psys_edit_pass = DRW_pass_create("PSys Edit Pass",
-                                        (DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WIRE |
-                                         DRW_STATE_POINT));
+  psl->psys_edit_pass = DRW_pass_create(
+      "PSys Edit Pass",
+      (DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL));
 
   GPUShader *strand_shader = (use_weight) ? e_data.strands_weight_shader : e_data.strands_shader;
   stl->g_data->strands_group = DRW_shgroup_create(strand_shader, psl->psys_edit_pass);
@@ -147,15 +149,15 @@ static void particle_edit_cache_populate(void *vedata,
   {
     struct GPUBatch *strands = DRW_cache_particles_get_edit_strands(
         object, psys, edit, use_weight);
-    DRW_shgroup_call_add(stl->g_data->strands_group, strands, NULL);
+    DRW_shgroup_call(stl->g_data->strands_group, strands, NULL);
   }
   if (pset->selectmode == SCE_SELECT_POINT) {
     struct GPUBatch *points = DRW_cache_particles_get_edit_inner_points(object, psys, edit);
-    DRW_shgroup_call_add(stl->g_data->inner_points_group, points, NULL);
+    DRW_shgroup_call(stl->g_data->inner_points_group, points, NULL);
   }
   if (ELEM(pset->selectmode, SCE_SELECT_POINT, SCE_SELECT_END)) {
     struct GPUBatch *points = DRW_cache_particles_get_edit_tip_points(object, psys, edit);
-    DRW_shgroup_call_add(stl->g_data->tip_points_group, points, NULL);
+    DRW_shgroup_call(stl->g_data->tip_points_group, points, NULL);
   }
 }
 

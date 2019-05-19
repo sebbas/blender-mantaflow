@@ -321,11 +321,11 @@ Collection *BKE_collection_copy(Main *bmain, Collection *parent, Collection *col
  * \warning If any 'deep copy' behavior is enabled,
  * this functions will clear all \a bmain id.idnew pointers.
  *
- * \param do_hierarchy If true, it will recursively make shallow copies of children collections.
- * \param do_objects If true, it will also make duplicates of objects.
- *                   This one does nothing if \a do_hierarchy is not set.
- * \param do_obdata If true, it will also make deep duplicates of objects,
- * using behavior defined in user settings (U.dupflag).
+ * \param do_hierarchy: If true, it will recursively make shallow copies of children collections.
+ * \param do_objects: If true, it will also make duplicates of objects.
+ * This one does nothing if \a do_hierarchy is not set.
+ * \param do_obdata: If true, it will also make deep duplicates of objects,
+ * using behavior defined in user settings (#U.dupflag).
  * This one does nothing if \a do_hierarchy and \a do_objects are not set.
  */
 Collection *BKE_collection_duplicate(Main *bmain,
@@ -434,8 +434,8 @@ static void collection_object_cache_fill(ListBase *lb, Collection *collection, i
 
     int object_restrict = base->object->restrictflag;
 
-    if (((child_restrict & COLLECTION_RESTRICT_VIEW) == 0) &&
-        ((object_restrict & OB_RESTRICT_VIEW) == 0)) {
+    if (((child_restrict & COLLECTION_RESTRICT_VIEWPORT) == 0) &&
+        ((object_restrict & OB_RESTRICT_VIEWPORT) == 0)) {
       base->flag |= BASE_ENABLED_VIEWPORT;
     }
 
@@ -964,6 +964,11 @@ static bool collection_find_child_recursive(Collection *parent, Collection *coll
   }
 
   return false;
+}
+
+bool BKE_collection_has_collection(Collection *parent, Collection *collection)
+{
+  return collection_find_child_recursive(parent, collection);
 }
 
 static CollectionParent *collection_find_parent(Collection *child, Collection *collection)

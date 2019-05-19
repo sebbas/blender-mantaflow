@@ -64,8 +64,6 @@
 #include "UI_view2d.h"
 #include "UI_interface.h"
 
-#include "DEG_depsgraph.h"
-
 /* own include */
 #include "sequencer_intern.h"
 
@@ -1345,7 +1343,7 @@ static int sequencer_snap_invoke(bContext *C, wmOperator *op, const wmEvent *UNU
 void SEQUENCER_OT_snap(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Snap Strips to Frame";
+  ot->name = "Snap Strips to Playhead";
   ot->idname = "SEQUENCER_OT_snap";
   ot->description = "Frame where selected strips will be snapped";
 
@@ -2381,7 +2379,6 @@ static int sequencer_delete_exec(bContext *C, wmOperator *UNUSED(op))
     ms = ms->prev;
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   return OPERATOR_FINISHED;

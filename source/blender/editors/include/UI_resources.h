@@ -105,6 +105,7 @@ typedef enum ThemeColorID {
   TH_FACE_DOT,
   TH_FACEDOT_SIZE,
   TH_CFRAME,
+  TH_SCRUBBING_BACKGROUND,
   TH_TIME_KEYFRAME,
   TH_TIME_GP_KEYFRAME,
   TH_NURB_ULINE,
@@ -254,6 +255,10 @@ typedef enum ThemeColorID {
 
   TH_MATCH,            /* highlight color for search matches */
   TH_SELECT_HIGHLIGHT, /* highlight color for selected outliner item */
+  TH_SELECTED_OBJECT,  /* selected object color for outliner */
+  TH_ACTIVE_OBJECT,    /* active object color for outliner */
+  TH_EDITED_OBJECT,    /* edited object color for outliner */
+  TH_ROW_ALTERNATE,    /* overlay on every other row */
 
   TH_SKIN_ROOT,
 
@@ -261,11 +266,14 @@ typedef enum ThemeColorID {
   TH_ANIM_INACTIVE,      /* no active action */
   TH_ANIM_PREVIEW_RANGE, /* preview range overlay */
 
+  TH_ICON_SCENE,
   TH_ICON_COLLECTION,
   TH_ICON_OBJECT,
   TH_ICON_OBJECT_DATA,
   TH_ICON_MODIFIER,
   TH_ICON_SHADING,
+
+  TH_SCROLL_TEXT,
 
   TH_NLA_TWEAK,       /* 'tweaking' track in NLA */
   TH_NLA_TWEAK_DUPLI, /* error/warning flag for other strips referencing dupli strip */
@@ -380,7 +388,7 @@ void UI_GetThemeColorType3ubv(int colorid, int spacetype, unsigned char col[3]);
 void UI_GetThemeColorType4ubv(int colorid, int spacetype, unsigned char col[4]);
 
 // get theme color for coloring monochrome icons
-bool UI_GetIconThemeColor4fv(int colorid, float col[4]);
+bool UI_GetIconThemeColor4ubv(int colorid, unsigned char col[4]);
 
 // shade a 3 byte color (same as UI_GetColorPtrBlendShade3ubv with 0.0 factor)
 void UI_GetColorPtrShade3ubv(const unsigned char cp1[3], unsigned char col[3], int offset);

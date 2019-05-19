@@ -129,7 +129,7 @@ typedef struct GPENCIL_shgroup {
   int caps_mode[2];
   float obj_scale;
   int xray_mode;
-  int use_follow_path;
+  int alignment_mode;
 
   float gradient_f;
   float gradient_s[2];
@@ -182,7 +182,7 @@ typedef struct GPENCIL_Storage {
 
   float gradient_f;
   float gradient_s[2];
-  int use_follow_path;
+  int alignment_mode;
 
   float mix_stroke_factor;
 
@@ -437,7 +437,8 @@ void DRW_gpencil_multisample_ensure(struct GPENCIL_Data *vedata, int rect_w, int
 void DRW_gpencil_get_point_geom(struct GpencilBatchCacheElem *be,
                                 struct bGPDstroke *gps,
                                 short thickness,
-                                const float ink[4]);
+                                const float ink[4],
+                                const int follow_mode);
 void DRW_gpencil_get_stroke_geom(struct GpencilBatchCacheElem *be,
                                  struct bGPDstroke *gps,
                                  short thickness,
@@ -514,7 +515,7 @@ void GPENCIL_render_to_image(void *vedata,
 /* Use of multisample framebuffers. */
 #define MULTISAMPLE_GP_SYNC_ENABLE(lvl, fbl) \
   { \
-    if ((lvl > 0) && (fbl->multisample_fb != NULL)) { \
+    if ((lvl > 0) && (fbl->multisample_fb != NULL) && (DRW_state_is_fbo())) { \
       DRW_stats_query_start("GP Multisample Blit"); \
       GPU_framebuffer_bind(fbl->multisample_fb); \
       GPU_framebuffer_clear_color_depth(fbl->multisample_fb, (const float[4]){0.0f}, 1.0f); \
@@ -525,7 +526,7 @@ void GPENCIL_render_to_image(void *vedata,
 
 #define MULTISAMPLE_GP_SYNC_DISABLE(lvl, fbl, fb, txl) \
   { \
-    if ((lvl > 0) && (fbl->multisample_fb != NULL)) { \
+    if ((lvl > 0) && (fbl->multisample_fb != NULL) && (DRW_state_is_fbo())) { \
       DRW_stats_query_start("GP Multisample Resolve"); \
       GPU_framebuffer_bind(fb); \
       DRW_multisamples_resolve(txl->multisample_depth, txl->multisample_color, true); \

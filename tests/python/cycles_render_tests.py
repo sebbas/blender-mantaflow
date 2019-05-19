@@ -106,6 +106,7 @@ def main():
     from modules import render_report
     report = render_report.Report("Cycles Test Report", output_dir, idiff)
     report.set_pixelated(True)
+    report.set_reference_dir("cycles_renders")
     report.set_compare_engines('cycles', 'eevee')
     ok = report.run(test_dir, render_file)
 

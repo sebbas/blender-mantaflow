@@ -245,7 +245,7 @@ static int open_exec(bContext *C, wmOperator *op)
     id_us_min(&clip->id);
 
     RNA_id_pointer_create(&clip->id, &idptr);
-    RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr);
+    RNA_property_pointer_set(NULL, &pprop->ptr, pprop->prop, idptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
   else if (sc) {
@@ -955,10 +955,10 @@ static bool change_frame_poll(bContext *C)
 {
   /* prevent changes during render */
   if (G.is_rendering) {
-    return 0;
+    return false;
   }
-
-  return ED_space_clip_poll(C);
+  SpaceClip *space_clip = CTX_wm_space_clip(C);
+  return space_clip != NULL;
 }
 
 static void change_frame_apply(bContext *C, wmOperator *op)

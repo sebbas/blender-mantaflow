@@ -42,6 +42,7 @@ extern char datatoc_paint_wire_vert_glsl[];
 extern char datatoc_paint_wire_frag_glsl[];
 extern char datatoc_paint_vert_frag_glsl[];
 extern char datatoc_common_globals_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 
@@ -115,12 +116,16 @@ static void PAINT_VERTEX_engine_init(void *UNUSED(vedata))
 
   if (!sh_data->face_select_overlay) {
     sh_data->by_mode[VERTEX_MODE].color_face = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg_data->lib, datatoc_paint_vertex_vert_glsl, NULL},
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_paint_vertex_vert_glsl,
+                                 NULL},
         .frag = (const char *[]){datatoc_paint_vertex_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
     sh_data->by_mode[WEIGHT_MODE].color_face = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
                                  datatoc_common_globals_lib_glsl,
                                  datatoc_paint_weight_vert_glsl,
                                  NULL},
@@ -131,13 +136,17 @@ static void PAINT_VERTEX_engine_init(void *UNUSED(vedata))
     });
 
     sh_data->face_select_overlay = GPU_shader_create_from_arrays({
-        .vert = (const char *[]){sh_cfg_data->lib, datatoc_paint_face_vert_glsl, NULL},
+        .vert = (const char *[]){sh_cfg_data->lib,
+                                 datatoc_common_view_lib_glsl,
+                                 datatoc_paint_face_vert_glsl,
+                                 NULL},
         .frag = (const char *[]){datatoc_gpu_shader_uniform_color_frag_glsl, NULL},
         .defs = (const char *[]){sh_cfg_data->def, NULL},
     });
     sh_data->vert_select_overlay = GPU_shader_create_from_arrays({
         .vert = (const char *[]){sh_cfg_data->lib,
                                  datatoc_common_globals_lib_glsl,
+                                 datatoc_common_view_lib_glsl,
                                  datatoc_paint_wire_vert_glsl,
                                  NULL},
         .frag = (const char *[]){datatoc_paint_vert_frag_glsl, NULL},
@@ -152,6 +161,7 @@ static void PAINT_VERTEX_engine_init(void *UNUSED(vedata))
       sh_data->by_mode[i].wire_overlay = GPU_shader_create_from_arrays({
           .vert = (const char *[]){sh_cfg_data->lib,
                                    datatoc_common_globals_lib_glsl,
+                                   datatoc_common_view_lib_glsl,
                                    datatoc_paint_wire_vert_glsl,
                                    NULL},
           .frag = (const char *[]){datatoc_paint_wire_frag_glsl, NULL},
@@ -160,6 +170,7 @@ static void PAINT_VERTEX_engine_init(void *UNUSED(vedata))
       sh_data->by_mode[i].wire_select_overlay = GPU_shader_create_from_arrays({
           .vert = (const char *[]){sh_cfg_data->lib,
                                    datatoc_common_globals_lib_glsl,
+                                   datatoc_common_view_lib_glsl,
                                    datatoc_paint_wire_vert_glsl,
                                    NULL},
           .frag = (const char *[]){datatoc_paint_wire_frag_glsl, NULL},
@@ -301,24 +312,24 @@ static void PAINT_VERTEX_cache_populate(void *vedata, Object *ob)
       }
     }
     if (geom != NULL) {
-      DRW_shgroup_call_add(stl->g_data->by_mode[draw_mode].color_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->by_mode[draw_mode].color_shgrp, geom, ob->obmat);
     }
 
     if (use_face_sel || use_wire) {
       DRWShadingGroup *shgrp = use_face_sel ? stl->g_data->by_mode[draw_mode].lwire_select_shgrp :
                                               stl->g_data->by_mode[draw_mode].lwire_shgrp;
       geom = DRW_cache_mesh_surface_edges_get(ob);
-      DRW_shgroup_call_add(shgrp, geom, ob->obmat);
+      DRW_shgroup_call(shgrp, geom, ob->obmat);
     }
 
     if (use_face_sel) {
       geom = DRW_cache_mesh_surface_get(ob);
-      DRW_shgroup_call_add(stl->g_data->face_select_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->face_select_shgrp, geom, ob->obmat);
     }
 
     if (use_vert_sel) {
       geom = DRW_cache_mesh_all_verts_get(ob);
-      DRW_shgroup_call_add(stl->g_data->vert_select_shgrp, geom, ob->obmat);
+      DRW_shgroup_call(stl->g_data->vert_select_shgrp, geom, ob->obmat);
     }
   }
 }

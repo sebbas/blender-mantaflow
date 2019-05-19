@@ -31,6 +31,7 @@ struct OCIO_GLSLDrawState;
     int unused; \
   } * name
 
+#define OCIO_ROLE_DATA "data"
 #define OCIO_ROLE_SCENE_LINEAR "scene_linear"
 #define OCIO_ROLE_COLOR_PICKING "color_picking"
 #define OCIO_ROLE_TEXTURE_PAINT "texture_paint"
@@ -130,6 +131,10 @@ int OCIO_configGetIndexForColorSpace(OCIO_ConstConfigRcPtr *config, const char *
 
 int OCIO_colorSpaceIsInvertible(OCIO_ConstColorSpaceRcPtr *cs);
 int OCIO_colorSpaceIsData(OCIO_ConstColorSpaceRcPtr *cs);
+void OCIO_colorSpaceIsBuiltin(OCIO_ConstConfigRcPtr *config,
+                              OCIO_ConstColorSpaceRcPtr *cs,
+                              bool *is_scene_linear,
+                              bool *is_srgb);
 
 void OCIO_colorSpaceRelease(OCIO_ConstColorSpaceRcPtr *cs);
 

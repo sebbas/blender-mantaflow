@@ -421,10 +421,13 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 
           Collection *collection = BKE_collection_add(bmain, collection_master, name);
           collection->id.lib = scene->id.lib;
+          if (collection->id.lib != NULL) {
+            collection->id.tag |= LIB_TAG_INDIRECT;
+          }
           collections[layer] = collection;
 
           if (!(scene->lay & (1 << layer))) {
-            collection->flag |= COLLECTION_RESTRICT_VIEW | COLLECTION_RESTRICT_RENDER;
+            collection->flag |= COLLECTION_RESTRICT_VIEWPORT | COLLECTION_RESTRICT_RENDER;
           }
         }
 
@@ -692,6 +695,26 @@ static void do_version_bbone_scale_animdata_cb(ID *UNUSED(id),
   }
 }
 
+static void do_version_constraints_maintain_volume_mode_uniform(ListBase *lb)
+{
+  for (bConstraint *con = lb->first; con; con = con->next) {
+    if (con->type == CONSTRAINT_TYPE_SAMEVOL) {
+      bSameVolumeConstraint *data = (bSameVolumeConstraint *)con->data;
+      data->mode = SAMEVOL_UNIFORM;
+    }
+  }
+}
+
+static void do_version_constraints_copy_scale_power(ListBase *lb)
+{
+  for (bConstraint *con = lb->first; con; con = con->next) {
+    if (con->type == CONSTRAINT_TYPE_SIZELIKE) {
+      bSizeLikeConstraint *data = (bSizeLikeConstraint *)con->data;
+      data->power = 1.0f;
+    }
+  }
+}
+
 void do_versions_after_linking_280(Main *bmain)
 {
   bool use_collection_compat_28 = true;
@@ -705,7 +728,7 @@ void do_versions_after_linking_280(Main *bmain)
       /* Add fake user for all existing groups. */
       id_fake_user_set(&collection->id);
 
-      if (collection->flag & (COLLECTION_RESTRICT_VIEW | COLLECTION_RESTRICT_RENDER)) {
+      if (collection->flag & (COLLECTION_RESTRICT_VIEWPORT | COLLECTION_RESTRICT_RENDER)) {
         continue;
       }
 
@@ -731,7 +754,8 @@ void do_versions_after_linking_280(Main *bmain)
             char name[MAX_ID_NAME];
             BLI_snprintf(name, sizeof(name), DATA_("Hidden %d"), coll_idx + 1);
             *collection_hidden = BKE_collection_add(bmain, collection, name);
-            (*collection_hidden)->flag |= COLLECTION_RESTRICT_VIEW | COLLECTION_RESTRICT_RENDER;
+            (*collection_hidden)->flag |= COLLECTION_RESTRICT_VIEWPORT |
+                                          COLLECTION_RESTRICT_RENDER;
           }
 
           BKE_collection_object_add(bmain, *collection_hidden, ob);
@@ -826,7 +850,6 @@ void do_versions_after_linking_280(Main *bmain)
       for (SceneRenderLayer *srl = scene->r.layers.first; srl; srl = srl->next) {
         if (srl->prop) {
           IDP_FreeProperty(srl->prop);
-          MEM_freeN(srl->prop);
         }
         BKE_freestyle_config_free(&srl->freestyleConfig, true);
       }
@@ -1061,6 +1084,32 @@ void do_versions_after_linking_280(Main *bmain)
       BKE_rigidbody_constraints_collection_validate(scene, rbw);
     }
   }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 69)) {
+    /* Unify DOF settings (EEVEE part only) */
+    const int SCE_EEVEE_DOF_ENABLED = (1 << 7);
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE)) {
+        if (scene->eevee.flag & SCE_EEVEE_DOF_ENABLED) {
+          Object *cam_ob = scene->camera;
+          if (cam_ob && cam_ob->type == OB_CAMERA) {
+            Camera *cam = cam_ob->data;
+            cam->dof.flag |= CAM_DOF_ENABLED;
+          }
+        }
+      }
+    }
+
+    LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
+      camera->dof.focus_object = camera->dof_ob;
+      camera->dof.focus_distance = camera->dof_distance;
+      camera->dof.aperture_fstop = camera->gpu_dof.fstop;
+      camera->dof.aperture_rotation = camera->gpu_dof.rotation;
+      camera->dof.aperture_ratio = camera->gpu_dof.ratio;
+      camera->dof.aperture_blades = camera->gpu_dof.num_blades;
+      camera->dof_ob = NULL;
+    }
+  }
 }
 
 /* NOTE: This version patch is intended for versions < 2.52.2,
@@ -1287,6 +1336,16 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
                            CURVE_PRESET_GAUSS,
                            CURVEMAP_SLOPE_POSITIVE);
           }
+        }
+      }
+    }
+
+    /* 2.79 style Maintain Volume mode. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      do_version_constraints_maintain_volume_mode_uniform(&ob->constraints);
+      if (ob->pose) {
+        LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+          do_version_constraints_maintain_volume_mode_uniform(&pchan->constraints);
         }
       }
     }
@@ -1637,10 +1696,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     } \
   } \
   ((void)0)
-
+        const int SCE_EEVEE_DOF_ENABLED = (1 << 7);
         IDProperty *props = IDP_GetPropertyFromGroup(scene->layer_properties,
                                                      RE_engine_id_BLENDER_EEVEE);
-        EEVEE_GET_BOOL(props, volumetric_enable, SCE_EEVEE_VOLUMETRIC_ENABLED);
+        // EEVEE_GET_BOOL(props, volumetric_enable, SCE_EEVEE_VOLUMETRIC_ENABLED);
         EEVEE_GET_BOOL(props, volumetric_lights, SCE_EEVEE_VOLUMETRIC_LIGHTS);
         EEVEE_GET_BOOL(props, volumetric_shadows, SCE_EEVEE_VOLUMETRIC_SHADOWS);
         EEVEE_GET_BOOL(props, gtao_enable, SCE_EEVEE_GTAO_ENABLED);
@@ -1651,7 +1710,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         EEVEE_GET_BOOL(props, motion_blur_enable, SCE_EEVEE_MOTION_BLUR_ENABLED);
         EEVEE_GET_BOOL(props, shadow_high_bitdepth, SCE_EEVEE_SHADOW_HIGH_BITDEPTH);
         EEVEE_GET_BOOL(props, taa_reprojection, SCE_EEVEE_TAA_REPROJECTION);
-        EEVEE_GET_BOOL(props, sss_enable, SCE_EEVEE_SSS_ENABLED);
+        // EEVEE_GET_BOOL(props, sss_enable, SCE_EEVEE_SSS_ENABLED);
         EEVEE_GET_BOOL(props, sss_separate_albedo, SCE_EEVEE_SSS_SEPARATE_ALBEDO);
         EEVEE_GET_BOOL(props, ssr_enable, SCE_EEVEE_SSR_ENABLED);
         EEVEE_GET_BOOL(props, ssr_refraction, SCE_EEVEE_SSR_REFRACTION);
@@ -1705,7 +1764,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
         /* Cleanup. */
         IDP_FreeProperty(scene->layer_properties);
-        MEM_freeN(scene->layer_properties);
         scene->layer_properties = NULL;
 
 #undef EEVEE_GET_FLOAT_ARRAY
@@ -2816,7 +2874,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     for (Material *mat = bmain->materials.first; mat; mat = mat->id.next) {
-      mat->blend_flag &= ~(MA_BL_FLAG_UNUSED_2);
+      mat->blend_flag &= ~(1 << 2); /* UNUSED */
     }
   }
 
@@ -3323,6 +3381,82 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Scene *sce = bmain->scenes.first; sce != NULL; sce = sce->id.next) {
       if (sce->ed != NULL) {
         do_versions_seq_set_cache_defaults(sce->ed);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 61)) {
+    /* Added a power option to Copy Scale. */
+    if (!DNA_struct_elem_find(fd->filesdna, "bSizeLikeConstraint", "float", "power")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        do_version_constraints_copy_scale_power(&ob->constraints);
+        if (ob->pose) {
+          LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+            do_version_constraints_copy_scale_power(&pchan->constraints);
+          }
+        }
+      }
+    }
+
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+        for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+          if (ELEM(sl->spacetype, SPACE_CLIP, SPACE_GRAPH, SPACE_SEQ)) {
+            ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+
+            ARegion *ar = NULL;
+            if (sl->spacetype == SPACE_CLIP) {
+              if (((SpaceClip *)sl)->view == SC_VIEW_GRAPH) {
+                ar = do_versions_find_region(regionbase, RGN_TYPE_PREVIEW);
+              }
+            }
+            else {
+              ar = do_versions_find_region(regionbase, RGN_TYPE_WINDOW);
+            }
+
+            if (ar != NULL) {
+              ar->v2d.scroll &= ~V2D_SCROLL_LEFT;
+              ar->v2d.scroll |= V2D_SCROLL_RIGHT;
+            }
+          }
+        }
+      }
+    }
+
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      for (ScrArea *area = screen->areabase.first; area; area = area->next) {
+        for (SpaceLink *sl = area->spacedata.first; sl; sl = sl->next) {
+          if (sl->spacetype != SPACE_OUTLINER) {
+            continue;
+          }
+          SpaceOutliner *so = (SpaceOutliner *)sl;
+          so->filter &= ~SO_FLAG_UNUSED_1;
+          so->show_restrict_flags = SO_RESTRICT_ENABLE | SO_RESTRICT_HIDE;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 69)) {
+    LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+      arm->flag &= ~(ARM_FLAG_UNUSED_7 | ARM_FLAG_UNUSED_9);
+    }
+
+    /* Initializes sun lights with the new angular diameter property */
+    if (!DNA_struct_elem_find(fd->filesdna, "Light", "float", "sun_angle")) {
+      LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+        light->sun_angle = 2.0f * atanf(light->area_size);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 280, 70)) {
+    /* New image alpha modes. */
+    LISTBASE_FOREACH (Image *, image, &bmain->images) {
+      const int IMA_IGNORE_ALPHA = (1 << 12);
+      if (image->flag & IMA_IGNORE_ALPHA) {
+        image->alpha_mode = IMA_ALPHA_IGNORE;
+        image->flag &= ~IMA_IGNORE_ALPHA;
       }
     }
   }

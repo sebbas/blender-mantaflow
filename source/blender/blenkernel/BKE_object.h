@@ -100,6 +100,8 @@ bool BKE_object_is_mode_compat(const struct Object *ob, eObjectMode object_mode)
 
 bool BKE_object_data_is_in_editmode(const struct ID *id);
 
+void BKE_object_update_select_id(struct Main *bmain);
+
 typedef enum eObjectVisibilityResult {
   OB_VISIBLE_SELF = 1,
   OB_VISIBLE_PARTICLES = 2,
@@ -393,6 +395,15 @@ bool BKE_object_empty_image_frame_is_visible_in_view3d(const struct Object *ob,
                                                        const struct RegionView3D *rv3d);
 bool BKE_object_empty_image_data_is_visible_in_view3d(const struct Object *ob,
                                                       const struct RegionView3D *rv3d);
+
+/* This is an utility function for Python's object.to_mesh() (the naming is not very clear though).
+ * The result is owned by the object.
+ *
+ * The mesh will be freed when object is re-evaluated or is destroyed. It is possible to force to
+ * clear memory sued by this mesh by calling BKE_object_to_mesh_clear(). */
+struct Mesh *BKE_object_to_mesh(struct Object *object);
+
+void BKE_object_to_mesh_clear(struct Object *object);
 
 #ifdef __cplusplus
 }

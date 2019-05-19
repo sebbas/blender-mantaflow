@@ -22,16 +22,19 @@
 
 #include <stdio.h>
 
+#include "BLI_alloca.h"
 #include "BLI_listbase.h"
-#include "BLI_mempool.h"
+#include "BLI_memblock.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
 
 #include "BLF_api.h"
 
+#include "BKE_anim.h"
 #include "BKE_colortools.h"
 #include "BKE_curve.h"
+#include "BKE_editmesh.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_lattice.h"
@@ -526,19 +529,19 @@ static void drw_viewport_cache_resize(void)
 
   if (DST.vmempool != NULL) {
     /* Release Image textures. */
-    BLI_mempool_iter iter;
+    BLI_memblock_iter iter;
     GPUTexture **tex;
-    BLI_mempool_iternew(DST.vmempool->images, &iter);
-    while ((tex = BLI_mempool_iterstep(&iter))) {
+    BLI_memblock_iternew(DST.vmempool->images, &iter);
+    while ((tex = BLI_memblock_iterstep(&iter))) {
       GPU_texture_free(*tex);
     }
 
-    BLI_mempool_clear_ex(DST.vmempool->calls, BLI_mempool_len(DST.vmempool->calls));
-    BLI_mempool_clear_ex(DST.vmempool->states, BLI_mempool_len(DST.vmempool->states));
-    BLI_mempool_clear_ex(DST.vmempool->shgroups, BLI_mempool_len(DST.vmempool->shgroups));
-    BLI_mempool_clear_ex(DST.vmempool->uniforms, BLI_mempool_len(DST.vmempool->uniforms));
-    BLI_mempool_clear_ex(DST.vmempool->passes, BLI_mempool_len(DST.vmempool->passes));
-    BLI_mempool_clear_ex(DST.vmempool->images, BLI_mempool_len(DST.vmempool->images));
+    BLI_memblock_clear(DST.vmempool->calls, NULL);
+    BLI_memblock_clear(DST.vmempool->states, NULL);
+    BLI_memblock_clear(DST.vmempool->shgroups, NULL);
+    BLI_memblock_clear(DST.vmempool->uniforms, NULL);
+    BLI_memblock_clear(DST.vmempool->passes, NULL);
+    BLI_memblock_clear(DST.vmempool->images, NULL);
   }
 
   DRW_instance_data_list_free_unused(DST.idatalist);
@@ -603,24 +606,22 @@ static void drw_viewport_var_init(void)
     DST.vmempool = GPU_viewport_mempool_get(DST.viewport);
 
     if (DST.vmempool->calls == NULL) {
-      DST.vmempool->calls = BLI_mempool_create(sizeof(DRWCall), 0, 512, 0);
+      DST.vmempool->calls = BLI_memblock_create(sizeof(DRWCall), false);
     }
     if (DST.vmempool->states == NULL) {
-      DST.vmempool->states = BLI_mempool_create(
-          sizeof(DRWCallState), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
+      DST.vmempool->states = BLI_memblock_create(sizeof(DRWCallState), false);
     }
     if (DST.vmempool->shgroups == NULL) {
-      DST.vmempool->shgroups = BLI_mempool_create(sizeof(DRWShadingGroup), 0, 256, 0);
+      DST.vmempool->shgroups = BLI_memblock_create(sizeof(DRWShadingGroup), false);
     }
     if (DST.vmempool->uniforms == NULL) {
-      DST.vmempool->uniforms = BLI_mempool_create(sizeof(DRWUniform), 0, 512, 0);
+      DST.vmempool->uniforms = BLI_memblock_create(sizeof(DRWUniform), false);
     }
     if (DST.vmempool->passes == NULL) {
-      DST.vmempool->passes = BLI_mempool_create(sizeof(DRWPass), 0, 64, 0);
+      DST.vmempool->passes = BLI_memblock_create(sizeof(DRWPass), false);
     }
     if (DST.vmempool->images == NULL) {
-      DST.vmempool->images = BLI_mempool_create(
-          sizeof(GPUTexture *), 0, 512, BLI_MEMPOOL_ALLOW_ITER);
+      DST.vmempool->images = BLI_memblock_create(sizeof(GPUTexture *), false);
     }
 
     DST.idatalist = GPU_viewport_instance_data_list_get(DST.viewport);
@@ -785,6 +786,75 @@ DefaultTextureList *DRW_viewport_texture_list_get(void)
 void DRW_viewport_request_redraw(void)
 {
   GPU_viewport_tag_update(DST.viewport);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Duplis
+ * \{ */
+
+static void drw_duplidata_load(DupliObject *dupli)
+{
+  if (dupli == NULL) {
+    return;
+  }
+
+  if (DST.dupli_origin != dupli->ob) {
+    DST.dupli_origin = dupli->ob;
+  }
+  else {
+    /* Same data as previous iter. No need to poll ghash for this. */
+    return;
+  }
+
+  if (DST.dupli_ghash == NULL) {
+    DST.dupli_ghash = BLI_ghash_ptr_new(__func__);
+  }
+
+  void **value;
+  if (!BLI_ghash_ensure_p(DST.dupli_ghash, DST.dupli_origin, &value)) {
+    *value = MEM_callocN(sizeof(void *) * DST.enabled_engine_count, __func__);
+
+    /* TODO: Meh a bit out of place but this is nice as it is
+     * only done once per "original" object. */
+    drw_batch_cache_validate(DST.dupli_origin);
+  }
+  DST.dupli_datas = *(void ***)value;
+}
+
+static void duplidata_value_free(void *val)
+{
+  void **dupli_datas = val;
+  for (int i = 0; i < DST.enabled_engine_count; i++) {
+    MEM_SAFE_FREE(dupli_datas[i]);
+  }
+  MEM_freeN(val);
+}
+
+static void drw_duplidata_free(void)
+{
+  if (DST.dupli_ghash != NULL) {
+    BLI_ghash_free(DST.dupli_ghash,
+                   (void (*)(void *key))drw_batch_cache_generate_requested,
+                   duplidata_value_free);
+    DST.dupli_ghash = NULL;
+  }
+}
+
+/* Return NULL if not a dupli or a pointer of pointer to the engine data */
+void **DRW_duplidata_get(void *vedata)
+{
+  if (DST.dupli_source == NULL) {
+    return NULL;
+  }
+  /* XXX Search engine index by using vedata array */
+  for (int i = 0; i < DST.enabled_engine_count; i++) {
+    if (DST.vedata_array[i] == vedata) {
+      return &DST.dupli_datas[i];
+    }
+  }
+  return NULL;
 }
 
 /** \} */
@@ -1045,9 +1115,14 @@ static void drw_engines_init(void)
 
 static void drw_engines_cache_init(void)
 {
-  for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
+  DST.enabled_engine_count = BLI_listbase_count(&DST.enabled_engines);
+  DST.vedata_array = MEM_mallocN(sizeof(void *) * DST.enabled_engine_count, __func__);
+
+  int i = 0;
+  for (LinkData *link = DST.enabled_engines.first; link; link = link->next, i++) {
     DrawEngineType *engine = link->data;
     ViewportEngineData *data = drw_viewport_engine_data_ensure(engine);
+    DST.vedata_array[i] = data;
 
     if (data->text_draw_cache) {
       DRW_text_cache_destroy(data->text_draw_cache);
@@ -1089,9 +1164,15 @@ static void drw_engines_cache_populate(Object *ob)
    * ourselves here. */
   drw_drawdata_unlink_dupli((ID *)ob);
 
-  for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
+  /* Validation for dupli objects happen elsewhere. */
+  if (!DST.dupli_source) {
+    drw_batch_cache_validate(ob);
+  }
+
+  int i = 0;
+  for (LinkData *link = DST.enabled_engines.first; link; link = link->next, i++) {
     DrawEngineType *engine = link->data;
-    ViewportEngineData *data = drw_viewport_engine_data_ensure(engine);
+    ViewportEngineData *data = DST.vedata_array[i];
 
     if (engine->id_update) {
       engine->id_update(data, &ob->id);
@@ -1104,7 +1185,9 @@ static void drw_engines_cache_populate(Object *ob)
 
   /* TODO: in the future it would be nice to generate once for all viewports.
    * But we need threaded DRW manager first. */
-  drw_batch_cache_generate_requested(ob);
+  if (!DST.dupli_source) {
+    drw_batch_cache_generate_requested(ob);
+  }
 
   /* ... and clearing it here too because theses draw data are
    * from a mempool and must not be free individually by depsgraph. */
@@ -1113,14 +1196,16 @@ static void drw_engines_cache_populate(Object *ob)
 
 static void drw_engines_cache_finish(void)
 {
-  for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
+  int i = 0;
+  for (LinkData *link = DST.enabled_engines.first; link; link = link->next, i++) {
     DrawEngineType *engine = link->data;
-    ViewportEngineData *data = drw_viewport_engine_data_ensure(engine);
+    ViewportEngineData *data = DST.vedata_array[i];
 
     if (engine->cache_finish) {
       engine->cache_finish(data);
     }
   }
+  MEM_freeN(DST.vedata_array);
 }
 
 static void drw_engines_draw_background(void)
@@ -1396,17 +1481,19 @@ static void drw_engines_disable(void)
   BLI_freelistN(&DST.enabled_engines);
 }
 
-static uint DRW_engines_get_hash(void)
+static void drw_engines_data_validate(void)
 {
-  uint hash = 0;
-  /* The cache depends on enabled engines */
-  /* FIXME : if collision occurs ... segfault */
+  int enabled_engines = BLI_listbase_count(&DST.enabled_engines);
+  void **engine_handle_array = BLI_array_alloca(engine_handle_array, enabled_engines + 1);
+  int i = 0;
+
   for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
     DrawEngineType *engine = link->data;
-    hash += BLI_ghashutil_strhash_p(engine->idname);
+    engine_handle_array[i++] = engine;
   }
+  engine_handle_array[i] = NULL;
 
-  return hash;
+  GPU_viewport_engines_data_validate(DST.viewport, engine_handle_array);
 }
 
 /* -------------------------------------------------------------------- */
@@ -1519,8 +1606,6 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   DST.viewport = viewport;
 
   /* Setup viewport */
-  GPU_viewport_engines_data_validate(DST.viewport, DRW_engines_get_hash());
-
   DST.draw_ctx = (DRWContextState){
       .ar = ar,
       .rv3d = rv3d,
@@ -1540,6 +1625,8 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   /* Get list of enabled engines */
   drw_engines_enable(view_layer, engine_type);
 
+  drw_engines_data_validate();
+
   /* Update ubos */
   DRW_globals_update();
 
@@ -1558,23 +1645,31 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
     drw_engines_cache_init();
     drw_engines_world_update(scene);
 
-    const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
-    const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                          DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                          DEG_ITER_OBJECT_FLAG_DUPLI;
-    DEG_OBJECT_ITER_BEGIN (depsgraph, ob, iter_flag) {
-      if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
-        continue;
+    /* Only iterate over objects for internal engines or when overlays are enabled */
+    const bool internal_engine = (engine_type->flag & RE_INTERNAL) != 0;
+    const bool draw_type_render = v3d->shading.type == OB_RENDER;
+    const bool overlays_on = (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0;
+    if (internal_engine || overlays_on || !draw_type_render) {
+      const int object_type_exclude_viewport = v3d->object_type_exclude_viewport;
+      const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
+                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
+                            DEG_ITER_OBJECT_FLAG_DUPLI;
+      DEG_OBJECT_ITER_BEGIN (depsgraph, ob, iter_flag) {
+        if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
+          continue;
+        }
+        if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
+          continue;
+        }
+        DST.dupli_parent = data_.dupli_parent;
+        DST.dupli_source = data_.dupli_object_current;
+        drw_duplidata_load(DST.dupli_source);
+        drw_engines_cache_populate(ob);
       }
-      if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
-        continue;
-      }
-      DST.dupli_parent = data_.dupli_parent;
-      DST.dupli_source = data_.dupli_object_current;
-      drw_engines_cache_populate(ob);
+      DEG_OBJECT_ITER_END;
     }
-    DEG_OBJECT_ITER_END;
 
+    drw_duplidata_free();
     drw_engines_cache_finish();
 
     DRW_render_instance_buffer_finish();
@@ -1621,10 +1716,8 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   drw_engines_draw_scene();
 
-#ifdef __APPLE__
-  /* Fix 3D view being "laggy" on macos. (See T56996) */
+  /* Fix 3D view being "laggy" on macos and win+nvidia. (See T56996, T61474) */
   GPU_flush();
-#endif
 
   /* annotations - temporary drawing buffer (3d space) */
   /* XXX: Or should we use a proper draw/overlay engine for this case? */
@@ -1636,15 +1729,14 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   }
 
   DRW_draw_callbacks_post_scene();
+  DRW_state_reset();
+
   if (DST.draw_ctx.evil_C) {
-    DRW_state_reset();
     ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.ar, REGION_DRAW_POST_VIEW);
     /* Callback can be nasty and do whatever they want with the state.
      * Don't trust them! */
     DRW_state_reset();
   }
-
-  DRW_state_reset();
 
   drw_debug_draw();
 
@@ -1791,9 +1883,9 @@ static void DRW_render_gpencil_to_image(RenderEngine *engine,
 
 void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph)
 {
-  /* This function is only valid for Cycles
-   * Eevee done all work in the Eevee render directly.
-   * Maybe it can be done equal for both engines?
+  /* This function is only valid for Cycles & Workbench
+   * Eevee does all work in the Eevee render directly.
+   * Maybe it can be done equal for all engines?
    */
   if (STREQ(engine->type->name, "Eevee")) {
     return;
@@ -1860,7 +1952,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
   }
 
   RenderResult *render_result = RE_engine_get_result(engine);
-  RenderLayer *render_layer = render_result->layers.first;
+  RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
 
   DRW_render_gpencil_to_image(engine, render_layer, &render_rect);
 
@@ -2017,12 +2109,20 @@ void DRW_render_object_iter(
       DST.dupli_parent = data_.dupli_parent;
       DST.dupli_source = data_.dupli_object_current;
       DST.ob_state = NULL;
-      callback(vedata, ob, engine, depsgraph);
+      drw_duplidata_load(DST.dupli_source);
 
-      drw_batch_cache_generate_requested(ob);
+      if (!DST.dupli_source) {
+        drw_batch_cache_validate(ob);
+      }
+      callback(vedata, ob, engine, depsgraph);
+      if (!DST.dupli_source) {
+        drw_batch_cache_generate_requested(ob);
+      }
     }
   }
   DEG_OBJECT_ITER_END;
+
+  drw_duplidata_free();
 }
 
 /* Assume a valid gl context is bound (and that the gl_context_mutex has been acquired).
@@ -2252,14 +2352,10 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     drw_engines_world_update(scene);
 
     if (use_obedit) {
-#  if 0
-      drw_engines_cache_populate(obact);
-#  else
       FOREACH_OBJECT_IN_MODE_BEGIN (view_layer, v3d, obact->type, obact->mode, ob_iter) {
         drw_engines_cache_populate(ob_iter);
       }
       FOREACH_OBJECT_IN_MODE_END;
-#  endif
     }
     else {
       const int iter_flag = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
@@ -2290,16 +2386,18 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
           /* This relies on dupli instances being after their instancing object. */
           if ((ob->base_flag & BASE_FROM_DUPLI) == 0) {
             Object *ob_orig = DEG_get_original_object(ob);
-            DRW_select_load_id(ob_orig->select_id);
+            DRW_select_load_id(ob_orig->runtime.select_id);
           }
           DST.dupli_parent = data_.dupli_parent;
           DST.dupli_source = data_.dupli_object_current;
+          drw_duplidata_load(DST.dupli_source);
           drw_engines_cache_populate(ob);
         }
       }
       DEG_OBJECT_ITER_END;
     }
 
+    drw_duplidata_free();
     drw_engines_cache_finish();
 
     DRW_render_instance_buffer_finish();
@@ -2355,8 +2453,6 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
  */
 static void drw_draw_depth_loop_imp(void)
 {
-  DRW_opengl_context_enable();
-
   /* Setup framebuffer */
   DefaultFramebufferList *fbl = (DefaultFramebufferList *)GPU_viewport_framebuffer_list_get(
       DST.viewport);
@@ -2394,10 +2490,12 @@ static void drw_draw_depth_loop_imp(void)
 
       DST.dupli_parent = data_.dupli_parent;
       DST.dupli_source = data_.dupli_object_current;
+      drw_duplidata_load(DST.dupli_source);
       drw_engines_cache_populate(ob);
     }
     DEG_OBJECT_ITER_END;
 
+    drw_duplidata_free();
     drw_engines_cache_finish();
 
     DRW_render_instance_buffer_finish();
@@ -2417,9 +2515,6 @@ static void drw_draw_depth_loop_imp(void)
   /* TODO: Reading depth for operators should be done here. */
 
   GPU_framebuffer_restore();
-
-  /* Changin context */
-  DRW_opengl_context_disable();
 }
 
 /**
@@ -2434,6 +2529,8 @@ void DRW_draw_depth_loop(struct Depsgraph *depsgraph,
   RenderEngineType *engine_type = ED_view3d_engine_type(scene, v3d->shading.type);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
   RegionView3D *rv3d = ar->regiondata;
+
+  DRW_opengl_context_enable();
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -2469,6 +2566,9 @@ void DRW_draw_depth_loop(struct Depsgraph *depsgraph,
   /* Avoid accidental reuse. */
   drw_state_ensure_not_reused(&DST);
 #endif
+
+  /* Changin context */
+  DRW_opengl_context_disable();
 }
 
 /**
@@ -2482,6 +2582,8 @@ void DRW_draw_depth_loop_gpencil(struct Depsgraph *depsgraph,
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
   RegionView3D *rv3d = ar->regiondata;
+
+  DRW_opengl_context_enable();
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -2508,6 +2610,15 @@ void DRW_draw_depth_loop_gpencil(struct Depsgraph *depsgraph,
   /* Avoid accidental reuse. */
   drw_state_ensure_not_reused(&DST);
 #endif
+
+  /* Changin context */
+  DRW_opengl_context_disable();
+}
+
+/** See #DRW_shgroup_world_clip_planes_from_rv3d. */
+static void draw_world_clip_planes_from_rv3d(GPUBatch *batch, const float world_clip_planes[6][4])
+{
+  GPU_batch_uniform_4fv_array(batch, "WorldClipPlanes", 6, world_clip_planes[0]);
 }
 
 /**
@@ -2553,7 +2664,7 @@ void DRW_draw_depth_object(ARegion *ar, GPUViewport *viewport, Object *object)
                                                           GPU_SHADER_CFG_DEFAULT;
       GPU_batch_program_set_builtin_with_config(batch, GPU_SHADER_3D_DEPTH_ONLY, sh_cfg);
       if (world_clip_planes != NULL) {
-        GPU_batch_uniform_4fv_array(batch, "WorldClipPlanes", 6, world_clip_planes[0]);
+        draw_world_clip_planes_from_rv3d(batch, world_clip_planes);
       }
 
       GPU_batch_draw(batch);
@@ -2573,6 +2684,202 @@ void DRW_draw_depth_object(ARegion *ar, GPUViewport *viewport, Object *object)
   DRW_opengl_context_disable();
 }
 
+static void draw_mesh_verts(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+{
+  GPU_point_size(UI_GetThemeValuef(TH_VERTEX_SIZE));
+
+  const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
+                                                      GPU_SHADER_CFG_DEFAULT;
+  GPU_batch_program_set_builtin_with_config(batch, GPU_SHADER_3D_FLAT_SELECT_ID, sh_cfg);
+  GPU_batch_uniform_1ui(batch, "offset", offset);
+  if (world_clip_planes != NULL) {
+    draw_world_clip_planes_from_rv3d(batch, world_clip_planes);
+  }
+  GPU_batch_draw(batch);
+}
+
+static void draw_mesh_edges(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+{
+  GPU_line_width(1.0f);
+  glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
+
+  const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
+                                                      GPU_SHADER_CFG_DEFAULT;
+  GPU_batch_program_set_builtin_with_config(batch, GPU_SHADER_3D_FLAT_SELECT_ID, sh_cfg);
+  GPU_batch_uniform_1ui(batch, "offset", offset);
+  if (world_clip_planes != NULL) {
+    draw_world_clip_planes_from_rv3d(batch, world_clip_planes);
+  }
+  GPU_batch_draw(batch);
+
+  glProvokingVertex(GL_LAST_VERTEX_CONVENTION);
+}
+
+/* two options, facecolors or black */
+static void draw_mesh_face(GPUBatch *batch,
+                           int offset,
+                           const bool use_select,
+                           const float world_clip_planes[6][4])
+{
+  if (use_select) {
+    const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
+                                                        GPU_SHADER_CFG_DEFAULT;
+    GPU_batch_program_set_builtin_with_config(batch, GPU_SHADER_3D_FLAT_SELECT_ID, sh_cfg);
+    GPU_batch_uniform_1ui(batch, "offset", offset);
+    if (world_clip_planes != NULL) {
+      draw_world_clip_planes_from_rv3d(batch, world_clip_planes);
+    }
+    GPU_batch_draw(batch);
+  }
+  else {
+    const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
+                                                        GPU_SHADER_CFG_DEFAULT;
+    GPU_batch_program_set_builtin_with_config(batch, GPU_SHADER_3D_UNIFORM_SELECT_ID, sh_cfg);
+    GPU_batch_uniform_1ui(batch, "id", 0);
+    if (world_clip_planes != NULL) {
+      draw_world_clip_planes_from_rv3d(batch, world_clip_planes);
+    }
+    GPU_batch_draw(batch);
+  }
+}
+
+static void draw_mesh_face_dot(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+{
+  const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
+                                                      GPU_SHADER_CFG_DEFAULT;
+  GPU_batch_program_set_builtin_with_config(batch, GPU_SHADER_3D_FLAT_SELECT_ID, sh_cfg);
+  GPU_batch_uniform_1ui(batch, "offset", offset);
+  if (world_clip_planes != NULL) {
+    draw_world_clip_planes_from_rv3d(batch, world_clip_planes);
+  }
+  GPU_batch_draw(batch);
+}
+
+void DRW_draw_select_id_object(Scene *scene,
+                               RegionView3D *rv3d,
+                               Object *ob,
+                               short select_mode,
+                               bool draw_facedot,
+                               uint initial_offset,
+                               uint *r_vert_offset,
+                               uint *r_edge_offset,
+                               uint *r_face_offset)
+{
+  ToolSettings *ts = scene->toolsettings;
+  if (select_mode == -1) {
+    select_mode = ts->selectmode;
+  }
+
+  GPU_matrix_mul(ob->obmat);
+
+  const float(*world_clip_planes)[4] = NULL;
+  if (rv3d->rflag & RV3D_CLIPPING) {
+    ED_view3d_clipping_local(rv3d, ob->obmat);
+    world_clip_planes = rv3d->clip_local;
+  }
+
+  BLI_assert(initial_offset > 0);
+
+  switch (ob->type) {
+    case OB_MESH:
+      if (ob->mode & OB_MODE_EDIT) {
+        Mesh *me = ob->data;
+        BMEditMesh *em = me->edit_mesh;
+        const bool use_faceselect = (select_mode & SCE_SELECT_FACE) != 0;
+
+        DRW_mesh_batch_cache_validate(me);
+
+        BM_mesh_elem_table_ensure(em->bm, BM_VERT | BM_EDGE | BM_FACE);
+
+        GPUBatch *geom_faces, *geom_edges, *geom_verts, *geom_facedots;
+        geom_faces = DRW_mesh_batch_cache_get_triangles_with_select_id(me);
+        if (select_mode & SCE_SELECT_EDGE) {
+          geom_edges = DRW_mesh_batch_cache_get_edges_with_select_id(me);
+        }
+        if (select_mode & SCE_SELECT_VERTEX) {
+          geom_verts = DRW_mesh_batch_cache_get_verts_with_select_id(me);
+        }
+        if (use_faceselect && draw_facedot) {
+          geom_facedots = DRW_mesh_batch_cache_get_facedots_with_select_id(me);
+        }
+        DRW_mesh_batch_cache_create_requested(ob, me, NULL, false, true);
+
+        draw_mesh_face(geom_faces, initial_offset, use_faceselect, world_clip_planes);
+
+        if (use_faceselect && draw_facedot) {
+          draw_mesh_face_dot(geom_facedots, initial_offset, world_clip_planes);
+        }
+
+        if (select_mode & SCE_SELECT_FACE) {
+          *r_face_offset = initial_offset + em->bm->totface;
+        }
+        else {
+          *r_face_offset = initial_offset;
+        }
+
+        ED_view3d_polygon_offset(rv3d, 1.0);
+
+        /* Unlike faces, only draw edges if edge select mode. */
+        if (select_mode & SCE_SELECT_EDGE) {
+          draw_mesh_edges(geom_edges, *r_face_offset, world_clip_planes);
+          *r_edge_offset = *r_face_offset + em->bm->totedge;
+        }
+        else {
+          /* Note that `r_vert_offset` is calculated from `r_edge_offset`.
+           * Otherwise the first vertex is never selected, see: T53512. */
+          *r_edge_offset = *r_face_offset;
+        }
+
+        ED_view3d_polygon_offset(rv3d, 1.1);
+
+        /* Unlike faces, only verts if vert select mode. */
+        if (select_mode & SCE_SELECT_VERTEX) {
+          draw_mesh_verts(geom_verts, *r_edge_offset, world_clip_planes);
+          *r_vert_offset = *r_edge_offset + em->bm->totvert;
+        }
+        else {
+          *r_vert_offset = *r_edge_offset;
+        }
+
+        ED_view3d_polygon_offset(rv3d, 0.0);
+      }
+      else {
+        Mesh *me_orig = DEG_get_original_object(ob)->data;
+        Mesh *me_eval = ob->data;
+
+        DRW_mesh_batch_cache_validate(me_eval);
+        GPUBatch *geom_faces = DRW_mesh_batch_cache_get_triangles_with_select_id(me_eval);
+        if ((me_orig->editflag & ME_EDIT_PAINT_VERT_SEL) &&
+            /* Currently vertex select supports weight paint and vertex paint. */
+            ((ob->mode & OB_MODE_WEIGHT_PAINT) || (ob->mode & OB_MODE_VERTEX_PAINT))) {
+
+          GPUBatch *geom_verts = DRW_mesh_batch_cache_get_verts_with_select_id(me_eval);
+          DRW_mesh_batch_cache_create_requested(ob, me_eval, NULL, false, true);
+
+          /* Only draw faces to mask out verts, we don't want their selection ID's. */
+          draw_mesh_face(geom_faces, 0, false, world_clip_planes);
+          draw_mesh_verts(geom_verts, 1, world_clip_planes);
+
+          *r_vert_offset = me_eval->totvert + 1;
+        }
+        else {
+          const bool use_hide = (me_orig->editflag & ME_EDIT_PAINT_FACE_SEL);
+          DRW_mesh_batch_cache_create_requested(ob, me_eval, NULL, false, use_hide);
+
+          draw_mesh_face(geom_faces, initial_offset, true, world_clip_planes);
+
+          *r_face_offset = initial_offset + me_eval->totface;
+        }
+      }
+      break;
+    case OB_CURVE:
+    case OB_SURF:
+      break;
+  }
+
+  GPU_matrix_set(rv3d->viewmat);
+}
+
 /* Set an opengl context to be used with shaders that draw on U32 colors. */
 void DRW_framebuffer_select_id_setup(ARegion *ar, const bool clear)
 {
@@ -2589,7 +2896,7 @@ void DRW_framebuffer_select_id_setup(ARegion *ar, const bool clear)
   glDisable(GL_DITHER);
 
   GPU_depth_test(true);
-  glDisable(GL_SCISSOR_TEST);
+  GPU_enable_program_point_size();
 
   if (clear) {
     GPU_framebuffer_clear_color_depth(
@@ -2660,7 +2967,8 @@ void DRW_state_dfdy_factors_get(float dfdyfac[2])
  */
 bool DRW_state_is_fbo(void)
 {
-  return ((DST.default_framebuffer != NULL) || DST.options.is_image_render);
+  return ((DST.default_framebuffer != NULL) || DST.options.is_image_render) &&
+         !DRW_state_is_depth() && !DRW_state_is_select();
 }
 
 /**
@@ -2847,7 +3155,6 @@ void DRW_engines_free(void)
   DRW_UBO_FREE_SAFE(G_draw.view_ubo);
   DRW_TEXTURE_FREE_SAFE(G_draw.ramp);
   DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
-  MEM_SAFE_FREE(g_pos_format);
 
   MEM_SAFE_FREE(DST.uniform_names.buffer);
 

@@ -1172,9 +1172,7 @@ static bool delete_graph_keys(bAnimContext *ac)
     }
 
     /* Only delete curve too if it won't be doing anything anymore */
-    if ((fcu->totvert == 0) &&
-        (list_has_suitable_fmodifier(&fcu->modifiers, 0, FMI_TYPE_GENERATE_CURVE) == 0) &&
-        (fcu->driver == NULL)) {
+    if (BKE_fcurve_is_empty(fcu)) {
       ANIM_fcurve_delete_from_animdata(ac, adt, fcu);
       ale->key_data = NULL;
     }
@@ -2820,6 +2818,7 @@ void GRAPH_OT_fmodifier_add(wmOperatorType *ot)
 
   /* id-props */
   prop = RNA_def_enum(ot->srna, "type", rna_enum_fmodifier_type_items, 0, "Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ACTION);
   RNA_def_enum_funcs(prop, graph_fmodifier_itemf);
   ot->prop = prop;
 

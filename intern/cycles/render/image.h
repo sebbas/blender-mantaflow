@@ -56,7 +56,7 @@ class ImageMetaData {
         width(0),
         height(0),
         depth(0),
-        builtin_free_cache(NULL),
+        builtin_free_cache(false),
         type((ImageDataType)0),
         colorspace(u_colorspace_raw),
         compress_as_srgb(false)
@@ -83,21 +83,22 @@ class ImageManager {
                 float frame,
                 InterpolationType interpolation,
                 ExtensionType extension,
-                bool use_alpha,
+                ImageAlphaType alpha_type,
                 ustring colorspace,
                 ImageMetaData &metadata);
+  void add_image_user(int flat_slot);
   void remove_image(int flat_slot);
   void remove_image(const string &filename,
                     void *builtin_data,
                     InterpolationType interpolation,
                     ExtensionType extension,
-                    bool use_alpha,
+                    ImageAlphaType alpha_type,
                     ustring colorspace);
   void tag_reload_image(const string &filename,
                         void *builtin_data,
                         InterpolationType interpolation,
                         ExtensionType extension,
-                        bool use_alpha,
+                        ImageAlphaType alpha_type,
                         ustring colorspace);
   bool get_image_metadata(const string &filename,
                           void *builtin_data,
@@ -146,7 +147,7 @@ class ImageManager {
     ImageMetaData metadata;
 
     ustring colorspace;
-    bool use_alpha;
+    ImageAlphaType alpha_type;
     bool need_load;
     bool animated;
     float frame;

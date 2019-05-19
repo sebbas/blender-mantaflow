@@ -1,14 +1,4 @@
 
-uniform mat4 ModelViewMatrix;
-uniform mat4 ModelViewMatrixInverse;
-uniform mat3 NormalMatrix;
-uniform mat3 NormalMatrixInverse;
-
-#ifndef USE_ATTR
-uniform mat4 ModelMatrix;
-uniform mat4 ModelMatrixInverse;
-#endif
-
 /* Converters */
 
 float convert_rgba_to_float(vec4 color)
@@ -119,38 +109,6 @@ void hsv_to_rgb(vec4 hsv, out vec4 outcol)
   outcol = vec4(rgb, hsv.w);
 }
 
-float srgb_to_linearrgb(float c)
-{
-  if (c < 0.04045)
-    return (c < 0.0) ? 0.0 : c * (1.0 / 12.92);
-  else
-    return pow((c + 0.055) * (1.0 / 1.055), 2.4);
-}
-
-float linearrgb_to_srgb(float c)
-{
-  if (c < 0.0031308)
-    return (c < 0.0) ? 0.0 : c * 12.92;
-  else
-    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
-}
-
-void srgb_to_linearrgb(vec4 col_from, out vec4 col_to)
-{
-  col_to.r = srgb_to_linearrgb(col_from.r);
-  col_to.g = srgb_to_linearrgb(col_from.g);
-  col_to.b = srgb_to_linearrgb(col_from.b);
-  col_to.a = col_from.a;
-}
-
-void linearrgb_to_srgb(vec4 col_from, out vec4 col_to)
-{
-  col_to.r = linearrgb_to_srgb(col_from.r);
-  col_to.g = linearrgb_to_srgb(col_from.g);
-  col_to.b = linearrgb_to_srgb(col_from.b);
-  col_to.a = col_from.a;
-}
-
 void color_to_normal_new_shading(vec3 color, out vec3 normal)
 {
   normal = vec3(2.0) * color - vec3(1.0);
@@ -204,9 +162,9 @@ void direction_transform_m4v3(vec3 vin, mat4 mat, out vec3 vout)
   vout = (mat * vec4(vin, 0.0)).xyz;
 }
 
-void mat3_mul(vec3 vin, mat3 mat, out vec3 vout)
+void normal_transform_transposed_m4v3(vec3 vin, mat4 mat, out vec3 vout)
 {
-  vout = mat * vin;
+  vout = transpose(mat3(mat)) * vin;
 }
 
 void point_transform_m4v3(vec3 vin, mat4 mat, out vec3 vout)
@@ -1162,8 +1120,9 @@ vec3 cellnoise_color(vec3 p)
 
 float floorfrac(float x, out int i)
 {
-  i = floor_to_int(x);
-  return x - i;
+  float x_floor = floor(x);
+  i = int(x_floor);
+  return x - x_floor;
 }
 
 /* bsdfs */
@@ -1275,6 +1234,8 @@ void node_bsdf_principled(vec4 base_color,
                           float ior,
                           float transmission,
                           float transmission_roughness,
+                          vec4 emission,
+                          float alpha,
                           vec3 N,
                           vec3 CN,
                           vec3 T,
@@ -1354,6 +1315,8 @@ void node_bsdf_principled(vec4 base_color,
 #    endif
   result.sss_data.rgb *= (1.0 - transmission);
 #  endif
+  result.radiance += emission.rgb;
+  result.opacity = alpha;
 }
 
 void node_bsdf_principled_dielectric(vec4 base_color,
@@ -1373,6 +1336,8 @@ void node_bsdf_principled_dielectric(vec4 base_color,
                                      float ior,
                                      float transmission,
                                      float transmission_roughness,
+                                     vec4 emission,
+                                     float alpha,
                                      vec3 N,
                                      vec3 CN,
                                      vec3 T,
@@ -1402,6 +1367,8 @@ void node_bsdf_principled_dielectric(vec4 base_color,
   result.ssr_data = vec4(ssr_spec, roughness);
   result.ssr_normal = normal_encode(vN, viewCameraVec);
   result.ssr_id = int(ssr_id);
+  result.radiance += emission.rgb;
+  result.opacity = alpha;
 }
 
 void node_bsdf_principled_metallic(vec4 base_color,
@@ -1421,6 +1388,8 @@ void node_bsdf_principled_metallic(vec4 base_color,
                                    float ior,
                                    float transmission,
                                    float transmission_roughness,
+                                   vec4 emission,
+                                   float alpha,
                                    vec3 N,
                                    vec3 CN,
                                    vec3 T,
@@ -1441,6 +1410,8 @@ void node_bsdf_principled_metallic(vec4 base_color,
   result.ssr_data = vec4(ssr_spec, roughness);
   result.ssr_normal = normal_encode(vN, viewCameraVec);
   result.ssr_id = int(ssr_id);
+  result.radiance += emission.rgb;
+  result.opacity = alpha;
 }
 
 void node_bsdf_principled_clearcoat(vec4 base_color,
@@ -1460,6 +1431,8 @@ void node_bsdf_principled_clearcoat(vec4 base_color,
                                     float ior,
                                     float transmission,
                                     float transmission_roughness,
+                                    vec4 emission,
+                                    float alpha,
                                     vec3 N,
                                     vec3 CN,
                                     vec3 T,
@@ -1489,6 +1462,8 @@ void node_bsdf_principled_clearcoat(vec4 base_color,
   result.ssr_data = vec4(ssr_spec, roughness);
   result.ssr_normal = normal_encode(vN, viewCameraVec);
   result.ssr_id = int(ssr_id);
+  result.radiance += emission.rgb;
+  result.opacity = alpha;
 }
 
 void node_bsdf_principled_subsurface(vec4 base_color,
@@ -1508,6 +1483,8 @@ void node_bsdf_principled_subsurface(vec4 base_color,
                                      float ior,
                                      float transmission,
                                      float transmission_roughness,
+                                     vec4 emission,
+                                     float alpha,
                                      vec3 N,
                                      vec3 CN,
                                      vec3 T,
@@ -1562,6 +1539,8 @@ void node_bsdf_principled_subsurface(vec4 base_color,
   result.radiance += (out_diff + out_trans) * mixed_ss_base_color;
 #  endif
   result.radiance += out_diff * out_sheen;
+  result.radiance += emission.rgb;
+  result.opacity = alpha;
 }
 
 void node_bsdf_principled_glass(vec4 base_color,
@@ -1581,6 +1560,8 @@ void node_bsdf_principled_glass(vec4 base_color,
                                 float ior,
                                 float transmission,
                                 float transmission_roughness,
+                                vec4 emission,
+                                float alpha,
                                 vec3 N,
                                 vec3 CN,
                                 vec3 T,
@@ -1615,6 +1596,8 @@ void node_bsdf_principled_glass(vec4 base_color,
   result.ssr_data = vec4(ssr_spec, roughness);
   result.ssr_normal = normal_encode(vN, viewCameraVec);
   result.ssr_id = int(ssr_id);
+  result.radiance += emission.rgb;
+  result.opacity = alpha;
 }
 
 void node_bsdf_translucent(vec4 color, vec3 N, out Closure result)
@@ -1743,11 +1726,11 @@ void node_tex_environment_texco(vec3 viewvec, out vec3 worldvec)
   vec4 v = (ProjectionMatrix[3][3] == 0.0) ? vec4(viewvec, 1.0) : vec4(0.0, 0.0, 1.0, 1.0);
   vec4 co_homogenous = (ProjectionMatrixInverse * v);
 
-  vec4 co = vec4(co_homogenous.xyz / co_homogenous.w, 0.0);
+  vec3 co = co_homogenous.xyz / co_homogenous.w;
 #  if defined(WORLD_BACKGROUND) || defined(PROBE_CAPTURE)
-  worldvec = (ViewMatrixInverse * co).xyz;
+  worldvec = mat3(ViewMatrixInverse) * co;
 #  else
-  worldvec = (ModelViewMatrixInverse * co).xyz;
+  worldvec = mat3(ModelMatrixInverse) * (mat3(ViewMatrixInverse) * co);
 #  endif
 #endif
 }
@@ -2014,18 +1997,13 @@ void tangent_orco_z(vec3 orco_in, out vec3 orco_out)
   orco_out = orco_in.yxz * vec3(-0.5, 0.5, 0.0) + vec3(0.25, -0.25, 0.0);
 }
 
-void node_tangentmap(vec4 attr_tangent, mat4 toworld, out vec3 tangent)
+void node_tangentmap(vec4 attr_tangent, out vec3 tangent)
 {
-  tangent = normalize((toworld * vec4(attr_tangent.xyz, 0.0)).xyz);
+  tangent = normalize(attr_tangent.xyz);
 }
 
-void node_tangent(vec3 N, vec3 orco, mat4 objmat, mat4 toworld, out vec3 T)
+void node_tangent(vec3 N, vec3 orco, mat4 objmat, out vec3 T)
 {
-#ifndef VOLUMETRICS
-  N = normalize(gl_FrontFacing ? worldNormal : -worldNormal);
-#else
-  N = (toworld * vec4(N, 0.0)).xyz;
-#endif
   T = (objmat * vec4(orco, 0.0)).xyz;
   T = cross(N, normalize(cross(T, N)));
 }
@@ -2060,7 +2038,7 @@ void node_geometry(vec3 I,
 
   position = worldPosition;
 #  ifndef VOLUMETRICS
-  normal = normalize(gl_FrontFacing ? worldNormal : -worldNormal);
+  normal = normalize(N);
   vec3 B = dFdx(worldPosition);
   vec3 T = dFdy(worldPosition);
   true_normal = normalize(cross(B, T));
@@ -2069,7 +2047,7 @@ void node_geometry(vec3 I,
   true_normal = normal;
 #  endif
   tangent_orco_z(orco, orco);
-  node_tangent(N, orco, objmat, toworld, tangent);
+  node_tangent(N, orco, objmat, tangent);
 
   parametric = vec3(barycentric, 0.0);
   backfacing = (gl_FrontFacing) ? 0.0 : 1.0;
@@ -2091,9 +2069,8 @@ void generated_texco(vec3 I, vec3 attr_orco, out vec3 generated)
 }
 
 void node_tex_coord(vec3 I,
-                    vec3 N,
-                    mat4 viewinvmat,
-                    mat4 obinvmat,
+                    vec3 wN,
+                    mat4 obmatinv,
                     vec4 camerafac,
                     vec3 attr_orco,
                     vec3 attr_uv,
@@ -2106,22 +2083,18 @@ void node_tex_coord(vec3 I,
                     out vec3 reflection)
 {
   generated = attr_orco;
-  normal = normalize(NormalMatrixInverse * N);
+  normal = normalize(normal_world_to_object(wN));
   uv = attr_uv;
-  object = (obinvmat * (viewinvmat * vec4(I, 1.0))).xyz;
+  object = (obmatinv * (ViewMatrixInverse * vec4(I, 1.0))).xyz;
   camera = vec3(I.xy, -I.z);
   vec4 projvec = ProjectionMatrix * vec4(I, 1.0);
   window = vec3(mtex_2d_mapping(projvec.xyz / projvec.w).xy * camerafac.xy + camerafac.zw, 0.0);
-
-  vec3 shade_I = (ProjectionMatrix[3][3] == 0.0) ? normalize(I) : vec3(0.0, 0.0, -1.0);
-  vec3 view_reflection = reflect(shade_I, normalize(N));
-  reflection = (viewinvmat * vec4(view_reflection, 0.0)).xyz;
+  reflection = reflect(cameraVec, normalize(wN));
 }
 
 void node_tex_coord_background(vec3 I,
                                vec3 N,
-                               mat4 viewinvmat,
-                               mat4 obinvmat,
+                               mat4 obmatinv,
                                vec4 camerafac,
                                vec3 attr_orco,
                                vec3 attr_uv,
@@ -2140,11 +2113,7 @@ void node_tex_coord_background(vec3 I,
 
   co = normalize(co);
 
-#if defined(WORLD_BACKGROUND) || defined(PROBE_CAPTURE)
   vec3 coords = (ViewMatrixInverse * co).xyz;
-#else
-  vec3 coords = (ModelViewMatrixInverse * co).xyz;
-#endif
 
   generated = coords;
   normal = -coords;
@@ -2344,6 +2313,21 @@ void node_tex_environment_empty(vec3 co, out vec4 color)
 
 /* 16bits floats limits. Higher/Lower values produce +/-inf. */
 #define safe_color(a) (clamp(a, -65520.0, 65520.0))
+
+void tex_color_alpha_clear(vec4 color, out vec4 result)
+{
+  result = vec4(color.rgb, 1.0);
+}
+
+void tex_color_alpha_unpremultiply(vec4 color, out vec4 result)
+{
+  if (color.a == 0.0 || color.a == 1.0) {
+    result = vec4(color.rgb, 1.0);
+  }
+  else {
+    result = vec4(color.rgb / color.a, 1.0);
+  }
+}
 
 void node_tex_image_linear(vec3 co, sampler2D ima, out vec4 color, out float alpha)
 {
@@ -3245,6 +3229,7 @@ void node_light_falloff(
 
 void node_object_info(mat4 obmat,
                       vec4 info,
+                      float mat_index,
                       out vec3 location,
                       out float object_index,
                       out float material_index,
@@ -3252,7 +3237,7 @@ void node_object_info(mat4 obmat,
 {
   location = obmat[3].xyz;
   object_index = info.x;
-  material_index = info.y;
+  material_index = mat_index;
   random = info.z;
 }
 
@@ -3346,6 +3331,7 @@ void node_vector_displacement_tangent(vec4 vector,
                                       mat4 viewmat,
                                       out vec3 result)
 {
+  /* TODO(fclem) this is broken. revisit latter. */
   vec3 N_object = normalize(((vec4(normal, 0.0) * viewmat) * obmat).xyz);
   vec3 T_object = normalize(((vec4(tangent.xyz, 0.0) * viewmat) * obmat).xyz);
   vec3 B_object = tangent.w * normalize(cross(N_object, T_object));
@@ -3390,11 +3376,11 @@ void node_output_world(Closure surface, Closure volume, out Closure result)
 #endif /* VOLUMETRICS */
 }
 
-#ifndef VOLUMETRICS
 /* TODO : clean this ifdef mess */
 /* EEVEE output */
 void world_normals_get(out vec3 N)
 {
+#ifndef VOLUMETRICS
 #  ifdef HAIR_SHADER
   vec3 B = normalize(cross(worldNormal, hairTangent));
   float cos_theta;
@@ -3412,8 +3398,12 @@ void world_normals_get(out vec3 N)
 #  else
   N = gl_FrontFacing ? worldNormal : -worldNormal;
 #  endif
+#else
+  generated_from_orco(vec3(0.0), N);
+#endif
 }
 
+#ifndef VOLUMETRICS
 void node_eevee_specular(vec4 diffuse,
                          vec4 specular,
                          float roughness,

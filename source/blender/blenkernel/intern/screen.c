@@ -193,18 +193,6 @@ static void panel_list_copy(ListBase *newlb, const ListBase *lb)
   Panel *pa = lb->first;
   for (; newpa; newpa = newpa->next, pa = pa->next) {
     newpa->activedata = NULL;
-
-    Panel *newpatab = newlb->first;
-    Panel *patab = lb->first;
-    while (newpatab) {
-      if (newpa->paneltab == patab) {
-        newpa->paneltab = newpatab;
-        break;
-      }
-      newpatab = newpatab->next;
-      patab = patab->next;
-    }
-
     panel_list_copy(&newpa->children, &pa->children);
   }
 }
@@ -439,7 +427,6 @@ void BKE_area_region_free(SpaceType *st, ARegion *ar)
     }
     if (uilst->properties) {
       IDP_FreeProperty(uilst->properties);
-      MEM_freeN(uilst->properties);
     }
   }
 
@@ -859,6 +846,7 @@ void BKE_screen_view3d_shading_init(View3DShading *shading)
   shading->xray_alpha_wire = 0.5f;
   shading->cavity_valley_factor = 1.0f;
   shading->cavity_ridge_factor = 1.0f;
+  shading->cavity_type = V3D_SHADING_CAVITY_CURVATURE;
   shading->curvature_ridge_factor = 1.0f;
   shading->curvature_valley_factor = 1.0f;
   copy_v3_fl(shading->single_color, 0.8f);

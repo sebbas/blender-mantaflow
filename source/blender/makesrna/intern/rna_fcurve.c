@@ -239,7 +239,9 @@ static void rna_DriverTarget_update_name(Main *bmain, Scene *scene, PointerRNA *
 /* ----------- */
 
 /* note: this function exists only to avoid id refcounting */
-static void rna_DriverTarget_id_set(PointerRNA *ptr, PointerRNA value)
+static void rna_DriverTarget_id_set(struct ReportList *UNUSED(reports),
+                                    PointerRNA *ptr,
+                                    PointerRNA value)
 {
   DriverTarget *dtar = (DriverTarget *)ptr->data;
   dtar->id = value.data;
@@ -446,7 +448,9 @@ static void rna_FCurve_RnaPath_set(PointerRNA *ptr, const char *value)
     fcu->rna_path = NULL;
 }
 
-static void rna_FCurve_group_set(PointerRNA *ptr, PointerRNA value)
+static void rna_FCurve_group_set(struct ReportList *UNUSED(reports),
+                                 PointerRNA *ptr,
+                                 PointerRNA value)
 {
   ID *pid = (ID *)ptr->id.data;
   ID *vid = (ID *)value.id.data;
@@ -520,6 +524,12 @@ static void rna_FCurve_range(FCurve *fcu, float range[2])
   calc_fcurve_range(fcu, range, range + 1, false, false);
 }
 
+static bool rna_FCurve_is_empty_get(PointerRNA *ptr)
+{
+  FCurve *fcu = (FCurve *)ptr->data;
+  return BKE_fcurve_is_empty(fcu);
+}
+
 /* allow scripts to update curve after editing manually */
 static void rna_FCurve_update_data_ex(FCurve *fcu)
 {
@@ -560,7 +570,9 @@ static PointerRNA rna_FCurve_active_modifier_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_FModifier, fcm);
 }
 
-static void rna_FCurve_active_modifier_set(PointerRNA *ptr, PointerRNA value)
+static void rna_FCurve_active_modifier_set(struct ReportList *UNUSED(reports),
+                                           PointerRNA *ptr,
+                                           PointerRNA value)
 {
   FCurve *fcu = (FCurve *)ptr->data;
   set_active_fmodifier(&fcu->modifiers, (FModifier *)value.data);
@@ -1534,6 +1546,7 @@ static void rna_def_fmodifier(BlenderRNA *brna)
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_enum_items(prop, rna_enum_fmodifier_type_items);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ACTION);
   RNA_def_property_ui_text(prop, "Type", "F-Curve Modifier Type");
 
   /* settings */
@@ -1645,6 +1658,7 @@ static void rna_def_drivertarget(BlenderRNA *brna)
       {DTAR_TRANSCHAN_SCALEX, "SCALE_X", 0, "X Scale", ""},
       {DTAR_TRANSCHAN_SCALEY, "SCALE_Y", 0, "Y Scale", ""},
       {DTAR_TRANSCHAN_SCALEZ, "SCALE_Z", 0, "Z Scale", ""},
+      {DTAR_TRANSCHAN_SCALE_AVG, "SCALE_AVG", 0, "Average Scale", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -2293,6 +2307,14 @@ static void rna_def_fcurve(BlenderRNA *brna)
       "False when F-Curve could not be evaluated in past, so should be skipped "
       "when evaluating");
   RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+
+  prop = RNA_def_property(srna, "is_empty", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_FCurve_is_empty_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Empty",
+                           "True if the curve contributes no animation due to lack of "
+                           "keyframes or useful modifiers, and should be deleted");
 
   /* Collections */
   prop = RNA_def_property(srna, "sampled_points", PROP_COLLECTION, PROP_NONE);

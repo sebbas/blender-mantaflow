@@ -42,6 +42,7 @@
 
 #include "RE_pipeline.h"
 
+#include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
@@ -61,81 +62,6 @@
 
 #define B_NOP -1
 #define MAX_IMAGE_INFO_LEN 128
-
-/* proto */
-
-static void image_info(
-    Scene *scene, ImageUser *iuser, Image *ima, ImBuf *ibuf, char *str, size_t len)
-{
-  size_t ofs = 0;
-
-  str[0] = 0;
-  if (ima == NULL) {
-    return;
-  }
-
-  if (ibuf == NULL) {
-    ofs += BLI_strncpy_rlen(str + ofs, IFACE_("Can't Load Image"), len - ofs);
-  }
-  else {
-    if (ima->source == IMA_SRC_MOVIE) {
-      ofs += BLI_strncpy_rlen(str + ofs, IFACE_("Movie"), len - ofs);
-      if (BKE_image_has_anim(ima)) {
-        ofs += BLI_snprintf(
-            str + ofs,
-            len - ofs,
-            IFACE_(" %d frs"),
-            IMB_anim_get_duration(((ImageAnim *)ima->anims.first)->anim, IMB_TC_RECORD_RUN));
-      }
-    }
-    else {
-      ofs += BLI_strncpy_rlen(str, IFACE_("Image"), len - ofs);
-    }
-
-    ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_(": size %d x %d,"), ibuf->x, ibuf->y);
-
-    if (ibuf->rect_float) {
-      if (ibuf->channels != 4) {
-        ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_("%d float channel(s)"), ibuf->channels);
-      }
-      else if (ibuf->planes == R_IMF_PLANES_RGBA) {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGBA float"), len - ofs);
-      }
-      else {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGB float"), len - ofs);
-      }
-    }
-    else {
-      if (ibuf->planes == R_IMF_PLANES_RGBA) {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGBA byte"), len - ofs);
-      }
-      else {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGB byte"), len - ofs);
-      }
-    }
-    if (ibuf->zbuf || ibuf->zbuf_float) {
-      ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" + Z"), len - ofs);
-    }
-
-    if (ima->source == IMA_SRC_SEQUENCE) {
-      const char *file = BLI_last_slash(ibuf->name);
-      if (file == NULL) {
-        file = ibuf->name;
-      }
-      else {
-        file++;
-      }
-      ofs += BLI_snprintf(str + ofs, len - ofs, ", %s", file);
-    }
-  }
-
-  /* the frame number, even if we cant */
-  if (ima->source == IMA_SRC_SEQUENCE) {
-    /* don't use iuser->framenr directly because it may not be updated if auto-refresh is off */
-    const int framenr = BKE_image_user_frame_get(iuser, CFRA, NULL);
-    ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_(", Frame: %d"), framenr);
-  }
-}
 
 /* gets active viewer user */
 struct ImageUser *ntree_get_active_iuser(bNodeTree *ntree)
@@ -650,23 +576,6 @@ static void image_multiview_cb(bContext *C, void *rnd_pt, void *UNUSED(arg_v))
   WM_event_add_notifier(C, NC_IMAGE | ND_DRAW, NULL);
 }
 
-#if 0
-static void image_freecache_cb(bContext *C, void *ima_v, void *unused)
-{
-  Scene *scene = CTX_data_scene(C);
-  BKE_image_free_anim_ibufs(ima_v, scene->r.cfra);
-  WM_event_add_notifier(C, NC_IMAGE, ima_v);
-}
-#endif
-
-#if 0
-static void image_user_change(bContext *C, void *iuser_v, void *unused)
-{
-  Scene *scene = CTX_data_scene(C);
-  BKE_image_user_calc_imanr(iuser_v, scene->r.cfra, 0);
-}
-#endif
-
 static void uiblock_layer_pass_buttons(
     uiLayout *layout, Image *image, RenderResult *rr, ImageUser *iuser, int w, short *render_slot)
 {
@@ -839,6 +748,22 @@ static void rna_update_cb(bContext *C, void *arg_cb, void *UNUSED(arg))
   RNA_property_update(C, &cb->ptr, cb->prop);
 }
 
+static bool image_has_alpha(Image *ima, ImageUser *iuser)
+{
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, NULL);
+  if (ibuf == NULL) {
+    return false;
+  }
+
+  int imtype = BKE_image_ftype_to_imtype(ibuf->ftype, &ibuf->foptions);
+  char valid_channels = BKE_imtype_valid_channels(imtype, false);
+  bool has_alpha = (valid_channels & IMA_CHAN_FLAG_ALPHA) != 0;
+
+  BKE_image_release_ibuf(ima, ibuf, NULL);
+
+  return has_alpha;
+}
+
 void uiTemplateImage(uiLayout *layout,
                      bContext *C,
                      PointerRNA *ptr,
@@ -847,23 +772,11 @@ void uiTemplateImage(uiLayout *layout,
                      bool compact,
                      bool multiview)
 {
-  PropertyRNA *prop;
-  PointerRNA imaptr;
-  RNAUpdateCb *cb;
-  Image *ima;
-  ImageUser *iuser;
-  Scene *scene = CTX_data_scene(C);
-  uiLayout *row, *split, *col;
-  uiBlock *block;
-  char str[MAX_IMAGE_INFO_LEN];
-
-  void *lock;
-
   if (!ptr->data) {
     return;
   }
 
-  prop = RNA_struct_find_property(ptr, propname);
+  PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
   if (!prop) {
     printf(
         "%s: property not found: %s.%s\n", __func__, RNA_struct_identifier(ptr->type), propname);
@@ -878,23 +791,20 @@ void uiTemplateImage(uiLayout *layout,
     return;
   }
 
-  block = uiLayoutGetBlock(layout);
+  uiBlock *block = uiLayoutGetBlock(layout);
 
-  imaptr = RNA_property_pointer_get(ptr, prop);
-  ima = imaptr.data;
-  iuser = userptr->data;
+  PointerRNA imaptr = RNA_property_pointer_get(ptr, prop);
+  Image *ima = imaptr.data;
+  ImageUser *iuser = userptr->data;
 
+  Scene *scene = CTX_data_scene(C);
   BKE_image_user_frame_calc(iuser, (int)scene->r.cfra);
-
-  cb = MEM_callocN(sizeof(RNAUpdateCb), "RNAUpdateCb");
-  cb->ptr = *ptr;
-  cb->prop = prop;
-  cb->iuser = iuser;
 
   uiLayoutSetContextPointer(layout, "edit_image", &imaptr);
   uiLayoutSetContextPointer(layout, "edit_image_user", userptr);
 
-  if (!compact) {
+  SpaceImage *space_image = CTX_wm_space_image(C);
+  if (!compact && (space_image == NULL || iuser != &space_image->iuser)) {
     uiTemplateID(layout,
                  C,
                  ptr,
@@ -904,217 +814,178 @@ void uiTemplateImage(uiLayout *layout,
                  NULL,
                  UI_TEMPLATE_ID_FILTER_ALL,
                  false);
+
+    if (ima != NULL) {
+      uiItemS(layout);
+    }
   }
 
-  if (ima) {
-    UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), NULL);
+  if (ima == NULL) {
+    return;
+  }
 
-    if (ima->source == IMA_SRC_VIEWER) {
-      ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
-      image_info(scene, iuser, ima, ibuf, str, MAX_IMAGE_INFO_LEN);
-      BKE_image_release_ibuf(ima, ibuf, lock);
+  if (ima->source == IMA_SRC_VIEWER) {
+    /* Viewer images. */
+    uiTemplateImageInfo(layout, C, ima, iuser);
 
-      uiItemL(layout, ima->id.name + 2, ICON_NONE);
-      uiItemL(layout, str, ICON_NONE);
+    if (ima->type == IMA_TYPE_COMPOSITE) {
+    }
+    else if (ima->type == IMA_TYPE_R_RESULT) {
+      /* browse layer/passes */
+      RenderResult *rr;
+      const float dpi_fac = UI_DPI_FAC;
+      const int menus_width = 230 * dpi_fac;
 
-      if (ima->type == IMA_TYPE_COMPOSITE) {
-        // XXX not working yet
-#if 0
-        iuser = ntree_get_active_iuser(scene->nodetree);
-        if (iuser) {
-          UI_block_align_begin(block);
-          uiDefIconTextBut(block,
-                           UI_BTYPE_BUT,
-                           B_SIMA_RECORD,
-                           ICON_REC,
-                           "Record",
-                           10,
-                           120,
-                           100,
-                           20,
-                           0,
-                           0,
-                           0,
-                           0,
-                           0,
-                           "");
-          uiDefIconTextBut(block,
-                           UI_BTYPE_BUT,
-                           B_SIMA_PLAY,
-                           ICON_PLAY,
-                           "Play",
-                           110,
-                           120,
-                           100,
-                           20,
-                           0,
-                           0,
-                           0,
-                           0,
-                           0,
-                           "");
-          but = uiDefBut(
-              block, UI_BTYPE_BUT, B_NOP, "Free Cache", 210, 120, 100, 20, 0, 0, 0, 0, 0, "");
-          UI_but_func_set(but, image_freecache_cb, ima, NULL);
+      /* use BKE_image_acquire_renderresult  so we get the correct slot in the menu */
+      rr = BKE_image_acquire_renderresult(scene, ima);
+      uiblock_layer_pass_buttons(layout, ima, rr, iuser, menus_width, &ima->render_slot);
+      BKE_image_release_renderresult(scene, ima);
+    }
 
-          if (iuser->frames)
-            BLI_snprintf(str, sizeof(str), "(%d) Frames:", iuser->framenr);
-          else
-            strcpy(str, "Frames:");
-          UI_block_align_begin(block);
-          uiDefButI(block,
-                    UI_BTYPE_NUM,
-                    imagechanged,
-                    str,
-                    10,
-                    90,
-                    150,
-                    20,
-                    &iuser->frames,
-                    0.0,
-                    MAXFRAMEF,
-                    0,
-                    0,
-                    "Number of images of a movie to use");
-          uiDefButI(block,
-                    UI_BTYPE_NUM,
-                    imagechanged,
-                    "StartFr:",
-                    160,
-                    90,
-                    150,
-                    20,
-                    &iuser->sfra,
-                    1.0,
-                    MAXFRAMEF,
-                    0,
-                    0,
-                    "Global starting frame of the movie");
-        }
-#endif
-      }
-      else if (ima->type == IMA_TYPE_R_RESULT) {
-        /* browse layer/passes */
-        RenderResult *rr;
-        const float dpi_fac = UI_DPI_FAC;
-        const int menus_width = 230 * dpi_fac;
+    return;
+  }
 
-        /* use BKE_image_acquire_renderresult  so we get the correct slot in the menu */
-        rr = BKE_image_acquire_renderresult(scene, ima);
-        uiblock_layer_pass_buttons(layout, ima, rr, iuser, menus_width, &ima->render_slot);
-        BKE_image_release_renderresult(scene, ima);
-      }
+  /* Set custom callback for property updates. */
+  RNAUpdateCb *cb = MEM_callocN(sizeof(RNAUpdateCb), "RNAUpdateCb");
+  cb->ptr = *ptr;
+  cb->prop = prop;
+  cb->iuser = iuser;
+  UI_block_funcN_set(block, rna_update_cb, cb, NULL);
+
+  /* Disable editing if image was modified, to avoid losing changes. */
+  const bool is_dirty = BKE_image_is_dirty(ima);
+  if (is_dirty) {
+    uiLayout *row = uiLayoutRow(layout, true);
+    uiItemO(row, IFACE_("Save"), ICON_NONE, "image.save");
+    uiItemO(row, IFACE_("Discard"), ICON_NONE, "image.reload");
+    uiItemS(layout);
+  }
+
+  layout = uiLayoutColumn(layout, false);
+  uiLayoutSetEnabled(layout, !is_dirty);
+  uiLayoutSetPropDecorate(layout, false);
+
+  /* Image source */
+  {
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiLayoutSetPropSep(col, true);
+    uiItemR(col, &imaptr, "source", 0, NULL, ICON_NONE);
+  }
+
+  /* Filepath */
+  const bool is_packed = BKE_image_has_packedfile(ima);
+  const bool no_filepath = is_packed && !BKE_image_has_filepath(ima);
+
+  if ((ima->source != IMA_SRC_GENERATED) && !no_filepath) {
+    uiItemS(layout);
+
+    uiLayout *row = uiLayoutRow(layout, true);
+    if (is_packed) {
+      uiItemO(row, "", ICON_PACKAGE, "image.unpack");
     }
     else {
-      uiItemR(layout, &imaptr, "source", 0, NULL, ICON_NONE);
-
-      if (ima->source != IMA_SRC_GENERATED) {
-        row = uiLayoutRow(layout, true);
-        if (BKE_image_has_packedfile(ima)) {
-          uiItemO(row, "", ICON_PACKAGE, "image.unpack");
-        }
-        else {
-          uiItemO(row, "", ICON_UGLYPACKAGE, "image.pack");
-        }
-
-        row = uiLayoutRow(row, true);
-        uiLayoutSetEnabled(row, BKE_image_has_packedfile(ima) == false);
-        uiItemR(row, &imaptr, "filepath", 0, "", ICON_NONE);
-        uiItemO(row, "", ICON_FILE_REFRESH, "image.reload");
-      }
-
-      /* multilayer? */
-      if (ima->type == IMA_TYPE_MULTILAYER && ima->rr) {
-        const float dpi_fac = UI_DPI_FAC;
-        uiblock_layer_pass_buttons(layout, ima, ima->rr, iuser, 230 * dpi_fac, NULL);
-      }
-      else if (ima->source != IMA_SRC_GENERATED) {
-        if (compact == 0) {
-          uiTemplateImageInfo(layout, C, ima, iuser);
-        }
-      }
-
-      col = uiLayoutColumn(layout, false);
-      uiTemplateColorspaceSettings(col, &imaptr, "colorspace_settings");
-      uiItemR(col, &imaptr, "use_view_as_render", 0, NULL, ICON_NONE);
-
-      if (ima->source != IMA_SRC_GENERATED) {
-        if (compact == 0) { /* background image view doesn't need these */
-          ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, NULL);
-          bool has_alpha = true;
-
-          if (ibuf) {
-            int imtype = BKE_image_ftype_to_imtype(ibuf->ftype, &ibuf->foptions);
-            char valid_channels = BKE_imtype_valid_channels(imtype, false);
-
-            has_alpha = (valid_channels & IMA_CHAN_FLAG_ALPHA) != 0;
-
-            BKE_image_release_ibuf(ima, ibuf, NULL);
-          }
-
-          if (multiview) {
-            if ((scene->r.scemode & R_MULTIVIEW) != 0) {
-              uiItemR(layout, &imaptr, "use_multiview", 0, NULL, ICON_NONE);
-
-              if (RNA_boolean_get(&imaptr, "use_multiview")) {
-                uiTemplateImageViews(layout, &imaptr);
-              }
-            }
-          }
-
-          if (has_alpha) {
-            col = uiLayoutColumn(layout, false);
-            uiItemR(col, &imaptr, "use_alpha", 0, NULL, ICON_NONE);
-            row = uiLayoutRow(col, false);
-            uiLayoutSetActive(row, RNA_boolean_get(&imaptr, "use_alpha"));
-            uiItemR(row, &imaptr, "alpha_mode", 0, IFACE_("Alpha"), ICON_NONE);
-          }
-
-          if (ima->source == IMA_SRC_MOVIE) {
-            col = uiLayoutColumn(layout, false);
-            uiItemR(col, &imaptr, "use_deinterlace", 0, IFACE_("Deinterlace"), ICON_NONE);
-          }
-        }
-      }
-
-      if (BKE_image_is_animated(ima)) {
-        uiItemS(layout);
-
-        split = uiLayoutSplit(layout, 0.0f, false);
-
-        col = uiLayoutColumn(split, false);
-
-        BLI_snprintf(str, sizeof(str), IFACE_("(%d) Frames"), iuser->framenr);
-        uiItemR(col, userptr, "frame_duration", 0, str, ICON_NONE);
-        uiItemR(col, userptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
-        uiItemR(col, userptr, "frame_offset", 0, NULL, ICON_NONE);
-
-        col = uiLayoutColumn(split, false);
-        uiItemO(col, NULL, ICON_NONE, "IMAGE_OT_match_movie_length");
-        uiItemR(col, userptr, "use_auto_refresh", 0, NULL, ICON_NONE);
-        uiItemR(col, userptr, "use_cyclic", 0, NULL, ICON_NONE);
-      }
-      else if (ima->source == IMA_SRC_GENERATED) {
-        split = uiLayoutSplit(layout, 0.0f, false);
-
-        col = uiLayoutColumn(split, true);
-        uiItemR(col, &imaptr, "generated_width", 0, "X", ICON_NONE);
-        uiItemR(col, &imaptr, "generated_height", 0, "Y", ICON_NONE);
-
-        uiItemR(col, &imaptr, "use_generated_float", 0, NULL, ICON_NONE);
-
-        uiItemR(split, &imaptr, "generated_type", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
-
-        if (ima->gen_type == IMA_GENTYPE_BLANK) {
-          uiItemR(layout, &imaptr, "generated_color", 0, NULL, ICON_NONE);
-        }
-      }
+      uiItemO(row, "", ICON_UGLYPACKAGE, "image.pack");
     }
 
-    UI_block_funcN_set(block, NULL, NULL, NULL);
+    row = uiLayoutRow(row, true);
+    uiLayoutSetEnabled(row, is_packed == false);
+    uiItemR(row, &imaptr, "filepath", 0, "", ICON_NONE);
+    uiItemO(row, "", ICON_FILE_REFRESH, "image.reload");
   }
 
-  MEM_freeN(cb);
+  /* Image layers and Info */
+  if (ima->type == IMA_TYPE_MULTILAYER && ima->rr) {
+    uiItemS(layout);
+
+    const float dpi_fac = UI_DPI_FAC;
+    uiblock_layer_pass_buttons(layout, ima, ima->rr, iuser, 230 * dpi_fac, NULL);
+  }
+  else if (ima->source == IMA_SRC_GENERATED) {
+    uiItemS(layout);
+
+    /* Generated */
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiLayoutSetPropSep(col, true);
+
+    uiLayout *sub = uiLayoutColumn(col, true);
+    uiItemR(sub, &imaptr, "generated_width", 0, "X", ICON_NONE);
+    uiItemR(sub, &imaptr, "generated_height", 0, "Y", ICON_NONE);
+
+    uiItemR(col, &imaptr, "use_generated_float", 0, NULL, ICON_NONE);
+
+    uiItemS(col);
+
+    uiItemR(col, &imaptr, "generated_type", UI_ITEM_R_EXPAND, IFACE_("Type"), ICON_NONE);
+    if (ima->gen_type == IMA_GENTYPE_BLANK) {
+      uiItemR(col, &imaptr, "generated_color", 0, NULL, ICON_NONE);
+    }
+  }
+  else if (compact == 0) {
+    uiTemplateImageInfo(layout, C, ima, iuser);
+  }
+
+  if (BKE_image_is_animated(ima)) {
+    /* Animation */
+    uiItemS(layout);
+
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiLayoutSetPropSep(col, true);
+
+    uiLayout *sub = uiLayoutColumn(col, true);
+    uiLayout *row = uiLayoutRow(sub, true);
+    uiItemR(row, userptr, "frame_duration", 0, IFACE_("Frames"), ICON_NONE);
+    uiItemO(row, "", ICON_FILE_REFRESH, "IMAGE_OT_match_movie_length");
+
+    uiItemR(sub, userptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
+    uiItemR(sub, userptr, "frame_offset", 0, NULL, ICON_NONE);
+
+    uiItemR(col, userptr, "use_cyclic", 0, NULL, ICON_NONE);
+    uiItemR(col, userptr, "use_auto_refresh", 0, NULL, ICON_NONE);
+
+    if (ima->source == IMA_SRC_MOVIE && compact == 0) {
+      uiItemR(col, &imaptr, "use_deinterlace", 0, IFACE_("Deinterlace"), ICON_NONE);
+    }
+  }
+
+  /* Multiview */
+  if (multiview && compact == 0) {
+    if ((scene->r.scemode & R_MULTIVIEW) != 0) {
+      uiItemS(layout);
+
+      uiLayout *col = uiLayoutColumn(layout, false);
+      uiLayoutSetPropSep(col, true);
+      uiItemR(col, &imaptr, "use_multiview", 0, NULL, ICON_NONE);
+
+      if (RNA_boolean_get(&imaptr, "use_multiview")) {
+        uiTemplateImageViews(layout, &imaptr);
+      }
+    }
+  }
+
+  /* Colorspace and alpha */
+  {
+    uiItemS(layout);
+
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiLayoutSetPropSep(col, true);
+    uiTemplateColorspaceSettings(col, &imaptr, "colorspace_settings");
+
+    if (compact == 0) {
+      if (ima->source != IMA_SRC_GENERATED) {
+        if (image_has_alpha(ima, iuser)) {
+          uiLayout *sub = uiLayoutColumn(col, false);
+          uiItemR(sub, &imaptr, "alpha_mode", 0, IFACE_("Alpha"), ICON_NONE);
+
+          bool is_data = IMB_colormanagement_space_name_is_data(ima->colorspace_settings.name);
+          uiLayoutSetActive(sub, !is_data);
+        }
+      }
+
+      uiItemR(col, &imaptr, "use_view_as_render", 0, NULL, ICON_NONE);
+    }
+  }
+
+  UI_block_funcN_set(block, NULL, NULL, NULL);
 }
 
 void uiTemplateImageSettings(uiLayout *layout, PointerRNA *imfptr, bool color_management)
@@ -1327,21 +1198,83 @@ void uiTemplateImageLayers(uiLayout *layout, bContext *C, Image *ima, ImageUser 
 
 void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *iuser)
 {
-  Scene *scene = CTX_data_scene(C);
-  ImBuf *ibuf;
-  char str[MAX_IMAGE_INFO_LEN];
-  void *lock;
-
-  if (!ima || !iuser) {
+  if (ima == NULL || iuser == NULL) {
     return;
   }
 
-  ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
+  /* Acquire image buffer. */
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
 
-  BKE_image_user_frame_calc(iuser, (int)scene->r.cfra);
-  image_info(scene, iuser, ima, ibuf, str, MAX_IMAGE_INFO_LEN);
+  uiLayout *col = uiLayoutColumn(layout, true);
+
+  if (ibuf == NULL) {
+    uiItemL(col, IFACE_("Can't Load Image"), ICON_NONE);
+  }
+  else {
+    char str[MAX_IMAGE_INFO_LEN] = {0};
+    const int len = MAX_IMAGE_INFO_LEN;
+    int ofs = 0;
+
+    ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_("%d x %d, "), ibuf->x, ibuf->y);
+
+    if (ibuf->rect_float) {
+      if (ibuf->channels != 4) {
+        ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_("%d float channel(s)"), ibuf->channels);
+      }
+      else if (ibuf->planes == R_IMF_PLANES_RGBA) {
+        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGBA float"), len - ofs);
+      }
+      else {
+        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGB float"), len - ofs);
+      }
+    }
+    else {
+      if (ibuf->planes == R_IMF_PLANES_RGBA) {
+        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGBA byte"), len - ofs);
+      }
+      else {
+        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGB byte"), len - ofs);
+      }
+    }
+    if (ibuf->zbuf || ibuf->zbuf_float) {
+      ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" + Z"), len - ofs);
+    }
+
+    uiItemL(col, str, ICON_NONE);
+  }
+
+  /* Frame number, even if we can't load the image. */
+  if (ELEM(ima->source, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE)) {
+    /* don't use iuser->framenr directly because it may not be updated if auto-refresh is off */
+    Scene *scene = CTX_data_scene(C);
+    const int framenr = BKE_image_user_frame_get(iuser, CFRA, NULL);
+    char str[MAX_IMAGE_INFO_LEN];
+    int duration = 0;
+
+    if (ima->source == IMA_SRC_MOVIE && BKE_image_has_anim(ima)) {
+      duration = IMB_anim_get_duration(((ImageAnim *)ima->anims.first)->anim, IMB_TC_RECORD_RUN);
+    }
+
+    if (duration > 0) {
+      /* Movie duration */
+      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, IFACE_("Frame %d / %d"), framenr, duration);
+    }
+    else if (ima->source == IMA_SRC_SEQUENCE && ibuf) {
+      /* Image sequence frame number + filename */
+      const char *filename = BLI_last_slash(ibuf->name);
+      filename = (filename == NULL) ? ibuf->name : filename + 1;
+      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, IFACE_("Frame %d: %s"), framenr, filename);
+    }
+    else {
+      /* Frame number */
+      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, IFACE_("Frame %d"), framenr);
+    }
+
+    uiItemL(col, str, ICON_NONE);
+  }
+
   BKE_image_release_ibuf(ima, ibuf, lock);
-  uiItemL(layout, str, ICON_NONE);
 }
 
 #undef MAX_IMAGE_INFO_LEN
@@ -1373,6 +1306,7 @@ void image_buttons_register(ARegionType *art)
   strcpy(pt->label, N_("Metadata"));
   strcpy(pt->category, "Image");
   strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  pt->order = 10;
   pt->poll = metadata_panel_context_poll;
   pt->draw = metadata_panel_context_draw;
   pt->flag |= PNL_DEFAULT_CLOSED;

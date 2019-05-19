@@ -86,7 +86,6 @@
 #include "RNA_enum_types.h"
 
 #include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
 
 /* Motion in pixels allowed before we don't consider single/double click,
  * or detect the start of a tweak event. */
@@ -1294,7 +1293,6 @@ static bool operator_last_properties_init_impl(wmOperator *op, IDProperty *last_
 
   IDP_MergeGroup(op->properties, replaceprops, true);
   IDP_FreeProperty(replaceprops);
-  MEM_freeN(replaceprops);
   return changed;
 }
 
@@ -1317,7 +1315,6 @@ bool WM_operator_last_properties_store(wmOperator *op)
 {
   if (op->type->last_properties) {
     IDP_FreeProperty(op->type->last_properties);
-    MEM_freeN(op->type->last_properties);
     op->type->last_properties = NULL;
   }
 
@@ -1679,6 +1676,17 @@ int WM_operator_name_call(bContext *C, const char *opstring, short context, Poin
   }
 
   return 0;
+}
+
+int WM_operator_name_call_with_properties(struct bContext *C,
+                                          const char *opstring,
+                                          short context,
+                                          struct IDProperty *properties)
+{
+  PointerRNA props_ptr;
+  wmOperatorType *ot = WM_operatortype_find(opstring, false);
+  RNA_pointer_create(NULL, ot->srna, properties, &props_ptr);
+  return WM_operator_name_call_ptr(C, ot, context, &props_ptr);
 }
 
 /**
@@ -3091,12 +3099,10 @@ void wm_event_do_handlers(bContext *C)
       wm_event_free_all(win);
     }
     else {
-      Depsgraph *depsgraph = CTX_data_depsgraph(C);
       Scene *scene = WM_window_get_active_scene(win);
-      Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
 
       if (scene) {
-        const int is_playing_sound = BKE_sound_scene_playing(scene_eval);
+        int is_playing_sound = BKE_sound_scene_playing(scene);
 
         if (is_playing_sound != -1) {
           bool is_playing_screen;
@@ -3116,6 +3122,7 @@ void wm_event_do_handlers(bContext *C)
               int ncfra = time * (float)FPS + 0.5f;
               if (ncfra != scene->r.cfra) {
                 scene->r.cfra = ncfra;
+                Depsgraph *depsgraph = CTX_data_depsgraph(C);
                 ED_update_for_newframe(CTX_data_main(C), depsgraph);
                 WM_event_add_notifier(C, NC_WINDOW, NULL);
               }

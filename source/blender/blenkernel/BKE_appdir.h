@@ -36,6 +36,7 @@ const char *BKE_appdir_folder_id_version(const int folder_id, const int ver, con
 bool BKE_appdir_app_is_portable_install(void);
 bool BKE_appdir_app_template_any(void);
 bool BKE_appdir_app_template_id_search(const char *app_template, char *path, size_t path_len);
+bool BKE_appdir_app_template_has_userpref(const char *app_template);
 void BKE_appdir_app_templates(struct ListBase *templates);
 
 /* Initialize path to program executable */
@@ -43,6 +44,9 @@ void BKE_appdir_program_path_init(const char *argv0);
 
 const char *BKE_appdir_program_path(void);
 const char *BKE_appdir_program_dir(void);
+
+/* Return OS fonts directory. */
+bool BKE_appdir_font_folder_default(char *dir);
 
 /* find python executable */
 bool BKE_appdir_program_python_search(char *fullpath,

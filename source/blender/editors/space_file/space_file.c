@@ -83,7 +83,6 @@ static SpaceLink *file_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   BLI_addtail(&sfile->regionbase, ar);
   ar->regiontype = RGN_TYPE_TOOL_PROPS;
   ar->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
-  ar->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
   /* ui list region */
   ar = MEM_callocN(sizeof(ARegion), "ui region for file");
@@ -143,18 +142,16 @@ static void file_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback, area size changes, screen set, etc */
-static void file_init(wmWindowManager *UNUSED(wm), ScrArea *sa)
+static void file_init(wmWindowManager *wm, ScrArea *sa)
 {
   SpaceFile *sfile = (SpaceFile *)sa->spacedata.first;
+  struct FSMenu *fsmenu = ED_fsmenu_get();
 
   /* refresh system directory list */
-  fsmenu_refresh_system_category(ED_fsmenu_get());
+  fsmenu_refresh_system_category(fsmenu);
 
-  /* Update bookmarks 'valid' state.
-   * Done here, because it seems BLI_is_dir() can have huge impact on performances
-   * in some cases, on win systems... See T43684.
-   */
-  fsmenu_refresh_bookmarks_status(ED_fsmenu_get());
+  /* Update bookmarks 'valid' state. */
+  fsmenu_refresh_bookmarks_status(wm, fsmenu);
 
   if (sfile->layout) {
     sfile->layout->dirty = true;

@@ -63,9 +63,9 @@ enum eView2D_CommonViewTypes {
 /* scroller area */
 #define V2D_SCROLL_HEIGHT (0.45f * U.widget_unit)
 #define V2D_SCROLL_WIDTH (0.45f * U.widget_unit)
-/* For scrollers with scale markings (text written onto them) */
-#define V2D_SCROLL_HEIGHT_TEXT (0.79f * U.widget_unit)
-#define V2D_SCROLL_WIDTH_TEXT (0.79f * U.widget_unit)
+/* For scrollers with scale handlers */
+#define V2D_SCROLL_HEIGHT_HANDLES (0.6f * U.widget_unit)
+#define V2D_SCROLL_WIDTH_HANDLES (0.6f * U.widget_unit)
 
 /* scroller 'handles' hotspot radius for mouse */
 #define V2D_SCROLLER_HANDLE_SIZE (0.6f * U.widget_unit)
@@ -258,6 +258,8 @@ void UI_view2d_smooth_view(struct bContext *C,
                            struct ARegion *ar,
                            const struct rctf *cur,
                            const int smooth_viewtx);
+
 #define UI_MARKER_MARGIN_Y (42 * UI_DPI_FAC)
+#define UI_SCRUBBING_MARGIN_Y (23 * UI_DPI_FAC)
 
 #endif /* __UI_VIEW2D_H__ */

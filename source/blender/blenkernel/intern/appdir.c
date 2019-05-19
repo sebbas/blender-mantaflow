@@ -30,6 +30,7 @@
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 
 #include "BKE_blender_version.h"
 #include "BKE_appdir.h" /* own include */
@@ -838,6 +839,26 @@ bool BKE_appdir_app_template_id_search(const char *app_template, char *path, siz
   return false;
 }
 
+bool BKE_appdir_app_template_has_userpref(const char *app_template)
+{
+  /* Test if app template provides a userpref.blend.
+   * If not, we will share user preferences with the rest of Blender. */
+  if (!app_template && app_template[0]) {
+    return false;
+  }
+
+  char app_template_path[FILE_MAX];
+  if (!BKE_appdir_app_template_id_search(
+          app_template, app_template_path, sizeof(app_template_path))) {
+    return false;
+  }
+
+  char userpref_path[FILE_MAX];
+  BLI_path_join(
+      userpref_path, sizeof(userpref_path), app_template_path, BLENDER_USERPREF_FILE, NULL);
+  return BLI_exists(userpref_path);
+}
+
 void BKE_appdir_app_templates(ListBase *templates)
 {
   BLI_listbase_clear(templates);
@@ -1003,4 +1024,18 @@ void BKE_tempdir_session_purge(void)
   if (btempdir_session[0] && BLI_is_dir(btempdir_session)) {
     BLI_delete(btempdir_session, true, true);
   }
+}
+
+/* Gets a good default directory for fonts */
+bool BKE_appdir_font_folder_default(char *dir)
+{
+  bool success = false;
+#ifdef WIN32
+  wchar_t wpath[FILE_MAXDIR];
+  success = SHGetSpecialFolderPathW(0, wpath, CSIDL_FONTS, 0);
+  BLI_strncpy_wchar_as_utf8(dir, wpath, FILE_MAXDIR);
+#endif
+  /* TODO: Values for other platforms. */
+  UNUSED_VARS(dir);
+  return success;
 }

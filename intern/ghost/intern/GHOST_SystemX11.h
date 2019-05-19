@@ -78,7 +78,7 @@ class GHOST_SystemX11 : public GHOST_System {
  public:
   /**
    * Constructor
-   * this class should only be instanciated by GHOST_ISystem.
+   * this class should only be instantiated by GHOST_ISystem.
    */
 
   GHOST_SystemX11();
@@ -89,11 +89,6 @@ class GHOST_SystemX11 : public GHOST_System {
   ~GHOST_SystemX11();
 
   GHOST_TSuccess init();
-
-  /**
-   * Informs if the system provides native dialogs (eg. confirm quit)
-   */
-  virtual bool supportsNativeDialogs(void);
 
   /**
    * \section Interface Inherited from GHOST_ISystem

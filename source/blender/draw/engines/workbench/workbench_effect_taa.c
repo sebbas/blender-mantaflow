@@ -91,23 +91,19 @@ int workbench_taa_calculate_num_iterations(WORKBENCH_Data *vedata)
   WORKBENCH_StorageList *stl = vedata->stl;
   WORKBENCH_PrivateData *wpd = stl->g_data;
   const Scene *scene = DRW_context_state_get()->scene;
-  int result = scene->display.viewport_aa;
+  int result;
   if (workbench_is_taa_enabled(wpd)) {
     if (DRW_state_is_image_render()) {
-      result = scene->display.render_aa;
-    }
-    else if (IN_RANGE_INCL(wpd->preferences->gpu_viewport_quality,
-                           GPU_VIEWPORT_QUALITY_TAA8,
-                           GPU_VIEWPORT_QUALITY_TAA16)) {
-      result = MIN2(result, 8);
-    }
-    else if (IN_RANGE_INCL(wpd->preferences->gpu_viewport_quality,
-                           GPU_VIEWPORT_QUALITY_TAA16,
-                           GPU_VIEWPORT_QUALITY_TAA32)) {
-      result = MIN2(result, 16);
+      const DRWContextState *draw_ctx = DRW_context_state_get();
+      if (draw_ctx->v3d) {
+        result = scene->display.viewport_aa;
+      }
+      else {
+        result = scene->display.render_aa;
+      }
     }
     else {
-      result = MIN2(result, 32);
+      result = wpd->preferences->viewport_aa;
     }
   }
   else {
@@ -205,7 +201,7 @@ DRWPass *workbench_taa_create_pass(WORKBENCH_Data *vedata, GPUTexture **color_bu
   DRW_shgroup_uniform_texture_ref(grp, "colorBuffer", color_buffer_tx);
   DRW_shgroup_uniform_texture_ref(grp, "historyBuffer", &txl->history_buffer_tx);
   DRW_shgroup_uniform_float(grp, "mixFactor", &effect_info->taa_mix_factor, 1);
-  DRW_shgroup_call_add(grp, DRW_cache_fullscreen_quad_get(), NULL);
+  DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), NULL);
 
   /*
    * Set the offset for the cavity shader so every iteration different

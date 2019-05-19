@@ -51,6 +51,7 @@ set(SRC
   keyframes_general.c
   keyframing.c
   keyingsets.c
+  time_scrub_ui.c
 
   anim_intern.h
 )

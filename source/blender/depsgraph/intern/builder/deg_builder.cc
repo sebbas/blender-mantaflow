@@ -103,7 +103,7 @@ bool DepsgraphBuilder::need_pull_base_into_graph(Base *base)
 bool DepsgraphBuilder::check_pchan_has_bbone(Object *object, const bPoseChannel *pchan)
 {
   BLI_assert(object->type == OB_ARMATURE);
-  if (pchan->bone == NULL) {
+  if (pchan == NULL || pchan->bone == NULL) {
     return false;
   }
   /* We don't really care whether segments are higher than 1 due to static user input (as in,
@@ -114,7 +114,10 @@ bool DepsgraphBuilder::check_pchan_has_bbone(Object *object, const bPoseChannel 
   }
   bArmature *armature = static_cast<bArmature *>(object->data);
   AnimatedPropertyID property_id(&armature->id, &RNA_Bone, pchan->bone, "bbone_segments");
-  return cache_->isPropertyAnimated(&armature->id, property_id);
+  /* Check both Object and Armature animation data, because drivers modifying Armature
+   * state could easily be created in the Object AnimData. */
+  return cache_->isPropertyAnimated(&object->id, property_id) ||
+         cache_->isPropertyAnimated(&armature->id, property_id);
 }
 
 bool DepsgraphBuilder::check_pchan_has_bbone_segments(Object *object, const bPoseChannel *pchan)

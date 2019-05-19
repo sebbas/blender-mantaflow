@@ -24,20 +24,35 @@ from bpy.types import (
     Panel,
 )
 from bpy.app.translations import pgettext_iface as iface_
+from bpy.app.translations import contexts as i18n_contexts
 
 
 class USERPREF_HT_header(Header):
     bl_space_type = 'PREFERENCES'
 
-    def draw(self, _context):
+    @staticmethod
+    def draw_buttons(layout, context, *, is_vertical=False):
+        prefs = context.preferences
+
+        layout.scale_x = 1.0
+        layout.scale_y = 1.0
+        layout.operator_context = 'EXEC_AREA'
+
+        row = layout.row()
+        row.menu("USERPREF_MT_save_load", text="", icon='COLLAPSEMENU')
+        if not prefs.use_preferences_save:
+            sub_revert = row.row(align=True)
+            sub_revert.active = prefs.is_dirty
+            sub_revert.operator("wm.save_userpref")
+
+    def draw(self, context):
         layout = self.layout
         layout.operator_context = 'EXEC_AREA'
 
         layout.template_header()
 
         layout.separator_spacer()
-
-        layout.operator("wm.save_userpref")
+        self.draw_buttons(layout, context)
 
 
 class USERPREF_PT_navigation_bar(Panel):
@@ -58,6 +73,29 @@ class USERPREF_PT_navigation_bar(Panel):
         col.prop(prefs, "active_section", expand=True)
 
 
+class USERPREF_MT_save_load(Menu):
+    bl_label = "Save & Load"
+
+    def draw(self, context):
+        layout = self.layout
+
+        prefs = context.preferences
+
+        layout.prop(prefs, "use_preferences_save", text="Auto-Save Preferences")
+
+        layout.separator()
+
+        layout.operator_context = 'EXEC_AREA'
+        if prefs.use_preferences_save:
+            layout.operator("wm.save_userpref", text="Save Current State")
+        sub_revert = layout.column(align=True)
+        sub_revert.active = prefs.is_dirty
+        sub_revert.operator("wm.read_userpref", text="Revert to Saved")
+
+        layout.operator_context = 'INVOKE_AREA'
+        layout.operator("wm.read_factory_userpref", text="Reset to Defaults")
+
+
 class USERPREF_PT_save_preferences(Panel):
     bl_label = "Save Preferences"
     bl_space_type = 'PREFERENCES'
@@ -73,14 +111,14 @@ class USERPREF_PT_save_preferences(Panel):
 
         return False
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         layout.operator_context = 'EXEC_AREA'
 
         layout.scale_x = 1.3
         layout.scale_y = 1.3
 
-        layout.operator("wm.save_userpref")
+        USERPREF_HT_header.draw_buttons(layout, context, is_vertical=True)
 
 
 # Panel mix-in.
@@ -169,6 +207,7 @@ class USERPREF_PT_interface_text(PreferencePanel, Panel):
 
 class USERPREF_PT_interface_translation(PreferencePanel, Panel):
     bl_label = "Translation"
+    bl_translation_context = i18n_contexts.id_windowmanager
 
     @classmethod
     def poll(cls, context):
@@ -581,7 +620,7 @@ class USERPREF_PT_viewport_display(PreferencePanel, Panel):
 
         col = flow.column()
         col.prop(view, "gizmo_size")
-        col.prop(view, "lookdev_ball_size")
+        col.prop(view, "lookdev_sphere_size")
 
         flow.separator()
 
@@ -609,7 +648,7 @@ class USERPREF_PT_viewport_quality(PreferencePanel, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
-        flow.prop(system, "gpu_viewport_quality")
+        flow.prop(system, "viewport_aa")
         flow.prop(system, "multi_sample", text="Multisampling")
         flow.prop(system, "gpencil_multi_sample", text="Grease Pencil Multisampling")
         flow.prop(system, "use_edit_mode_smooth_wire")
@@ -887,11 +926,13 @@ class USERPREF_PT_theme_interface_icons(PreferencePanel, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
+        flow.prop(ui, "icon_scene")
         flow.prop(ui, "icon_collection")
         flow.prop(ui, "icon_object")
         flow.prop(ui, "icon_object_data")
         flow.prop(ui, "icon_modifier")
         flow.prop(ui, "icon_shading")
+        flow.prop(ui, "icon_border_intensity")
 
 
 class USERPREF_PT_theme_text_style(PreferencePanel, Panel):
@@ -2023,6 +2064,7 @@ classes = (
     USERPREF_HT_header,
     USERPREF_PT_navigation_bar,
     USERPREF_PT_save_preferences,
+    USERPREF_MT_save_load,
 
     USERPREF_PT_interface_display,
     USERPREF_PT_interface_editors,

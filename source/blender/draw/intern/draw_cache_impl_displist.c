@@ -37,6 +37,8 @@
 #include "GPU_batch.h"
 #include "GPU_extensions.h"
 
+#include "draw_cache_inline.h"
+
 #include "draw_cache_impl.h" /* own include */
 
 static int dl_vert_len(const DispList *dl)
@@ -402,7 +404,6 @@ void DRW_displist_vertbuf_create_loop_pos_and_nor_and_uv(ListBase *lb,
         &format_pos_nor, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     attr_id.nor = GPU_vertformat_attr_add(
         &format_pos_nor, "nor", GPU_COMP_I10, 3, GPU_FETCH_INT_TO_FLOAT_UNIT);
-    GPU_vertformat_triple_load(&format_pos_nor);
     /* UVs are in [0..1] range. We can compress them. */
     attr_id.uv = GPU_vertformat_attr_add(
         &format_uv, "u", GPU_COMP_I16, 2, GPU_FETCH_INT_TO_FLOAT_UNIT);

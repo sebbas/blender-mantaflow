@@ -470,7 +470,7 @@ bool BKE_image_scale(Image *image, int width, int height)
 
   if (ibuf) {
     IMB_scaleImBuf(ibuf, width, height);
-    ibuf->userflags |= IB_BITMAPDIRTY;
+    BKE_image_mark_dirty(image, ibuf);
   }
 
   BKE_image_release_ibuf(image, ibuf, lock);
@@ -501,6 +501,12 @@ static void image_init_color_management(Image *ima)
   if (ibuf) {
     if (ibuf->flags & IB_alphamode_premul) {
       ima->alpha_mode = IMA_ALPHA_PREMUL;
+    }
+    else if (ibuf->flags & IB_alphamode_channel_packed) {
+      ima->alpha_mode = IMA_ALPHA_CHANNEL_PACKED;
+    }
+    else if (ibuf->flags & IB_alphamode_ignore) {
+      ima->alpha_mode = IMA_ALPHA_IGNORE;
     }
     else {
       ima->alpha_mode = IMA_ALPHA_STRAIGHT;
@@ -646,7 +652,6 @@ static ImBuf *add_ibuf_size(unsigned int width,
   }
 
   STRNCPY(ibuf->name, name);
-  ibuf->userflags |= IB_BITMAPDIRTY;
 
   switch (gen_type) {
     case IMA_GENTYPE_GRID:
@@ -3593,16 +3598,18 @@ static void image_initialize_after_load(Image *ima, ImBuf *UNUSED(ibuf))
 
 static int imbuf_alpha_flags_for_image(Image *ima)
 {
-  int flag = 0;
-
-  if (ima->flag & IMA_IGNORE_ALPHA) {
-    flag |= IB_ignore_alpha;
+  switch (ima->alpha_mode) {
+    case IMA_ALPHA_STRAIGHT:
+      return 0;
+    case IMA_ALPHA_PREMUL:
+      return IB_alphamode_premul;
+    case IMA_ALPHA_CHANNEL_PACKED:
+      return IB_alphamode_channel_packed;
+    case IMA_ALPHA_IGNORE:
+      return IB_alphamode_ignore;
   }
-  else if (ima->alpha_mode == IMA_ALPHA_PREMUL) {
-    flag |= IB_alphamode_premul;
-  }
 
-  return flag;
+  return 0;
 }
 
 /* the number of files will vary according to the stereo format */
@@ -5081,12 +5088,20 @@ bool BKE_image_has_packedfile(Image *ima)
   return (BLI_listbase_is_empty(&ima->packedfiles) == false);
 }
 
+bool BKE_image_has_filepath(Image *ima)
+{
+  /* This could be improved to detect cases like //../../, currently path
+   * remapping empty file paths empty. */
+  return ima->name[0] != '\0';
+}
+
 /* Checks the image buffer changes with time (not keyframed values). */
 bool BKE_image_is_animated(Image *image)
 {
   return ELEM(image->source, IMA_SRC_MOVIE, IMA_SRC_SEQUENCE);
 }
 
+/* Image modifications */
 bool BKE_image_is_dirty(Image *image)
 {
   bool is_dirty = false;
@@ -5108,6 +5123,11 @@ bool BKE_image_is_dirty(Image *image)
   BLI_spin_unlock(&image_spin);
 
   return is_dirty;
+}
+
+void BKE_image_mark_dirty(Image *UNUSED(image), ImBuf *ibuf)
+{
+  ibuf->userflags |= IB_BITMAPDIRTY;
 }
 
 void BKE_image_file_format_set(Image *image, int ftype, const ImbFormatOptions *options)

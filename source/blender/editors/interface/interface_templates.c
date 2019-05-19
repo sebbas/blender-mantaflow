@@ -298,7 +298,7 @@ static void template_ID_set_property_cb(bContext *C, void *arg_template, void *i
     PointerRNA idptr;
 
     RNA_id_pointer_create(item, &idptr);
-    RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr);
+    RNA_property_pointer_set(NULL, &template_ui->ptr, template_ui->prop, idptr);
     RNA_property_update(C, &template_ui->ptr, template_ui->prop);
   }
 }
@@ -489,7 +489,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_DELETE:
       memset(&idptr, 0, sizeof(idptr));
-      RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr);
+      RNA_property_pointer_set(NULL, &template_ui->ptr, template_ui->prop, idptr);
       RNA_property_update(C, &template_ui->ptr, template_ui->prop);
 
       if (id && CTX_wm_window(C)->eventstate->shift) {
@@ -532,7 +532,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
             idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
           }
         }
-        RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr);
+        RNA_property_pointer_set(NULL, &template_ui->ptr, template_ui->prop, idptr);
         RNA_property_update(C, &template_ui->ptr, template_ui->prop);
       }
       break;
@@ -541,7 +541,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         BKE_override_static_free(&id->override_static);
         /* reassign to get get proper updates/notifiers */
         idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
-        RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr);
+        RNA_property_pointer_set(NULL, &template_ui->ptr, template_ui->prop, idptr);
         RNA_property_update(C, &template_ui->ptr, template_ui->prop);
       }
       break;
@@ -1455,7 +1455,7 @@ static void template_search_handle_cb(bContext *C, void *arg_template, void *ite
   PointerRNA item_ptr;
 
   RNA_pointer_create(NULL, type, item, &item_ptr);
-  RNA_property_pointer_set(&coll_search->target_ptr, coll_search->target_prop, item_ptr);
+  RNA_property_pointer_set(NULL, &coll_search->target_ptr, coll_search->target_prop, item_ptr);
   RNA_property_update(C, &coll_search->target_ptr, coll_search->target_prop);
 }
 
@@ -4042,6 +4042,11 @@ static uiBlock *curvemap_brush_tools_func(bContext *C, ARegion *ar, void *cumap_
   return curvemap_tools_func(C, ar, cumap_v, false, UICURVE_FUNC_RESET_NEG);
 }
 
+static uiBlock *curvemap_brush_tools_negslope_func(bContext *C, ARegion *ar, void *cumap_v)
+{
+  return curvemap_tools_func(C, ar, cumap_v, false, UICURVE_FUNC_RESET_POS);
+}
+
 static void curvemap_buttons_redraw(bContext *C, void *UNUSED(arg1), void *UNUSED(arg2))
 {
   ED_region_tag_redraw(CTX_wm_region(C));
@@ -4217,7 +4222,19 @@ static void curvemap_buttons_layout(uiLayout *layout,
                     TIP_("Zoom out"));
   UI_but_func_set(bt, curvemap_buttons_zoom_out, cumap, NULL);
 
-  if (brush) {
+  if (brush && neg_slope) {
+    bt = uiDefIconBlockBut(block,
+                           curvemap_brush_tools_negslope_func,
+                           cumap,
+                           0,
+                           ICON_DOWNARROW_HLT,
+                           0,
+                           0,
+                           dx,
+                           dx,
+                           TIP_("Tools"));
+  }
+  else if (brush) {
     bt = uiDefIconBlockBut(block,
                            curvemap_brush_tools_func,
                            cumap,
@@ -6744,12 +6761,17 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
 
   for (recent = G.recent_files.first, i = 0; (i < rows) && (recent); recent = recent->next, i++) {
     const char *filename = BLI_path_basename(recent->filepath);
-    uiItemStringO(layout,
-                  filename,
-                  BLO_has_bfile_extension(filename) ? ICON_FILE_BLEND : ICON_FILE_BACKUP,
-                  "WM_OT_open_mainfile",
-                  "filepath",
-                  recent->filepath);
+    PointerRNA ptr;
+    uiItemFullO(layout,
+                "WM_OT_open_mainfile",
+                filename,
+                BLO_has_bfile_extension(filename) ? ICON_FILE_BLEND : ICON_FILE_BACKUP,
+                NULL,
+                WM_OP_INVOKE_DEFAULT,
+                0,
+                &ptr);
+    RNA_string_set(&ptr, "filepath", recent->filepath);
+    RNA_boolean_set(&ptr, "display_file_selector", false);
   }
 
   return i;
