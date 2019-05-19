@@ -474,7 +474,9 @@ static void rna_Smoke_cachetype_noise_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Smoke_guiding_parent_set(PointerRNA *ptr, PointerRNA value)
+static void rna_Smoke_guiding_parent_set(struct ReportList *UNUSED(reports),
+                                         PointerRNA *ptr,
+                                         PointerRNA value)
 {
   SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
   Object *par = (Object *)value.data;
@@ -588,7 +590,7 @@ static void rna_Smoke_collisionextents_set(struct PointerRNA *ptr, int value, bo
   }
 }
 
-static void rna_Smoke_cache_directory_set(PointerRNA *ptr, const char *value)
+static void rna_Smoke_cache_directory_set(struct PointerRNA *ptr, const char *value)
 {
   SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
 
@@ -943,19 +945,19 @@ static int rna_SmokeFlow_density_vgroup_length(PointerRNA *ptr)
   return rna_object_vgroup_name_index_length(ptr, flow->vgroup_density);
 }
 
-static void rna_SmokeFlow_density_vgroup_set(PointerRNA *ptr, const char *value)
+static void rna_SmokeFlow_density_vgroup_set(struct PointerRNA *ptr, const char *value)
 {
   SmokeFlowSettings *flow = (SmokeFlowSettings *)ptr->data;
   rna_object_vgroup_name_index_set(ptr, value, &flow->vgroup_density);
 }
 
-static void rna_SmokeFlow_uvlayer_set(PointerRNA *ptr, const char *value)
+static void rna_SmokeFlow_uvlayer_set(struct PointerRNA *ptr, const char *value)
 {
   SmokeFlowSettings *flow = (SmokeFlowSettings *)ptr->data;
   rna_object_uvlayer_name_set(ptr, value, flow->uvlayer_name, sizeof(flow->uvlayer_name));
 }
 
-static void rna_Smoke_use_color_ramp_set(PointerRNA *ptr, bool value)
+static void rna_Smoke_use_color_ramp_set(struct PointerRNA *ptr, bool value)
 {
   SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
 
