@@ -652,7 +652,8 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
                  &r,
                  &g,
                  &b,
-                 &obstacles);
+                 &obstacles,
+                 NULL);
 
     ptcache_file_compressed_write(pf, (unsigned char *)sds->shadow, in_len, out, mode);
     ptcache_file_compressed_write(pf, (unsigned char *)dens, in_len, out, mode);
@@ -775,7 +776,8 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
                  NULL,
                  NULL,
                  NULL,
-                 &obstacles);
+                 &obstacles,
+                 NULL);
 
     ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
     ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
@@ -876,9 +878,6 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
     sds->dx = ch_dx;
     copy_v3_v3_int(sds->res, ch_res);
     sds->total_cells = ch_res[0] * ch_res[1] * ch_res[2];
-    if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-      BKE_smoke_reallocate_highres_fluid(sds, ch_res);
-    }
   }
 
   if (sds->fluid) {
@@ -902,7 +901,8 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
                  &r,
                  &g,
                  &b,
-                 &obstacles);
+                 &obstacles,
+                 NULL);
 
     ptcache_file_compressed_read(pf, (unsigned char *)sds->shadow, out_len);
     ptcache_file_compressed_read(pf, (unsigned char *)dens, out_len);
@@ -1115,7 +1115,8 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
                  &r,
                  &g,
                  &b,
-                 &obstacles);
+                 &obstacles,
+                 NULL);
 
     OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dx", dx);
     OpenVDBWriter_add_meta_fl(writer, "blender/smoke/dt", dt);
@@ -1233,9 +1234,6 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
     sds->dx = cache_dx;
     copy_v3_v3_int(sds->res, cache_res);
     sds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
-    if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-      BKE_smoke_reallocate_highres_fluid(sds, cache_res);
-    }
   }
 
   if (sds->fluid) {
@@ -1257,7 +1255,8 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
                  &r,
                  &g,
                  &b,
-                 &obstacles);
+                 &obstacles,
+                 NULL);
 
     OpenVDBReader_get_meta_fl(reader, "blender/smoke/dt", &dt);
 

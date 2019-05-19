@@ -317,9 +317,11 @@ const std::string fluid_pre_step =
     "\n\
 def fluid_pre_step_$ID$():\n\
     mantaMsg('Fluid pre step')\n\
-    x_vel_s$ID$.clear()\n\
-    y_vel_s$ID$.clear()\n\
-    z_vel_s$ID$.clear()\n\
+    # TODO (sebbas): Not sure if copying into vel grid could have any weird side effects - long term will show\n\
+    #x_vel_s$ID$.clear()\n\
+    #y_vel_s$ID$.clear()\n\
+    #z_vel_s$ID$.clear()\n\
+    copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     \n\
     # translate obvels (world space) to grid space\n\
     if using_obstacle_s$ID$:\n\

@@ -167,6 +167,7 @@ enum {
 #define FLUID_DOMAIN_BAKED_GUIDING 512
 
 #define FLUID_DOMAIN_DIR_DEFAULT "cache_fluid"
+#define FLUID_DOMAIN_DIR_CONFIG "config"
 #define FLUID_DOMAIN_DIR_DATA "data"
 #define FLUID_DOMAIN_DIR_NOISE "noise"
 #define FLUID_DOMAIN_DIR_MESH "mesh"

@@ -318,6 +318,9 @@ static void fluid_manta_bake_startjob(void *customdata,
   BKE_spacedata_draw_locks(true);
 
   if (STREQ(job->type, "MANTA_OT_bake_data")) {
+    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
+    BLI_dir_create_recursive(tmpDir); /* Create 'config' subdir if it does not exist already */
+    tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'data' subdir if it does not exist already */
     sds->cache_flag &= ~FLUID_DOMAIN_BAKED_DATA;
@@ -423,6 +426,9 @@ static void fluid_manta_free_startjob(void *customdata,
                          FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH |
                          FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES);
 
+    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
     BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);

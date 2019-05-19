@@ -98,27 +98,28 @@ color_g_in_s$ID$ = 0\n\
 color_b_in_s$ID$ = 0\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$, densityIn=densityIn_s$ID$)\n";
+smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$, densityIn=densityIn_s$ID$, emissionIn=emissionIn_s$ID$)\n";
 
 const std::string smoke_alloc_noise =
     "\n\
 mantaMsg('Smoke alloc noise')\n\
-vel_sn$ID$       = sn$ID$.create(MACGrid)\n\
-density_sn$ID$   = sn$ID$.create(RealGrid)\n\
-phiIn_sn$ID$     = sn$ID$.create(LevelsetGrid)\n\
-phiOut_sn$ID$    = sn$ID$.create(LevelsetGrid)\n\
-phiObs_sn$ID$    = sn$ID$.create(LevelsetGrid)\n\
-flags_sn$ID$     = sn$ID$.create(FlagGrid)\n\
-tmpIn_sn$ID$     = sn$ID$.create(RealGrid)\n\
-energy_s$ID$     = s$ID$.create(RealGrid)\n\
-tempFlag_s$ID$   = s$ID$.create(FlagGrid)\n\
-texture_u_s$ID$  = s$ID$.create(RealGrid)\n\
-texture_v_s$ID$  = s$ID$.create(RealGrid)\n\
-texture_w_s$ID$  = s$ID$.create(RealGrid)\n\
-texture_u2_s$ID$ = s$ID$.create(RealGrid)\n\
-texture_v2_s$ID$ = s$ID$.create(RealGrid)\n\
-texture_w2_s$ID$ = s$ID$.create(RealGrid)\n\
-wltnoise_sn$ID$  = sn$ID$.create(NoiseField, loadFromFile=True)\n\
+vel_sn$ID$        = sn$ID$.create(MACGrid)\n\
+density_sn$ID$    = sn$ID$.create(RealGrid)\n\
+phiIn_sn$ID$      = sn$ID$.create(LevelsetGrid)\n\
+phiOut_sn$ID$     = sn$ID$.create(LevelsetGrid)\n\
+phiObs_sn$ID$     = sn$ID$.create(LevelsetGrid)\n\
+flags_sn$ID$      = sn$ID$.create(FlagGrid)\n\
+tmpIn_sn$ID$      = sn$ID$.create(RealGrid)\n\
+emissionIn_sn$ID$ = sn$ID$.create(RealGrid)\n\
+energy_s$ID$      = s$ID$.create(RealGrid)\n\
+tempFlag_s$ID$    = s$ID$.create(FlagGrid)\n\
+texture_u_s$ID$   = s$ID$.create(RealGrid)\n\
+texture_v_s$ID$   = s$ID$.create(RealGrid)\n\
+texture_w_s$ID$   = s$ID$.create(RealGrid)\n\
+texture_u2_s$ID$  = s$ID$.create(RealGrid)\n\
+texture_v2_s$ID$  = s$ID$.create(RealGrid)\n\
+texture_w2_s$ID$  = s$ID$.create(RealGrid)\n\
+wltnoise_sn$ID$   = sn$ID$.create(NoiseField, loadFromFile=True)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$)\n\
@@ -334,21 +335,22 @@ def smoke_adaptive_step_noise_$ID$(framenr):\n\
         \n\
         # Interpolate emission grids and apply them to big noise grids\n\
         interpolateGrid(source=densityIn_s$ID$, target=tmpIn_sn$ID$)\n\
-        applyEmission(flags=flags_sn$ID$, target=density_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+        interpolateGrid(source=emissionIn_s$ID$, target=emissionIn_sn$ID$)\n\
+        applyEmission(flags=flags_sn$ID$, target=density_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
         \n\
         if using_colors_s$ID$:\n\
             interpolateGrid(source=color_r_in_s$ID$, target=tmpIn_sn$ID$)\n\
-            applyEmission(flags=flags_sn$ID$, target=color_r_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_sn$ID$, target=color_r_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
             interpolateGrid(source=color_g_in_s$ID$, target=tmpIn_sn$ID$)\n\
-            applyEmission(flags=flags_sn$ID$, target=color_g_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_sn$ID$, target=color_g_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
             interpolateGrid(source=color_b_in_s$ID$, target=tmpIn_sn$ID$)\n\
-            applyEmission(flags=flags_sn$ID$, target=color_b_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_sn$ID$, target=color_b_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
         \n\
         if using_fire_s$ID$:\n\
             interpolateGrid(source=fuelIn_s$ID$, target=tmpIn_sn$ID$)\n\
-            applyEmission(flags=flags_sn$ID$, target=fuel_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_sn$ID$, target=fuel_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
             interpolateGrid(source=reactIn_s$ID$, target=tmpIn_sn$ID$)\n\
-            applyEmission(flags=flags_sn$ID$, target=react_sn$ID$, source=tmpIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_sn$ID$, target=react_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
         \n\
         fluid_adapt_time_step_noise_$ID$()\n\
         mantaMsg('Noise step / sn$ID$.frame: ' + str(sn$ID$.frame))\n\

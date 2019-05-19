@@ -72,11 +72,25 @@ extern "C" void fluid_ensure_outflow(FLUID *fluid, struct SmokeModifierData *smd
   }
 }
 
+extern "C" int fluid_write_config(FLUID *fluid, SmokeModifierData *smd, int framenr)
+{
+  if (!fluid || !smd)
+    return 0;
+  return fluid->writeConfiguration(smd, framenr);
+}
+
 extern "C" int fluid_write_data(FLUID *fluid, SmokeModifierData *smd, int framenr)
 {
   if (!fluid || !smd)
     return 0;
   return fluid->writeData(smd, framenr);
+}
+
+extern "C" int fluid_read_config(FLUID *fluid, SmokeModifierData *smd, int framenr)
+{
+  if (!fluid || !smd)
+    return 0;
+  return fluid->readConfiguration(smd, framenr);
 }
 
 extern "C" int fluid_read_data(FLUID *fluid, SmokeModifierData *smd, int framenr)
@@ -197,6 +211,13 @@ extern "C" void fluid_adapt_timestep(FLUID *fluid)
 {
   if (fluid)
     fluid->adaptTimestep();
+}
+
+extern "C" bool fluid_needs_realloc(FLUID *fluid, SmokeModifierData *smd)
+{
+  if (fluid)
+    return fluid->needsRealloc(smd);
+  return false;
 }
 
 /* Fluid accessors */
@@ -416,7 +437,8 @@ extern "C" void smoke_export(FLUID *smoke,
                              float **g,
                              float **b,
                              int **obstacle,
-                             float **shadow)
+                             float **shadow,
+                             float **phiin)
 {
   if (dens)
     *dens = smoke->getDensity();
@@ -439,6 +461,8 @@ extern "C" void smoke_export(FLUID *smoke,
     *b = smoke->getColorB();
   *obstacle = smoke->getObstacle();
   *shadow = smoke->getShadow();
+  if (phiin)
+    *phiin = smoke->getPhiIn();
   *dt = 1;  //dummy value, not needed for smoke
   *dx = 1;  //dummy value, not needed for smoke
 }

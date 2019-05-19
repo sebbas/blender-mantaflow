@@ -1111,6 +1111,53 @@ static std::string escapeSlashes(std::string const &s)
   return result;
 }
 
+int FLUID::writeConfiguration(SmokeModifierData *smd, int framenr)
+{
+  if (with_debug)
+    std::cout << "FLUID::writeConfiguration()" << std::endl;
+
+  SmokeDomainSettings *sds = smd->domain;
+  std::ostringstream ss;
+  char cacheDir[FILE_MAX], targetFile[FILE_MAX];;
+  cacheDir[0] = '\0';
+  targetFile[0] = '\0';
+
+  std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
+
+  BLI_path_join(cacheDir,
+                sizeof(cacheDir),
+                smd->domain->cache_directory,
+                FLUID_DOMAIN_DIR_CONFIG,
+                NULL);
+  BLI_path_make_safe(cacheDir);
+  ss << "config_####" << dformat;
+  BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+  BLI_path_frame(targetFile, framenr, 0);
+
+  gzFile gzf = gzopen(targetFile, "wb1"); // do some compression
+  if (!gzf)
+    std::cerr << "writeConfiguration: can't open file: " << targetFile << std::endl;
+
+  gzwrite(gzf, &sds->active_fields, sizeof(int));
+  gzwrite(gzf, &sds->res, 3*sizeof(int));
+  gzwrite(gzf, &sds->dx, sizeof(float));
+  gzwrite(gzf, &sds->dt, sizeof(float));
+  gzwrite(gzf, &sds->p0, 3*sizeof(float));
+  gzwrite(gzf, &sds->p1, 3*sizeof(float));
+  gzwrite(gzf, &sds->dp0, 3*sizeof(float));
+  gzwrite(gzf, &sds->shift, 3*sizeof(int));
+  gzwrite(gzf, &sds->obj_shift_f, 3*sizeof(float));
+  gzwrite(gzf, &sds->obmat, 16*sizeof(float));
+  gzwrite(gzf, &sds->base_res, 3*sizeof(int));
+  gzwrite(gzf, &sds->res_min, 3*sizeof(int));
+  gzwrite(gzf, &sds->res_max, 3*sizeof(int));
+  gzwrite(gzf, &sds->active_color, 3*sizeof(float));
+
+  gzclose(gzf);
+
+  return 1;
+}
+
 int FLUID::writeData(SmokeModifierData *smd, int framenr)
 {
   if (with_debug)
@@ -1153,6 +1200,57 @@ int FLUID::writeData(SmokeModifierData *smd, int framenr)
     pythonCommands.push_back(ss.str());
   }
   runPythonString(pythonCommands);
+  return 1;
+}
+
+int FLUID::readConfiguration(SmokeModifierData *smd, int framenr)
+{
+  if (with_debug)
+    std::cout << "FLUID::readConfiguration()" << std::endl;
+
+  SmokeDomainSettings *sds = smd->domain;
+  std::ostringstream ss;
+  char cacheDir[FILE_MAX], targetFile[FILE_MAX];;
+  cacheDir[0] = '\0';
+  targetFile[0] = '\0';
+
+  std::string dformat = getCacheFileEnding(smd->domain->cache_data_format);
+
+  BLI_path_join(cacheDir,
+                sizeof(cacheDir),
+                smd->domain->cache_directory,
+                FLUID_DOMAIN_DIR_CONFIG,
+                NULL);
+  BLI_path_make_safe(cacheDir);
+
+  if (!BLI_exists(cacheDir))
+    return 0;
+
+  ss << "config_####" << dformat;
+  BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
+  BLI_path_frame(targetFile, framenr, 0);
+
+  gzFile gzf = gzopen(targetFile, "rb"); // do some compression
+  if (!gzf)
+    std::cerr << "readConfiguration: can't open file: " << targetFile << std::endl;
+
+  gzread(gzf, &sds->active_fields, sizeof(int));
+  gzread(gzf, &sds->res, 3*sizeof(int));
+  gzread(gzf, &sds->dx, sizeof(float));
+  gzread(gzf, &sds->dt, sizeof(float));
+  gzread(gzf, &sds->p0, 3*sizeof(float));
+  gzread(gzf, &sds->p1, 3*sizeof(float));
+  gzread(gzf, &sds->dp0, 3*sizeof(float));
+  gzread(gzf, &sds->shift, 3*sizeof(int));
+  gzread(gzf, &sds->obj_shift_f, 3*sizeof(float));
+  gzread(gzf, &sds->obmat, 16*sizeof(float));
+  gzread(gzf, &sds->base_res, 3*sizeof(int));
+  gzread(gzf, &sds->res_min, 3*sizeof(int));
+  gzread(gzf, &sds->res_max, 3*sizeof(int));
+  gzread(gzf, &sds->active_color, 3*sizeof(float));
+  sds->total_cells = sds->res[0] * sds->res[1] * sds->res[2];
+
+  gzclose(gzf);
   return 1;
 }
 
@@ -1832,6 +1930,12 @@ float FLUID::getTimestep()
   std::string solver = "s" + id;
 
   return pyObjectToDouble(callPythonFunction(solver, func, true));
+}
+
+bool FLUID::needsRealloc(SmokeModifierData *smd)
+{
+  SmokeDomainSettings *sds = smd->domain;
+  return (sds->res[0] != mResX || sds->res[1] != mResY || sds->res[2] != mResZ);
 }
 
 void FLUID::adaptTimestep()

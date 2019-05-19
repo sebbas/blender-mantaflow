@@ -151,13 +151,12 @@ void BKE_smoke_reallocate_fluid(SmokeDomainSettings *sds, int res[3], int free_o
   }
 
   sds->fluid = fluid_init(res, sds->smd);
-}
 
-void BKE_smoke_reallocate_highres_fluid(SmokeDomainSettings *sds, int res[3])
-{
-  sds->res_noise[0] = res[0] * sds->noise_scale;
-  sds->res_noise[1] = res[1] * sds->noise_scale;
-  sds->res_noise[2] = res[2] * sds->noise_scale;
+  if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
+    sds->res_noise[0] = res[0] * sds->noise_scale;
+    sds->res_noise[1] = res[1] * sds->noise_scale;
+    sds->res_noise[2] = res[2] * sds->noise_scale;
+  }
 }
 
 /* convert global position to domain cell space */
@@ -316,11 +315,6 @@ static int smokeModifier_init(
     BKE_smoke_reallocate_fluid(sds, sds->res, 0);
 
     smd->time = scene_framenr;
-
-    /* allocate highres fluid */
-    if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-      BKE_smoke_reallocate_highres_fluid(sds, sds->res);
-    }
 
     return 1;
   }
@@ -2400,12 +2394,248 @@ static void emit_from_mesh(
  *  Smoke step
  **********************************************************/
 
-static void adjustDomainResolution(SmokeDomainSettings *sds,
-                                   int new_shift[3],
-                                   EmissionMap *emaps,
-                                   unsigned int numflowobj,
-                                   float dt)
+static void adaptiveDomainCopy(SmokeDomainSettings *sds,
+                               int o_res[3],
+                               int n_res[3],
+                               int o_min[3],
+                               int n_min[3],
+                               int o_max[3],
+                               int o_shift[3],
+                               int n_shift[3],
+                               int isNoise)
 {
+  int x, y, z;
+  struct FLUID *fluid_old = sds->fluid;
+  const int block_size = sds->noise_scale;
+  int new_shift[3] = {0};
+  sub_v3_v3v3_int(new_shift, n_shift, o_shift);
+
+  /* allocate new fluid data */
+  BKE_smoke_reallocate_fluid(sds, n_res, 0);
+
+  int o_total_cells = o_res[0] * o_res[1] * o_res[2];
+  int n_total_cells = n_res[0] * n_res[1] * n_res[2];
+
+  /* copy values from old fluid to new */
+  if (o_total_cells > 1 && n_total_cells > 1) {
+    /* base smoke */
+    float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_vx, *o_vy, *o_vz,
+      *o_r, *o_g, *o_b, *o_phiin;
+    float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_vx, *n_vy, *n_vz,
+      *n_r, *n_g, *n_b, *n_phiin;
+    float dummy, *dummy_s;
+    int *dummy_p;
+    /* noise smoke */
+    int wt_res_old[3];
+    float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw,
+      *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
+    float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw,
+      *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
+
+    if (isNoise && sds->flags & FLUID_DOMAIN_USE_NOISE) {
+      smoke_turbulence_export(fluid_old,
+                  &o_wt_dens,
+                  &o_wt_react,
+                  &o_wt_flame,
+                  &o_wt_fuel,
+                  &o_wt_r,
+                  &o_wt_g,
+                  &o_wt_b,
+                  &o_wt_tcu,
+                  &o_wt_tcv,
+                  &o_wt_tcw,
+                  &o_wt_tcu2,
+                  &o_wt_tcv2,
+                  &o_wt_tcw2);
+      smoke_turbulence_get_res(fluid_old, wt_res_old);
+      smoke_turbulence_export(sds->fluid,
+                  &n_wt_dens,
+                  &n_wt_react,
+                  &n_wt_flame,
+                  &n_wt_fuel,
+                  &n_wt_r,
+                  &n_wt_g,
+                  &n_wt_b,
+                  &n_wt_tcu,
+                  &n_wt_tcv,
+                  &n_wt_tcw,
+                  &n_wt_tcu2,
+                  &n_wt_tcv2,
+                  &n_wt_tcw2);
+    }
+    else {
+      smoke_export(fluid_old,
+           &dummy,
+           &dummy,
+           &o_dens,
+           &o_react,
+           &o_flame,
+           &o_fuel,
+           &o_heat,
+           &o_vx,
+           &o_vy,
+           &o_vz,
+           &o_r,
+           &o_g,
+           &o_b,
+           &dummy_p,
+           &dummy_s,
+           &o_phiin);
+      smoke_export(sds->fluid,
+           &dummy,
+           &dummy,
+           &n_dens,
+           &n_react,
+           &n_flame,
+           &n_fuel,
+           &n_heat,
+           &n_vx,
+           &n_vy,
+           &n_vz,
+           &n_r,
+           &n_g,
+           &n_b,
+           &dummy_p,
+           &dummy_s,
+           &n_phiin);
+    }
+
+    for (x = o_min[0]; x < o_max[0]; x++) {
+      for (y = o_min[1]; y < o_max[1]; y++) {
+        for (z = o_min[2]; z < o_max[2]; z++) {
+          /* old grid index */
+          int xo = x - o_min[0];
+          int yo = y - o_min[1];
+          int zo = z - o_min[2];
+          int index_old = fluid_get_index(xo, o_res[0], yo, o_res[1], zo);
+          /* new grid index */
+          int xn = x - n_min[0] - new_shift[0];
+          int yn = y - n_min[1] - new_shift[1];
+          int zn = z - n_min[2] - new_shift[2];
+          int index_new = fluid_get_index(xn, n_res[0], yn, n_res[1], zn);
+
+          /* skip if outside new domain */
+          if (xn < 0 || xn >= n_res[0] || yn < 0 || yn >= n_res[1] || zn < 0 || zn >= n_res[2]) {
+            continue;
+          }
+
+          /* copy data */
+          if (isNoise && sds->flags & FLUID_DOMAIN_USE_NOISE) {
+            int i, j, k;
+            /* old grid index */
+            int xx_o = xo * block_size;
+            int yy_o = yo * block_size;
+            int zz_o = zo * block_size;
+            /* new grid index */
+            int xx_n = xn * block_size;
+            int yy_n = yn * block_size;
+            int zz_n = zn * block_size;
+
+            n_wt_tcu[index_new] = o_wt_tcu[index_old];
+            n_wt_tcv[index_new] = o_wt_tcv[index_old];
+            n_wt_tcw[index_new] = o_wt_tcw[index_old];
+
+            n_wt_tcu2[index_new] = o_wt_tcu2[index_old];
+            n_wt_tcv2[index_new] = o_wt_tcv2[index_old];
+            n_wt_tcw2[index_new] = o_wt_tcw2[index_old];
+
+            for (i = 0; i < block_size; i++) {
+              for (j = 0; j < block_size; j++) {
+                for (k = 0; k < block_size; k++) {
+                  int big_index_old = fluid_get_index(
+                    xx_o + i, wt_res_old[0], yy_o + j, wt_res_old[1], zz_o + k);
+                  int big_index_new = fluid_get_index(
+                    xx_n + i, sds->res_noise[0], yy_n + j, sds->res_noise[1], zz_n + k);
+                  /* copy data */
+                  n_wt_dens[big_index_new] = o_wt_dens[big_index_old];
+                  if (n_wt_flame && o_wt_flame) {
+                    n_wt_flame[big_index_new] = o_wt_flame[big_index_old];
+                    n_wt_fuel[big_index_new] = o_wt_fuel[big_index_old];
+                    n_wt_react[big_index_new] = o_wt_react[big_index_old];
+                  }
+                  if (n_wt_r && o_wt_r) {
+                    n_wt_r[big_index_new] = o_wt_r[big_index_old];
+                    n_wt_g[big_index_new] = o_wt_g[big_index_old];
+                    n_wt_b[big_index_new] = o_wt_b[big_index_old];
+                  }
+                }
+              }
+            }
+          }
+          else {
+            n_dens[index_new] = o_dens[index_old];
+            /* heat */
+            if (n_heat && o_heat) {
+              n_heat[index_new] = o_heat[index_old];
+            }
+            /* fuel */
+            if (n_fuel && o_fuel) {
+              n_flame[index_new] = o_flame[index_old];
+              n_fuel[index_new] = o_fuel[index_old];
+              n_react[index_new] = o_react[index_old];
+            }
+            /* color */
+            if (o_r && n_r) {
+              n_r[index_new] = o_r[index_old];
+              n_g[index_new] = o_g[index_old];
+              n_b[index_new] = o_b[index_old];
+            }
+            n_vx[index_new] = o_vx[index_old];
+            n_vy[index_new] = o_vy[index_old];
+            n_vz[index_new] = o_vz[index_old];
+            /* levelset */
+            if (n_phiin && o_phiin) {
+              n_phiin[index_new] = o_phiin[index_old];
+            }
+          }
+        }
+      }
+    }
+  }
+  fluid_free(fluid_old);
+}
+
+static void adaptiveDomainAdjust(SmokeDomainSettings *sds,
+                                 Object *ob,
+                                 EmissionMap *emaps,
+                                 unsigned int numflowobj,
+                                 float dt)
+{
+  /* calculate domain shift for current frame */
+  int new_shift[3] = {0};
+  int total_shift[3];
+  float frame_shift_f[3];
+  float ob_loc[3] = {0};
+
+  mul_m4_v3(ob->obmat, ob_loc);
+
+  sub_v3_v3v3(frame_shift_f, ob_loc, sds->prev_loc);
+  copy_v3_v3(sds->prev_loc, ob_loc);
+  /* convert global space shift to local "cell" space */
+  mul_mat3_m4_v3(sds->imat, frame_shift_f);
+  frame_shift_f[0] = frame_shift_f[0] / sds->cell_size[0];
+  frame_shift_f[1] = frame_shift_f[1] / sds->cell_size[1];
+  frame_shift_f[2] = frame_shift_f[2] / sds->cell_size[2];
+  /* add to total shift */
+  add_v3_v3(sds->shift_f, frame_shift_f);
+  /* convert to integer */
+  total_shift[0] = (int)(floorf(sds->shift_f[0]));
+  total_shift[1] = (int)(floorf(sds->shift_f[1]));
+  total_shift[2] = (int)(floorf(sds->shift_f[2]));
+  int tmpShift[3];
+  copy_v3_v3_int(tmpShift, sds->shift);
+  sub_v3_v3v3_int(new_shift, total_shift, sds->shift);
+  copy_v3_v3_int(sds->shift, total_shift);
+
+  /* calculate new domain boundary points so that smoke doesn't slide on sub-cell movement */
+  sds->p0[0] = sds->dp0[0] - sds->cell_size[0] * (sds->shift_f[0] - total_shift[0] - 0.5f);
+  sds->p0[1] = sds->dp0[1] - sds->cell_size[1] * (sds->shift_f[1] - total_shift[1] - 0.5f);
+  sds->p0[2] = sds->dp0[2] - sds->cell_size[2] * (sds->shift_f[2] - total_shift[2] - 0.5f);
+  sds->p1[0] = sds->p0[0] + sds->cell_size[0] * sds->base_res[0];
+  sds->p1[1] = sds->p0[1] + sds->cell_size[1] * sds->base_res[1];
+  sds->p1[2] = sds->p0[2] + sds->cell_size[2] * sds->base_res[2];
+
+  /* adjust domain resolution */
   const int block_size = sds->noise_scale;
   int min[3] = {32767, 32767, 32767}, max[3] = {-32767, -32767, -32767}, res[3];
   int total_cells = 1, res_changed = 0, shift_changed = 0;
@@ -2554,8 +2784,6 @@ static void adjustDomainResolution(SmokeDomainSettings *sds,
   }
 
   /* calculate new bounds based on these values */
-  mul_v3_fl(min_vel, 1.0f / sds->dx);
-  mul_v3_fl(max_vel, 1.0f / sds->dx);
   clampBoundsInDomain(sds, min, max, min_vel, max_vel, sds->adapt_margin + 1, dt);
 
   for (int i = 0; i < 3; i++) {
@@ -2585,181 +2813,7 @@ static void adjustDomainResolution(SmokeDomainSettings *sds,
   }
 
   if (res_changed || shift_changed) {
-    struct FLUID *fluid_old = sds->fluid;
-
-    /* allocate new fluid data */
-    BKE_smoke_reallocate_fluid(sds, res, 0);
-    if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-      BKE_smoke_reallocate_highres_fluid(sds, res);
-    }
-
-    /* copy values from old fluid to new */
-    if (sds->total_cells > 1 && total_cells > 1) {
-      /* low res smoke */
-      float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_vx, *o_vy, *o_vz, *o_r, *o_g, *o_b;
-      float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_vx, *n_vy, *n_vz, *n_r, *n_g, *n_b;
-      float dummy, *dummy_s;
-      int *dummy_p;
-      /* high res smoke */
-      int wt_res_old[3];
-      float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw,
-          *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
-      float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw,
-          *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
-
-      smoke_export(fluid_old,
-                   &dummy,
-                   &dummy,
-                   &o_dens,
-                   &o_react,
-                   &o_flame,
-                   &o_fuel,
-                   &o_heat,
-                   &o_vx,
-                   &o_vy,
-                   &o_vz,
-                   &o_r,
-                   &o_g,
-                   &o_b,
-                   &dummy_p,
-                   &dummy_s);
-      smoke_export(sds->fluid,
-                   &dummy,
-                   &dummy,
-                   &n_dens,
-                   &n_react,
-                   &n_flame,
-                   &n_fuel,
-                   &n_heat,
-                   &n_vx,
-                   &n_vy,
-                   &n_vz,
-                   &n_r,
-                   &n_g,
-                   &n_b,
-                   &dummy_p,
-                   &dummy_s);
-
-      if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-        smoke_turbulence_export(fluid_old,
-                                &o_wt_dens,
-                                &o_wt_react,
-                                &o_wt_flame,
-                                &o_wt_fuel,
-                                &o_wt_r,
-                                &o_wt_g,
-                                &o_wt_b,
-                                &o_wt_tcu,
-                                &o_wt_tcv,
-                                &o_wt_tcw,
-                                &o_wt_tcu2,
-                                &o_wt_tcv2,
-                                &o_wt_tcw2);
-        smoke_turbulence_get_res(fluid_old, wt_res_old);
-        smoke_turbulence_export(sds->fluid,
-                                &n_wt_dens,
-                                &n_wt_react,
-                                &n_wt_flame,
-                                &n_wt_fuel,
-                                &n_wt_r,
-                                &n_wt_g,
-                                &n_wt_b,
-                                &n_wt_tcu,
-                                &n_wt_tcv,
-                                &n_wt_tcw,
-                                &n_wt_tcu2,
-                                &n_wt_tcv2,
-                                &n_wt_tcw2);
-      }
-
-      for (x = sds->res_min[0]; x < sds->res_max[0]; x++) {
-        for (y = sds->res_min[1]; y < sds->res_max[1]; y++) {
-          for (z = sds->res_min[2]; z < sds->res_max[2]; z++) {
-            /* old grid index */
-            int xo = x - sds->res_min[0];
-            int yo = y - sds->res_min[1];
-            int zo = z - sds->res_min[2];
-            int index_old = fluid_get_index(xo, sds->res[0], yo, sds->res[1], zo);
-            /* new grid index */
-            int xn = x - min[0] - new_shift[0];
-            int yn = y - min[1] - new_shift[1];
-            int zn = z - min[2] - new_shift[2];
-            int index_new = fluid_get_index(xn, res[0], yn, res[1], zn);
-
-            /* skip if outside new domain */
-            if (xn < 0 || xn >= res[0] || yn < 0 || yn >= res[1] || zn < 0 || zn >= res[2]) {
-              continue;
-            }
-
-            /* copy data */
-            n_dens[index_new] = o_dens[index_old];
-            /* heat */
-            if (n_heat && o_heat) {
-              n_heat[index_new] = o_heat[index_old];
-            }
-            /* fuel */
-            if (n_fuel && o_fuel) {
-              n_flame[index_new] = o_flame[index_old];
-              n_fuel[index_new] = o_fuel[index_old];
-              n_react[index_new] = o_react[index_old];
-            }
-            /* color */
-            if (o_r && n_r) {
-              n_r[index_new] = o_r[index_old];
-              n_g[index_new] = o_g[index_old];
-              n_b[index_new] = o_b[index_old];
-            }
-            n_vx[index_new] = o_vx[index_old];
-            n_vy[index_new] = o_vy[index_old];
-            n_vz[index_new] = o_vz[index_old];
-
-            if (sds->flags & FLUID_DOMAIN_USE_NOISE && fluid_old) {
-              int i, j, k;
-              /* old grid index */
-              int xx_o = xo * block_size;
-              int yy_o = yo * block_size;
-              int zz_o = zo * block_size;
-              /* new grid index */
-              int xx_n = xn * block_size;
-              int yy_n = yn * block_size;
-              int zz_n = zn * block_size;
-
-              n_wt_tcu[index_new] = o_wt_tcu[index_old];
-              n_wt_tcv[index_new] = o_wt_tcv[index_old];
-              n_wt_tcw[index_new] = o_wt_tcw[index_old];
-
-              n_wt_tcu2[index_new] = o_wt_tcu2[index_old];
-              n_wt_tcv2[index_new] = o_wt_tcv2[index_old];
-              n_wt_tcw2[index_new] = o_wt_tcw2[index_old];
-
-              for (i = 0; i < block_size; i++) {
-                for (j = 0; j < block_size; j++) {
-                  for (k = 0; k < block_size; k++) {
-                    int big_index_old = fluid_get_index(
-                        xx_o + i, wt_res_old[0], yy_o + j, wt_res_old[1], zz_o + k);
-                    int big_index_new = fluid_get_index(
-                        xx_n + i, sds->res_noise[0], yy_n + j, sds->res_noise[1], zz_n + k);
-                    /* copy data */
-                    n_wt_dens[big_index_new] = o_wt_dens[big_index_old];
-                    if (n_wt_flame && o_wt_flame) {
-                      n_wt_flame[big_index_new] = o_wt_flame[big_index_old];
-                      n_wt_fuel[big_index_new] = o_wt_fuel[big_index_old];
-                      n_wt_react[big_index_new] = o_wt_react[big_index_old];
-                    }
-                    if (n_wt_r && o_wt_r) {
-                      n_wt_r[big_index_new] = o_wt_r[big_index_old];
-                      n_wt_g[big_index_new] = o_wt_g[big_index_old];
-                      n_wt_b[big_index_new] = o_wt_b[big_index_old];
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    fluid_free(fluid_old);
+    adaptiveDomainCopy(sds, sds->res, res, sds->res_min, min, sds->res_max, tmpShift, total_shift, 0);
 
     /* set new domain dimensions */
     copy_v3_v3_int(sds->res_min, min);
@@ -2990,7 +3044,6 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                bool is_first_frame)
 {
   EmissionMap *emaps = NULL;
-  int new_shift[3] = {0};
   Object **flowobjs = NULL;
   unsigned int numflowobj = 0, flowIndex = 0;
 
@@ -2999,39 +3052,6 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
 
   /* Update all flow related flags and ensure that corresponding grids get initialized */
   update_flowsflags(sds, flowobjs, numflowobj);
-
-  /* calculate domain shift for current frame if using adaptive domain */
-  if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
-    int total_shift[3];
-    float frame_shift_f[3];
-    float ob_loc[3] = {0};
-
-    mul_m4_v3(ob->obmat, ob_loc);
-
-    sub_v3_v3v3(frame_shift_f, ob_loc, sds->prev_loc);
-    copy_v3_v3(sds->prev_loc, ob_loc);
-    /* convert global space shift to local "cell" space */
-    mul_mat3_m4_v3(sds->imat, frame_shift_f);
-    frame_shift_f[0] = frame_shift_f[0] / sds->cell_size[0];
-    frame_shift_f[1] = frame_shift_f[1] / sds->cell_size[1];
-    frame_shift_f[2] = frame_shift_f[2] / sds->cell_size[2];
-    /* add to total shift */
-    add_v3_v3(sds->shift_f, frame_shift_f);
-    /* convert to integer */
-    total_shift[0] = (int)(floorf(sds->shift_f[0]));
-    total_shift[1] = (int)(floorf(sds->shift_f[1]));
-    total_shift[2] = (int)(floorf(sds->shift_f[2]));
-    sub_v3_v3v3_int(new_shift, total_shift, sds->shift);
-    copy_v3_v3_int(sds->shift, total_shift);
-
-    /* calculate new domain boundary points so that smoke doesn't slide on sub-cell movement */
-    sds->p0[0] = sds->dp0[0] - sds->cell_size[0] * (sds->shift_f[0] - total_shift[0] - 0.5f);
-    sds->p0[1] = sds->dp0[1] - sds->cell_size[1] * (sds->shift_f[1] - total_shift[1] - 0.5f);
-    sds->p0[2] = sds->dp0[2] - sds->cell_size[2] * (sds->shift_f[2] - total_shift[2] - 0.5f);
-    sds->p1[0] = sds->p0[0] + sds->cell_size[0] * sds->base_res[0];
-    sds->p1[1] = sds->p0[1] + sds->cell_size[1] * sds->base_res[1];
-    sds->p1[2] = sds->p0[2] + sds->cell_size[2] * sds->base_res[2];
-  }
 
   /* init emission maps for each flow */
   emaps = MEM_callocN(sizeof(struct EmissionMap) * numflowobj, "smoke_flow_maps");
@@ -3140,7 +3160,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
 
   /* Adjust domain size if needed */
   if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
-    adjustDomainResolution(sds, new_shift, emaps, numflowobj, time_per_frame);
+    adaptiveDomainAdjust(sds, ob, emaps, numflowobj, time_per_frame);
   }
 
   float *phi_in = fluid_get_phi_in(sds->fluid);
@@ -3408,7 +3428,7 @@ static void update_effectors(
   BKE_effectors_free(effectors);
 }
 
-static Mesh *createLiquidMesh(SmokeDomainSettings *sds, Mesh *orgmesh, Object *ob)
+static Mesh *createLiquidGeometry(SmokeDomainSettings *sds, Mesh *orgmesh, Object *ob)
 {
   Mesh *me;
   MVert *mverts;
@@ -3558,7 +3578,7 @@ static Mesh *createLiquidMesh(SmokeDomainSettings *sds, Mesh *orgmesh, Object *o
   return me;
 }
 
-static Mesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
+static Mesh *createSmokeGeometry(SmokeDomainSettings *sds, Mesh *orgmesh, Object *ob)
 {
   Mesh *result;
   MVert *mverts;
@@ -3576,10 +3596,9 @@ static Mesh *createDomainGeometry(SmokeDomainSettings *sds, Object *ob)
   float ob_loc[3] = {0};
   float ob_cache_loc[3] = {0};
 
-  /* dont generate any mesh if there isnt any content */
-  if (sds->total_cells <= 1) {
-    num_verts = 0;
-    num_faces = 0;
+  /* just copy existing mesh if there is no content or if the adaptive domain is not being used */
+  if (sds->total_cells <= 1 || (sds-> flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) == 0) {
+    return BKE_mesh_copy_for_eval(orgmesh, false);
   }
 
   result = BKE_mesh_new_nomain(num_verts, 0, 0, num_faces * 4, num_faces);
@@ -3745,7 +3764,7 @@ static void smoke_step(Depsgraph *depsgraph,
     time_per_frame += sdt;
 
     // Calculate inflow geometry
-    update_flowsfluids(depsgraph, scene, ob, sds, time_per_frame, dt, frame, is_first_frame);
+    update_flowsfluids(depsgraph, scene, ob, sds, time_per_frame, sdt, frame, is_first_frame);
 
     // Calculate obstacle geometry
     update_obstacles(depsgraph, scene, ob, sds, time_per_frame, dt, frame, sdt);
@@ -3890,25 +3909,40 @@ static void smokeModifier_process(
 
     /* Read cache. For liquids update data directly (i.e. not via python) */
     if (!is_baking) {
-      if (sds->cache_flag & FLUID_DOMAIN_BAKED_DATA) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKED_DATA)
+      {
         if (sds->type == FLUID_DOMAIN_TYPE_GAS) {
-          fluid_read_data(sds->fluid, smd, scene_framenr);
+          if (fluid_read_config(sds->fluid, smd, scene_framenr)) {
+            /* Adaptive domain might have changed resolution */
+            if (fluid_needs_realloc(sds->fluid, smd)) {
+              BKE_smoke_reallocate_fluid(sds, sds->res, 1);
+            }
+            fluid_read_data(sds->fluid, smd, scene_framenr);
+          }
         }
         if (sds->type == FLUID_DOMAIN_TYPE_LIQUID) {
           fluid_update_liquid_structures(sds->fluid, smd, scene_framenr);
         }
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKED_NOISE) {
-        fluid_read_noise(sds->fluid, smd, scene_framenr);
+      if (sds->cache_flag & FLUID_DOMAIN_BAKED_NOISE)
+      {
+        if (fluid_read_config(sds->fluid, smd, scene_framenr)) {
+          if (fluid_needs_realloc(sds->fluid, smd)) {
+            BKE_smoke_reallocate_fluid(sds, sds->res, 1);
+          }
+          fluid_read_noise(sds->fluid, smd, scene_framenr);
+        }
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKED_MESH) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKED_MESH)
+      {
         //if (sds->type == FLUID_DOMAIN_TYPE_GAS)
         // TODO (sebbas): smoke as mesh
         if (sds->type == FLUID_DOMAIN_TYPE_LIQUID) {
           fluid_update_mesh_structures(sds->fluid, smd, scene_framenr);
         }
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKED_PARTICLES) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKED_PARTICLES)
+      {
         //if (sds->type == FLUID_DOMAIN_TYPE_GAS)
         // TODO (sebbas): fire particles
         if (sds->type == FLUID_DOMAIN_TYPE_LIQUID) {
@@ -3924,17 +3958,18 @@ static void smokeModifier_process(
 
       /* Export mantaflow python script on first frame (once only) and for any bake type */
       if ((sds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT) &&
-          scene_framenr == sds->cache_frame_start) {
+          scene_framenr == sds->cache_frame_start)
+      {
         if (smd->domain && smd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
           smoke_manta_export(smd->domain->fluid, smd);
         }
-
         if (smd->domain && smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
           liquid_manta_export(smd->domain->fluid, smd);
         }
       }
 
-      if (sds->cache_flag & FLUID_DOMAIN_BAKING_DATA) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKING_DATA)
+      {
         if (sds->flags & FLUID_DOMAIN_USE_GUIDING) {
           /* Load guiding vel from flow object (only if baked) or else from domain object */
           if (sds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_EFFECTOR &&
@@ -3954,31 +3989,45 @@ static void smokeModifier_process(
 
         /* Base step needs separated bake and write calls - reason being that transparency calculation is after fluid step */
         smoke_step(depsgraph, scene, ob, me, smd, scene_framenr, is_first_frame);
+        fluid_write_config(sds->fluid, smd, scene_framenr);
         fluid_write_data(sds->fluid, smd, scene_framenr);
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKING_NOISE) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKING_NOISE)
+      {
         /* Refresh all objects if we start baking from a resumed frame */
         if (sds->cache_frame_start != scene_framenr &&
             sds->cache_frame_pause_data == scene_framenr) {
           fluid_read_noise(sds->fluid, smd, scene_framenr - 1);
         }
-
+        if (sds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
+          int o_res[3], o_min[3], o_max[3], o_shift[3];
+          copy_v3_v3_int(o_res, sds->res);
+          copy_v3_v3_int(o_min, sds->res_min);
+          copy_v3_v3_int(o_max, sds->res_max);
+          copy_v3_v3_int(o_shift, sds->shift);
+          fluid_read_config(sds->fluid, smd, scene_framenr);
+          if (fluid_needs_realloc(sds->fluid, smd)) {
+            adaptiveDomainCopy(sds, o_res, sds->res, o_min, sds->res_min, o_max, o_shift, sds->shift, 1);
+          }
+        }
         fluid_bake_noise(sds->fluid, smd, scene_framenr);
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKING_MESH) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKING_MESH)
+      {
         /* Note: Mesh bake does not need object refresh from cache */
         fluid_bake_mesh(sds->fluid, smd, scene_framenr);
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES)
+      {
         /* Refresh all objects if we start baking from a resumed frame */
         if (sds->cache_frame_start != scene_framenr &&
             sds->cache_frame_pause_data == scene_framenr) {
           fluid_read_particles(sds->fluid, smd, scene_framenr - 1);
         }
-
         fluid_bake_particles(sds->fluid, smd, scene_framenr);
       }
-      if (sds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING) {
+      if (sds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING)
+      {
         smoke_guiding(depsgraph, scene, ob, smd, scene_framenr);
       }
     }
@@ -4001,24 +4050,16 @@ struct Mesh *smokeModifier_do(
   }
 
   /* return generated geometry for adaptive domain */
-  Mesh *result;
-  if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
-      smd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN && smd->domain->base_res[0]) {
-    result = createDomainGeometry(smd->domain, ob);
+  if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain)
+  {
+    if (smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
+      return createLiquidGeometry(smd->domain, me, ob);
+    }
+    if (smd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
+      return createSmokeGeometry(smd->domain, me, ob);
+    }
   }
-  else if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
-           smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
-    Mesh *result = createLiquidMesh(smd->domain, me, ob);
-    return (result) ? result : BKE_mesh_copy_for_eval(me, true);
-  }
-  else {
-    result = BKE_mesh_copy_for_eval(me, false);
-  }
-  /* XXX This is really not a nice hack, but until root of the problem is understood,
-   * this should be an acceptable workaround I think.
-   * See T58492 for details on the issue. */
-  result->texflag |= ME_AUTOSPACE;
-  return result;
+  return BKE_mesh_copy_for_eval(me, false);
 }
 
 static float calc_voxel_transp(

@@ -43,7 +43,9 @@ void fluid_ensure_obstacle(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_guiding(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_invelocity(struct FLUID *fluid, struct SmokeModifierData *smd);
 void fluid_ensure_outflow(struct FLUID *fluid, struct SmokeModifierData *smd);
+int fluid_write_config(struct FLUID *fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_write_data(struct FLUID *fluid, struct SmokeModifierData *smd, int framenr);
+int fluid_read_config(struct FLUID *fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_data(struct FLUID *fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_noise(struct FLUID *fluid, struct SmokeModifierData *smd, int framenr);
 int fluid_read_mesh(struct FLUID *fluid, struct SmokeModifierData *smd, int framenr);
@@ -68,6 +70,7 @@ void fluid_update_variables(struct FLUID *fluid, struct SmokeModifierData *smd);
 int fluid_get_frame(struct FLUID *fluid);
 float fluid_get_timestep(struct FLUID *fluid);
 void fluid_adapt_timestep(struct FLUID *fluid);
+bool fluid_needs_realloc(struct FLUID *fluid, struct SmokeModifierData *smd);
 
 /* Fluid accessors */
 size_t fluid_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */);
@@ -116,7 +119,8 @@ void smoke_export(struct FLUID *smoke,
                   float **g,
                   float **b,
                   int **obstacles,
-                  float **shadow);
+                  float **shadow,
+                  float **phiin);
 void smoke_turbulence_export(struct FLUID *smoke,
                              float **dens,
                              float **react,

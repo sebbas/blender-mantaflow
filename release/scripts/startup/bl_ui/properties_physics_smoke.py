@@ -557,16 +557,17 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        # TODO (sebbas): Disabled adaptive domain for now
-        return False
-        #if not PhysicButtonsPanel.poll_smoke_domain(context):
-        #    return False
+        if not PhysicButtonsPanel.poll_smoke_domain(context):
+            return False
 
-        #return (context.engine in cls.COMPAT_ENGINES)
+        return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
         md = context.smoke.domain_settings
-
+        domain = context.smoke.domain_settings
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
+        self.layout.enabled = not baking_any and not baked_any
         self.layout.prop(md, "use_adaptive_domain", text="")
 
     def draw(self, context):
@@ -576,8 +577,11 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
         domain = context.smoke.domain_settings
         layout.active = domain.use_adaptive_domain
 
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
+
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
-        flow.enabled = (not domain.point_cache.is_baked)
+        flow.enabled = not baking_any and not baked_any
 
         col = flow.column()
         col.prop(domain, "additional_res", text="Add Resolution")

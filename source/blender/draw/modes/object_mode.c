@@ -2402,15 +2402,23 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
 
   DRW_object_wire_theme_get(ob, view_layer, &color);
 
-  /* Small cube showing voxel size. */
+  /* Small cube showing voxel size (adjusts with adaptive domain) */
+  float min[3], max[3], size[3];
+  madd_v3fl_v3fl_v3fl_v3i(min, sds->p0, sds->cell_size, sds->res_min);
+  madd_v3fl_v3fl_v3fl_v3i(max, sds->p0, sds->cell_size, sds->res_max);
+  sub_v3_v3v3(size, max, min);
   float voxel_cubemat[4][4] = {{0.0f}};
-  voxel_cubemat[0][0] = 1.0f / (float)sds->res[0];
-  voxel_cubemat[1][1] = 1.0f / (float)sds->res[1];
-  voxel_cubemat[2][2] = 1.0f / (float)sds->res[2];
-  voxel_cubemat[3][0] = voxel_cubemat[3][1] = voxel_cubemat[3][2] = -1.0f;
+  /* scale small cube */
+  voxel_cubemat[0][0] = (1.0f / (float)sds->res[0]) * size[0] * ob->obmat[0][0] * 0.5;
+  voxel_cubemat[1][1] = (1.0f / (float)sds->res[1]) * size[1] * ob->obmat[1][1] * 0.5;
+  voxel_cubemat[2][2] = (1.0f / (float)sds->res[2]) * size[2] * ob->obmat[2][2] * 0.5;
+  /* translate small cube */
+  voxel_cubemat[3][0] = min[0] * ob->obmat[0][0] + ob->obmat[3][0];
+  voxel_cubemat[3][1] = min[1] * ob->obmat[1][1] + ob->obmat[3][1];
+  voxel_cubemat[3][2] = min[2] * ob->obmat[2][2] + ob->obmat[3][2];
   voxel_cubemat[3][3] = 1.0f;
+  /* move small cube into the domain (before centered on vertex) */
   translate_m4(voxel_cubemat, 1.0f, 1.0f, 1.0f);
-  mul_m4_m4m4(voxel_cubemat, ob->obmat, voxel_cubemat);
 
   DRW_shgroup_call_dynamic_add(sgl->cube, color, &one, voxel_cubemat);
 

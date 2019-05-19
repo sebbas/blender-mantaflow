@@ -82,10 +82,12 @@ struct FLUID {
   void updatePointersNoise();
 
   // Write cache
+  int writeConfiguration(SmokeModifierData *smd, int framenr);
   int writeData(SmokeModifierData *smd, int framenr);
   // write call for noise, mesh and particles were left in bake calls for now
 
   // Read cache (via Manta save/load)
+  int readConfiguration(SmokeModifierData *smd, int framenr);
   int readData(SmokeModifierData *smd, int framenr);
   int readNoise(SmokeModifierData *smd, int framenr);
   int readMesh(SmokeModifierData *smd, int framenr);
@@ -627,6 +629,8 @@ struct FLUID {
   int getFrame();
   float getTimestep();
   void adaptTimestep();
+
+  bool needsRealloc(SmokeModifierData *smd);
 
  private:
   // simulation constants
