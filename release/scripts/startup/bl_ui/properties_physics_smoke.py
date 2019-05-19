@@ -149,22 +149,6 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
             flow.enabled = not baking_any and not baked_data
 
             col = flow.column()
-            col.prop(domain, "use_collision_border_front", text="Front")
-            col = flow.column()
-            col.prop(domain, "use_collision_border_back", text="Back")
-            col = flow.column()
-            col.prop(domain, "use_collision_border_right", text="Right")
-            col = flow.column()
-            col.prop(domain, "use_collision_border_left", text="Left")
-            col = flow.column()
-            col.prop(domain, "use_collision_border_top", text="Top")
-            col = flow.column()
-            col.prop(domain, "use_collision_border_bottom", text="Bottom")
-
-            flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
-            flow.enabled = not baking_any and not baked_data
-
-            col = flow.column()
             col.prop(domain, "resolution_max", text="Resolution Divisions")
             col.prop(domain, "use_adaptive_stepping", text="Use Adaptive Stepping")
             col.prop(domain, "time_scale", text="Time Scale")
@@ -249,6 +233,44 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 col = flow.column()
                 col.prop(effec, "guiding_mode", text="Guiding Mode")
 
+class PHYSICS_PT_manta_borders(PhysicButtonsPanel, Panel):
+    bl_label = "Border Collisions"
+    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        if not PhysicButtonsPanel.poll_fluid_domain(context):
+            return False
+
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        md = context.smoke
+        domain = md.domain_settings
+
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
+        baked_data = domain.cache_baked_data
+
+        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
+        flow.enabled = not baking_any and not baked_data
+
+        col = flow.column()
+        col.prop(domain, "use_collision_border_front", text="Front")
+        col = flow.column()
+        col.prop(domain, "use_collision_border_back", text="Back")
+        col = flow.column()
+        col.prop(domain, "use_collision_border_right", text="Right")
+        col = flow.column()
+        col.prop(domain, "use_collision_border_left", text="Left")
+        col = flow.column()
+        col.prop(domain, "use_collision_border_top", text="Top")
+        col = flow.column()
+        col.prop(domain, "use_collision_border_bottom", text="Bottom")
 
 class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Smoke"
@@ -1124,6 +1146,7 @@ classes = (
     MANTA_MT_presets,
     PHYSICS_PT_manta,
     PHYSICS_PT_manta_fluid,
+    PHYSICS_PT_manta_borders,
     PHYSICS_PT_manta_smoke,
     PHYSICS_PT_manta_smoke_dissolve,
     PHYSICS_PT_manta_fire,
