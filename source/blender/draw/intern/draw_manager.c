@@ -2684,7 +2684,7 @@ void DRW_draw_depth_object(ARegion *ar, GPUViewport *viewport, Object *object)
   DRW_opengl_context_disable();
 }
 
-static void draw_mesh_verts(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+static void draw_mesh_verts(GPUBatch *batch, uint offset, const float world_clip_planes[6][4])
 {
   GPU_point_size(UI_GetThemeValuef(TH_VERTEX_SIZE));
 
@@ -2698,7 +2698,7 @@ static void draw_mesh_verts(GPUBatch *batch, int offset, const float world_clip_
   GPU_batch_draw(batch);
 }
 
-static void draw_mesh_edges(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+static void draw_mesh_edges(GPUBatch *batch, uint offset, const float world_clip_planes[6][4])
 {
   GPU_line_width(1.0f);
   glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
@@ -2717,7 +2717,7 @@ static void draw_mesh_edges(GPUBatch *batch, int offset, const float world_clip_
 
 /* two options, facecolors or black */
 static void draw_mesh_face(GPUBatch *batch,
-                           int offset,
+                           uint offset,
                            const bool use_select,
                            const float world_clip_planes[6][4])
 {
@@ -2743,7 +2743,7 @@ static void draw_mesh_face(GPUBatch *batch,
   }
 }
 
-static void draw_mesh_face_dot(GPUBatch *batch, int offset, const float world_clip_planes[6][4])
+static void draw_mesh_face_dot(GPUBatch *batch, uint offset, const float world_clip_planes[6][4])
 {
   const eGPUShaderConfig sh_cfg = world_clip_planes ? GPU_SHADER_CFG_CLIPPED :
                                                       GPU_SHADER_CFG_DEFAULT;
@@ -2860,6 +2860,7 @@ void DRW_draw_select_id_object(Scene *scene,
           draw_mesh_face(geom_faces, 0, false, world_clip_planes);
           draw_mesh_verts(geom_verts, 1, world_clip_planes);
 
+          *r_face_offset = *r_edge_offset = initial_offset;
           *r_vert_offset = me_eval->totvert + 1;
         }
         else {
@@ -2868,7 +2869,8 @@ void DRW_draw_select_id_object(Scene *scene,
 
           draw_mesh_face(geom_faces, initial_offset, true, world_clip_planes);
 
-          *r_face_offset = initial_offset + me_eval->totface;
+          *r_face_offset = initial_offset + me_eval->totpoly;
+          *r_edge_offset = *r_vert_offset = *r_face_offset;
         }
       }
       break;
@@ -2896,7 +2898,7 @@ void DRW_framebuffer_select_id_setup(ARegion *ar, const bool clear)
   glDisable(GL_DITHER);
 
   GPU_depth_test(true);
-  GPU_enable_program_point_size();
+  GPU_disable_program_point_size();
 
   if (clear) {
     GPU_framebuffer_clear_color_depth(

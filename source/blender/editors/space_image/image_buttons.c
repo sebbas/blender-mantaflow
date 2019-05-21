@@ -1207,6 +1207,7 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
 
   uiLayout *col = uiLayoutColumn(layout, true);
+  uiLayoutSetAlignment(col, UI_LAYOUT_ALIGN_RIGHT);
 
   if (ibuf == NULL) {
     uiItemL(col, IFACE_("Can't Load Image"), ICON_NONE);
@@ -1253,7 +1254,10 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
     int duration = 0;
 
     if (ima->source == IMA_SRC_MOVIE && BKE_image_has_anim(ima)) {
-      duration = IMB_anim_get_duration(((ImageAnim *)ima->anims.first)->anim, IMB_TC_RECORD_RUN);
+      struct anim *anim = ((ImageAnim *)ima->anims.first)->anim;
+      if (anim) {
+        duration = IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN);
+      }
     }
 
     if (duration > 0) {

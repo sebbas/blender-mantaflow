@@ -1245,7 +1245,6 @@ static ImBuf *blend_file_thumb(const bContext *C,
                                           BLEN_THUMB_SIZE * 2,
                                           BLEN_THUMB_SIZE * 2,
                                           IB_rect,
-                                          V3D_OFSDRAW_NONE,
                                           R_ALPHAPREMUL,
                                           0,
                                           NULL,
@@ -1653,6 +1652,7 @@ static int wm_userpref_autoexec_add_exec(bContext *UNUSED(C), wmOperator *UNUSED
 {
   bPathCompare *path_cmp = MEM_callocN(sizeof(bPathCompare), "bPathCompare");
   BLI_addtail(&U.autoexec_paths, path_cmp);
+  U.runtime.is_dirty = true;
   return OPERATOR_FINISHED;
 }
 
@@ -1673,6 +1673,7 @@ static int wm_userpref_autoexec_remove_exec(bContext *UNUSED(C), wmOperator *op)
   bPathCompare *path_cmp = BLI_findlink(&U.autoexec_paths, index);
   if (path_cmp) {
     BLI_freelinkN(&U.autoexec_paths, path_cmp);
+    U.runtime.is_dirty = true;
   }
   return OPERATOR_FINISHED;
 }
@@ -2855,7 +2856,7 @@ static void wm_block_file_close_cancel(bContext *C, void *arg_block, void *UNUSE
 
 static void wm_block_file_close_discard(bContext *C, void *arg_block, void *arg_data)
 {
-  wmGenericCallback *callback = wm_generic_callback_steal((wmGenericCallback *)arg_data);
+  wmGenericCallback *callback = WM_generic_callback_steal((wmGenericCallback *)arg_data);
 
   /* Close the popup before executing the callback. Otherwise
    * the popup might be closed by the callback, which will lead
@@ -2864,12 +2865,12 @@ static void wm_block_file_close_discard(bContext *C, void *arg_block, void *arg_
   UI_popup_block_close(C, win, arg_block);
 
   callback->exec(C, callback->user_data);
-  wm_generic_callback_free(callback);
+  WM_generic_callback_free(callback);
 }
 
 static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_data)
 {
-  wmGenericCallback *callback = wm_generic_callback_steal((wmGenericCallback *)arg_data);
+  wmGenericCallback *callback = WM_generic_callback_steal((wmGenericCallback *)arg_data);
   bool execute_callback = true;
 
   wmWindow *win = CTX_wm_window(C);
@@ -2897,7 +2898,7 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
   if (execute_callback) {
     callback->exec(C, callback->user_data);
   }
-  wm_generic_callback_free(callback);
+  WM_generic_callback_free(callback);
 }
 
 static void wm_block_file_close_cancel_button(uiBlock *block, wmGenericCallback *post_action)
@@ -2925,13 +2926,15 @@ static void wm_block_file_close_save_button(uiBlock *block, wmGenericCallback *p
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 }
 
+static const char *close_file_dialog_name = "file_close_popup";
+
 static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegion *ar, void *arg1)
 {
   wmGenericCallback *post_action = (wmGenericCallback *)arg1;
   Main *bmain = CTX_data_main(C);
 
   uiStyle *style = UI_style_get();
-  uiBlock *block = UI_block_begin(C, ar, "file_close_popup", UI_EMBOSS);
+  uiBlock *block = UI_block_begin(C, ar, close_file_dialog_name, UI_EMBOSS);
 
   UI_block_flag_enable(
       block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
@@ -3039,40 +3042,24 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C, struct ARegi
 static void free_post_file_close_action(void *arg)
 {
   wmGenericCallback *action = (wmGenericCallback *)arg;
-  wm_generic_callback_free(action);
+  WM_generic_callback_free(action);
 }
 
 void wm_close_file_dialog(bContext *C, wmGenericCallback *post_action)
 {
-  UI_popup_block_invoke(
-      C, block_create__close_file_dialog, post_action, free_post_file_close_action);
+  if (!UI_popup_block_name_exists(C, close_file_dialog_name)) {
+    UI_popup_block_invoke(
+        C, block_create__close_file_dialog, post_action, free_post_file_close_action);
+  }
+  else {
+    WM_generic_callback_free(post_action);
+  }
 }
 
 bool wm_file_or_image_is_modified(const bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   return !wm->file_saved || ED_image_should_save_modified(C);
-}
-
-void wm_generic_callback_free(wmGenericCallback *callback)
-{
-  if (callback->free_user_data) {
-    callback->free_user_data(callback->user_data);
-  }
-  MEM_freeN(callback);
-}
-
-static void do_nothing(bContext *UNUSED(C), void *UNUSED(user_data))
-{
-}
-
-wmGenericCallback *wm_generic_callback_steal(wmGenericCallback *callback)
-{
-  wmGenericCallback *new_callback = MEM_dupallocN(callback);
-  callback->exec = do_nothing;
-  callback->free_user_data = NULL;
-  callback->user_data = NULL;
-  return new_callback;
 }
 
 /** \} */

@@ -37,6 +37,7 @@
 
 #include "RE_pipeline.h"
 
+struct GHash;
 struct Main;
 struct Object;
 struct RenderEngine;
@@ -112,7 +113,7 @@ struct Render {
   struct Object *camera_override;
 
   ThreadRWMutex partsmutex;
-  ListBase parts;
+  struct GHash *parts;
 
   /* render engine */
   struct RenderEngine *engine;

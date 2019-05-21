@@ -772,9 +772,9 @@ static PointerRNA rna_Scene_objects_get(CollectionPropertyIterator *iter)
 
 /* End of read-only Iterator of all the scene objects. */
 
-static void rna_Scene_set_set(struct ReportList *UNUSED(reports),
-                              PointerRNA *ptr,
-                              PointerRNA value)
+static void rna_Scene_set_set(PointerRNA *ptr,
+                              PointerRNA value,
+                              struct ReportList *UNUSED(reports))
 {
   Scene *scene = (Scene *)ptr->data;
   Scene *set = (Scene *)value.data;
@@ -971,9 +971,9 @@ static PointerRNA rna_Scene_active_keying_set_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_KeyingSet, ANIM_scene_get_active_keyingset(scene));
 }
 
-static void rna_Scene_active_keying_set_set(struct ReportList *UNUSED(reports),
-                                            PointerRNA *ptr,
-                                            PointerRNA value)
+static void rna_Scene_active_keying_set_set(PointerRNA *ptr,
+                                            PointerRNA value,
+                                            struct ReportList *UNUSED(reports))
 {
   Scene *scene = (Scene *)ptr->data;
   KeyingSet *ks = (KeyingSet *)value.data;
@@ -1439,9 +1439,9 @@ static PointerRNA rna_RenderSettings_active_view_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_SceneRenderView, srv);
 }
 
-static void rna_RenderSettings_active_view_set(struct ReportList *UNUSED(reports),
-                                               PointerRNA *ptr,
-                                               PointerRNA value)
+static void rna_RenderSettings_active_view_set(PointerRNA *ptr,
+                                               PointerRNA value,
+                                               struct ReportList *UNUSED(reports))
 {
   RenderData *rd = (RenderData *)ptr->data;
   SceneRenderView *srv = (SceneRenderView *)value.data;
@@ -2046,9 +2046,9 @@ PointerRNA rna_FreestyleLineSet_linestyle_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_FreestyleLineStyle, lineset->linestyle);
 }
 
-void rna_FreestyleLineSet_linestyle_set(struct ReportList *UNUSED(reports),
-                                        PointerRNA *ptr,
-                                        PointerRNA value)
+void rna_FreestyleLineSet_linestyle_set(PointerRNA *ptr,
+                                        PointerRNA value,
+                                        struct ReportList *UNUSED(reports))
 {
   FreestyleLineSet *lineset = (FreestyleLineSet *)ptr->data;
 
@@ -2594,23 +2594,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem edge_tag_items[] = {
-      {EDGE_MODE_SELECT, "SELECT", 0, "Select", ""},
-      {EDGE_MODE_TAG_SEAM, "SEAM", 0, "Tag Seam", ""},
-      {EDGE_MODE_TAG_SHARP, "SHARP", 0, "Tag Sharp", ""},
-      {EDGE_MODE_TAG_CREASE, "CREASE", 0, "Tag Crease", ""},
-      {EDGE_MODE_TAG_BEVEL, "BEVEL", 0, "Tag Bevel", ""},
-      {EDGE_MODE_TAG_FREESTYLE, "FREESTYLE", 0, "Tag Freestyle Edge Mark", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static EnumPropertyItem mod_weighted_strength[] = {
-      {FACE_STRENGTH_WEAK, "Weak", 0, "Weak", ""},
-      {FACE_STRENGTH_MEDIUM, "Medium", 0, "Medium", ""},
-      {FACE_STRENGTH_STRONG, "Strong", 0, "Strong", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   static const EnumPropertyItem draw_groupuser_items[] = {
       {OB_DRAW_GROUPUSER_NONE, "NONE", 0, "None", ""},
       {OB_DRAW_GROUPUSER_ACTIVE,
@@ -2853,7 +2836,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "double_threshold", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, NULL, "doublimit");
   RNA_def_property_ui_text(
-      prop, "Double Threshold", "Limit for removing duplicates and 'Auto Merge'");
+      prop, "Merge Threshold", "Threshold distance for Auto Merge");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_range(prop, 0.0, 0.1, 0.01, 6);
 
@@ -2874,7 +2857,8 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_mesh_automerge", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "automerge", 0);
   RNA_def_property_ui_text(
-      prop, "AutoMerge Editing", "Automatically merge vertices moved to the same location");
+      prop, "Auto Merge", "Automatically merge vertices moved to the same location");
+  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, -1);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap", PROP_BOOLEAN, PROP_NONE);
@@ -3152,13 +3136,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "vgroup_weight");
   RNA_def_property_ui_text(prop, "Vertex Group Weight", "Weight to assign in vertex groups");
 
-  /* use with MESH_OT_shortest_path_pick */
-  prop = RNA_def_property(srna, "edge_path_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "edge_mode");
-  RNA_def_property_enum_items(prop, edge_tag_items);
-  RNA_def_property_ui_text(
-      prop, "Edge Tag Mode", "The edge flag to tag when selecting the shortest path");
-
   prop = RNA_def_property(srna, "use_edge_path_live_unwrap", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "edge_mode_live_unwrap", 1);
   RNA_def_property_ui_text(prop, "Live Unwrap", "Changing edges seam re-calculates UV unwrap");
@@ -3166,10 +3143,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "normal_vector", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_ui_text(prop, "Normal Vector", "Normal Vector used to copy, add or multiply");
   RNA_def_property_ui_range(prop, -10000.0, 10000.0, 1, 3);
-
-  prop = RNA_def_property(srna, "face_strength", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, mod_weighted_strength);
-  RNA_def_property_ui_text(prop, "Face Strength", "Set strength of face to specified value");
 
   /* Unified Paint Settings */
   prop = RNA_def_property(srna, "unified_paint_settings", PROP_POINTER, PROP_NONE);

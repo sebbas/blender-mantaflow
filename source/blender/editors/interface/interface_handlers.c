@@ -565,7 +565,11 @@ static void ui_but_update_preferences_dirty(uiBut *but)
     }
     else {
       StructRNA *base = RNA_struct_base(but->rnapoin.type);
-      if (ELEM(base, &RNA_AddonPreferences, &RNA_KeyConfigPreferences)) {
+      if (ELEM(base,
+               &RNA_AddonPreferences,
+               &RNA_KeyConfigPreferences,
+               &RNA_KeyMapItem,
+               &RNA_WalkNavigation)) {
         tag = true;
       }
     }
@@ -1744,7 +1748,7 @@ static void ui_selectcontext_apply(bContext *C,
       }
       else if (rna_type == PROP_POINTER) {
         const PointerRNA other_value = delta.p;
-        RNA_property_pointer_set(NULL, &lptr, lprop, other_value);
+        RNA_property_pointer_set(&lptr, lprop, other_value, NULL);
       }
 
       RNA_property_update(C, &lptr, prop);

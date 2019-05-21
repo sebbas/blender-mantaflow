@@ -451,11 +451,6 @@ static const EnumPropertyItem operator_flag_items[] = {
      "is enabled"},
     {OPTYPE_PRESET, "PRESET", 0, "Preset", "Display a preset button with the operators settings"},
     {OPTYPE_INTERNAL, "INTERNAL", 0, "Internal", "Removes the operator from search results"},
-    {OPTYPE_USE_EVAL_DATA,
-     "USE_EVAL_DATA",
-     0,
-     "Use Evaluated Data",
-     "Uses evaluated data (i.e. needs a valid depsgraph for current context)"},
     {0, NULL, 0, NULL, NULL},
 };
 #endif
@@ -694,9 +689,9 @@ static PointerRNA rna_PieMenu_layout_get(PointerRNA *ptr)
   return rptr;
 }
 
-static void rna_Window_scene_set(struct ReportList *UNUSED(reports),
-                                 PointerRNA *ptr,
-                                 PointerRNA value)
+static void rna_Window_scene_set(PointerRNA *ptr,
+                                 PointerRNA value,
+                                 struct ReportList *UNUSED(reports))
 {
   wmWindow *win = ptr->data;
 
@@ -740,9 +735,9 @@ static PointerRNA rna_Window_workspace_get(PointerRNA *ptr)
       ptr, &RNA_WorkSpace, BKE_workspace_active_get(win->workspace_hook));
 }
 
-static void rna_Window_workspace_set(struct ReportList *UNUSED(reports),
-                                     PointerRNA *ptr,
-                                     PointerRNA value)
+static void rna_Window_workspace_set(PointerRNA *ptr,
+                                     PointerRNA value,
+                                     struct ReportList *UNUSED(reports))
 {
   wmWindow *win = (wmWindow *)ptr->data;
 
@@ -778,9 +773,9 @@ PointerRNA rna_Window_screen_get(PointerRNA *ptr)
       ptr, &RNA_Screen, BKE_workspace_active_screen_get(win->workspace_hook));
 }
 
-static void rna_Window_screen_set(struct ReportList *UNUSED(reports),
-                                  PointerRNA *ptr,
-                                  PointerRNA value)
+static void rna_Window_screen_set(PointerRNA *ptr,
+                                  PointerRNA value,
+                                  struct ReportList *UNUSED(reports))
 {
   wmWindow *win = ptr->data;
   WorkSpace *workspace = BKE_workspace_active_get(win->workspace_hook);
@@ -830,9 +825,9 @@ static PointerRNA rna_Window_view_layer_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(&scene_ptr, &RNA_ViewLayer, view_layer);
 }
 
-static void rna_Window_view_layer_set(struct ReportList *UNUSED(reports),
-                                      PointerRNA *ptr,
-                                      PointerRNA value)
+static void rna_Window_view_layer_set(PointerRNA *ptr,
+                                      PointerRNA value,
+                                      struct ReportList *UNUSED(reports))
 {
   wmWindow *win = ptr->data;
   ViewLayer *view_layer = value.data;
@@ -1036,9 +1031,9 @@ static PointerRNA rna_WindowManager_active_keyconfig_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_KeyConfig, kc);
 }
 
-static void rna_WindowManager_active_keyconfig_set(struct ReportList *UNUSED(reports),
-                                                   PointerRNA *ptr,
-                                                   PointerRNA value)
+static void rna_WindowManager_active_keyconfig_set(PointerRNA *ptr,
+                                                   PointerRNA value,
+                                                   struct ReportList *UNUSED(reports))
 {
   wmWindowManager *wm = ptr->data;
   wmKeyConfig *kc = value.data;
