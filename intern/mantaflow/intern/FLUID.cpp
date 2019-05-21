@@ -1223,12 +1223,12 @@ int FLUID::readConfiguration(SmokeModifierData *smd, int framenr)
                 NULL);
   BLI_path_make_safe(cacheDir);
 
-  if (!BLI_exists(cacheDir))
-    return 0;
-
   ss << "config_####" << dformat;
   BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
   BLI_path_frame(targetFile, framenr, 0);
+
+  if (!BLI_exists(targetFile))
+    return 0;
 
   gzFile gzf = gzopen(targetFile, "rb"); // do some compression
   if (!gzf)

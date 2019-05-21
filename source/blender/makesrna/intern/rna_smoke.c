@@ -474,9 +474,9 @@ static void rna_Smoke_cachetype_noise_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Smoke_guiding_parent_set(struct ReportList *UNUSED(reports),
-                                         PointerRNA *ptr,
-                                         PointerRNA value)
+static void rna_Smoke_guiding_parent_set(struct PointerRNA *ptr,
+                                         struct PointerRNA value,
+                                         struct ReportList *UNUSED(reports))
 {
   SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
   Object *par = (Object *)value.data;

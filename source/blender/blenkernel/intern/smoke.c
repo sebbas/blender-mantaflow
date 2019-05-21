@@ -3549,7 +3549,7 @@ static Mesh *createLiquidGeometry(SmokeDomainSettings *sds, Mesh *orgmesh, Objec
 
   MEM_freeN(normals);
 
-  /* return early of no mesh vert velocities required */
+  /* return early if no mesh vert velocities required */
   if ((sds->flags & FLUID_DOMAIN_USE_SPEED_VECTORS) == 0) {
     return me;
   }
@@ -4050,16 +4050,24 @@ struct Mesh *smokeModifier_do(
   }
 
   /* return generated geometry for adaptive domain */
+  Mesh *result = NULL;
   if (smd->type & MOD_SMOKE_TYPE_DOMAIN && smd->domain)
   {
     if (smd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
-      return createLiquidGeometry(smd->domain, me, ob);
+      result = createLiquidGeometry(smd->domain, me, ob);
     }
     if (smd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
-      return createSmokeGeometry(smd->domain, me, ob);
+      result = createSmokeGeometry(smd->domain, me, ob);
     }
   }
-  return BKE_mesh_copy_for_eval(me, false);
+  else {
+    result = BKE_mesh_copy_for_eval(me, false);
+  }
+  /* XXX This is really not a nice hack, but until root of the problem is understood,
+   * this should be an acceptable workaround I think.
+   * See T58492 for details on the issue. */
+  result->texflag |= ME_AUTOSPACE;
+  return result;
 }
 
 static float calc_voxel_transp(
