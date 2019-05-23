@@ -4060,7 +4060,7 @@ struct Mesh *smokeModifier_do(
       result = createSmokeGeometry(smd->domain, me, ob);
     }
   }
-  else {
+  if (!result) {
     result = BKE_mesh_copy_for_eval(me, false);
   }
   /* XXX This is really not a nice hack, but until root of the problem is understood,
