@@ -36,14 +36,17 @@
 const std::string smoke_variables =
     "\n\
 mantaMsg('Smoke variables low')\n\
-preconditioner_s$ID$  = PcMGDynamic\n\
-using_colors_s$ID$    = $USING_COLORS$\n\
-using_heat_s$ID$      = $USING_HEAT$\n\
-using_fire_s$ID$      = $USING_FIRE$\n\
-using_noise_s$ID$     = $USING_NOISE$\n\
-vorticity_s$ID$       = $VORTICITY$\n\
-buoyancy_dens_s$ID$   = $BUOYANCY_ALPHA$\n\
-buoyancy_heat_s$ID$   = $BUOYANCY_BETA$\n";
+preconditioner_s$ID$    = PcMGDynamic\n\
+using_colors_s$ID$      = $USING_COLORS$\n\
+using_heat_s$ID$        = $USING_HEAT$\n\
+using_fire_s$ID$        = $USING_FIRE$\n\
+using_noise_s$ID$       = $USING_NOISE$\n\
+vorticity_s$ID$         = $VORTICITY$\n\
+buoyancy_dens_s$ID$     = $BUOYANCY_ALPHA$\n\
+buoyancy_heat_s$ID$     = $BUOYANCY_BETA$\n\
+dissolveSpeed_s$ID$     = $DISSOLVE_SPEED$\n\
+using_logdissolve_s$ID$ = $USING_LOG_DISSOLVE$\n\
+using_dissolve_s$ID$    = $USING_DISSOLVE$\n";
 
 const std::string smoke_variables_noise =
     "\n\
@@ -119,6 +122,12 @@ texture_w_s$ID$   = s$ID$.create(RealGrid)\n\
 texture_u2_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_v2_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_w2_s$ID$  = s$ID$.create(RealGrid)\n\
+flame_sn$ID$      = 0\n\
+fuel_sn$ID$       = 0\n\
+react_sn$ID$      = 0\n\
+color_r_sn$ID$    = 0\n\
+color_g_sn$ID$    = 0\n\
+color_b_sn$ID$    = 0\n\
 wltnoise_sn$ID$   = sn$ID$.create(NoiseField, loadFromFile=True)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
@@ -368,6 +377,11 @@ const std::string smoke_step =
     "\n\
 def smoke_step_$ID$():\n\
     mantaMsg('Smoke step low')\n\
+    \n\
+    if using_dissolve_s$ID$:\n\
+        mantaMsg('Dissolving smoke')\n\
+        dissolveSmoke(flags=flags_s$ID$, density=density_s$ID$, heat=heat_s$ID$, red=color_r_s$ID$, green=color_g_s$ID$, blue=color_b_s$ID$, speed=dissolveSpeed_s$ID$, logFalloff=using_logdissolve_s$ID$)\n\
+    \n\
     mantaMsg('Advecting density')\n\
     advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=density_s$ID$, order=2)\n\
     \n\
@@ -440,6 +454,10 @@ const std::string smoke_step_noise =
     "\n\
 def step_noise_$ID$():\n\
     mantaMsg('Smoke step noise')\n\
+    \n\
+    if using_dissolve_s$ID$:\n\
+        mantaMsg('Dissolving noise')\n\
+        dissolveSmoke(flags=flags_sn$ID$, density=density_sn$ID$, heat=None, red=color_r_sn$ID$, green=color_g_sn$ID$, blue=color_b_sn$ID$, speed=dissolveSpeed_s$ID$, logFalloff=using_logdissolve_s$ID$)\n\
     \n\
     for i in range(uvs_s$ID$):\n\
         mantaMsg('Advecting UV')\n\

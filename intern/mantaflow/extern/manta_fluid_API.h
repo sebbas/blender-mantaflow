@@ -102,8 +102,6 @@ float *fluid_get_phiout_in(struct FLUID *fluid);
 
 /* Smoke functions */
 void smoke_manta_export(struct FLUID *smoke, struct SmokeModifierData *smd);
-void smoke_dissolve(struct FLUID *smoke, int speed, int log);
-void smoke_dissolve_wavelet(struct FLUID *smoke, int speed, int log);
 void smoke_export(struct FLUID *smoke,
                   float *dt,
                   float *dx,

@@ -14,8 +14,8 @@ BLENDER_INSTALLATION=/Users/sebbas/Developer/Blender/fluid-mantaflow
 
 # Need non-default (OpenMP enabled) compiler to build Mantaflow on OSX
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  export CC=/usr/local/Cellar/gcc/8.3.0_2/bin/gcc-8
-  export CXX=/usr/local/Cellar/gcc/8.3.0_2/bin/g++-8
+  export CC=/usr/local/Cellar/gcc/9.1.0/bin/gcc-9
+  export CXX=/usr/local/Cellar/gcc/9.1.0/bin/g++-9
 fi
 
 cd $MANTA_INSTALLATION

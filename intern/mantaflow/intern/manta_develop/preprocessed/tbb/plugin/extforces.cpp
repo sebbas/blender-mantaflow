@@ -718,6 +718,60 @@ extern "C" {
 
 
 
+
+
+void dissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat=NULL, Grid<Real>* red=NULL, Grid<Real>* green=NULL, Grid<Real>* blue=NULL, int speed=5, bool logFalloff=true) {
+	float dydx = 1.0f / (float)speed; // max density/speed = dydx
+	float fac = 1.0f - dydx;
+
+	FOR_IJK_BND(density, 0) {
+		bool curFluid = flags.isFluid(i,j,k);
+		if (!curFluid) continue;
+
+		if (logFalloff) {
+			density(i,j,k) *= fac;
+			if (heat) {
+				(*heat)(i,j,k) *= fac;
+			}
+			if (red) {
+				(*red)(i,j,k) *= fac;
+				(*green)(i,j,k) *= fac;
+				(*blue)(i,j,k) *= fac;
+			}
+		}
+		else { // linear falloff
+			float d = density(i,j,k);
+			density(i,j,k) -= dydx;
+			if (density(i,j,k) < 0.0f)
+				density(i,j,k) = 0.0f;
+			if (heat) {
+				if      (fabs((*heat)(i,j,k)) < dydx) (*heat)(i,j,k) = 0.0f;
+				else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
+				else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
+			}
+			if (red && d) {
+				(*red)(i,j,k) *= (density(i,j,k)/d);
+				(*green)(i,j,k) *= (density(i,j,k)/d);
+				(*blue)(i,j,k) *= (density(i,j,k)/d);
+			}
+		}
+	}
+} static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "dissolveSmoke" , !noTiming ); PyObject *_retval = 0; {
+ ArgLocker _lock; const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",0,&_lock); Grid<Real>& density = *_args.getPtr<Grid<Real> >("density",1,&_lock); Grid<Real>* heat = _args.getPtrOpt<Grid<Real> >("heat",2,NULL,&_lock); Grid<Real>* red = _args.getPtrOpt<Grid<Real> >("red",3,NULL,&_lock); Grid<Real>* green = _args.getPtrOpt<Grid<Real> >("green",4,NULL,&_lock); Grid<Real>* blue = _args.getPtrOpt<Grid<Real> >("blue",5,NULL,&_lock); int speed = _args.getOpt<int >("speed",6,5,&_lock); bool logFalloff = _args.getOpt<bool >("logFalloff",7,true,&_lock);   _retval = getPyNone(); dissolveSmoke(flags,density,heat,red,green,blue,speed,logFalloff);  _args.check(); }
+ pbFinalizePlugin(parent,"dissolveSmoke", !noTiming ); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("dissolveSmoke",e.what()); return 0; }
+ }
+ static const Pb::Register _RP_dissolveSmoke ("","dissolveSmoke",_W_11); 
+extern "C" {
+ void PbRegister_dissolveSmoke() {
+ KEEP_UNUSED(_RP_dissolveSmoke); }
+ }
+
+
+
 } // namespace
 
 

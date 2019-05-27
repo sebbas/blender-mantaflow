@@ -3736,15 +3736,6 @@ static void smoke_step(Depsgraph *depsgraph,
   float sdt;  // dt after adapted timestep
   float time_per_frame;
 
-  /* TODO (sebbas): Move dissolve smoke code to mantaflow */
-  if (sds->flags & FLUID_DOMAIN_USE_DISSOLVE) {
-    smoke_dissolve(sds->fluid, sds->diss_speed, sds->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG);
-    if (sds->fluid && sds->flags & FLUID_DOMAIN_USE_NOISE) {
-      smoke_dissolve_wavelet(
-          sds->fluid, sds->diss_speed, sds->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG);
-    }
-  }
-
   /* update object state */
   invert_m4_m4(sds->imat, ob->obmat);
   copy_m4_m4(sds->obmat, ob->obmat);

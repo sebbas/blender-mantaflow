@@ -604,6 +604,10 @@ std::string FLUID::getRealValue(const std::string &varName, SmokeModifierData *s
     ss << (smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL ? "True" : "False");
   else if (varName == "USING_OUTFLOW")
     ss << (smd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW ? "True" : "False");
+  else if (varName == "USING_LOG_DISSOLVE")
+    ss << (smd->domain->flags & FLUID_DOMAIN_USE_DISSOLVE_LOG ? "True" : "False");
+  else if (varName == "USING_DISSOLVE")
+    ss << (smd->domain->flags & FLUID_DOMAIN_USE_DISSOLVE ? "True" : "False");
   else if (varName == "SOLVER_DIM")
     ss << smd->domain->solver_res;
   else if (varName == "DO_OPEN") {
@@ -758,6 +762,8 @@ std::string FLUID::getRealValue(const std::string &varName, SmokeModifierData *s
     ss << smd->domain->alpha;
   else if (varName == "BUOYANCY_BETA")
     ss << smd->domain->beta;
+  else if (varName == "DISSOLVE_SPEED")
+    ss << smd->domain->diss_speed;
   else if (varName == "BURNING_RATE")
     ss << smd->domain->burning_rate;
   else if (varName == "FLAME_SMOKE")

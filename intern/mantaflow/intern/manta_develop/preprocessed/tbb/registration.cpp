@@ -57,6 +57,7 @@ extern "C" {
 		extern void PbRegister_vorticityConfinement() ;
 		extern void PbRegister_addForceField() ;
 		extern void PbRegister_setForceField() ;
+		extern void PbRegister_dissolveSmoke() ;
 		extern void PbRegister_apicMapPartsToMAC() ;
 		extern void PbRegister_apicMapMACGridToParts() ;
 		extern void PbRegister_sampleFlagsWithParticles() ;
@@ -247,6 +248,7 @@ namespace Pb {
 		PbRegister_vorticityConfinement() ;
 		PbRegister_addForceField() ;
 		PbRegister_setForceField() ;
+		PbRegister_dissolveSmoke() ;
 		PbRegister_apicMapPartsToMAC() ;
 		PbRegister_apicMapMACGridToParts() ;
 		PbRegister_sampleFlagsWithParticles() ;
