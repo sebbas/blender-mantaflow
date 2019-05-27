@@ -3863,13 +3863,6 @@ static void smokeModifier_process(
       smokeModifier_reset_ex(smd, false);
     }
 
-    if (!sds->fluid && (scene_framenr != startframe) &&
-        (sds->flags & FLUID_DOMAIN_FILE_LOAD) == 0 && !is_baking) {
-      return;
-    }
-
-    sds->flags &= ~FLUID_DOMAIN_FILE_LOAD;
-
     if (smokeModifier_init(smd, depsgraph, ob, scene, me) == 0) {
       return;
     }
