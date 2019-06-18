@@ -32,7 +32,6 @@ set(INC
   ../../windowmanager
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
-  ../../../../intern/smoke/extern
   ../../../../intern/mantaflow/extern
 )
 

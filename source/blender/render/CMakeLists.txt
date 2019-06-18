@@ -36,7 +36,6 @@ set(INC
   ../../../intern/atomic
   ../../../intern/guardedalloc
   ../../../intern/mikktspace
-  ../../../intern/smoke/extern
   ../../../intern/mantaflow/extern
 )
 

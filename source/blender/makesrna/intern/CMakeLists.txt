@@ -338,7 +338,6 @@ blender_include_dirs(
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
   ../../../../intern/memutil
-  ../../../../intern/smoke/extern
   ../../../../intern/mantaflow/extern
 )
 
