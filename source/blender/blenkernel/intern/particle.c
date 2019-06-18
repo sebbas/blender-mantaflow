@@ -34,7 +34,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_particle_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_dynamicpaint_types.h"
 
@@ -3572,12 +3572,12 @@ void object_remove_particle_system(Main *bmain, Scene *UNUSED(scene), Object *ob
     return;
   }
 
-  /* clear all other appearances of this pointer (like on smoke flow modifier) */
-  if ((md = modifiers_findByType(ob, eModifierType_Smoke))) {
-    SmokeModifierData *smd = (SmokeModifierData *)md;
-    if ((smd->type == MOD_SMOKE_TYPE_FLOW) && smd->flow && smd->flow->psys) {
-      if (smd->flow->psys == psys) {
-        smd->flow->psys = NULL;
+  /* clear all other appearances of this pointer (like on manta flow modifier) */
+  if ((md = modifiers_findByType(ob, eModifierType_Manta))) {
+    MantaModifierData *mmd = (MantaModifierData *)md;
+    if ((mmd->type == MOD_MANTA_TYPE_FLOW) && mmd->flow && mmd->flow->psys) {
+      if (mmd->flow->psys == psys) {
+        mmd->flow->psys = NULL;
       }
     }
   }

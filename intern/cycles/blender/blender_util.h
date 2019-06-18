@@ -519,20 +519,20 @@ static inline bool object_use_deform_motion(BL::Object &b_parent, BL::Object &b_
   return use_deform_motion;
 }
 
-static inline BL::SmokeDomainSettings object_smoke_domain_find(BL::Object &b_ob)
+static inline BL::MantaDomainSettings object_manta_domain_find(BL::Object &b_ob)
 {
   BL::Object::modifiers_iterator b_mod;
 
   for (b_ob.modifiers.begin(b_mod); b_mod != b_ob.modifiers.end(); ++b_mod) {
-    if (b_mod->is_a(&RNA_SmokeModifier)) {
-      BL::SmokeModifier b_smd(*b_mod);
+    if (b_mod->is_a(&RNA_MantaModifier)) {
+      BL::MantaModifier b_mmd(*b_mod);
 
-      if (b_smd.smoke_type() == BL::SmokeModifier::smoke_type_DOMAIN)
-        return b_smd.domain_settings();
+      if (b_mmd.type() == BL::MantaModifier::type_DOMAIN)
+        return b_mmd.domain_settings();
     }
   }
 
-  return BL::SmokeDomainSettings(PointerRNA_NULL);
+  return BL::MantaDomainSettings(PointerRNA_NULL);
 }
 
 static inline BL::DomainFluidSettings object_fluid_domain_find(BL::Object b_ob)

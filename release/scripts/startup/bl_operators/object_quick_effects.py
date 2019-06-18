@@ -366,14 +366,14 @@ class QuickSmoke(ObjectModeOperator, Operator):
         for obj in mesh_objects:
             fake_context["object"] = obj
             # make each selected object a smoke flow
-            bpy.ops.object.modifier_add(fake_context, type='SMOKE')
-            obj.modifiers[-1].smoke_type = 'FLOW'
+            bpy.ops.object.modifier_add(fake_context, type='MANTA')
+            obj.modifiers[-1].type = 'FLOW'
 
             # set type
-            obj.modifiers[-1].flow_settings.smoke_flow_type = self.style
+            obj.modifiers[-1].flow_settings.flow_type = self.style
 
             # set flow behavior
-            obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'INFLOW'
+            obj.modifiers[-1].flow_settings.flow_behavior = 'INFLOW'
 
             if not self.show_flows:
                 obj.display_type = 'WIRE'
@@ -391,8 +391,8 @@ class QuickSmoke(ObjectModeOperator, Operator):
         obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
 
         # setup smoke domain
-        bpy.ops.object.modifier_add(type='SMOKE')
-        obj.modifiers[-1].smoke_type = 'DOMAIN'
+        bpy.ops.object.modifier_add(type='MANTA')
+        obj.modifiers[-1].type = 'DOMAIN'
         if self.style == 'FIRE' or self.style == 'BOTH':
             obj.modifiers[-1].domain_settings.use_noise = True
 
@@ -597,14 +597,14 @@ class QuickLiquid(Operator):
         for obj in mesh_objects:
             fake_context["object"] = obj
             # make each selected object a liquid flow
-            bpy.ops.object.modifier_add(fake_context, type='SMOKE')
-            obj.modifiers[-1].smoke_type = 'FLOW'
+            bpy.ops.object.modifier_add(fake_context, type='MANTA')
+            obj.modifiers[-1].type = 'FLOW'
 
             # set type
-            obj.modifiers[-1].flow_settings.smoke_flow_type = 'LIQUID'
+            obj.modifiers[-1].flow_settings.flow_type = 'LIQUID'
 
             # set flow behavior
-            obj.modifiers[-1].flow_settings.smoke_flow_behavior = 'GEOMETRY'
+            obj.modifiers[-1].flow_settings.flow_behavior = 'GEOMETRY'
 
             if not self.show_flows:
                 obj.display_type = 'WIRE'
@@ -622,9 +622,9 @@ class QuickLiquid(Operator):
         obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
 
         # setup liquid domain
-        bpy.ops.object.modifier_add(type='SMOKE')
-        obj.modifiers[-1].smoke_type = 'DOMAIN'
-        obj.modifiers[-1].domain_settings.smoke_domain_type = 'LIQUID'
+        bpy.ops.object.modifier_add(type='MANTA')
+        obj.modifiers[-1].type = 'DOMAIN'
+        obj.modifiers[-1].domain_settings.domain_type = 'LIQUID'
         # set all domain borders to obstacle
         obj.modifiers[-1].domain_settings.use_collision_border_front = True
         obj.modifiers[-1].domain_settings.use_collision_border_back = True

@@ -30,7 +30,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_mesh_types.h"
 
@@ -38,7 +38,7 @@
 #include "BKE_layer.h"
 #include "BKE_library_query.h"
 #include "BKE_modifier.h"
-#include "BKE_smoke.h"
+#include "BKE_manta.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -49,45 +49,45 @@
 
 static void initData(ModifierData *md)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
+  MantaModifierData *mmd = (MantaModifierData *)md;
 
-  smd->domain = NULL;
-  smd->flow = NULL;
-  smd->effec = NULL;
-  smd->type = 0;
-  smd->time = -1;
+  mmd->domain = NULL;
+  mmd->flow = NULL;
+  mmd->effec = NULL;
+  mmd->type = 0;
+  mmd->time = -1;
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const SmokeModifierData *smd = (const SmokeModifierData *)md;
-  SmokeModifierData *tsmd = (SmokeModifierData *)target;
+  const MantaModifierData *mmd = (const MantaModifierData *)md;
+  MantaModifierData *tmmd = (MantaModifierData *)target;
 
-  smokeModifier_free(tsmd);
-  smokeModifier_copy(smd, tsmd, flag);
+  mantaModifier_free(tmmd);
+  mantaModifier_copy(mmd, tmmd, flag);
 }
 
 static void freeData(ModifierData *md)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
+  MantaModifierData *mmd = (MantaModifierData *)md;
 
-  smokeModifier_free(smd);
+  mantaModifier_free(mmd);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
                              ModifierData *md,
                              CustomData_MeshMasks *r_cddata_masks)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
+  MantaModifierData *mmd = (MantaModifierData *)md;
 
-  if (smd && (smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow) {
-    if (smd->flow->source == FLUID_FLOW_SOURCE_MESH) {
+  if (mmd && (mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow) {
+    if (mmd->flow->source == FLUID_FLOW_SOURCE_MESH) {
       /* vertex groups */
-      if (smd->flow->vgroup_density) {
+      if (mmd->flow->vgroup_density) {
         r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
       }
       /* uv layer */
-      if (smd->flow->texture_type == FLUID_FLOW_TEXTURE_MAP_UV) {
+      if (mmd->flow->texture_type == FLUID_FLOW_TEXTURE_MAP_UV) {
         r_cddata_masks->fmask |= CD_MASK_MTFACE;
       }
     }
@@ -96,7 +96,7 @@ static void requiredDataMask(Object *UNUSED(ob),
 
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
+  MantaModifierData *mmd = (MantaModifierData *)md;
   Mesh *result = NULL;
 
   if (ctx->flag & MOD_APPLY_ORCO) {
@@ -105,7 +105,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
 
-  result = smokeModifier_do(smd, ctx->depsgraph, scene, ctx->object, me);
+  result = mantaModifier_do(mmd, ctx->depsgraph, scene, ctx->object, me);
   return result ? result : me;
 }
 
@@ -116,76 +116,76 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
 
 static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
-  return (smd->type & MOD_SMOKE_TYPE_FLOW) && smd->flow;
+  MantaModifierData *mmd = (MantaModifierData *)md;
+  return (mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow;
 }
 
 static bool is_coll_cb(Object *UNUSED(ob), ModifierData *md)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
-  return (smd->type & MOD_SMOKE_TYPE_EFFEC) && smd->effec;
+  MantaModifierData *mmd = (MantaModifierData *)md;
+  return (mmd->type & MOD_MANTA_TYPE_EFFEC) && mmd->effec;
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
+  MantaModifierData *mmd = (MantaModifierData *)md;
 
-  if (smd && (smd->type & MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
+  if (mmd && (mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
     DEG_add_collision_relations(ctx->node,
                                 ctx->object,
-                                smd->domain->fluid_group,
-                                eModifierType_Smoke,
+                                mmd->domain->fluid_group,
+                                eModifierType_Manta,
                                 is_flow_cb,
-                                "Smoke Flow");
+                                "Manta Flow");
     DEG_add_collision_relations(ctx->node,
                                 ctx->object,
-                                smd->domain->coll_group,
-                                eModifierType_Smoke,
+                                mmd->domain->coll_group,
+                                eModifierType_Manta,
                                 is_coll_cb,
-                                "Smoke Coll");
+                                "Manta Coll");
     DEG_add_forcefield_relations(ctx->node,
                                  ctx->object,
-                                 smd->domain->effector_weights,
+                                 mmd->domain->effector_weights,
                                  true,
                                  PFIELD_SMOKEFLOW,
-                                 "Smoke Force Field");
+                                 "Manta Force Field");
 
-    if (smd->domain->guiding_parent != NULL) {
+    if (mmd->domain->guiding_parent != NULL) {
       DEG_add_object_relation(
-          ctx->node, smd->domain->guiding_parent, DEG_OB_COMP_TRANSFORM, "Fluid Guiding Object");
+          ctx->node, mmd->domain->guiding_parent, DEG_OB_COMP_TRANSFORM, "Fluid Guiding Object");
       DEG_add_object_relation(
-          ctx->node, smd->domain->guiding_parent, DEG_OB_COMP_GEOMETRY, "Fluid Guiding Object");
+          ctx->node, mmd->domain->guiding_parent, DEG_OB_COMP_GEOMETRY, "Fluid Guiding Object");
     }
   }
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
+  MantaModifierData *mmd = (MantaModifierData *)md;
 
-  if (smd->type == MOD_SMOKE_TYPE_DOMAIN && smd->domain) {
-    walk(userData, ob, (ID **)&smd->domain->coll_group, IDWALK_CB_NOP);
-    walk(userData, ob, (ID **)&smd->domain->fluid_group, IDWALK_CB_NOP);
-    walk(userData, ob, (ID **)&smd->domain->eff_group, IDWALK_CB_NOP);
+  if (mmd->type == MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
+    walk(userData, ob, (ID **)&mmd->domain->coll_group, IDWALK_CB_NOP);
+    walk(userData, ob, (ID **)&mmd->domain->fluid_group, IDWALK_CB_NOP);
+    walk(userData, ob, (ID **)&mmd->domain->eff_group, IDWALK_CB_NOP);
 
-    if (smd->domain->guiding_parent) {
-      walk(userData, ob, (ID **)&smd->domain->guiding_parent, IDWALK_CB_NOP);
+    if (mmd->domain->guiding_parent) {
+      walk(userData, ob, (ID **)&mmd->domain->guiding_parent, IDWALK_CB_NOP);
     }
 
-    if (smd->domain->effector_weights) {
-      walk(userData, ob, (ID **)&smd->domain->effector_weights->group, IDWALK_CB_NOP);
+    if (mmd->domain->effector_weights) {
+      walk(userData, ob, (ID **)&mmd->domain->effector_weights->group, IDWALK_CB_NOP);
     }
   }
 
-  if (smd->type == MOD_SMOKE_TYPE_FLOW && smd->flow) {
-    walk(userData, ob, (ID **)&smd->flow->noise_texture, IDWALK_CB_USER);
+  if (mmd->type == MOD_MANTA_TYPE_FLOW && mmd->flow) {
+    walk(userData, ob, (ID **)&mmd->flow->noise_texture, IDWALK_CB_USER);
   }
 }
 
-ModifierTypeInfo modifierType_Smoke = {
-    /* name */ "Smoke",
-    /* structName */ "SmokeModifierData",
-    /* structSize */ sizeof(SmokeModifierData),
+ModifierTypeInfo modifierType_Manta = {
+    /* name */ "Manta",
+    /* structName */ "MantaModifierData",
+    /* structSize */ sizeof(MantaModifierData),
     /* type */ eModifierTypeType_Constructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_UsesPointCache |
         eModifierTypeFlag_Single,

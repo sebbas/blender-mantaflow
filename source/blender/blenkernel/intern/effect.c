@@ -62,7 +62,7 @@
 #include "BKE_object.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
-#include "BKE_smoke.h"
+#include "BKE_manta.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_physics.h"
@@ -1033,7 +1033,7 @@ static void do_physical_effector(EffectorCache *eff,
       zero_v3(force);
       if (pd->f_source) {
         float density;
-        if ((density = BKE_smoke_get_velocity_at(pd->f_source, point->loc, force)) >= 0.0f) {
+        if ((density = BKE_manta_get_velocity_at(pd->f_source, point->loc, force)) >= 0.0f) {
           float influence = strength * efd->falloff;
           if (pd->flag & PFIELD_SMOKE_DENSITY) {
             influence *= density;

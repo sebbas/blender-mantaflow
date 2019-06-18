@@ -42,7 +42,7 @@ extern "C" {
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h" /* for FILE_MAX */
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 
 #include "BLI_string.h"
 
@@ -105,11 +105,11 @@ ExportSettings::ExportSettings()
 
 static bool object_is_smoke_sim(Object *ob)
 {
-  ModifierData *md = modifiers_findByType(ob, eModifierType_Smoke);
+  ModifierData *md = modifiers_findByType(ob, eModifierType_Manta);
 
   if (md) {
-    SmokeModifierData *smd = reinterpret_cast<SmokeModifierData *>(md);
-    return (smd->type == MOD_SMOKE_TYPE_DOMAIN && smd->domain &&
+    MantaModifierData *smd = reinterpret_cast<MantaModifierData *>(md);
+    return (smd->type == MOD_MANTA_TYPE_DOMAIN && smd->domain &&
             smd->domain->type == FLUID_DOMAIN_TYPE_GAS);
   }
 

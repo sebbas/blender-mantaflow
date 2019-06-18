@@ -551,9 +551,9 @@ void workbench_forward_cache_populate(WORKBENCH_Data *vedata, Object *ob)
 
   ModifierData *md;
   if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
-      (md = modifiers_findByType(ob, eModifierType_Smoke)) &&
+      (md = modifiers_findByType(ob, eModifierType_Manta)) &&
       (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-      (((SmokeModifierData *)md)->domain != NULL)) {
+      (((MantaModifierData *)md)->domain != NULL)) {
     workbench_volume_cache_populate(vedata, scene, ob, md);
     return; /* Do not draw solid in this case. */
   }

@@ -85,7 +85,7 @@
 #include "DNA_sdna_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_space_types.h"
@@ -5322,11 +5322,11 @@ static void lib_link_object(FileData *fd, Main *main)
       }
 
       {
-        SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(ob,
-                                                                           eModifierType_Smoke);
+        MantaModifierData *mmd = (MantaModifierData *)modifiers_findByType(ob,
+                                                                           eModifierType_Manta);
 
-        if (smd && (smd->type == MOD_SMOKE_TYPE_DOMAIN) && smd->domain) {
-          smd->domain->flags |=
+        if (mmd && (mmd->type == MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+          mmd->domain->flags |=
               FLUID_DOMAIN_FILE_LOAD; /* flag for refreshing the simulation after loading */
         }
       }
@@ -5496,81 +5496,81 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
         fluidmd->fss->meshVelocities = NULL;
       }
     }
-    else if (md->type == eModifierType_Smoke) {
-      SmokeModifierData *smd = (SmokeModifierData *)md;
+    else if (md->type == eModifierType_Manta) {
+      MantaModifierData *mmd = (MantaModifierData *)md;
 
-      if (smd->type == MOD_SMOKE_TYPE_DOMAIN) {
-        smd->flow = NULL;
-        smd->effec = NULL;
-        smd->domain = newdataadr(fd, smd->domain);
-        smd->domain->smd = smd;
+      if (mmd->type == MOD_MANTA_TYPE_DOMAIN) {
+        mmd->flow = NULL;
+        mmd->effec = NULL;
+        mmd->domain = newdataadr(fd, mmd->domain);
+        mmd->domain->mmd = mmd;
 
-        smd->domain->fluid = NULL;
-        smd->domain->fluid_mutex = BLI_rw_mutex_alloc();
-        smd->domain->tex = NULL;
-        smd->domain->tex_shadow = NULL;
-        smd->domain->tex_flame = NULL;
-        smd->domain->tex_flame_coba = NULL;
-        smd->domain->tex_coba = NULL;
-        smd->domain->tex_field = NULL;
-        smd->domain->tex_velocity_x = NULL;
-        smd->domain->tex_velocity_y = NULL;
-        smd->domain->tex_velocity_z = NULL;
-        smd->domain->tex_wt = NULL;
-        smd->domain->mesh_velocities = NULL;
-        smd->domain->coba = newdataadr(fd, smd->domain->coba);
+        mmd->domain->fluid = NULL;
+        mmd->domain->fluid_mutex = BLI_rw_mutex_alloc();
+        mmd->domain->tex = NULL;
+        mmd->domain->tex_shadow = NULL;
+        mmd->domain->tex_flame = NULL;
+        mmd->domain->tex_flame_coba = NULL;
+        mmd->domain->tex_coba = NULL;
+        mmd->domain->tex_field = NULL;
+        mmd->domain->tex_velocity_x = NULL;
+        mmd->domain->tex_velocity_y = NULL;
+        mmd->domain->tex_velocity_z = NULL;
+        mmd->domain->tex_wt = NULL;
+        mmd->domain->mesh_velocities = NULL;
+        mmd->domain->coba = newdataadr(fd, mmd->domain->coba);
 
-        smd->domain->effector_weights = newdataadr(fd, smd->domain->effector_weights);
-        if (!smd->domain->effector_weights) {
-          smd->domain->effector_weights = BKE_effector_add_weights(NULL);
+        mmd->domain->effector_weights = newdataadr(fd, mmd->domain->effector_weights);
+        if (!mmd->domain->effector_weights) {
+          mmd->domain->effector_weights = BKE_effector_add_weights(NULL);
         }
 
         direct_link_pointcache_list(
-            fd, &(smd->domain->ptcaches[0]), &(smd->domain->point_cache[0]), 1);
+            fd, &(mmd->domain->ptcaches[0]), &(mmd->domain->point_cache[0]), 1);
 
-        /* Smoke uses only one cache from now on, so store pointer convert */
-        if (smd->domain->ptcaches[1].first || smd->domain->point_cache[1]) {
-          if (smd->domain->point_cache[1]) {
-            PointCache *cache = newdataadr(fd, smd->domain->point_cache[1]);
+        /* Manta sim uses only one cache from now on, so store pointer convert */
+        if (mmd->domain->ptcaches[1].first || mmd->domain->point_cache[1]) {
+          if (mmd->domain->point_cache[1]) {
+            PointCache *cache = newdataadr(fd, mmd->domain->point_cache[1]);
             if (cache->flag & PTCACHE_FAKE_SMOKE) {
-              /* Smoke was already saved in "new format" and this cache is a fake one. */
+              /* Mantasim / smoke was already saved in "new format" and this cache is a fake one. */
             }
             else {
               printf(
-                  "High resolution smoke cache not available due to pointcache update. Please "
+                  "High resolution manta cache not available due to pointcache update. Please "
                   "reset the simulation.\n");
             }
             BKE_ptcache_free(cache);
           }
-          BLI_listbase_clear(&smd->domain->ptcaches[1]);
-          smd->domain->point_cache[1] = NULL;
+          BLI_listbase_clear(&mmd->domain->ptcaches[1]);
+          mmd->domain->point_cache[1] = NULL;
         }
       }
-      else if (smd->type == MOD_SMOKE_TYPE_FLOW) {
-        smd->domain = NULL;
-        smd->effec = NULL;
-        smd->flow = newdataadr(fd, smd->flow);
-        smd->flow->smd = smd;
-        smd->flow->mesh = NULL;
-        smd->flow->verts_old = NULL;
-        smd->flow->numverts = 0;
-        smd->flow->psys = newdataadr(fd, smd->flow->psys);
+      else if (mmd->type == MOD_MANTA_TYPE_FLOW) {
+        mmd->domain = NULL;
+        mmd->effec = NULL;
+        mmd->flow = newdataadr(fd, mmd->flow);
+        mmd->flow->mmd = mmd;
+        mmd->flow->mesh = NULL;
+        mmd->flow->verts_old = NULL;
+        mmd->flow->numverts = 0;
+        mmd->flow->psys = newdataadr(fd, mmd->flow->psys);
       }
-      else if (smd->type == MOD_SMOKE_TYPE_EFFEC) {
-        smd->flow = NULL;
-        smd->domain = NULL;
-        smd->effec = newdataadr(fd, smd->effec);
-        if (smd->effec) {
-          smd->effec->smd = smd;
-          smd->effec->verts_old = NULL;
-          smd->effec->numverts = 0;
-          smd->effec->mesh = NULL;
+      else if (mmd->type == MOD_MANTA_TYPE_EFFEC) {
+        mmd->flow = NULL;
+        mmd->domain = NULL;
+        mmd->effec = newdataadr(fd, mmd->effec);
+        if (mmd->effec) {
+          mmd->effec->mmd = mmd;
+          mmd->effec->verts_old = NULL;
+          mmd->effec->numverts = 0;
+          mmd->effec->mesh = NULL;
         }
         else {
-          smd->type = 0;
-          smd->flow = NULL;
-          smd->domain = NULL;
-          smd->effec = NULL;
+          mmd->type = 0;
+          mmd->flow = NULL;
+          mmd->domain = NULL;
+          mmd->effec = NULL;
         }
       }
     }

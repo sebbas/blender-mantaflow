@@ -23,22 +23,22 @@
  * ***** END GPL LICENSE BLOCK *****
  */
 
-/** \file mantaflow/intern/FLUID.h
+/** \file mantaflow/intern/MANTA.h
  *  \ingroup mantaflow
  */
 
-#ifndef FLUID_A_H
-#define FLUID_A_H
+#ifndef MANTA_A_H
+#define MANTA_A_H
 
 #include <string>
 #include <vector>
 #include <atomic>
 
-struct FLUID {
+struct MANTA {
  public:
-  FLUID(int *res, struct SmokeModifierData *smd);
-  FLUID(){};
-  virtual ~FLUID();
+  MANTA(int *res, struct MantaModifierData *mmd);
+  MANTA(){};
+  virtual ~MANTA();
 
   // Mirroring Mantaflow structures for particle data (pVel also used for mesh vert vels)
   typedef struct pData {
@@ -60,56 +60,56 @@ struct FLUID {
   } Triangle;
 
   // Manta step, handling everything
-  void step(struct SmokeModifierData *smd, int startFrame);
+  void step(struct MantaModifierData *mmd, int startFrame);
 
   // Grid initialization functions
-  void initHeat(struct SmokeModifierData *smd);
-  void initFire(struct SmokeModifierData *smd);
-  void initColors(struct SmokeModifierData *smd);
-  void initFireHigh(struct SmokeModifierData *smd);
-  void initColorsHigh(struct SmokeModifierData *smd);
-  void initLiquid(SmokeModifierData *smd);
-  void initLiquidMesh(SmokeModifierData *smd);
-  void initObstacle(SmokeModifierData *smd);
-  void initGuiding(SmokeModifierData *smd);
-  void initInVelocity(SmokeModifierData *smd);
-  void initOutflow(SmokeModifierData *smd);
-  void initSndParts(SmokeModifierData *smd);
-  void initLiquidSndParts(SmokeModifierData *smd);
+  void initHeat(struct MantaModifierData *mmd);
+  void initFire(struct MantaModifierData *mmd);
+  void initColors(struct MantaModifierData *mmd);
+  void initFireHigh(struct MantaModifierData *mmd);
+  void initColorsHigh(struct MantaModifierData *mmd);
+  void initLiquid(MantaModifierData *mmd);
+  void initLiquidMesh(MantaModifierData *mmd);
+  void initObstacle(MantaModifierData *mmd);
+  void initGuiding(MantaModifierData *mmd);
+  void initInVelocity(MantaModifierData *mmd);
+  void initOutflow(MantaModifierData *mmd);
+  void initSndParts(MantaModifierData *mmd);
+  void initLiquidSndParts(MantaModifierData *mmd);
 
   // Pointer transfer: Mantaflow -> Blender
   void updatePointers();
   void updatePointersNoise();
 
   // Write cache
-  int writeConfiguration(SmokeModifierData *smd, int framenr);
-  int writeData(SmokeModifierData *smd, int framenr);
+  int writeConfiguration(MantaModifierData *mmd, int framenr);
+  int writeData(MantaModifierData *mmd, int framenr);
   // write call for noise, mesh and particles were left in bake calls for now
 
   // Read cache (via Manta save/load)
-  int readConfiguration(SmokeModifierData *smd, int framenr);
-  int readData(SmokeModifierData *smd, int framenr);
-  int readNoise(SmokeModifierData *smd, int framenr);
-  int readMesh(SmokeModifierData *smd, int framenr);
-  int readParticles(SmokeModifierData *smd, int framenr);
-  int readGuiding(SmokeModifierData *smd, int framenr, bool sourceDomain);
+  int readConfiguration(MantaModifierData *mmd, int framenr);
+  int readData(MantaModifierData *mmd, int framenr);
+  int readNoise(MantaModifierData *mmd, int framenr);
+  int readMesh(MantaModifierData *mmd, int framenr);
+  int readParticles(MantaModifierData *mmd, int framenr);
+  int readGuiding(MantaModifierData *mmd, int framenr, bool sourceDomain);
 
-  // Read cache (via file read functions in FLUID - e.g. read .bobj.gz meshes, .uni particles)
-  int updateMeshStructures(SmokeModifierData *smd, int framenr);
-  int updateFlipStructures(SmokeModifierData *smd, int framenr);
-  int updateParticleStructures(SmokeModifierData *smd, int framenr);
-  void updateVariables(SmokeModifierData *smd);
+  // Read cache (via file read functions in MANTA - e.g. read .bobj.gz meshes, .uni particles)
+  int updateMeshStructures(MantaModifierData *mmd, int framenr);
+  int updateFlipStructures(MantaModifierData *mmd, int framenr);
+  int updateParticleStructures(MantaModifierData *mmd, int framenr);
+  void updateVariables(MantaModifierData *mmd);
 
   // Bake cache
-  int bakeData(SmokeModifierData *smd, int framenr);
-  int bakeNoise(SmokeModifierData *smd, int framenr);
-  int bakeMesh(SmokeModifierData *smd, int framenr);
-  int bakeParticles(SmokeModifierData *smd, int framenr);
-  int bakeGuiding(SmokeModifierData *smd, int framenr);
+  int bakeData(MantaModifierData *mmd, int framenr);
+  int bakeNoise(MantaModifierData *mmd, int framenr);
+  int bakeMesh(MantaModifierData *mmd, int framenr);
+  int bakeParticles(MantaModifierData *mmd, int framenr);
+  int bakeGuiding(MantaModifierData *mmd, int framenr);
 
   // IO for Mantaflow scene script
-  void exportSmokeScript(struct SmokeModifierData *smd);
-  void exportLiquidScript(struct SmokeModifierData *smd);
+  void exportSmokeScript(struct MantaModifierData *mmd);
+  void exportLiquidScript(struct MantaModifierData *mmd);
 
   inline size_t getTotalCells()
   {
@@ -630,7 +630,7 @@ struct FLUID {
   float getTimestep();
   void adaptTimestep();
 
-  bool needsRealloc(SmokeModifierData *smd);
+  bool needsRealloc(MantaModifierData *mmd);
 
  private:
   // simulation constants
@@ -752,17 +752,17 @@ struct FLUID {
   std::vector<pVel> *mSndParticleVelocity;
   std::vector<float> *mSndParticleLife;
 
-  void initDomain(struct SmokeModifierData *smd);
-  void initNoise(struct SmokeModifierData *smd);
-  void initMesh(struct SmokeModifierData *smd);
-  void initSmoke(struct SmokeModifierData *smd);
-  void initSmokeNoise(struct SmokeModifierData *smd);
+  void initDomain(struct MantaModifierData *mmd);
+  void initNoise(struct MantaModifierData *mmd);
+  void initMesh(struct MantaModifierData *mmd);
+  void initSmoke(struct MantaModifierData *mmd);
+  void initSmokeNoise(struct MantaModifierData *mmd);
   void initializeMantaflow();
   void terminateMantaflow();
   void runPythonString(std::vector<std::string> commands);
-  std::string getRealValue(const std::string &varName, SmokeModifierData *smd);
-  std::string parseLine(const std::string &line, SmokeModifierData *smd);
-  std::string parseScript(const std::string &setup_string, SmokeModifierData *smd = NULL);
+  std::string getRealValue(const std::string &varName, MantaModifierData *mmd);
+  std::string parseLine(const std::string &line, MantaModifierData *mmd);
+  std::string parseScript(const std::string &setup_string, MantaModifierData *mmd = NULL);
   void updateMeshFromBobj(const char *filename);
   void updateMeshFromObj(const char *filename);
   void updateMeshFromUni(const char *filename);

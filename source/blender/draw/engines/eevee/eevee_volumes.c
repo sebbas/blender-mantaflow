@@ -28,12 +28,12 @@
 #include "BLI_string_utils.h"
 
 #include "DNA_object_force_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_world_types.h"
 
 #include "BKE_modifier.h"
 #include "BKE_mesh.h"
-#include "BKE_smoke.h"
+#include "BKE_manta.h"
 
 #include "ED_screen.h"
 
@@ -63,7 +63,7 @@ static struct {
   GPUTexture *dummy_scatter;
   GPUTexture *dummy_transmit;
 
-  /* List of all smoke domains rendered within this frame. */
+  /* List of all fluid simulation / smoke domains rendered within this frame. */
   ListBase smoke_domains;
 } e_data = {NULL}; /* Engine data */
 
@@ -417,41 +417,41 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
 
   /* Smoke Simulation */
   if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
-      (md = modifiers_findByType(ob, eModifierType_Smoke)) &&
+      (md = modifiers_findByType(ob, eModifierType_Manta)) &&
       (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-      ((SmokeModifierData *)md)->domain != NULL) {
-    SmokeModifierData *smd = (SmokeModifierData *)md;
-    SmokeDomainSettings *sds = smd->domain;
+      ((MantaModifierData *)md)->domain != NULL) {
+    MantaModifierData *mmd = (MantaModifierData *)md;
+    MantaDomainSettings *mds = mmd->domain;
 
     /* Don't show smoke before simulation starts, this could be made an option in the future. */
     /* (sebbas): Always show smoke for manta */
-    /* const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >= sds->point_cache[0]->startframe); */
+    /* const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >= mds->point_cache[0]->startframe); */
 
-    if (sds->fluid && (sds->type == FLUID_DOMAIN_TYPE_GAS) /* && show_smoke */) {
-      if (!(sds->flags & FLUID_DOMAIN_USE_NOISE)) {
-        GPU_create_smoke(smd, 0);
+    if (mds->fluid && (mds->type == FLUID_DOMAIN_TYPE_GAS) /* && show_smoke */) {
+      if (!(mds->flags & FLUID_DOMAIN_USE_NOISE)) {
+        GPU_create_smoke(mmd, 0);
       }
-      else if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-        GPU_create_smoke(smd, 1);
+      else if (mds->flags & FLUID_DOMAIN_USE_NOISE) {
+        GPU_create_smoke(mmd, 1);
       }
-      BLI_addtail(&e_data.smoke_domains, BLI_genericNodeN(smd));
+      BLI_addtail(&e_data.smoke_domains, BLI_genericNodeN(mmd));
     }
 
     DRW_shgroup_uniform_texture_ref(
-        grp, "sampdensity", sds->tex ? &sds->tex : &e_data.dummy_density);
+        grp, "sampdensity", mds->tex ? &mds->tex : &e_data.dummy_density);
     DRW_shgroup_uniform_texture_ref(
-        grp, "sampflame", sds->tex_flame ? &sds->tex_flame : &e_data.dummy_flame);
+        grp, "sampflame", mds->tex_flame ? &mds->tex_flame : &e_data.dummy_flame);
 
     /* Constant Volume color. */
     static float white[3] = {1.0f, 1.0f, 1.0f};
-    bool use_constant_color = ((sds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) == 0 &&
-                               (sds->active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET) != 0);
+    bool use_constant_color = ((mds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) == 0 &&
+                               (mds->active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET) != 0);
 
     DRW_shgroup_uniform_vec3(
-        grp, "volumeColor", (use_constant_color) ? sds->active_color : white, 1);
+        grp, "volumeColor", (use_constant_color) ? mds->active_color : white, 1);
 
     /* Output is such that 0..1 maps to 0..1000K */
-    DRW_shgroup_uniform_vec2(grp, "unftemperature", &sds->flame_ignition, 1);
+    DRW_shgroup_uniform_vec2(grp, "unftemperature", &mds->flame_ignition, 1);
   }
   else {
     DRW_shgroup_uniform_texture(grp, "sampdensity", e_data.dummy_density);
@@ -659,8 +659,8 @@ void EEVEE_volumes_free_smoke_textures(void)
 {
   /* Free Smoke Textures after rendering */
   for (LinkData *link = e_data.smoke_domains.first; link; link = link->next) {
-    SmokeModifierData *smd = (SmokeModifierData *)link->data;
-    GPU_free_smoke(smd);
+    MantaModifierData *mmd = (MantaModifierData *)link->data;
+    GPU_free_smoke(mmd);
   }
   BLI_freelistN(&e_data.smoke_domains);
 }

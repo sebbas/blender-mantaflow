@@ -29,320 +29,320 @@
 
 #include <cmath>
 
-#include "FLUID.h"
+#include "MANTA_main.h"
 #include "manta_fluid_API.h"
 
 /* Fluid functions */
-extern "C" FLUID *fluid_init(int *res, struct SmokeModifierData *smd)
+extern "C" MANTA *manta_init(int *res, struct MantaModifierData *mmd)
 {
-  return new FLUID(res, smd);
+  return new MANTA(res, mmd);
 }
-extern "C" void fluid_free(FLUID *fluid)
+extern "C" void manta_free(MANTA *fluid)
 {
   delete fluid;
   fluid = NULL;
 }
 
-extern "C" void fluid_ensure_obstacle(FLUID *fluid, struct SmokeModifierData *smd)
+extern "C" void manta_ensure_obstacle(MANTA *fluid, struct MantaModifierData *mmd)
 {
   if (fluid) {
-    fluid->initObstacle(smd);
+    fluid->initObstacle(mmd);
     fluid->updatePointers();
   }
 }
-extern "C" void fluid_ensure_guiding(FLUID *fluid, struct SmokeModifierData *smd)
+extern "C" void manta_ensure_guiding(MANTA *fluid, struct MantaModifierData *mmd)
 {
   if (fluid) {
-    fluid->initGuiding(smd);
+    fluid->initGuiding(mmd);
     fluid->updatePointers();
   }
 }
-extern "C" void fluid_ensure_invelocity(FLUID *fluid, struct SmokeModifierData *smd)
+extern "C" void manta_ensure_invelocity(MANTA *fluid, struct MantaModifierData *mmd)
 {
   if (fluid) {
-    fluid->initInVelocity(smd);
+    fluid->initInVelocity(mmd);
     fluid->updatePointers();
   }
 }
-extern "C" void fluid_ensure_outflow(FLUID *fluid, struct SmokeModifierData *smd)
+extern "C" void manta_ensure_outflow(MANTA *fluid, struct MantaModifierData *mmd)
 {
   if (fluid) {
-    fluid->initOutflow(smd);
+    fluid->initOutflow(mmd);
     fluid->updatePointers();
   }
 }
 
-extern "C" int fluid_write_config(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_write_config(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->writeConfiguration(smd, framenr);
+  return fluid->writeConfiguration(mmd, framenr);
 }
 
-extern "C" int fluid_write_data(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_write_data(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->writeData(smd, framenr);
+  return fluid->writeData(mmd, framenr);
 }
 
-extern "C" int fluid_read_config(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_read_config(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->readConfiguration(smd, framenr);
+  return fluid->readConfiguration(mmd, framenr);
 }
 
-extern "C" int fluid_read_data(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_read_data(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->readData(smd, framenr);
+  return fluid->readData(mmd, framenr);
 }
 
-extern "C" int fluid_read_noise(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_read_noise(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->readNoise(smd, framenr);
+  return fluid->readNoise(mmd, framenr);
 }
 
-extern "C" int fluid_read_mesh(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_read_mesh(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->readMesh(smd, framenr);
+  return fluid->readMesh(mmd, framenr);
 }
 
-extern "C" int fluid_read_particles(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_read_particles(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->readParticles(smd, framenr);
+  return fluid->readParticles(mmd, framenr);
 }
 
-extern "C" int fluid_read_guiding(FLUID *fluid,
-                                  SmokeModifierData *smd,
+extern "C" int manta_read_guiding(MANTA *fluid,
+                                  MantaModifierData *mmd,
                                   int framenr,
                                   bool sourceDomain)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->readGuiding(smd, framenr, sourceDomain);
+  return fluid->readGuiding(mmd, framenr, sourceDomain);
 }
 
-extern "C" int fluid_update_liquid_structures(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_update_liquid_structures(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->updateFlipStructures(smd, framenr);
+  return fluid->updateFlipStructures(mmd, framenr);
 }
 
-extern "C" int fluid_update_mesh_structures(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_update_mesh_structures(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->updateMeshStructures(smd, framenr);
+  return fluid->updateMeshStructures(mmd, framenr);
 }
 
-extern "C" int fluid_update_particle_structures(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_update_particle_structures(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->updateParticleStructures(smd, framenr);
+  return fluid->updateParticleStructures(mmd, framenr);
 }
 
-extern "C" int fluid_bake_data(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_bake_data(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->bakeData(smd, framenr);
+  return fluid->bakeData(mmd, framenr);
 }
 
-extern "C" int fluid_bake_noise(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_bake_noise(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->bakeNoise(smd, framenr);
+  return fluid->bakeNoise(mmd, framenr);
 }
 
-extern "C" int fluid_bake_mesh(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_bake_mesh(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->bakeMesh(smd, framenr);
+  return fluid->bakeMesh(mmd, framenr);
 }
 
-extern "C" int fluid_bake_particles(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_bake_particles(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->bakeParticles(smd, framenr);
+  return fluid->bakeParticles(mmd, framenr);
 }
 
-extern "C" int fluid_bake_guiding(FLUID *fluid, SmokeModifierData *smd, int framenr)
+extern "C" int manta_bake_guiding(MANTA *fluid, MantaModifierData *mmd, int framenr)
 {
-  if (!fluid || !smd)
+  if (!fluid || !mmd)
     return 0;
-  return fluid->bakeGuiding(smd, framenr);
+  return fluid->bakeGuiding(mmd, framenr);
 }
 
-extern "C" void fluid_update_variables(FLUID *fluid, SmokeModifierData *smd)
+extern "C" void manta_update_variables(MANTA *fluid, MantaModifierData *mmd)
 {
   if (fluid)
-    fluid->updateVariables(smd);
+    fluid->updateVariables(mmd);
 }
 
-extern "C" int fluid_get_frame(FLUID *fluid)
+extern "C" int manta_get_frame(MANTA *fluid)
 {
   if (!fluid)
     return 0;
   return fluid->getFrame();
 }
 
-extern "C" float fluid_get_timestep(FLUID *fluid)
+extern "C" float manta_get_timestep(MANTA *fluid)
 {
   if (!fluid)
     return 0;
   return fluid->getTimestep();
 }
 
-extern "C" void fluid_adapt_timestep(FLUID *fluid)
+extern "C" void manta_adapt_timestep(MANTA *fluid)
 {
   if (fluid)
     fluid->adaptTimestep();
 }
 
-extern "C" bool fluid_needs_realloc(FLUID *fluid, SmokeModifierData *smd)
+extern "C" bool manta_needs_realloc(MANTA *fluid, MantaModifierData *mmd)
 {
   if (fluid)
-    return fluid->needsRealloc(smd);
+    return fluid->needsRealloc(mmd);
   return false;
 }
 
 /* Fluid accessors */
-extern "C" size_t fluid_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */)
+extern "C" size_t manta_get_index(int x, int max_x, int y, int max_y, int z /*, int max_z */)
 {
   return x + y * max_x + z * max_x * max_y;
 }
-extern "C" size_t fluid_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */)
+extern "C" size_t manta_get_index2d(int x, int max_x, int y /*, int max_y, int z, int max_z */)
 {
   return x + y * max_x;
 }
-extern "C" float *fluid_get_velocity_x(FLUID *fluid)
+extern "C" float *manta_get_velocity_x(MANTA *fluid)
 {
   return fluid->getVelocityX();
 }
-extern "C" float *fluid_get_velocity_y(FLUID *fluid)
+extern "C" float *manta_get_velocity_y(MANTA *fluid)
 {
   return fluid->getVelocityY();
 }
-extern "C" float *fluid_get_velocity_z(FLUID *fluid)
+extern "C" float *manta_get_velocity_z(MANTA *fluid)
 {
   return fluid->getVelocityZ();
 }
 
-extern "C" float *fluid_get_ob_velocity_x(FLUID *fluid)
+extern "C" float *manta_get_ob_velocity_x(MANTA *fluid)
 {
   return fluid->getObVelocityX();
 }
-extern "C" float *fluid_get_ob_velocity_y(FLUID *fluid)
+extern "C" float *manta_get_ob_velocity_y(MANTA *fluid)
 {
   return fluid->getObVelocityY();
 }
-extern "C" float *fluid_get_ob_velocity_z(FLUID *fluid)
+extern "C" float *manta_get_ob_velocity_z(MANTA *fluid)
 {
   return fluid->getObVelocityZ();
 }
 
-extern "C" float *fluid_get_guide_velocity_x(FLUID *fluid)
+extern "C" float *manta_get_guide_velocity_x(MANTA *fluid)
 {
   return fluid->getGuideVelocityX();
 }
-extern "C" float *fluid_get_guide_velocity_y(FLUID *fluid)
+extern "C" float *manta_get_guide_velocity_y(MANTA *fluid)
 {
   return fluid->getGuideVelocityY();
 }
-extern "C" float *fluid_get_guide_velocity_z(FLUID *fluid)
+extern "C" float *manta_get_guide_velocity_z(MANTA *fluid)
 {
   return fluid->getGuideVelocityZ();
 }
 
-extern "C" float *fluid_get_in_velocity_x(FLUID *fluid)
+extern "C" float *manta_get_in_velocity_x(MANTA *fluid)
 {
   return fluid->getInVelocityX();
 }
-extern "C" float *fluid_get_in_velocity_y(FLUID *fluid)
+extern "C" float *manta_get_in_velocity_y(MANTA *fluid)
 {
   return fluid->getInVelocityY();
 }
-extern "C" float *fluid_get_in_velocity_z(FLUID *fluid)
+extern "C" float *manta_get_in_velocity_z(MANTA *fluid)
 {
   return fluid->getInVelocityZ();
 }
 
-extern "C" float *fluid_get_force_x(FLUID *fluid)
+extern "C" float *manta_get_force_x(MANTA *fluid)
 {
   return fluid->getForceX();
 }
-extern "C" float *fluid_get_force_y(FLUID *fluid)
+extern "C" float *manta_get_force_y(MANTA *fluid)
 {
   return fluid->getForceY();
 }
-extern "C" float *fluid_get_force_z(FLUID *fluid)
+extern "C" float *manta_get_force_z(MANTA *fluid)
 {
   return fluid->getForceZ();
 }
 
-extern "C" float *fluid_get_phiguide_in(FLUID *fluid)
+extern "C" float *manta_get_phiguide_in(MANTA *fluid)
 {
   return fluid->getPhiGuideIn();
 }
 
-extern "C" int *fluid_get_num_obstacle(FLUID *fluid)
+extern "C" int *manta_get_num_obstacle(MANTA *fluid)
 {
   return fluid->getNumObstacle();
 }
-extern "C" int *fluid_get_num_guide(FLUID *fluid)
+extern "C" int *manta_get_num_guide(MANTA *fluid)
 {
   return fluid->getNumGuide();
 }
 
-extern "C" int fluid_get_res_x(FLUID *fluid)
+extern "C" int manta_get_res_x(MANTA *fluid)
 {
   return fluid->getResX();
 }
-extern "C" int fluid_get_res_y(FLUID *fluid)
+extern "C" int manta_get_res_y(MANTA *fluid)
 {
   return fluid->getResY();
 }
-extern "C" int fluid_get_res_z(FLUID *fluid)
+extern "C" int manta_get_res_z(MANTA *fluid)
 {
   return fluid->getResZ();
 }
 
-extern "C" float *fluid_get_phi_in(FLUID *fluid)
+extern "C" float *manta_get_phi_in(MANTA *fluid)
 {
   return fluid->getPhiIn();
 }
-extern "C" float *fluid_get_phiobs_in(FLUID *fluid)
+extern "C" float *manta_get_phiobs_in(MANTA *fluid)
 {
   return fluid->getPhiObsIn();
 }
-extern "C" float *fluid_get_phiout_in(FLUID *fluid)
+extern "C" float *manta_get_phiout_in(MANTA *fluid)
 {
   return fluid->getPhiOutIn();
 }
 
 /* Smoke functions */
-extern "C" void smoke_manta_export(FLUID *smoke, SmokeModifierData *smd)
+extern "C" void manta_smoke_export_script(MANTA *smoke, MantaModifierData *mmd)
 {
-  if (!smoke || !smd)
+  if (!smoke || !mmd)
     return;
-  smoke->exportSmokeScript(smd);
+  smoke->exportSmokeScript(mmd);
 }
 
-extern "C" void smoke_export(FLUID *smoke,
+extern "C" void manta_smoke_export(MANTA *smoke,
                              float *dt,
                              float *dx,
                              float **dens,
@@ -387,7 +387,7 @@ extern "C" void smoke_export(FLUID *smoke,
   *dx = 1;  //dummy value, not needed for smoke
 }
 
-extern "C" void smoke_turbulence_export(FLUID *smoke,
+extern "C" void manta_smoke_turbulence_export(MANTA *smoke,
                                         float **dens,
                                         float **react,
                                         float **flame,
@@ -454,7 +454,7 @@ static void get_rgba(
   }
 }
 
-extern "C" void smoke_get_rgba(FLUID *smoke, float *data, int sequential)
+extern "C" void manta_smoke_get_rgba(MANTA *smoke, float *data, int sequential)
 {
   get_rgba(smoke->getColorR(),
            smoke->getColorG(),
@@ -465,7 +465,7 @@ extern "C" void smoke_get_rgba(FLUID *smoke, float *data, int sequential)
            sequential);
 }
 
-extern "C" void smoke_turbulence_get_rgba(FLUID *smoke, float *data, int sequential)
+extern "C" void manta_smoke_turbulence_get_rgba(MANTA *smoke, float *data, int sequential)
 {
   get_rgba(smoke->getColorRHigh(),
            smoke->getColorGHigh(),
@@ -504,7 +504,7 @@ static void get_rgba_from_density(
   }
 }
 
-extern "C" void smoke_get_rgba_from_density(FLUID *smoke,
+extern "C" void manta_smoke_get_rgba_from_density(MANTA *smoke,
                                             float color[3],
                                             float *data,
                                             int sequential)
@@ -512,7 +512,7 @@ extern "C" void smoke_get_rgba_from_density(FLUID *smoke,
   get_rgba_from_density(color, smoke->getDensity(), smoke->getTotalCells(), data, sequential);
 }
 
-extern "C" void smoke_turbulence_get_rgba_from_density(FLUID *smoke,
+extern "C" void manta_smoke_turbulence_get_rgba_from_density(MANTA *smoke,
                                                        float color[3],
                                                        float *data,
                                                        int sequential)
@@ -521,167 +521,167 @@ extern "C" void smoke_turbulence_get_rgba_from_density(FLUID *smoke,
       color, smoke->getDensityHigh(), smoke->getTotalCellsHigh(), data, sequential);
 }
 
-extern "C" void smoke_ensure_heat(FLUID *smoke, struct SmokeModifierData *smd)
+extern "C" void manta_smoke_ensure_heat(MANTA *smoke, struct MantaModifierData *mmd)
 {
   if (smoke) {
-    smoke->initHeat(smd);
+    smoke->initHeat(mmd);
     smoke->updatePointers();
   }
 }
 
-extern "C" void smoke_ensure_fire(FLUID *smoke, struct SmokeModifierData *smd)
+extern "C" void manta_smoke_ensure_fire(MANTA *smoke, struct MantaModifierData *mmd)
 {
   if (smoke) {
-    smoke->initFire(smd);
+    smoke->initFire(mmd);
     smoke->updatePointers();
   }
   if (smoke && smoke->usingNoise()) {
-    smoke->initFireHigh(smd);
+    smoke->initFireHigh(mmd);
     smoke->updatePointersNoise();
   }
 }
 
-extern "C" void smoke_ensure_colors(FLUID *smoke, struct SmokeModifierData *smd)
+extern "C" void manta_smoke_ensure_colors(MANTA *smoke, struct MantaModifierData *mmd)
 {
   if (smoke) {
-    smoke->initColors(smd);
+    smoke->initColors(mmd);
     smoke->updatePointers();
   }
   if (smoke && smoke->usingNoise()) {
-    smoke->initColorsHigh(smd);
+    smoke->initColorsHigh(mmd);
     smoke->updatePointersNoise();
   }
 }
 
 /* Smoke accessors */
-extern "C" float *smoke_get_density(FLUID *smoke)
+extern "C" float *manta_smoke_get_density(MANTA *smoke)
 {
   return smoke->getDensity();
 }
-extern "C" float *smoke_get_fuel(FLUID *smoke)
+extern "C" float *manta_smoke_get_fuel(MANTA *smoke)
 {
   return smoke->getFuel();
 }
-extern "C" float *smoke_get_react(FLUID *smoke)
+extern "C" float *manta_smoke_get_react(MANTA *smoke)
 {
   return smoke->getReact();
 }
-extern "C" float *smoke_get_heat(FLUID *smoke)
+extern "C" float *manta_smoke_get_heat(MANTA *smoke)
 {
   return smoke->getHeat();
 }
-extern "C" float *smoke_get_flame(FLUID *smoke)
+extern "C" float *manta_smoke_get_flame(MANTA *smoke)
 {
   return smoke->getFlame();
 }
-extern "C" float *smoke_get_shadow(FLUID *fluid)
+extern "C" float *manta_smoke_get_shadow(MANTA *fluid)
 {
   return fluid->getShadow();
 }
 
-extern "C" float *smoke_get_color_r(FLUID *smoke)
+extern "C" float *manta_smoke_get_color_r(MANTA *smoke)
 {
   return smoke->getColorR();
 }
-extern "C" float *smoke_get_color_g(FLUID *smoke)
+extern "C" float *manta_smoke_get_color_g(MANTA *smoke)
 {
   return smoke->getColorG();
 }
-extern "C" float *smoke_get_color_b(FLUID *smoke)
+extern "C" float *manta_smoke_get_color_b(MANTA *smoke)
 {
   return smoke->getColorB();
 }
 
-extern "C" int *smoke_get_obstacle(FLUID *smoke)
+extern "C" int *manta_smoke_get_obstacle(MANTA *smoke)
 {
   return smoke->getObstacle();
 }
 
-extern "C" float *smoke_get_density_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_density_in(MANTA *smoke)
 {
   return smoke->getDensityIn();
 }
-extern "C" float *smoke_get_heat_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_heat_in(MANTA *smoke)
 {
   return smoke->getHeatIn();
 }
-extern "C" float *smoke_get_color_r_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_color_r_in(MANTA *smoke)
 {
   return smoke->getColorRIn();
 }
-extern "C" float *smoke_get_color_g_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_color_g_in(MANTA *smoke)
 {
   return smoke->getColorGIn();
 }
-extern "C" float *smoke_get_color_b_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_color_b_in(MANTA *smoke)
 {
   return smoke->getColorBIn();
 }
-extern "C" float *smoke_get_fuel_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_fuel_in(MANTA *smoke)
 {
   return smoke->getFuelIn();
 }
-extern "C" float *smoke_get_react_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_react_in(MANTA *smoke)
 {
   return smoke->getReactIn();
 }
-extern "C" float *smoke_get_emission_in(FLUID *smoke)
+extern "C" float *manta_smoke_get_emission_in(MANTA *smoke)
 {
   return smoke->getEmissionIn();
 }
 
-extern "C" int smoke_has_heat(FLUID *smoke)
+extern "C" int manta_smoke_has_heat(MANTA *smoke)
 {
   return (smoke->getHeat()) ? 1 : 0;
 }
-extern "C" int smoke_has_fuel(FLUID *smoke)
+extern "C" int manta_smoke_has_fuel(MANTA *smoke)
 {
   return (smoke->getFuel()) ? 1 : 0;
 }
-extern "C" int smoke_has_colors(FLUID *smoke)
+extern "C" int manta_smoke_has_colors(MANTA *smoke)
 {
   return (smoke->getColorR() && smoke->getColorG() && smoke->getColorB()) ? 1 : 0;
 }
 
-extern "C" float *smoke_turbulence_get_density(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_density(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getDensityHigh() : NULL;
 }
-extern "C" float *smoke_turbulence_get_fuel(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_fuel(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getFuelHigh() : NULL;
 }
-extern "C" float *smoke_turbulence_get_react(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_react(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getReactHigh() : NULL;
 }
-extern "C" float *smoke_turbulence_get_color_r(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_color_r(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getColorRHigh() : NULL;
 }
-extern "C" float *smoke_turbulence_get_color_g(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_color_g(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getColorGHigh() : NULL;
 }
-extern "C" float *smoke_turbulence_get_color_b(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_color_b(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getColorBHigh() : NULL;
 }
-extern "C" float *smoke_turbulence_get_flame(FLUID *smoke)
+extern "C" float *manta_smoke_turbulence_get_flame(MANTA *smoke)
 {
   return (smoke && smoke->usingNoise()) ? smoke->getFlameHigh() : NULL;
 }
 
-extern "C" int smoke_turbulence_has_fuel(FLUID *smoke)
+extern "C" int manta_smoke_turbulence_has_fuel(MANTA *smoke)
 {
   return (smoke->getFuelHigh()) ? 1 : 0;
 }
-extern "C" int smoke_turbulence_has_colors(FLUID *smoke)
+extern "C" int manta_smoke_turbulence_has_colors(MANTA *smoke)
 {
   return (smoke->getColorRHigh() && smoke->getColorGHigh() && smoke->getColorBHigh()) ? 1 : 0;
 }
 
-extern "C" void smoke_turbulence_get_res(FLUID *smoke, int *res)
+extern "C" void manta_smoke_turbulence_get_res(MANTA *smoke, int *res)
 {
   if (smoke && smoke->usingNoise()) {
     res[0] = smoke->getResXHigh();
@@ -689,195 +689,195 @@ extern "C" void smoke_turbulence_get_res(FLUID *smoke, int *res)
     res[2] = smoke->getResZHigh();
   }
 }
-extern "C" int smoke_turbulence_get_cells(FLUID *smoke)
+extern "C" int manta_smoke_turbulence_get_cells(MANTA *smoke)
 {
   int total_cells_high = smoke->getResXHigh() * smoke->getResYHigh() * smoke->getResZHigh();
   return (smoke && smoke->usingNoise()) ? total_cells_high : 0;
 }
 
 /* Liquid functions */
-extern "C" void liquid_manta_export(FLUID *liquid, SmokeModifierData *smd)
+extern "C" void manta_liquid_export_script(MANTA *liquid, MantaModifierData *mmd)
 {
-  if (!liquid || !smd)
+  if (!liquid || !mmd)
     return;
-  liquid->exportLiquidScript(smd);
+  liquid->exportLiquidScript(mmd);
 }
 
-extern "C" void liquid_ensure_sndparts(FLUID *liquid, struct SmokeModifierData *smd)
+extern "C" void manta_liquid_ensure_sndparts(MANTA *liquid, struct MantaModifierData *mmd)
 {
   if (liquid) {
-    liquid->initLiquidSndParts(smd);
+    liquid->initLiquidSndParts(mmd);
     liquid->updatePointers();
   }
 }
 
 /* Liquid accessors */
-extern "C" int liquid_get_particle_res_x(FLUID *liquid)
+extern "C" int manta_liquid_get_particle_res_x(MANTA *liquid)
 {
   return liquid->getParticleResX();
 }
-extern "C" int liquid_get_particle_res_y(FLUID *liquid)
+extern "C" int manta_liquid_get_particle_res_y(MANTA *liquid)
 {
   return liquid->getParticleResY();
 }
-extern "C" int liquid_get_particle_res_z(FLUID *liquid)
+extern "C" int manta_liquid_get_particle_res_z(MANTA *liquid)
 {
   return liquid->getParticleResZ();
 }
 
-extern "C" int liquid_get_mesh_res_x(FLUID *liquid)
+extern "C" int manta_liquid_get_mesh_res_x(MANTA *liquid)
 {
   return liquid->getMeshResX();
 }
-extern "C" int liquid_get_mesh_res_y(FLUID *liquid)
+extern "C" int manta_liquid_get_mesh_res_y(MANTA *liquid)
 {
   return liquid->getMeshResY();
 }
-extern "C" int liquid_get_mesh_res_z(FLUID *liquid)
+extern "C" int manta_liquid_get_mesh_res_z(MANTA *liquid)
 {
   return liquid->getMeshResZ();
 }
 
-extern "C" int liquid_get_particle_upres(FLUID *liquid)
+extern "C" int manta_liquid_get_particle_upres(MANTA *liquid)
 {
   return liquid->getParticleUpres();
 }
-extern "C" int liquid_get_mesh_upres(FLUID *liquid)
+extern "C" int manta_liquid_get_mesh_upres(MANTA *liquid)
 {
   return liquid->getMeshUpres();
 }
 
-extern "C" int liquid_get_num_verts(FLUID *liquid)
+extern "C" int manta_liquid_get_num_verts(MANTA *liquid)
 {
   return liquid->getNumVertices();
 }
-extern "C" int liquid_get_num_normals(FLUID *liquid)
+extern "C" int manta_liquid_get_num_normals(MANTA *liquid)
 {
   return liquid->getNumNormals();
 }
-extern "C" int liquid_get_num_triangles(FLUID *liquid)
+extern "C" int manta_liquid_get_num_triangles(MANTA *liquid)
 {
   return liquid->getNumTriangles();
 }
 
-extern "C" float liquid_get_vertex_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_vertex_x_at(MANTA *liquid, int i)
 {
   return liquid->getVertexXAt(i);
 }
-extern "C" float liquid_get_vertex_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_vertex_y_at(MANTA *liquid, int i)
 {
   return liquid->getVertexYAt(i);
 }
-extern "C" float liquid_get_vertex_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_vertex_z_at(MANTA *liquid, int i)
 {
   return liquid->getVertexZAt(i);
 }
 
-extern "C" float liquid_get_normal_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_normal_x_at(MANTA *liquid, int i)
 {
   return liquid->getNormalXAt(i);
 }
-extern "C" float liquid_get_normal_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_normal_y_at(MANTA *liquid, int i)
 {
   return liquid->getNormalYAt(i);
 }
-extern "C" float liquid_get_normal_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_normal_z_at(MANTA *liquid, int i)
 {
   return liquid->getNormalZAt(i);
 }
 
-extern "C" int liquid_get_triangle_x_at(FLUID *liquid, int i)
+extern "C" int manta_liquid_get_triangle_x_at(MANTA *liquid, int i)
 {
   return liquid->getTriangleXAt(i);
 }
-extern "C" int liquid_get_triangle_y_at(FLUID *liquid, int i)
+extern "C" int manta_liquid_get_triangle_y_at(MANTA *liquid, int i)
 {
   return liquid->getTriangleYAt(i);
 }
-extern "C" int liquid_get_triangle_z_at(FLUID *liquid, int i)
+extern "C" int manta_liquid_get_triangle_z_at(MANTA *liquid, int i)
 {
   return liquid->getTriangleZAt(i);
 }
 
-extern "C" float liquid_get_vertvel_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_vertvel_x_at(MANTA *liquid, int i)
 {
   return liquid->getVertVelXAt(i);
 }
-extern "C" float liquid_get_vertvel_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_vertvel_y_at(MANTA *liquid, int i)
 {
   return liquid->getVertVelYAt(i);
 }
-extern "C" float liquid_get_vertvel_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_vertvel_z_at(MANTA *liquid, int i)
 {
   return liquid->getVertVelZAt(i);
 }
 
-extern "C" int liquid_get_num_flip_particles(FLUID *liquid)
+extern "C" int manta_liquid_get_num_flip_particles(MANTA *liquid)
 {
   return liquid->getNumFlipParticles();
 }
-extern "C" int liquid_get_num_snd_particles(FLUID *liquid)
+extern "C" int manta_liquid_get_num_snd_particles(MANTA *liquid)
 {
   return liquid->getNumSndParticles();
 }
 
-extern "C" int liquid_get_flip_particle_flag_at(FLUID *liquid, int i)
+extern "C" int manta_liquid_get_flip_particle_flag_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticleFlagAt(i);
 }
-extern "C" int liquid_get_snd_particle_flag_at(FLUID *liquid, int i)
+extern "C" int manta_liquid_get_snd_particle_flag_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticleFlagAt(i);
 }
 
-extern "C" float liquid_get_flip_particle_position_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_flip_particle_position_x_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticlePositionXAt(i);
 }
-extern "C" float liquid_get_flip_particle_position_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_flip_particle_position_y_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticlePositionYAt(i);
 }
-extern "C" float liquid_get_flip_particle_position_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_flip_particle_position_z_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticlePositionZAt(i);
 }
 
-extern "C" float liquid_get_flip_particle_velocity_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_flip_particle_velocity_x_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticleVelocityXAt(i);
 }
-extern "C" float liquid_get_flip_particle_velocity_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_flip_particle_velocity_y_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticleVelocityYAt(i);
 }
-extern "C" float liquid_get_flip_particle_velocity_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_flip_particle_velocity_z_at(MANTA *liquid, int i)
 {
   return liquid->getFlipParticleVelocityZAt(i);
 }
 
-extern "C" float liquid_get_snd_particle_position_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_snd_particle_position_x_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticlePositionXAt(i);
 }
-extern "C" float liquid_get_snd_particle_position_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_snd_particle_position_y_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticlePositionYAt(i);
 }
-extern "C" float liquid_get_snd_particle_position_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_snd_particle_position_z_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticlePositionZAt(i);
 }
 
-extern "C" float liquid_get_snd_particle_velocity_x_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_snd_particle_velocity_x_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticleVelocityXAt(i);
 }
-extern "C" float liquid_get_snd_particle_velocity_y_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_snd_particle_velocity_y_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticleVelocityYAt(i);
 }
-extern "C" float liquid_get_snd_particle_velocity_z_at(FLUID *liquid, int i)
+extern "C" float manta_liquid_get_snd_particle_velocity_z_at(MANTA *liquid, int i)
 {
   return liquid->getSndParticleVelocityZAt(i);
 }

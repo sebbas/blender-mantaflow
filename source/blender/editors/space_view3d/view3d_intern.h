@@ -36,7 +36,7 @@ struct Depsgraph;
 struct GPUBatch;
 struct Mesh;
 struct Object;
-struct SmokeDomainSettings;
+struct MantaDomainSettings;
 struct ViewLayer;
 struct bAnimVizSettings;
 struct bContext;

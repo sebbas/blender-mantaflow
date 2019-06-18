@@ -64,7 +64,7 @@ typedef enum ModifierType {
   eModifierType_SimpleDeform = 28,
   eModifierType_Multires = 29,
   eModifierType_Surface = 30,
-  eModifierType_Smoke = 31,
+  eModifierType_Manta = 31,
   eModifierType_ShapeKey = 32,
   eModifierType_Solidify = 33,
   eModifierType_Screw = 34,
@@ -441,24 +441,24 @@ enum {
   MOD_BEVEL_MITER_ARC,
 };
 
-typedef struct SmokeModifierData {
+typedef struct MantaModifierData {
   ModifierData modifier;
 
-  struct SmokeDomainSettings *domain;
+  struct MantaDomainSettings *domain;
   /** Inflow, outflow, smoke objects. */
-  struct SmokeFlowSettings *flow;
+  struct MantaFlowSettings *flow;
   /** Effector objects (collision, guiding). */
-  struct SmokeCollSettings *effec;
+  struct MantaCollSettings *effec;
   float time;
   /** Domain, inflow, outflow, .... */
   int type;
-} SmokeModifierData;
+} MantaModifierData;
 
-/* Smoke modifier flags */
+/* Manta modifier flags */
 enum {
-  MOD_SMOKE_TYPE_DOMAIN = (1 << 0),
-  MOD_SMOKE_TYPE_FLOW = (1 << 1),
-  MOD_SMOKE_TYPE_EFFEC = (1 << 2),
+  MOD_MANTA_TYPE_DOMAIN = (1 << 0),
+  MOD_MANTA_TYPE_FLOW = (1 << 1),
+  MOD_MANTA_TYPE_EFFEC = (1 << 2),
 };
 
 typedef struct DisplaceModifierData {

@@ -21,8 +21,8 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_SMOKE_TYPES_H__
-#define __DNA_SMOKE_TYPES_H__
+#ifndef __DNA_MANTA_TYPES_H__
+#define __DNA_MANTA_TYPES_H__
 
 /* flags */
 enum {
@@ -193,14 +193,14 @@ enum {
   VDB_COMPRESSION_NONE = 2,
 };
 
-typedef struct SmokeVertexVelocity {
+typedef struct MantaVertexVelocity {
   float vel[3];
-} SmokeVertexVelocity;
+} MantaVertexVelocity;
 
-typedef struct SmokeDomainSettings {
-  struct SmokeModifierData *smd; /* for fast RNA access */
-  struct FLUID *fluid;
-  struct FLUID *fluid_old; /* adaptive domain needs access to old fluid state */
+typedef struct MantaDomainSettings {
+  struct MantaModifierData *mmd; /* for fast RNA access */
+  struct MANTA *fluid;
+  struct MANTA *fluid_old; /* adaptive domain needs access to old fluid state */
   void *fluid_mutex;
   struct Collection *fluid_group;
   struct Collection *eff_group;   // UNUSED
@@ -216,7 +216,7 @@ typedef struct SmokeDomainSettings {
   struct GPUTexture *tex_velocity_y;
   struct GPUTexture *tex_velocity_z;
   struct Object *guiding_parent;
-  struct SmokeVertexVelocity *mesh_velocities; /* vertex velocities of simulated fluid mesh */
+  struct MantaVertexVelocity *mesh_velocities; /* vertex velocities of simulated fluid mesh */
   struct EffectorWeights *effector_weights;
 
   /* domain object data */
@@ -388,7 +388,7 @@ typedef struct SmokeDomainSettings {
   int cache_comp;
   int cache_high_comp;
 
-} SmokeDomainSettings;
+} MantaDomainSettings;
 
 /* type */
 #define FLUID_FLOW_TYPE_SMOKE 1
@@ -423,9 +423,9 @@ enum {
   FLUID_FLOW_USE_INFLOW = (1 << 5),
 };
 
-typedef struct SmokeFlowSettings {
+typedef struct MantaFlowSettings {
   /** For fast RNA access. */
-  struct SmokeModifierData *smd;
+  struct MantaModifierData *mmd;
   struct Mesh *mesh;
   struct ParticleSystem *psys;
   struct Tex *noise_texture;
@@ -467,7 +467,7 @@ typedef struct SmokeFlowSettings {
   short texture_type;
   short _pad3[3];
   int flags; /* absolute emission etc*/
-} SmokeFlowSettings;
+} MantaFlowSettings;
 
 /* effector types */
 #define FLUID_EFFECTOR_TYPE_COLLISION 0
@@ -480,9 +480,9 @@ typedef struct SmokeFlowSettings {
 #define FLUID_EFFECTOR_GUIDING_AVERAGED 3
 
 /* collision objects (filled with smoke) */
-typedef struct SmokeCollSettings {
+typedef struct MantaCollSettings {
   /** For fast RNA access. */
-  struct SmokeModifierData *smd;
+  struct MantaModifierData *mmd;
   struct Mesh *mesh;
   float *verts_old;
   int numverts;
@@ -492,6 +492,6 @@ typedef struct SmokeCollSettings {
   /* guiding options */
   short guiding_mode;
   float vel_multi;  // Multiplier for object velocity
-} SmokeCollSettings;
+} MantaCollSettings;
 
 #endif

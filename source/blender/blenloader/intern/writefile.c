@@ -125,7 +125,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_space_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_speaker_types.h"
@@ -1616,38 +1616,38 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
       writestruct(wd, DATA, EffectorWeights, 1, clmd->sim_parms->effector_weights);
       write_pointcaches(wd, &clmd->ptcaches);
     }
-    else if (md->type == eModifierType_Smoke) {
-      SmokeModifierData *smd = (SmokeModifierData *)md;
+    else if (md->type == eModifierType_Manta) {
+      MantaModifierData *mmd = (MantaModifierData *)md;
 
-      if (smd->type & MOD_SMOKE_TYPE_DOMAIN) {
-        writestruct(wd, DATA, SmokeDomainSettings, 1, smd->domain);
+      if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+        writestruct(wd, DATA, MantaDomainSettings, 1, mmd->domain);
 
-        if (smd->domain) {
-          write_pointcaches(wd, &(smd->domain->ptcaches[0]));
+        if (mmd->domain) {
+          write_pointcaches(wd, &(mmd->domain->ptcaches[0]));
 
           /* create fake pointcache so that old blender versions can read it */
-          smd->domain->point_cache[1] = BKE_ptcache_add(&smd->domain->ptcaches[1]);
-          smd->domain->point_cache[1]->flag |= PTCACHE_DISK_CACHE | PTCACHE_FAKE_SMOKE;
-          smd->domain->point_cache[1]->step = 1;
+          mmd->domain->point_cache[1] = BKE_ptcache_add(&mmd->domain->ptcaches[1]);
+          mmd->domain->point_cache[1]->flag |= PTCACHE_DISK_CACHE | PTCACHE_FAKE_SMOKE;
+          mmd->domain->point_cache[1]->step = 1;
 
-          write_pointcaches(wd, &(smd->domain->ptcaches[1]));
+          write_pointcaches(wd, &(mmd->domain->ptcaches[1]));
 
-          if (smd->domain->coba) {
-            writestruct(wd, DATA, ColorBand, 1, smd->domain->coba);
+          if (mmd->domain->coba) {
+            writestruct(wd, DATA, ColorBand, 1, mmd->domain->coba);
           }
 
           /* cleanup the fake pointcache */
-          BKE_ptcache_free_list(&smd->domain->ptcaches[1]);
-          smd->domain->point_cache[1] = NULL;
+          BKE_ptcache_free_list(&mmd->domain->ptcaches[1]);
+          mmd->domain->point_cache[1] = NULL;
 
-          writestruct(wd, DATA, EffectorWeights, 1, smd->domain->effector_weights);
+          writestruct(wd, DATA, EffectorWeights, 1, mmd->domain->effector_weights);
         }
       }
-      else if (smd->type & MOD_SMOKE_TYPE_FLOW) {
-        writestruct(wd, DATA, SmokeFlowSettings, 1, smd->flow);
+      else if (mmd->type & MOD_MANTA_TYPE_FLOW) {
+        writestruct(wd, DATA, MantaFlowSettings, 1, mmd->flow);
       }
-      else if (smd->type & MOD_SMOKE_TYPE_EFFEC) {
-        writestruct(wd, DATA, SmokeCollSettings, 1, smd->effec);
+      else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
+        writestruct(wd, DATA, MantaCollSettings, 1, mmd->effec);
       }
     }
     else if (md->type == eModifierType_Fluidsim) {

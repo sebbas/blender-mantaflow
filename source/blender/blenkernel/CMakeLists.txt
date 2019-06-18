@@ -137,6 +137,7 @@ set(SRC
   intern/lightprobe.c
   intern/linestyle.c
   intern/main.c
+  intern/manta.c
   intern/mask.c
   intern/mask_evaluate.c
   intern/mask_rasterize.c
@@ -187,7 +188,6 @@ set(SRC
   intern/sequencer.c
   intern/shader_fx.c
   intern/shrinkwrap.c
-  intern/smoke.c
   intern/softbody.c
   intern/sound.c
   intern/speaker.c
@@ -291,6 +291,7 @@ set(SRC
   BKE_lightprobe.h
   BKE_linestyle.h
   BKE_main.h
+  BKE_manta.h
   BKE_mask.h
   BKE_material.h
   BKE_mball.h
@@ -323,7 +324,6 @@ set(SRC
   BKE_sequencer.h
   BKE_shader_fx.h
   BKE_shrinkwrap.h
-  BKE_smoke.h
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h

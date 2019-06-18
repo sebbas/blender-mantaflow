@@ -175,7 +175,7 @@ void RNA_def_view_layer(struct BlenderRNA *brna);
 void RNA_def_screen(struct BlenderRNA *brna);
 void RNA_def_sculpt_paint(struct BlenderRNA *brna);
 void RNA_def_sequencer(struct BlenderRNA *brna);
-void RNA_def_smoke(struct BlenderRNA *brna);
+void RNA_def_manta(struct BlenderRNA *brna);
 void RNA_def_space(struct BlenderRNA *brna);
 void RNA_def_speaker(struct BlenderRNA *brna);
 void RNA_def_test(struct BlenderRNA *brna);

@@ -61,6 +61,7 @@ set(SRC
   intern/MOD_laplaciandeform.c
   intern/MOD_laplaciansmooth.c
   intern/MOD_lattice.c
+  intern/MOD_manta.c
   intern/MOD_mask.c
   intern/MOD_meshcache.c
   intern/MOD_meshcache_mdd.c
@@ -81,7 +82,6 @@ set(SRC
   intern/MOD_shrinkwrap.c
   intern/MOD_simpledeform.c
   intern/MOD_skin.c
-  intern/MOD_smoke.c
   intern/MOD_smooth.c
   intern/MOD_softbody.c
   intern/MOD_solidify.c

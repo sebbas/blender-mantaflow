@@ -1988,8 +1988,8 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
             case eModifierType_Multires:
               data.icon = ICON_MOD_MULTIRES;
               break;
-            case eModifierType_Smoke:
-              data.icon = ICON_MOD_SMOKE;
+            case eModifierType_Manta:
+              data.icon = ICON_MOD_MANTA;
               break;
             case eModifierType_Solidify:
               data.icon = ICON_MOD_SOLIDIFY;

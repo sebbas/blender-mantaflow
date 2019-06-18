@@ -99,7 +99,7 @@ class PHYSICS_PT_add(PhysicButtonsPanel, Panel):
             physics_add(col, context.soft_body, "Soft Body", 'SOFT_BODY', 'MOD_SOFT', True)
 
         if obj.type == 'MESH':
-            physics_add(col, context.smoke, "Fluid", 'SMOKE', 'MOD_SMOKE', True)
+            physics_add(col, context.manta, "Fluid", 'MANTA', 'MOD_MANTA', True)
 
             physics_add_special(
                 col, obj.rigid_body, "Rigid Body",
@@ -117,7 +117,7 @@ class PHYSICS_PT_add(PhysicButtonsPanel, Panel):
         )
 
 
-# cache-type can be 'PSYS' 'HAIR' 'SMOKE' etc.
+# cache-type can be 'PSYS' 'HAIR' 'MANTA' etc.
 
 def point_cache_ui(self, cache, enabled, cachetype):
     layout = self.layout
@@ -140,10 +140,10 @@ def point_cache_ui(self, cache, enabled, cachetype):
         col.operator("ptcache.add", icon='ADD', text="")
         col.operator("ptcache.remove", icon='REMOVE', text="")
 
-    if cachetype in {'PSYS', 'HAIR', 'SMOKE'}:
+    if cachetype in {'PSYS', 'HAIR', 'MANTA'}:
         col = layout.column()
 
-        if cachetype == 'SMOKE':
+        if cachetype == 'MANTA':
             col.prop(cache, "use_library_path", text="Use Library Path")
 
         col.prop(cache, "use_external")
@@ -159,14 +159,14 @@ def point_cache_ui(self, cache, enabled, cachetype):
             col.alignment = 'RIGHT'
             col.label(text=cache_info)
     else:
-        if cachetype in {'SMOKE', 'DYNAMIC_PAINT'}:
+        if cachetype in {'MANTA', 'DYNAMIC_PAINT'}:
             if not is_saved:
                 col = layout.column(align=True)
                 col.alignment = 'RIGHT'
                 col.label(text="Cache is disabled until the file is saved")
                 layout.enabled = False
 
-    if not cache.use_external or cachetype == 'SMOKE':
+    if not cache.use_external or cachetype == 'MANTA':
         col = layout.column(align=True)
 
         if cachetype not in {'PSYS', 'DYNAMIC_PAINT'}:
@@ -174,18 +174,18 @@ def point_cache_ui(self, cache, enabled, cachetype):
             col.prop(cache, "frame_start", text="Simulation Start")
             col.prop(cache, "frame_end")
 
-        if cachetype not in {'SMOKE', 'CLOTH', 'DYNAMIC_PAINT', 'RIGID_BODY'}:
+        if cachetype not in {'MANTA', 'CLOTH', 'DYNAMIC_PAINT', 'RIGID_BODY'}:
             col.prop(cache, "frame_step")
 
         cache_info = cache.info
-        if cachetype != 'SMOKE' and cache_info:  # avoid empty space.
+        if cachetype != 'MANTA' and cache_info:  # avoid empty space.
             col = layout.column(align=True)
             col.alignment = 'RIGHT'
             col.label(text=cache_info)
 
         can_bake = True
 
-        if cachetype not in {'SMOKE', 'DYNAMIC_PAINT', 'RIGID_BODY'}:
+        if cachetype not in {'MANTA', 'DYNAMIC_PAINT', 'RIGID_BODY'}:
             if not is_saved:
                 col = layout.column(align=True)
                 col.alignment = 'RIGHT'
@@ -268,7 +268,7 @@ def effector_weights_ui(self, weights, weight_type):
     col.prop(weights, "curve_guide", slider=True)
     col.prop(weights, "texture", slider=True)
 
-    if weight_type != 'SMOKE':
+    if weight_type != 'MANTA':
         col.prop(weights, "smokeflow", slider=True)
 
     col = flow.column()

@@ -55,7 +55,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
-#include "BKE_smoke.h"
+#include "BKE_manta.h"
 #include "BKE_global.h"
 
 #include "DEG_depsgraph.h"
@@ -70,7 +70,7 @@
 #include "manta_fluid_API.h"
 
 #include "DNA_scene_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_mesh_types.h"
 
 typedef struct FluidMantaflowJob {
@@ -86,7 +86,7 @@ typedef struct FluidMantaflowJob {
   Depsgraph *depsgraph;
   Object *ob;
 
-  SmokeModifierData *smd;
+  MantaModifierData *mmd;
 
   int success;
   double start;
@@ -94,22 +94,21 @@ typedef struct FluidMantaflowJob {
   int *pause_frame;
 } FluidMantaflowJob;
 
-#ifdef WITH_MANTA
 
 static bool fluid_manta_initjob(
     bContext *C, FluidMantaflowJob *job, wmOperator *op, char *error_msg, int error_size)
 {
-  SmokeModifierData *smd = NULL;
-  SmokeDomainSettings *sds;
+  MantaModifierData *mmd = NULL;
+  MantaDomainSettings *mds;
   Object *ob = CTX_data_active_object(C);
 
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  if (!smd) {
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  if (!mmd) {
     BLI_strncpy(error_msg, N_("Bake failed: no Fluid modifier found"), error_size);
     return false;
   }
-  sds = smd->domain;
-  if (!sds) {
+  mds = mmd->domain;
+  if (!mds) {
     BLI_strncpy(error_msg, N_("Bake failed: invalid domain"), error_size);
     return false;
   }
@@ -118,7 +117,7 @@ static bool fluid_manta_initjob(
   job->scene = CTX_data_scene(C);
   job->depsgraph = CTX_data_depsgraph(C);
   job->ob = CTX_data_active_object(C);
-  job->smd = smd;
+  job->mmd = mmd;
   job->type = op->type->idname;
   job->name = op->type->name;
 
@@ -127,23 +126,23 @@ static bool fluid_manta_initjob(
 
 static bool fluid_manta_initpaths(FluidMantaflowJob *job, ReportList *reports)
 {
-  SmokeDomainSettings *sds = job->smd->domain;
+  MantaDomainSettings *mds = job->mmd->domain;
   char tmpDir[FILE_MAX];
   tmpDir[0] = '\0';
 
   const char *relbase = modifier_path_relbase(job->bmain, job->ob);
 
   /* We do not accept empty paths, they can end in random places silently, see T51176. */
-  if (sds->cache_directory[0] == '\0') {
+  if (mds->cache_directory[0] == '\0') {
     modifier_path_init(
-        sds->cache_directory, sizeof(sds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
+        mds->cache_directory, sizeof(mds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
     BKE_reportf(reports,
                 RPT_WARNING,
                 "Fluid Mantaflow: Empty cache path, reset to default '%s'",
-                sds->cache_directory);
+                mds->cache_directory);
   }
 
-  BLI_strncpy(tmpDir, sds->cache_directory, FILE_MAXDIR);
+  BLI_strncpy(tmpDir, mds->cache_directory, FILE_MAXDIR);
   BLI_path_abs(tmpDir, relbase);
 
   /* Ensure whole path exists */
@@ -153,15 +152,15 @@ static bool fluid_manta_initpaths(FluidMantaflowJob *job, ReportList *reports)
    * this gives user chance to set manually another path. */
   if (!dir_exists) {
     modifier_path_init(
-        sds->cache_directory, sizeof(sds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
+        mds->cache_directory, sizeof(mds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
 
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Fluid Mantaflow: Could not create cache directory '%s', reset to default '%s'",
                 tmpDir,
-                sds->cache_directory);
+                mds->cache_directory);
 
-    BLI_strncpy(tmpDir, sds->cache_directory, FILE_MAXDIR);
+    BLI_strncpy(tmpDir, mds->cache_directory, FILE_MAXDIR);
     BLI_path_abs(tmpDir, relbase);
 
     /* Ensure whole path exists and is wirtable. */
@@ -176,7 +175,7 @@ static bool fluid_manta_initpaths(FluidMantaflowJob *job, ReportList *reports)
   }
 
   /* Copy final dir back into domain settings */
-  BLI_strncpy(sds->cache_directory, tmpDir, FILE_MAXDIR);
+  BLI_strncpy(mds->cache_directory, tmpDir, FILE_MAXDIR);
   return true;
 }
 
@@ -188,17 +187,17 @@ static void fluid_manta_bake_free(void *customdata)
 
 static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 {
-  SmokeDomainSettings *sds = job->smd->domain;
+  MantaDomainSettings *mds = job->mmd->domain;
   Scene *scene = job->scene;
   int frame = 1, orig_frame;
   int frames;
   int *pause_frame = NULL;
   bool is_first_frame;
 
-  frames = sds->cache_frame_end - sds->cache_frame_start + 1;
+  frames = mds->cache_frame_end - mds->cache_frame_start + 1;
 
   if (frames <= 0) {
-    BLI_strncpy(sds->error, N_("No frames to bake"), sizeof(sds->error));
+    BLI_strncpy(mds->error, N_("No frames to bake"), sizeof(mds->error));
     return;
   }
 
@@ -211,15 +210,15 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 
   /* Set frame to start point (depending on current pause frame value) */
   is_first_frame = ((*pause_frame) == 0);
-  frame = is_first_frame ? sds->cache_frame_start : (*pause_frame);
+  frame = is_first_frame ? mds->cache_frame_start : (*pause_frame);
 
   /* Save orig frame and update scene frame */
   orig_frame = CFRA;
   CFRA = frame;
 
   /* Loop through selected frames */
-  for (; frame <= sds->cache_frame_end; frame++) {
-    const float progress = (frame - sds->cache_frame_start) / (float)frames;
+  for (; frame <= mds->cache_frame_end; frame++) {
+    const float progress = (frame - mds->cache_frame_start) / (float)frames;
 
     /* Keep track of pause frame - needed to init future loop */
     (*pause_frame) = frame;
@@ -249,27 +248,27 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
 static void fluid_manta_bake_endjob(void *customdata)
 {
   FluidMantaflowJob *job = customdata;
-  SmokeDomainSettings *sds = job->smd->domain;
+  MantaDomainSettings *mds = job->mmd->domain;
 
   if (STREQ(job->type, "MANTA_OT_bake_data")) {
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKING_DATA;
-    sds->cache_flag |= FLUID_DOMAIN_BAKED_DATA;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKING_DATA;
+    mds->cache_flag |= FLUID_DOMAIN_BAKED_DATA;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_noise")) {
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKING_NOISE;
-    sds->cache_flag |= FLUID_DOMAIN_BAKED_NOISE;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKING_NOISE;
+    mds->cache_flag |= FLUID_DOMAIN_BAKED_NOISE;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_mesh")) {
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKING_MESH;
-    sds->cache_flag |= FLUID_DOMAIN_BAKED_MESH;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKING_MESH;
+    mds->cache_flag |= FLUID_DOMAIN_BAKED_MESH;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_particles")) {
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKING_PARTICLES;
-    sds->cache_flag |= FLUID_DOMAIN_BAKED_PARTICLES;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKING_PARTICLES;
+    mds->cache_flag |= FLUID_DOMAIN_BAKED_PARTICLES;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_guiding")) {
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
-    sds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
+    mds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
   }
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
@@ -287,8 +286,8 @@ static void fluid_manta_bake_endjob(void *customdata)
                PIL_check_seconds_timer() - job->start);
   }
   else {
-    if (strlen(sds->error)) { /* If an error occurred */
-      WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, sds->error);
+    if (strlen(mds->error)) { /* If an error occurred */
+      WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, mds->error);
     }
     else { /* User canceled the bake */
       WM_reportf(RPT_WARNING, "Fluid Mantaflow: %s canceled!", job->name);
@@ -302,7 +301,7 @@ static void fluid_manta_bake_startjob(void *customdata,
                                       float *progress)
 {
   FluidMantaflowJob *job = customdata;
-  SmokeDomainSettings *sds = job->smd->domain;
+  MantaDomainSettings *mds = job->mmd->domain;
 
   char tmpDir[FILE_MAX];
   tmpDir[0] = '\0';
@@ -318,47 +317,47 @@ static void fluid_manta_bake_startjob(void *customdata,
   BKE_spacedata_draw_locks(true);
 
   if (STREQ(job->type, "MANTA_OT_bake_data")) {
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'config' subdir if it does not exist already */
     tmpDir[0] = '\0';
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'data' subdir if it does not exist already */
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKED_DATA;
-    sds->cache_flag |= FLUID_DOMAIN_BAKING_DATA;
-    job->pause_frame = &sds->cache_frame_pause_data;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_DATA;
+    mds->cache_flag |= FLUID_DOMAIN_BAKING_DATA;
+    job->pause_frame = &mds->cache_frame_pause_data;
 
-    if (sds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT) {
-      BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
+    if (mds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT) {
+      BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
       BLI_dir_create_recursive(tmpDir); /* Create 'script' subdir if it does not exist already */
     }
   }
   else if (STREQ(job->type, "MANTA_OT_bake_noise")) {
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'noise' subdir if it does not exist already */
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKED_NOISE;
-    sds->cache_flag |= FLUID_DOMAIN_BAKING_NOISE;
-    job->pause_frame = &sds->cache_frame_pause_noise;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_NOISE;
+    mds->cache_flag |= FLUID_DOMAIN_BAKING_NOISE;
+    job->pause_frame = &mds->cache_frame_pause_noise;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_mesh")) {
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'mesh' subdir if it does not exist already */
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKED_MESH;
-    sds->cache_flag |= FLUID_DOMAIN_BAKING_MESH;
-    job->pause_frame = &sds->cache_frame_pause_mesh;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_MESH;
+    mds->cache_flag |= FLUID_DOMAIN_BAKING_MESH;
+    job->pause_frame = &mds->cache_frame_pause_mesh;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_particles")) {
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKED_PARTICLES;
-    sds->cache_flag |= FLUID_DOMAIN_BAKING_PARTICLES;
-    job->pause_frame = &sds->cache_frame_pause_particles;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_PARTICLES;
+    mds->cache_flag |= FLUID_DOMAIN_BAKING_PARTICLES;
+    job->pause_frame = &mds->cache_frame_pause_particles;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_guiding")) {
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'guiding' subdir if it does not exist already */
-    sds->cache_flag &= ~FLUID_DOMAIN_BAKED_GUIDING;
-    sds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
-    job->pause_frame = &sds->cache_frame_pause_guiding;
+    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_GUIDING;
+    mds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
+    job->pause_frame = &mds->cache_frame_pause_guiding;
   }
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
@@ -373,7 +372,7 @@ static void fluid_manta_bake_startjob(void *customdata,
 static void fluid_manta_free_endjob(void *customdata)
 {
   FluidMantaflowJob *job = customdata;
-  SmokeDomainSettings *sds = job->smd->domain;
+  MantaDomainSettings *mds = job->mmd->domain;
 
   G.is_rendering = false;
   BKE_spacedata_draw_locks(false);
@@ -389,8 +388,8 @@ static void fluid_manta_free_endjob(void *customdata)
                PIL_check_seconds_timer() - job->start);
   }
   else {
-    if (strlen(sds->error)) { /* If an error occurred */
-      WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, sds->error);
+    if (strlen(mds->error)) { /* If an error occurred */
+      WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, mds->error);
     }
     else { /* User canceled the free job */
       WM_reportf(RPT_WARNING, "Fluid Mantaflow: %s canceled!", job->name);
@@ -404,7 +403,7 @@ static void fluid_manta_free_startjob(void *customdata,
                                       float *progress)
 {
   FluidMantaflowJob *job = customdata;
-  SmokeDomainSettings *sds = job->smd->domain;
+  MantaDomainSettings *mds = job->mmd->domain;
   Scene *scene = job->scene;
 
   char tmpDir[FILE_MAX];
@@ -421,76 +420,76 @@ static void fluid_manta_free_startjob(void *customdata,
   BKE_spacedata_draw_locks(true);
 
   if (STREQ(job->type, "MANTA_OT_free_data")) {
-    sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKED_DATA |
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKED_DATA |
                          FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE |
                          FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH |
                          FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES);
 
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Free optional mantaflow script */
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Reset pause frame */
-    sds->cache_frame_pause_data = 0;
+    mds->cache_frame_pause_data = 0;
   }
   else if (STREQ(job->type, "MANTA_OT_free_noise")) {
-    sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE);
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE);
 
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Reset pause frame */
-    sds->cache_frame_pause_noise = 0;
+    mds->cache_frame_pause_noise = 0;
   }
   else if (STREQ(job->type, "MANTA_OT_free_mesh")) {
-    sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH);
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH);
 
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Reset pause frame */
-    sds->cache_frame_pause_mesh = 0;
+    mds->cache_frame_pause_mesh = 0;
   }
   else if (STREQ(job->type, "MANTA_OT_free_particles")) {
-    sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES);
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES);
 
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Reset pause frame */
-    sds->cache_frame_pause_particles = 0;
+    mds->cache_frame_pause_particles = 0;
   }
   else if (STREQ(job->type, "MANTA_OT_free_guiding")) {
-    sds->cache_flag &= ~(FLUID_DOMAIN_BAKING_GUIDING | FLUID_DOMAIN_BAKED_GUIDING);
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_GUIDING | FLUID_DOMAIN_BAKED_GUIDING);
 
-    BLI_path_join(tmpDir, sizeof(tmpDir), sds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
     /* Reset pause frame */
-    sds->cache_frame_pause_guiding = 0;
+    mds->cache_frame_pause_guiding = 0;
   }
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
@@ -498,50 +497,12 @@ static void fluid_manta_free_startjob(void *customdata,
   *stop = 0;
 
   /* Reset scene frame to cache frame start */
-  CFRA = sds->cache_frame_start;
+  CFRA = mds->cache_frame_start;
 
   /* Update scene so that viewport shows freed up scene */
   ED_update_for_newframe(job->bmain, job->depsgraph);
 }
 
-#else /* WITH_MANTA */
-
-/* only compile dummy functions */
-static bool fluid_manta_initjob(bContext *UNUSED(C),
-                                FluidMantaflowJob *UNUSED(job),
-                                wmOperator *UNUSED(op),
-                                char *UNUSED(error_msg),
-                                int UNUSED(error_size))
-{
-  return false;
-}
-static bool fluid_manta_initpaths(FluidMantaflowJob *UNUSED(job), ReportList *UNUSED(reports))
-{
-  return false;
-}
-static void fluid_manta_bake_startjob(void *UNUSED(customdata),
-                                      short *UNUSED(stop),
-                                      short *UNUSED(do_update),
-                                      float *UNUSED(progress))
-{
-}
-static void fluid_manta_bake_endjob(void *UNUSED(customdata))
-{
-}
-static void fluid_manta_bake_free(void *UNUSED(customdata))
-{
-}
-static void fluid_manta_free_startjob(void *UNUSED(customdata),
-                                      short *UNUSED(stop),
-                                      short *UNUSED(do_update),
-                                      float *UNUSED(progress))
-{
-}
-static void fluid_manta_free_endjob(void *UNUSED(customdata))
-{
-}
-
-#endif /* WITH_MANTA */
 
 /***************************** Operators ******************************/
 
@@ -617,27 +578,27 @@ static int fluid_manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmE
 
 static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 {
-  SmokeModifierData *smd = NULL;
-  SmokeDomainSettings *sds;
+  MantaModifierData *mmd = NULL;
+  MantaDomainSettings *mds;
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
 
   /*
    * Get modifier data
    */
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  if (!smd) {
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  if (!mmd) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
     return OPERATOR_CANCELLED;
   }
-  sds = smd->domain;
-  if (!sds) {
+  mds = mmd->domain;
+  if (!mds) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: invalid domain");
     return OPERATOR_CANCELLED;
   }
 
   /* Cannot free data if other bakes currently working */
-  if (smd->domain->cache_flag & (FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKING_NOISE |
+  if (mmd->domain->cache_flag & (FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKING_NOISE |
                                  FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKING_PARTICLES)) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: pending bake jobs found");
     return OPERATOR_CANCELLED;
@@ -648,7 +609,7 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
   job->scene = scene;
   job->depsgraph = CTX_data_depsgraph(C);
   job->ob = ob;
-  job->smd = smd;
+  job->mmd = mmd;
   job->type = op->type->idname;
   job->name = op->type->name;
 
@@ -675,20 +636,20 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
 
 static int fluid_manta_pause_exec(struct bContext *C, struct wmOperator *op)
 {
-  SmokeModifierData *smd = NULL;
-  SmokeDomainSettings *sds;
+  MantaModifierData *mmd = NULL;
+  MantaDomainSettings *mds;
   Object *ob = CTX_data_active_object(C);
 
   /*
    * Get modifier data
    */
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  if (!smd) {
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  if (!mmd) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
     return OPERATOR_CANCELLED;
   }
-  sds = smd->domain;
-  if (!sds) {
+  mds = mmd->domain;
+  if (!mds) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: invalid domain");
     return OPERATOR_CANCELLED;
   }

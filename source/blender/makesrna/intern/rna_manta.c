@@ -31,14 +31,14 @@
 #include "rna_internal.h"
 
 #include "BKE_modifier.h"
-#include "BKE_smoke.h"
+#include "BKE_manta.h"
 #include "BKE_pointcache.h"
 
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_particle_types.h"
 
 #include "WM_types.h"
@@ -55,11 +55,9 @@
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-#  ifdef WITH_MANTA
-#    include "manta_fluid_API.h"
-#  endif
+#  include "manta_fluid_API.h"
 
-static void rna_Smoke_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
   DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 
@@ -68,42 +66,42 @@ static void rna_Smoke_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerR
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 }
 
-static void rna_Smoke_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Manta_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  rna_Smoke_update(bmain, scene, ptr);
+  rna_Manta_update(bmain, scene, ptr);
   DEG_relations_tag_update(bmain);
 }
 
-static void rna_Smoke_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-  if (settings->smd && settings->smd->domain)
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  if (settings->mmd && settings->mmd->domain)
     settings->point_cache[0]->flag |= PTCACHE_OUTDATED;
   DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
 }
-static void rna_Smoke_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
-  smokeModifier_reset(settings->smd);
-  rna_Smoke_resetCache(bmain, scene, ptr);
+  mantaModifier_reset(settings->mmd);
+  rna_Manta_resetCache(bmain, scene, ptr);
 
-  rna_Smoke_update(bmain, scene, ptr);
+  rna_Manta_update(bmain, scene, ptr);
 }
 
-static void rna_Smoke_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Manta_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
-  smokeModifier_reset(settings->smd);
+  mantaModifier_reset(settings->mmd);
 
-  if (settings->smd && settings->smd->domain)
-    settings->smd->domain->point_cache[0]->flag |= PTCACHE_OUTDATED;
+  if (settings->mmd && settings->mmd->domain)
+    settings->mmd->domain->point_cache[0]->flag |= PTCACHE_OUTDATED;
 
-  rna_Smoke_dependency_update(bmain, scene, ptr);
+  rna_Manta_dependency_update(bmain, scene, ptr);
 }
 
-static void rna_Smoke_parts_create(Main *bmain,
+static void rna_Manta_parts_create(Main *bmain,
                                    PointerRNA *ptr,
                                    char *pset_name,
                                    char *parts_name,
@@ -111,7 +109,7 @@ static void rna_Smoke_parts_create(Main *bmain,
                                    int psys_type)
 {
   Object *ob = (Object *)ptr->id.data;
-  ParticleSystemModifierData *psmd;
+  ParticleSystemModifierData *pmmd;
   ParticleSystem *psys;
   ParticleSettings *part;
 
@@ -129,26 +127,26 @@ static void rna_Smoke_parts_create(Main *bmain,
   BLI_addtail(&ob->particlesystem, psys);
 
   /* add modifier */
-  psmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
-  BLI_strncpy(psmd->modifier.name, psys_name, sizeof(psmd->modifier.name));
-  psmd->psys = psys;
-  BLI_addtail(&ob->modifiers, psmd);
-  modifier_unique_name(&ob->modifiers, (ModifierData *)psmd);
+  pmmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
+  BLI_strncpy(pmmd->modifier.name, psys_name, sizeof(pmmd->modifier.name));
+  pmmd->psys = psys;
+  BLI_addtail(&ob->modifiers, pmmd);
+  modifier_unique_name(&ob->modifiers, (ModifierData *)pmmd);
 }
 
-static void rna_Smoke_parts_delete(PointerRNA *ptr, int ptype)
+static void rna_Manta_parts_delete(PointerRNA *ptr, int ptype)
 {
   Object *ob = (Object *)ptr->id.data;
-  ParticleSystemModifierData *psmd;
+  ParticleSystemModifierData *pmmd;
   ParticleSystem *psys, *next_psys;
 
   for (psys = ob->particlesystem.first; psys; psys = next_psys) {
     next_psys = psys->next;
     if (psys->part->type == ptype) {
       /* clear modifier */
-      psmd = psys_get_modifier(ob, psys);
-      BLI_remlink(&ob->modifiers, psmd);
-      modifier_free((ModifierData *)psmd);
+      pmmd = psys_get_modifier(ob, psys);
+      BLI_remlink(&ob->modifiers, pmmd);
+      modifier_free((ModifierData *)pmmd);
 
       /* clear particle system */
       BLI_remlink(&ob->particlesystem, psys);
@@ -157,7 +155,7 @@ static void rna_Smoke_parts_delete(PointerRNA *ptr, int ptype)
   }
 }
 
-static bool rna_Smoke_parts_exists(PointerRNA *ptr, int ptype)
+static bool rna_Manta_parts_exists(PointerRNA *ptr, int ptype)
 {
   Object *ob = (Object *)ptr->id.data;
   ParticleSystem *psys;
@@ -169,12 +167,12 @@ static bool rna_Smoke_parts_exists(PointerRNA *ptr, int ptype)
   return false;
 }
 
-static void rna_Smoke_draw_type_update(Main *UNUSED(bmain),
+static void rna_Manta_draw_type_update(Main *UNUSED(bmain),
                                        Scene *UNUSED(scene),
                                        struct PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   /* Wireframe mode more convenient when particles present */
   if (settings->particle_type == 0) {
@@ -185,258 +183,258 @@ static void rna_Smoke_draw_type_update(Main *UNUSED(bmain),
   }
 }
 
-static void rna_Smoke_flip_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_flip_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeModifierData *smd;
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FLIP);
+  MantaModifierData *mmd;
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_FLIP);
 
   if (ob->type == OB_MESH && !exists) {
-    rna_Smoke_parts_create(bmain,
+    rna_Manta_parts_create(bmain,
                            ptr,
                            "FlipParticleSettings",
                            "FLIP Particles",
                            "FLIP Particle System",
                            PART_MANTA_FLIP);
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FLIP;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FLIP;
   }
   else {
-    rna_Smoke_parts_delete(ptr, PART_MANTA_FLIP);
-    rna_Smoke_resetCache(NULL, NULL, ptr);
+    rna_Manta_parts_delete(ptr, PART_MANTA_FLIP);
+    rna_Manta_resetCache(NULL, NULL, ptr);
 
-    smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FLIP;
+    mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FLIP;
   }
-  rna_Smoke_draw_type_update(NULL, NULL, ptr);
-  rna_Smoke_reset(NULL, NULL, ptr);
+  rna_Manta_draw_type_update(NULL, NULL, ptr);
+  rna_Manta_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_spray_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_spray_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeModifierData *smd;
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_SPRAY);
+  MantaModifierData *mmd;
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_SPRAY);
 
   if (ob->type == OB_MESH && !exists) {
-    rna_Smoke_parts_create(bmain,
+    rna_Manta_parts_create(bmain,
                            ptr,
                            "SprayParticleSettings",
                            "Spray Particles",
                            "Spray Particle System",
                            PART_MANTA_SPRAY);
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
   }
   else {
-    rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
-    rna_Smoke_resetCache(NULL, NULL, ptr);
+    rna_Manta_parts_delete(ptr, PART_MANTA_SPRAY);
+    rna_Manta_resetCache(NULL, NULL, ptr);
 
-    smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_SPRAY;
+    mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_SPRAY;
   }
-  rna_Smoke_draw_type_update(NULL, NULL, ptr);
-  rna_Smoke_reset(NULL, NULL, ptr);
+  rna_Manta_draw_type_update(NULL, NULL, ptr);
+  rna_Manta_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeModifierData *smd;
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_BUBBLE);
+  MantaModifierData *mmd;
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_BUBBLE);
 
   if (ob->type == OB_MESH && !exists) {
-    rna_Smoke_parts_create(bmain,
+    rna_Manta_parts_create(bmain,
                            ptr,
                            "BubbleParticleSettings",
                            "Bubble Particles",
                            "Bubble Particle System",
                            PART_MANTA_BUBBLE);
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
   }
   else {
-    rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
-    rna_Smoke_resetCache(NULL, NULL, ptr);
+    rna_Manta_parts_delete(ptr, PART_MANTA_BUBBLE);
+    rna_Manta_resetCache(NULL, NULL, ptr);
 
-    smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_BUBBLE;
+    mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_BUBBLE;
   }
-  rna_Smoke_draw_type_update(NULL, NULL, ptr);
-  rna_Smoke_reset(NULL, NULL, ptr);
+  rna_Manta_draw_type_update(NULL, NULL, ptr);
+  rna_Manta_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_foam_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_foam_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeModifierData *smd;
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_FOAM);
+  MantaModifierData *mmd;
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_FOAM);
 
   if (ob->type == OB_MESH && !exists) {
-    rna_Smoke_parts_create(bmain,
+    rna_Manta_parts_create(bmain,
                            ptr,
                            "FoamParticleSettings",
                            "Foam Particles",
                            "Foam Particle System",
                            PART_MANTA_FOAM);
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
   }
   else {
-    rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
-    rna_Smoke_resetCache(NULL, NULL, ptr);
+    rna_Manta_parts_delete(ptr, PART_MANTA_FOAM);
+    rna_Manta_resetCache(NULL, NULL, ptr);
 
-    smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FOAM;
+    mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FOAM;
   }
-  rna_Smoke_draw_type_update(NULL, NULL, ptr);
-  rna_Smoke_reset(NULL, NULL, ptr);
+  rna_Manta_draw_type_update(NULL, NULL, ptr);
+  rna_Manta_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeModifierData *smd;
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
-  bool exists = rna_Smoke_parts_exists(ptr, PART_MANTA_TRACER);
+  MantaModifierData *mmd;
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_TRACER);
 
   if (ob->type == OB_MESH && !exists) {
-    rna_Smoke_parts_create(bmain,
+    rna_Manta_parts_create(bmain,
                            ptr,
                            "TracerParticleSettings",
                            "Tracer Particles",
                            "Tracer Particle System",
                            PART_MANTA_TRACER);
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_TRACER;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_TRACER;
   }
   else {
-    rna_Smoke_parts_delete(ptr, PART_MANTA_TRACER);
-    rna_Smoke_resetCache(NULL, NULL, ptr);
+    rna_Manta_parts_delete(ptr, PART_MANTA_TRACER);
+    rna_Manta_resetCache(NULL, NULL, ptr);
 
-    smd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_TRACER;
+    mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_TRACER;
   }
-  rna_Smoke_draw_type_update(NULL, NULL, ptr);
-  rna_Smoke_reset(NULL, NULL, ptr);
+  rna_Manta_draw_type_update(NULL, NULL, ptr);
+  rna_Manta_reset(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_combined_export_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->id.data;
-  SmokeModifierData *smd;
-  smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+  MantaModifierData *mmd;
+  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
 
-  if (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_OFF) {
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+  if (mmd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_OFF) {
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
     // re-add each particle type if enabled
-    if ((smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) != 0) {
-      rna_Smoke_spray_parts_update(bmain, scene, ptr);
+    if ((mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) != 0) {
+      rna_Manta_spray_parts_update(bmain, scene, ptr);
     }
-    if ((smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) != 0) {
-      rna_Smoke_foam_parts_update(bmain, scene, ptr);
+    if ((mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) != 0) {
+      rna_Manta_foam_parts_update(bmain, scene, ptr);
     }
-    if ((smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) != 0) {
-      rna_Smoke_bubble_parts_update(bmain, scene, ptr);
+    if ((mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) != 0) {
+      rna_Manta_bubble_parts_update(bmain, scene, ptr);
     }
   }
-  else if (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM) {
-    if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM)))
-      rna_Smoke_parts_create(bmain,
+  else if (mmd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM) {
+    if (ob->type == OB_MESH && !rna_Manta_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM)))
+      rna_Manta_parts_create(bmain,
                              ptr,
                              "SprayFoamParticleSettings",
                              "Spray + Foam Particles",
                              "Spray + Foam Particle System",
                              (PART_MANTA_SPRAY | PART_MANTA_FOAM));
-    rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
-    rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, PART_MANTA_SPRAY);
+    rna_Manta_parts_delete(ptr, PART_MANTA_FOAM);
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
 
     // re-add bubbles if enabled
-    if ((smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) != 0) {
-      rna_Smoke_bubble_parts_update(bmain, scene, ptr);
+    if ((mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) != 0) {
+      rna_Manta_bubble_parts_update(bmain, scene, ptr);
     }
   }
-  else if (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE) {
+  else if (mmd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_SPRAY_BUBBLE) {
     if (ob->type == OB_MESH &&
-        !rna_Smoke_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE)))
-      rna_Smoke_parts_create(bmain,
+        !rna_Manta_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE)))
+      rna_Manta_parts_create(bmain,
                              ptr,
                              "SprayBubbleParticleSettings",
                              "Spray + Bubble Particles",
                              "Spray + Bubble Particle System",
                              (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
-    rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, PART_MANTA_SPRAY);
+    rna_Manta_parts_delete(ptr, PART_MANTA_BUBBLE);
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
 
     // re-add foam if enabled
-    if ((smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) != 0) {
-      rna_Smoke_foam_parts_update(bmain, scene, ptr);
+    if ((mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) != 0) {
+      rna_Manta_foam_parts_update(bmain, scene, ptr);
     }
   }
-  else if (smd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE) {
-    if (ob->type == OB_MESH && !rna_Smoke_parts_exists(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE)))
-      rna_Smoke_parts_create(bmain,
+  else if (mmd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_FOAM_BUBBLE) {
+    if (ob->type == OB_MESH && !rna_Manta_parts_exists(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE)))
+      rna_Manta_parts_create(bmain,
                              ptr,
                              "FoamBubbleParticleSettings",
                              "Foam + Bubble Particles",
                              "Foam + Bubble Particle System",
                              (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
-    rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, PART_MANTA_FOAM);
+    rna_Manta_parts_delete(ptr, PART_MANTA_BUBBLE);
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
 
     // re-add spray if enabled
-    if ((smd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) != 0) {
-      rna_Smoke_spray_parts_update(bmain, scene, ptr);
+    if ((mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) != 0) {
+      rna_Manta_spray_parts_update(bmain, scene, ptr);
     }
   }
-  else if (smd->domain->sndparticle_combined_export ==
+  else if (mmd->domain->sndparticle_combined_export ==
            SNDPARTICLE_COMBINED_EXPORT_SPRAY_FOAM_BUBBLE) {
     if (ob->type == OB_MESH &&
-        !rna_Smoke_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE)))
-      rna_Smoke_parts_create(bmain,
+        !rna_Manta_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE)))
+      rna_Manta_parts_create(bmain,
                              ptr,
                              "SprayFoamBubbleParticleSettings",
                              "Spray + Foam + Bubble Particles",
                              "Spray + Foam + Bubble Particle System",
                              (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, PART_MANTA_SPRAY);
-    rna_Smoke_parts_delete(ptr, PART_MANTA_FOAM);
-    rna_Smoke_parts_delete(ptr, PART_MANTA_BUBBLE);
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
-    rna_Smoke_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, PART_MANTA_SPRAY);
+    rna_Manta_parts_delete(ptr, PART_MANTA_FOAM);
+    rna_Manta_parts_delete(ptr, PART_MANTA_BUBBLE);
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
+    rna_Manta_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
-    smd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
+    mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
   }
   else {
     // sanity check, should not occur
     printf("ERROR: Unexpected combined export setting encountered!");
   }
-  rna_Smoke_resetCache(NULL, NULL, ptr);
-  rna_Smoke_draw_type_update(NULL, NULL, ptr);
+  rna_Manta_resetCache(NULL, NULL, ptr);
+  rna_Manta_draw_type_update(NULL, NULL, ptr);
 }
 
-static void rna_Smoke_cachetype_mesh_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_cachetype_mesh_set(struct PointerRNA *ptr, int value)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   if (value != settings->cache_mesh_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -444,9 +442,9 @@ static void rna_Smoke_cachetype_mesh_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Smoke_cachetype_data_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_cachetype_data_set(struct PointerRNA *ptr, int value)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   if (value != settings->cache_data_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -454,9 +452,9 @@ static void rna_Smoke_cachetype_data_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Smoke_cachetype_particle_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_cachetype_particle_set(struct PointerRNA *ptr, int value)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   if (value != settings->cache_particle_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -464,9 +462,9 @@ static void rna_Smoke_cachetype_particle_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Smoke_cachetype_noise_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_cachetype_noise_set(struct PointerRNA *ptr, int value)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   if (value != settings->cache_noise_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -474,29 +472,29 @@ static void rna_Smoke_cachetype_noise_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static void rna_Smoke_guiding_parent_set(struct PointerRNA *ptr,
+static void rna_Manta_guiding_parent_set(struct PointerRNA *ptr,
                                          struct PointerRNA value,
                                          struct ReportList *UNUSED(reports))
 {
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   Object *par = (Object *)value.data;
 
-  SmokeModifierData *smd_par = NULL;
+  MantaModifierData *mmd_par = NULL;
 
   if (par != NULL) {
-    smd_par = (SmokeModifierData *)modifiers_findByType(par, eModifierType_Smoke);
-    if (smd_par && smd_par->domain) {
-      sds->guiding_parent = value.data;
-      sds->guide_res = smd_par->domain->res;
+    mmd_par = (MantaModifierData *)modifiers_findByType(par, eModifierType_Manta);
+    if (mmd_par && mmd_par->domain) {
+      mds->guiding_parent = value.data;
+      mds->guide_res = mmd_par->domain->res;
     }
   }
   else {
-    sds->guiding_parent = NULL;
-    sds->guide_res = NULL;
+    mds->guiding_parent = NULL;
+    mds->guide_res = NULL;
   }
 }
 
-static const EnumPropertyItem *rna_Smoke_cachetype_mesh_itemf(bContext *UNUSED(C),
+static const EnumPropertyItem *rna_Manta_cachetype_mesh_itemf(bContext *UNUSED(C),
                                                               PointerRNA *UNUSED(ptr),
                                                               PropertyRNA *UNUSED(prop),
                                                               bool *r_free)
@@ -523,7 +521,7 @@ static const EnumPropertyItem *rna_Smoke_cachetype_mesh_itemf(bContext *UNUSED(C
   return item;
 }
 
-static const EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(bContext *UNUSED(C),
+static const EnumPropertyItem *rna_Manta_cachetype_volume_itemf(bContext *UNUSED(C),
                                                                 PointerRNA *UNUSED(ptr),
                                                                 PropertyRNA *UNUSED(prop),
                                                                 bool *r_free)
@@ -558,7 +556,7 @@ static const EnumPropertyItem *rna_Smoke_cachetype_volume_itemf(bContext *UNUSED
   return item;
 }
 
-static const EnumPropertyItem *rna_Smoke_cachetype_particle_itemf(bContext *UNUSED(C),
+static const EnumPropertyItem *rna_Manta_cachetype_particle_itemf(bContext *UNUSED(C),
                                                                   PointerRNA *UNUSED(ptr),
                                                                   PropertyRNA *UNUSED(prop),
                                                                   bool *r_free)
@@ -579,9 +577,9 @@ static const EnumPropertyItem *rna_Smoke_cachetype_particle_itemf(bContext *UNUS
   return item;
 }
 
-static void rna_Smoke_collisionextents_set(struct PointerRNA *ptr, int value, bool clear)
+static void rna_Manta_collisionextents_set(struct PointerRNA *ptr, int value, bool clear)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
   if (clear) {
     settings->border_collisions &= value;
   }
@@ -590,9 +588,9 @@ static void rna_Smoke_collisionextents_set(struct PointerRNA *ptr, int value, bo
   }
 }
 
-static void rna_Smoke_cache_directory_set(struct PointerRNA *ptr, const char *value)
+static void rna_Manta_cache_directory_set(struct PointerRNA *ptr, const char *value)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   if (STREQ(settings->cache_directory, value)) {
     return;
@@ -604,37 +602,37 @@ static void rna_Smoke_cache_directory_set(struct PointerRNA *ptr, const char *va
   //settings->cache_flag = 0;
 }
 
-static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_domaintype_set(struct PointerRNA *ptr, int value)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
   Object *ob = (Object *)ptr->id.data;
 
   if (value != settings->type) {
     /* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
     if (value == FLUID_DOMAIN_TYPE_GAS) {
-      rna_Smoke_cachetype_mesh_set(ptr, FLUID_DOMAIN_FILE_BIN_OBJECT);
-      rna_Smoke_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
-      rna_Smoke_cachetype_particle_set(ptr, FLUID_DOMAIN_FILE_UNI);
-      rna_Smoke_cachetype_noise_set(ptr, FLUID_DOMAIN_FILE_UNI);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_FRONT, 1);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BACK, 1);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_RIGHT, 1);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_LEFT, 1);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_TOP, 1);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BOTTOM, 1);
+      rna_Manta_cachetype_mesh_set(ptr, FLUID_DOMAIN_FILE_BIN_OBJECT);
+      rna_Manta_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
+      rna_Manta_cachetype_particle_set(ptr, FLUID_DOMAIN_FILE_UNI);
+      rna_Manta_cachetype_noise_set(ptr, FLUID_DOMAIN_FILE_UNI);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_FRONT, 1);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BACK, 1);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_RIGHT, 1);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_LEFT, 1);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_TOP, 1);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BOTTOM, 1);
       ob->dt = OB_WIRE;
     }
     else if (value == FLUID_DOMAIN_TYPE_LIQUID) {
-      rna_Smoke_cachetype_mesh_set(ptr, FLUID_DOMAIN_FILE_BIN_OBJECT);
-      rna_Smoke_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
-      rna_Smoke_cachetype_particle_set(ptr, FLUID_DOMAIN_FILE_UNI);
-      rna_Smoke_cachetype_noise_set(ptr, FLUID_DOMAIN_FILE_UNI);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_FRONT, 0);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BACK, 0);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_RIGHT, 0);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_LEFT, 0);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_TOP, 0);
-      rna_Smoke_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BOTTOM, 0);
+      rna_Manta_cachetype_mesh_set(ptr, FLUID_DOMAIN_FILE_BIN_OBJECT);
+      rna_Manta_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
+      rna_Manta_cachetype_particle_set(ptr, FLUID_DOMAIN_FILE_UNI);
+      rna_Manta_cachetype_noise_set(ptr, FLUID_DOMAIN_FILE_UNI);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_FRONT, 0);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BACK, 0);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_RIGHT, 0);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_LEFT, 0);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_TOP, 0);
+      rna_Manta_collisionextents_set(ptr, FLUID_DOMAIN_BORDER_BOTTOM, 0);
       ob->dt = OB_SOLID;
     }
 
@@ -643,160 +641,140 @@ static void rna_Smoke_domaintype_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static char *rna_SmokeDomainSettings_path(PointerRNA *ptr)
+static char *rna_MantaDomainSettings_path(PointerRNA *ptr)
 {
-  SmokeDomainSettings *settings = (SmokeDomainSettings *)ptr->data;
-  ModifierData *md = (ModifierData *)settings->smd;
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
   BLI_strescape(name_esc, md->name, sizeof(name_esc));
   return BLI_sprintfN("modifiers[\"%s\"].domain_settings", name_esc);
 }
 
-static char *rna_SmokeFlowSettings_path(PointerRNA *ptr)
+static char *rna_MantaFlowSettings_path(PointerRNA *ptr)
 {
-  SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
-  ModifierData *md = (ModifierData *)settings->smd;
+  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
+  ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
   BLI_strescape(name_esc, md->name, sizeof(name_esc));
   return BLI_sprintfN("modifiers[\"%s\"].flow_settings", name_esc);
 }
 
-static char *rna_SmokeCollSettings_path(PointerRNA *ptr)
+static char *rna_MantaCollSettings_path(PointerRNA *ptr)
 {
-  SmokeCollSettings *settings = (SmokeCollSettings *)ptr->data;
-  ModifierData *md = (ModifierData *)settings->smd;
+  MantaCollSettings *settings = (MantaCollSettings *)ptr->data;
+  ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
   BLI_strescape(name_esc, md->name, sizeof(name_esc));
   return BLI_sprintfN("modifiers[\"%s\"].effec_settings", name_esc);
 }
 
-static int rna_SmokeModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
+static int rna_MantaModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   float *density = NULL;
   int size = 0;
 
-  if (sds->flags & FLUID_DOMAIN_USE_NOISE && sds->fluid) {
+  if (mds->flags & FLUID_DOMAIN_USE_NOISE && mds->fluid) {
     /* high resolution smoke */
     int res[3];
 
-    smoke_turbulence_get_res(sds->fluid, res);
+    manta_smoke_turbulence_get_res(mds->fluid, res);
     size = res[0] * res[1] * res[2];
 
-    density = smoke_turbulence_get_density(sds->fluid);
+    density = manta_smoke_turbulence_get_density(mds->fluid);
   }
-  else if (sds->fluid) {
+  else if (mds->fluid) {
     /* regular resolution */
-    size = sds->res[0] * sds->res[1] * sds->res[2];
-    density = smoke_get_density(sds->fluid);
+    size = mds->res[0] * mds->res[1] * mds->res[2];
+    density = manta_smoke_get_density(mds->fluid);
   }
 
   length[0] = (density) ? size : 0;
-#  else
-  (void)ptr;
-  length[0] = 0;
-#  endif
   return length[0];
 }
 
-static int rna_SmokeModifier_color_grid_get_length(PointerRNA *ptr,
+static int rna_MantaModifier_color_grid_get_length(PointerRNA *ptr,
                                                    int length[RNA_MAX_ARRAY_DIMENSION])
 {
-  rna_SmokeModifier_grid_get_length(ptr, length);
+  rna_MantaModifier_grid_get_length(ptr, length);
 
   length[0] *= 4;
   return length[0];
 }
 
-static int rna_SmokeModifier_velocity_grid_get_length(PointerRNA *ptr,
+static int rna_MantaModifier_velocity_grid_get_length(PointerRNA *ptr,
                                                       int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   float *vx = NULL;
   float *vy = NULL;
   float *vz = NULL;
   int size = 0;
 
   /* Velocity data is always low-resolution. */
-  if (sds->fluid) {
-    size = 3 * sds->res[0] * sds->res[1] * sds->res[2];
-    vx = fluid_get_velocity_x(sds->fluid);
-    vy = fluid_get_velocity_y(sds->fluid);
-    vz = fluid_get_velocity_z(sds->fluid);
+  if (mds->fluid) {
+    size = 3 * mds->res[0] * mds->res[1] * mds->res[2];
+    vx = manta_get_velocity_x(mds->fluid);
+    vy = manta_get_velocity_y(mds->fluid);
+    vz = manta_get_velocity_z(mds->fluid);
   }
 
   length[0] = (vx && vy && vz) ? size : 0;
-#  else
-  (void)ptr;
-  length[0] = 0;
-#  endif
   return length[0];
 }
 
-static int rna_SmokeModifier_heat_grid_get_length(PointerRNA *ptr,
+static int rna_MantaModifier_heat_grid_get_length(PointerRNA *ptr,
                                                   int length[RNA_MAX_ARRAY_DIMENSION])
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   float *heat = NULL;
   int size = 0;
 
   /* Heat data is always low-resolution. */
-  if (sds->fluid) {
-    size = sds->res[0] * sds->res[1] * sds->res[2];
-    heat = smoke_get_heat(sds->fluid);
+  if (mds->fluid) {
+    size = mds->res[0] * mds->res[1] * mds->res[2];
+    heat = manta_smoke_get_heat(mds->fluid);
   }
 
   length[0] = (heat) ? size : 0;
-#  else
-  (void)ptr;
-  length[0] = 0;
-#  endif
   return length[0];
 }
 
-static void rna_SmokeModifier_density_grid_get(PointerRNA *ptr, float *values)
+static void rna_MantaModifier_density_grid_get(PointerRNA *ptr, float *values)
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_SmokeModifier_grid_get_length(ptr, length);
+  int size = rna_MantaModifier_grid_get_length(ptr, length);
   float *density;
 
-  BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
+  BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
-  if (sds->flags & FLUID_DOMAIN_USE_NOISE && sds->fluid)
-    density = smoke_turbulence_get_density(sds->fluid);
+  if (mds->flags & FLUID_DOMAIN_USE_NOISE && mds->fluid)
+    density = manta_smoke_turbulence_get_density(mds->fluid);
   else
-    density = smoke_get_density(sds->fluid);
+    density = manta_smoke_get_density(mds->fluid);
 
   memcpy(values, density, size * sizeof(float));
 
-  BLI_rw_mutex_unlock(sds->fluid_mutex);
-#  else
-  UNUSED_VARS(ptr, values);
-#  endif
+  BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_SmokeModifier_velocity_grid_get(PointerRNA *ptr, float *values)
+static void rna_MantaModifier_velocity_grid_get(PointerRNA *ptr, float *values)
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_SmokeModifier_velocity_grid_get_length(ptr, length);
+  int size = rna_MantaModifier_velocity_grid_get_length(ptr, length);
   float *vx, *vy, *vz;
   int i;
 
-  BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
+  BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
-  vx = fluid_get_velocity_x(sds->fluid);
-  vy = fluid_get_velocity_y(sds->fluid);
-  vz = fluid_get_velocity_z(sds->fluid);
+  vx = manta_get_velocity_x(mds->fluid);
+  vy = manta_get_velocity_y(mds->fluid);
+  vz = manta_get_velocity_z(mds->fluid);
 
   for (i = 0; i < size; i += 3) {
     *(values++) = *(vx++);
@@ -804,82 +782,70 @@ static void rna_SmokeModifier_velocity_grid_get(PointerRNA *ptr, float *values)
     *(values++) = *(vz++);
   }
 
-  BLI_rw_mutex_unlock(sds->fluid_mutex);
-#  else
-  UNUSED_VARS(ptr, values);
-#  endif
+  BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_SmokeModifier_color_grid_get(PointerRNA *ptr, float *values)
+static void rna_MantaModifier_color_grid_get(PointerRNA *ptr, float *values)
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_SmokeModifier_grid_get_length(ptr, length);
+  int size = rna_MantaModifier_grid_get_length(ptr, length);
 
-  BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
+  BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
-  if (!sds->fluid) {
+  if (!mds->fluid) {
     memset(values, 0, size * sizeof(float));
   }
   else {
-    if (sds->flags & FLUID_DOMAIN_USE_NOISE) {
-      if (smoke_turbulence_has_colors(sds->fluid))
-        smoke_turbulence_get_rgba(sds->fluid, values, 0);
+    if (mds->flags & FLUID_DOMAIN_USE_NOISE) {
+      if (manta_smoke_turbulence_has_colors(mds->fluid))
+        manta_smoke_turbulence_get_rgba(mds->fluid, values, 0);
       else
-        smoke_turbulence_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+        manta_smoke_turbulence_get_rgba_from_density(mds->fluid, mds->active_color, values, 0);
     }
     else {
-      if (smoke_has_colors(sds->fluid))
-        smoke_get_rgba(sds->fluid, values, 0);
+      if (manta_smoke_has_colors(mds->fluid))
+        manta_smoke_get_rgba(mds->fluid, values, 0);
       else
-        smoke_get_rgba_from_density(sds->fluid, sds->active_color, values, 0);
+        manta_smoke_get_rgba_from_density(mds->fluid, mds->active_color, values, 0);
     }
   }
 
-  BLI_rw_mutex_unlock(sds->fluid_mutex);
-#  else
-  UNUSED_VARS(ptr, values);
-#  endif
+  BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_SmokeModifier_flame_grid_get(PointerRNA *ptr, float *values)
+static void rna_MantaModifier_flame_grid_get(PointerRNA *ptr, float *values)
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_SmokeModifier_grid_get_length(ptr, length);
+  int size = rna_MantaModifier_grid_get_length(ptr, length);
   float *flame;
 
-  BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
+  BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
-  if (sds->flags & FLUID_DOMAIN_USE_NOISE && sds->fluid)
-    flame = smoke_turbulence_get_flame(sds->fluid);
+  if (mds->flags & FLUID_DOMAIN_USE_NOISE && mds->fluid)
+    flame = manta_smoke_turbulence_get_flame(mds->fluid);
   else
-    flame = smoke_get_flame(sds->fluid);
+    flame = manta_smoke_get_flame(mds->fluid);
 
   if (flame)
     memcpy(values, flame, size * sizeof(float));
   else
     memset(values, 0, size * sizeof(float));
 
-  BLI_rw_mutex_unlock(sds->fluid_mutex);
-#  else
-  UNUSED_VARS(ptr, values);
-#  endif
+  BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_SmokeModifier_heat_grid_get(PointerRNA *ptr, float *values)
+static void rna_MantaModifier_heat_grid_get(PointerRNA *ptr, float *values)
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_SmokeModifier_heat_grid_get_length(ptr, length);
+  int size = rna_MantaModifier_heat_grid_get_length(ptr, length);
   float *heat;
 
-  BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
+  BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
-  heat = smoke_get_heat(sds->fluid);
+  heat = manta_smoke_get_heat(mds->fluid);
 
   if (heat != NULL) {
     /* scale heat values from -2.0-2.0 to -1.0-1.0. */
@@ -891,33 +857,29 @@ static void rna_SmokeModifier_heat_grid_get(PointerRNA *ptr, float *values)
     memset(values, 0, size * sizeof(float));
   }
 
-  BLI_rw_mutex_unlock(sds->fluid_mutex);
-#  else
-  UNUSED_VARS(ptr, values);
-#  endif
+  BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_SmokeModifier_temperature_grid_get(PointerRNA *ptr, float *values)
+static void rna_MantaModifier_temperature_grid_get(PointerRNA *ptr, float *values)
 {
-#  ifdef WITH_MANTA
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_SmokeModifier_grid_get_length(ptr, length);
+  int size = rna_MantaModifier_grid_get_length(ptr, length);
   float *flame;
 
-  BLI_rw_mutex_lock(sds->fluid_mutex, THREAD_LOCK_READ);
+  BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
-  if (sds->flags & FLUID_DOMAIN_USE_NOISE && sds->fluid) {
-    flame = smoke_turbulence_get_flame(sds->fluid);
+  if (mds->flags & FLUID_DOMAIN_USE_NOISE && mds->fluid) {
+    flame = manta_smoke_turbulence_get_flame(mds->fluid);
   }
   else {
-    flame = smoke_get_flame(sds->fluid);
+    flame = manta_smoke_get_flame(mds->fluid);
   }
 
   if (flame) {
     /* Output is such that 0..1 maps to 0..1000K */
-    float offset = sds->flame_ignition;
-    float scale = sds->flame_max_temp - sds->flame_ignition;
+    float offset = mds->flame_ignition;
+    float scale = mds->flame_max_temp - mds->flame_ignition;
 
     for (int i = 0; i < size; i++) {
       values[i] = (flame[i] > 0.01f) ? offset + flame[i] * scale : 0.0f;
@@ -927,62 +889,59 @@ static void rna_SmokeModifier_temperature_grid_get(PointerRNA *ptr, float *value
     memset(values, 0, size * sizeof(float));
   }
 
-  BLI_rw_mutex_unlock(sds->fluid_mutex);
-#  else
-  UNUSED_VARS(ptr, values);
-#  endif
+  BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_SmokeFlow_density_vgroup_get(PointerRNA *ptr, char *value)
+static void rna_MantaFlow_density_vgroup_get(PointerRNA *ptr, char *value)
 {
-  SmokeFlowSettings *flow = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
   rna_object_vgroup_name_index_get(ptr, value, flow->vgroup_density);
 }
 
-static int rna_SmokeFlow_density_vgroup_length(PointerRNA *ptr)
+static int rna_MantaFlow_density_vgroup_length(PointerRNA *ptr)
 {
-  SmokeFlowSettings *flow = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
   return rna_object_vgroup_name_index_length(ptr, flow->vgroup_density);
 }
 
-static void rna_SmokeFlow_density_vgroup_set(struct PointerRNA *ptr, const char *value)
+static void rna_MantaFlow_density_vgroup_set(struct PointerRNA *ptr, const char *value)
 {
-  SmokeFlowSettings *flow = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
   rna_object_vgroup_name_index_set(ptr, value, &flow->vgroup_density);
 }
 
-static void rna_SmokeFlow_uvlayer_set(struct PointerRNA *ptr, const char *value)
+static void rna_MantaFlow_uvlayer_set(struct PointerRNA *ptr, const char *value)
 {
-  SmokeFlowSettings *flow = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
   rna_object_uvlayer_name_set(ptr, value, flow->uvlayer_name, sizeof(flow->uvlayer_name));
 }
 
-static void rna_Smoke_use_color_ramp_set(struct PointerRNA *ptr, bool value)
+static void rna_Manta_use_color_ramp_set(struct PointerRNA *ptr, bool value)
 {
-  SmokeDomainSettings *sds = (SmokeDomainSettings *)ptr->data;
+  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
 
-  sds->use_coba = value;
+  mds->use_coba = value;
 
-  if (value && sds->coba == NULL) {
-    sds->coba = BKE_colorband_add(false);
+  if (value && mds->coba == NULL) {
+    mds->coba = BKE_colorband_add(false);
   }
 }
 
-static void rna_Smoke_flowsource_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_flowsource_set(struct PointerRNA *ptr, int value)
 {
-  SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
 
   if (value != settings->source) {
     settings->source = value;
   }
 }
 
-static const EnumPropertyItem *rna_Smoke_flowsource_itemf(bContext *UNUSED(C),
+static const EnumPropertyItem *rna_Manta_flowsource_itemf(bContext *UNUSED(C),
                                                           PointerRNA *ptr,
                                                           PropertyRNA *UNUSED(prop),
                                                           bool *r_free)
 {
-  SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
 
   EnumPropertyItem *item = NULL;
   EnumPropertyItem tmp = {0, "", 0, "", ""};
@@ -1010,16 +969,16 @@ static const EnumPropertyItem *rna_Smoke_flowsource_itemf(bContext *UNUSED(C),
   return item;
 }
 
-static void rna_Smoke_flowtype_set(struct PointerRNA *ptr, int value)
+static void rna_Manta_flowtype_set(struct PointerRNA *ptr, int value)
 {
-  SmokeFlowSettings *settings = (SmokeFlowSettings *)ptr->data;
+  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
 
   if (value != settings->type) {
     settings->type = value;
 
     /* Force flow source to mesh */
     if (value == FLUID_FLOW_TYPE_LIQUID) {
-      rna_Smoke_flowsource_set(ptr, FLUID_FLOW_SOURCE_MESH);
+      rna_Manta_flowsource_set(ptr, FLUID_FLOW_SOURCE_MESH);
       settings->surface_distance = 0.5f;
     }
     else {
@@ -1030,12 +989,12 @@ static void rna_Smoke_flowtype_set(struct PointerRNA *ptr, int value)
 
 #else
 
-static void rna_def_smoke_mesh_vertices(BlenderRNA *brna)
+static void rna_def_manta_mesh_vertices(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "SmokeVertexVelocity", NULL);
+  srna = RNA_def_struct(brna, "MantaVertexVelocity", NULL);
   RNA_def_struct_ui_text(srna, "Fluid Mesh Velocity", "Velocity of a simulated fluid mesh");
   RNA_def_struct_ui_icon(srna, ICON_VERTEXSEL);
 
@@ -1046,12 +1005,12 @@ static void rna_def_smoke_mesh_vertices(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
-static void rna_def_smoke_domain_settings(BlenderRNA *brna)
+static void rna_def_manta_domain_settings(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static EnumPropertyItem smoke_domain_types[] = {
+  static EnumPropertyItem domain_types[] = {
       {FLUID_DOMAIN_TYPE_GAS, "GAS", 0, "Gas", "Create domain for gases"},
       {FLUID_DOMAIN_TYPE_LIQUID, "LIQUID", 0, "Liquid", "Create domain for liquids"},
       {0, NULL, 0, NULL, NULL}};
@@ -1073,7 +1032,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       {VDB_COMPRESSION_NONE, "NONE", 0, "None", "Do not use any compression"},
       {0, NULL, 0, NULL, NULL}};
 
-  static const EnumPropertyItem smoke_cache_comp_items[] = {
+  static const EnumPropertyItem cache_comp_items[] = {
       {SM_CACHE_LIGHT, "CACHELIGHT", 0, "Lite", "Fast but not so effective compression"},
       {SM_CACHE_HEAVY, "CACHEHEAVY", 0, "Heavy", "Effective but slow compression"},
       {0, NULL, 0, NULL, NULL},
@@ -1129,7 +1088,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem smoke_view_items[] = {
+  static const EnumPropertyItem view_items[] = {
       {FLUID_DOMAIN_SLICE_VIEW_ALIGNED,
        "VIEW_ALIGNED",
        0,
@@ -1218,10 +1177,10 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
        "Create one particle system that contains all three secondary particle types"},
       {0, NULL, 0, NULL, NULL}};
 
-  srna = RNA_def_struct(brna, "SmokeDomainSettings", NULL);
-  RNA_def_struct_ui_text(srna, "Domain Settings", "Smoke domain settings");
-  RNA_def_struct_sdna(srna, "SmokeDomainSettings");
-  RNA_def_struct_path_func(srna, "rna_SmokeDomainSettings_path");
+  srna = RNA_def_struct(brna, "MantaDomainSettings", NULL);
+  RNA_def_struct_ui_text(srna, "Domain Settings", "Fluid domain settings");
+  RNA_def_struct_sdna(srna, "MantaDomainSettings");
+  RNA_def_struct_path_func(srna, "rna_MantaDomainSettings_path");
 
   prop = RNA_def_property(srna, "effector_weights", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "EffectorWeights");
@@ -1235,21 +1194,21 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "Collection");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Collision Collection", "Limit collisions to this collection");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset_dependency");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset_dependency");
 
   prop = RNA_def_property(srna, "fluid_group", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "fluid_group");
   RNA_def_property_struct_type(prop, "Collection");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Fluid Collection", "Limit fluid objects to this collection");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset_dependency");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset_dependency");
 
   prop = RNA_def_property(srna, "effector_collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "eff_group");
   RNA_def_property_struct_type(prop, "Collection");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Effector Collection", "Limit effectors to this collection");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset_dependency");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset_dependency");
 
   /* grid access */
 
@@ -1257,48 +1216,48 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_SmokeModifier_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_SmokeModifier_density_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_MantaModifier_density_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Density Grid", "Smoke density grid");
 
   prop = RNA_def_property(srna, "velocity_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_SmokeModifier_velocity_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_SmokeModifier_velocity_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_velocity_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_MantaModifier_velocity_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Velocity Grid", "Smoke velocity grid");
 
   prop = RNA_def_property(srna, "flame_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_SmokeModifier_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_SmokeModifier_flame_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_MantaModifier_flame_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Flame Grid", "Smoke flame grid");
 
   prop = RNA_def_property(srna, "color_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_SmokeModifier_color_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_SmokeModifier_color_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_color_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_MantaModifier_color_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Color Grid", "Smoke color grid");
 
   prop = RNA_def_property(srna, "heat_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_SmokeModifier_heat_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_SmokeModifier_heat_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_heat_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_MantaModifier_heat_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Heat Grid", "Smoke heat grid");
 
   prop = RNA_def_property(srna, "temperature_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_SmokeModifier_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_SmokeModifier_temperature_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_MantaModifier_temperature_grid_get", NULL, NULL);
   RNA_def_property_ui_text(
       prop, "Temperature Grid", "Smoke temperature grid, range 0..1 represents 0..1000K");
 
@@ -1333,27 +1292,27 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "adapt_res");
   RNA_def_property_range(prop, 0, 512);
   RNA_def_property_ui_text(prop, "Additional", "Maximum number of additional cells");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "adapt_margin", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "adapt_margin");
   RNA_def_property_range(prop, 2, 24);
   RNA_def_property_ui_text(
       prop, "Margin", "Margin added around fluid to minimize boundary interference");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "adapt_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.01, 0.5);
   RNA_def_property_ui_text(
       prop, "Threshold", "Maximum amount of fluid cell can contain before it is considered empty");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "use_adaptive_domain", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN);
   RNA_def_property_ui_text(
       prop, "Adaptive Domain", "Adapt simulation resolution and size to fluid");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /* fluid domain options */
 
@@ -1363,51 +1322,51 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 24, 10000, 2, -1);
   RNA_def_property_ui_text(prop, "Max Res", "Resolution used for the fluid domain");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_front", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_FRONT);
   RNA_def_property_ui_text(prop, "Front", "Enable collisons with front domain border");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_back", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_BACK);
   RNA_def_property_ui_text(prop, "Back", "Enable collisons with back domain border");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_right", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_RIGHT);
   RNA_def_property_ui_text(prop, "Right", "Enable collisons with right domain border");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_left", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_LEFT);
   RNA_def_property_ui_text(prop, "Left", "Enable collisons with left domain border");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_top", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_TOP);
   RNA_def_property_ui_text(prop, "Top", "Enable collisons with top domain border");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_bottom", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_BOTTOM);
   RNA_def_property_ui_text(prop, "Bottom", "Enable collisons with bottom domain border");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "gravity", PROP_FLOAT, PROP_ACCELERATION);
   RNA_def_property_float_sdna(prop, NULL, "gravity");
   RNA_def_property_array(prop, 3);
   RNA_def_property_range(prop, -1000.1, 1000.1);
   RNA_def_property_ui_text(prop, "Gravity", "Gravity in X, Y and Z direction");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
-  prop = RNA_def_property(srna, "smoke_domain_type", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "domain_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
-  RNA_def_property_enum_items(prop, smoke_domain_types);
-  RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_domaintype_set", NULL);
+  RNA_def_property_enum_items(prop, domain_types);
+  RNA_def_property_enum_funcs(prop, NULL, "rna_Manta_domaintype_set", NULL);
   RNA_def_property_ui_text(prop, "Domain Type", "Change domain type of the simulation");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_reset");
 
   /* smoke domain options */
 
@@ -1419,7 +1378,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Density",
       "How much density affects smoke motion (higher value results in faster rising smoke)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "beta", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "beta");
@@ -1429,35 +1388,35 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Heat",
       "How much heat affects smoke motion (higher value results in faster rising smoke)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "dissolve_speed", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "diss_speed");
   RNA_def_property_range(prop, 1.0, 10000.0);
   RNA_def_property_ui_range(prop, 1.0, 10000.0, 1, -1);
   RNA_def_property_ui_text(prop, "Dissolve Speed", "Dissolve Speed");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "vorticity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "vorticity");
   RNA_def_property_range(prop, 0.0, 4.0);
   RNA_def_property_ui_text(prop, "Vorticity", "Amount of turbulence/rotation in fluid");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "highres_sampling", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, smoke_highres_sampling_items);
   RNA_def_property_ui_text(prop, "Emitter", "Method for sampling the high resolution flow");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "use_dissolve_smoke", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_DISSOLVE);
   RNA_def_property_ui_text(prop, "Dissolve Smoke", "Enable smoke to disappear over time");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "use_dissolve_smoke_log", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_DISSOLVE_LOG);
   RNA_def_property_ui_text(prop, "Logarithmic dissolve", "Using 1/x ");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   /* flame options */
 
@@ -1466,36 +1425,36 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.01, 2.0, 1.0, 5);
   RNA_def_property_ui_text(
       prop, "Speed", "Speed of the burning reaction (use larger values for smaller flame)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "flame_smoke", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 8.0);
   RNA_def_property_ui_range(prop, 0.0, 4.0, 1.0, 5);
   RNA_def_property_ui_text(prop, "Smoke", "Amount of smoke created by burning fuel");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "flame_vorticity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.0, 2.0);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
   RNA_def_property_ui_text(prop, "Vorticity", "Additional vorticity for the flames");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "flame_ignition", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.5, 5.0);
   RNA_def_property_ui_range(prop, 0.5, 2.5, 1.0, 5);
   RNA_def_property_ui_text(prop, "Ignition", "Minimum temperature of flames");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "flame_max_temp", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 1.0, 10.0);
   RNA_def_property_ui_range(prop, 1.0, 5.0, 1.0, 5);
   RNA_def_property_ui_text(prop, "Maximum", "Maximum temperature of flames");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "flame_smoke_color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Smoke Color", "Color of smoke emitted from burning fuel");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   /* noise options */
 
@@ -1504,14 +1463,14 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_range(prop, 0.0, 10.0, 1, 2);
   RNA_def_property_ui_text(prop, "Strength", "Strength of noise");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "noise_pos_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "noise_pos_scale");
   RNA_def_property_range(prop, 0.0001, 10.0);
   RNA_def_property_ui_text(
       prop, "Scale", "Scale of noise (higher value results in larger vortices)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "noise_time_anim", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "noise_time_anim");
@@ -1527,7 +1486,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Scale underlying noise grids by this factor. Noise grids have size "
                            "factor times base resolution");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "noise_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "noise_type");
@@ -1535,26 +1494,26 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Noise Method", "Noise method which is used for creating the high resolution");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_noise", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_NOISE);
   RNA_def_property_ui_text(prop, "Use Noise", "Enable fluid noise (using amplification)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /* liquid domain options */
 
   prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(prop, "Randomness", "Randomness factor for particle sampling");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_number", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 1, 5);
   RNA_def_property_ui_text(
       prop, "Number", "Particle number factor (higher value results in more particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_minimum", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 1000);
@@ -1562,7 +1521,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Minimum",
                            "Minimum number of particles per cell (ensures that each cell has at "
                            "least this amount of particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_maximum", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 1000);
@@ -1570,13 +1529,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Maximum",
                            "Maximum number of particles per cell (ensures that each cell has at "
                            "most this amount of particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_radius", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(
       prop, "Radius", "Particle radius factor (higher value results in larger particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_band_width", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -1584,13 +1543,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Width",
       "Particle (narrow) band width (higher value results in thicker band and more particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "use_flip_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_FLIP);
   RNA_def_property_ui_text(prop, "FLIP", "Create FLIP particle system");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, 0, "rna_Smoke_flip_parts_update");
+  RNA_def_property_update(prop, 0, "rna_Manta_flip_parts_update");
 
   /*  diffusion options */
 
@@ -1600,7 +1559,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Tension",
       "Surface tension of liquid (higher value results in greater hydrophobic behaviour)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "viscosity_base", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "viscosity_base");
@@ -1609,7 +1568,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Viscosity Base",
       "Viscosity setting: value that is multiplied by 10 to the power of (exponent*-1)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "viscosity_exponent", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "viscosity_exponent");
@@ -1619,12 +1578,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       "Viscosity Exponent",
       "Negative exponent for the viscosity value (to simplify entering small values "
       "e.g. 5*10^-6)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "domain_size", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.001, 10000.0);
   RNA_def_property_ui_text(prop, "Meters", "Domain size in meters (longest domain side)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /*  mesh options options */
 
@@ -1634,7 +1593,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Upper Concavity",
       "Upper mesh concavity bound (high values tend to smoothen and fill out concave regions)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "mesh_concave_lower", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
@@ -1642,17 +1601,17 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Lower Concavity",
       "Lower mesh concavity bound (high values tend to smoothen and fill out concave regions)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "mesh_smoothen_pos", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_text(prop, "Smoothen Pos", "Positive mesh smoothening");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "mesh_smoothen_neg", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_text(prop, "Smoothen Neg", "Negative mesh smoothening");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "mesh_scale", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "mesh_scale");
@@ -1663,27 +1622,27 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Scale underlying mesh grids by this factor. Mesh grids have size "
                            "factor times base resolution");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "mesh_generator", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "mesh_generator");
   RNA_def_property_enum_items(prop, fluid_mesh_quality_items);
   RNA_def_property_ui_text(prop, "Mesh generator", "Which particle levelset generator to use");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_update");
 
   prop = RNA_def_property(srna, "mesh_vertices", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "mesh_velocities", "totvert");
-  RNA_def_property_struct_type(prop, "SmokeVertexVelocity");
+  RNA_def_property_struct_type(prop, "MantaVertexVelocity");
   RNA_def_property_ui_text(
       prop, "Fluid Mesh Vertices", "Vertices of the fluid mesh generated by simulation");
 
-  rna_def_smoke_mesh_vertices(brna);
+  rna_def_manta_mesh_vertices(brna);
 
   prop = RNA_def_property(srna, "use_mesh", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_MESH);
   RNA_def_property_ui_text(prop, "Use Mesh", "Enable fluid mesh (using amplification)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_speed_vectors", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_SPEED_VECTORS);
@@ -1692,7 +1651,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       "Speed Vectors",
       "Generate speed vectors (will be loaded automatically during render for motion blur)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /*  secondary particles options */
 
@@ -1703,7 +1662,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "tauMin_wc",
                            "Lower clamping threshold for marking fluid cells as wave crests "
                            "(lower values result in more marked cells)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_tau_max_wc", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -1712,7 +1671,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "tauMax_wc",
                            "Upper clamping threshold for marking fluid cells as wave crests "
                            "(higher values result in less marked cells)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_tau_min_ta", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -1721,7 +1680,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "tauMin_ta",
                            "Lower clamping threshold for marking fluid cells where air is trapped "
                            "(lower values result in more marked cells)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_tau_max_ta", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -1730,7 +1689,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "tauMax_ta",
                            "Upper clamping threshold for marking fluid cells where air is trapped "
                            "(higher values result in less marked cells)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_tau_min_k", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -1740,7 +1699,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       "tauMin_k",
       "Lower clamping threshold that indicates the fluid speed where cells start to emit "
       "particles (lower values result in generally more particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_tau_max_k", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1000.0);
@@ -1750,7 +1709,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       "tauMax_k",
       "Upper clamping threshold that indicates the fluid speed where cells no longer emit more "
       "particles (higher values result in generally less particles)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_k_wc", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 10000);
@@ -1758,7 +1717,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Wave Crest Sampling",
                            "Maximum number of particles generated per wave crest cell per frame");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_k_ta", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 10000);
@@ -1766,7 +1725,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Trapped Air Sampling",
                            "Maximum number of particles generated per trapped air cell per frame");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_k_b", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 100.0);
@@ -1775,7 +1734,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Buoyancy",
                            "Amount of buoyancy force that rises bubbles (high values result in "
                            "bubble movement mainly upwards)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_k_d", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 100.0);
@@ -1784,19 +1743,19 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Drag",
                            "Amount of drag force that moves bubbles along with the fluid (high "
                            "values result in bubble movement mainly along with the fluid)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_l_min", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10000.0);
   RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 1);
   RNA_def_property_ui_text(prop, "Lifetime(min)", "Lowest possible particle lifetime");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_l_max", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10000.0);
   RNA_def_property_ui_range(prop, 0.0, 10000.0, 100.0, 1);
   RNA_def_property_ui_text(prop, "Lifetime(max)", "Highest possible particle lifetime");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_boundary", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "sndparticle_boundary");
@@ -1812,7 +1771,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Combined Export",
       "Determines which particle systems are created from secondary particles");
-  RNA_def_property_update(prop, 0, "rna_Smoke_combined_export_update");
+  RNA_def_property_update(prop, 0, "rna_Manta_combined_export_update");
 
   prop = RNA_def_property(srna, "sndparticle_potential_radius", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "sndparticle_potential_radius");
@@ -1822,7 +1781,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Potential Radius",
                            "Radius to compute potential for each cell (higher values are slower "
                            "but create smoother potential grids)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "sndparticle_update_radius", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "sndparticle_update_radius");
@@ -1832,7 +1791,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Update Radius",
                            "Radius to compute position update for each particle (higher values "
                            "are slower but particles move less chaotic)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_scale", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "particle_scale");
@@ -1843,31 +1802,31 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
                            "Scale underlying particle grids by this factor. Particle grids have "
                            "size factor times base resolution");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_spray_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_SPRAY);
   RNA_def_property_ui_text(prop, "Spray", "Create spray particle system");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, 0, "rna_Smoke_spray_parts_update");
+  RNA_def_property_update(prop, 0, "rna_Manta_spray_parts_update");
 
   prop = RNA_def_property(srna, "use_bubble_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_BUBBLE);
   RNA_def_property_ui_text(prop, "Bubble", "Create bubble particle system");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, 0, "rna_Smoke_bubble_parts_update");
+  RNA_def_property_update(prop, 0, "rna_Manta_bubble_parts_update");
 
   prop = RNA_def_property(srna, "use_foam_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_FOAM);
   RNA_def_property_ui_text(prop, "Foam", "Create foam particle system");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, 0, "rna_Smoke_foam_parts_update");
+  RNA_def_property_update(prop, 0, "rna_Manta_foam_parts_update");
 
   prop = RNA_def_property(srna, "use_tracer_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_TRACER);
   RNA_def_property_ui_text(prop, "Tracer", "Create tracer particle system");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, 0, "rna_Smoke_tracer_parts_update");
+  RNA_def_property_update(prop, 0, "rna_Manta_tracer_parts_update");
 
   /* fluid guiding options */
 
@@ -1875,13 +1834,13 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "guiding_alpha");
   RNA_def_property_range(prop, 1.0, 100.0);
   RNA_def_property_ui_text(prop, "Weight", "Guiding weight (higher value results in greater lag)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "guiding_beta", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "guiding_beta");
   RNA_def_property_range(prop, 1, 50);
   RNA_def_property_ui_text(prop, "Size", "Guiding size (higher value results in larger vortices)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "guiding_vel_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "guiding_vel_factor");
@@ -1890,30 +1849,30 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       prop,
       "Weight",
       "Guiding velocity factor (higher value results in bigger guiding velocities)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "guiding_source", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "guiding_source");
   RNA_def_property_enum_items(prop, fluid_guiding_source_items);
   RNA_def_property_ui_text(prop, "Guiding source", "Choose where to get guiding velocities from");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_update");
 
   prop = RNA_def_property(srna, "guiding_parent", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "guiding_parent");
   RNA_def_property_struct_type(prop, "Object");
-  RNA_def_property_pointer_funcs(prop, NULL, "rna_Smoke_guiding_parent_set", NULL, NULL);
+  RNA_def_property_pointer_funcs(prop, NULL, "rna_Manta_guiding_parent_set", NULL, NULL);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "",
                            "Use velocities from this object for the guiding effect (object needs "
                            "to have fluid modifier and be of type domain))");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_update");
 
   prop = RNA_def_property(srna, "use_guiding", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_GUIDING);
   RNA_def_property_ui_text(prop, "Use Guiding", "Enable fluid guiding");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /*  cache options */
 
@@ -1947,41 +1906,41 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "cache_mesh_format");
   RNA_def_property_enum_items(prop, cache_file_type_items);
   RNA_def_property_enum_funcs(
-      prop, NULL, "rna_Smoke_cachetype_mesh_set", "rna_Smoke_cachetype_mesh_itemf");
+      prop, NULL, "rna_Manta_cachetype_mesh_set", "rna_Manta_cachetype_mesh_itemf");
   RNA_def_property_ui_text(
       prop, "File Format", "Select the file format to be used for caching surface data");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "cache_data_format", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "cache_data_format");
   RNA_def_property_enum_items(prop, cache_file_type_items);
   RNA_def_property_enum_funcs(
-      prop, NULL, "rna_Smoke_cachetype_data_set", "rna_Smoke_cachetype_volume_itemf");
+      prop, NULL, "rna_Manta_cachetype_data_set", "rna_Manta_cachetype_volume_itemf");
   RNA_def_property_ui_text(
       prop, "File Format", "Select the file format to be used for caching volumetric data");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "cache_particle_format", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "cache_particle_format");
   RNA_def_property_enum_items(prop, cache_file_type_items);
   RNA_def_property_enum_funcs(
-      prop, NULL, "rna_Smoke_cachetype_particle_set", "rna_Smoke_cachetype_particle_itemf");
+      prop, NULL, "rna_Manta_cachetype_particle_set", "rna_Manta_cachetype_particle_itemf");
   RNA_def_property_ui_text(
       prop, "File Format", "Select the file format to be used for caching particle data");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "cache_noise_format", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "cache_noise_format");
   RNA_def_property_enum_items(prop, cache_file_type_items);
   RNA_def_property_enum_funcs(
-      prop, NULL, "rna_Smoke_cachetype_noise_set", "rna_Smoke_cachetype_volume_itemf");
+      prop, NULL, "rna_Manta_cachetype_noise_set", "rna_Manta_cachetype_volume_itemf");
   RNA_def_property_ui_text(
       prop, "File Format", "Select the file format to be used for caching noise data");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "cache_directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_maxlength(prop, FILE_MAX);
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Smoke_cache_directory_set");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_Manta_cache_directory_set");
   RNA_def_property_string_sdna(prop, NULL, "cache_directory");
   RNA_def_property_ui_text(prop, "Cache directory", "Directory that contains fluid cache files");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
@@ -2033,7 +1992,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
       "Export Mantaflow Script",
       "Generate and export Mantaflow script from current domain settings during bake");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /* time options */
 
@@ -2041,25 +2000,25 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "time_scale");
   RNA_def_property_range(prop, 0.0001, 10.0);
   RNA_def_property_ui_text(prop, "Time Scale", "Adjust simulation speed");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "cfl_condition", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "cfl_condition");
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(
       prop, "CFL", "Maximal velocity per cell (higher value results in larger timesteps)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "use_adaptive_stepping", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_ADAPTIVE_TIME);
   RNA_def_property_ui_text(prop, "Adaptive stepping", "Enable adaptive time-stepping");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_resetCache");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   /* display settings */
 
   prop = RNA_def_property(srna, "slice_method", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "slice_method");
-  RNA_def_property_enum_items(prop, smoke_view_items);
+  RNA_def_property_enum_items(prop, view_items);
   RNA_def_property_ui_text(prop, "View Method", "How to slice the volume for viewport rendering");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
@@ -2127,7 +2086,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_color_ramp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_coba", 0);
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_Smoke_use_color_ramp_set");
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_Manta_use_color_ramp_set");
   RNA_def_property_ui_text(
       prop,
       "Use Color Ramp",
@@ -2194,7 +2153,7 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "point_cache_compress_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "cache_comp");
-  RNA_def_property_enum_items(prop, smoke_cache_comp_items);
+  RNA_def_property_enum_items(prop, cache_comp_items);
   RNA_def_property_ui_text(prop, "Cache Compression", "Compression method to be used");
 
   /* OpenVDB options */
@@ -2214,12 +2173,12 @@ static void rna_def_smoke_domain_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, NULL);
 }
 
-static void rna_def_smoke_flow_settings(BlenderRNA *brna)
+static void rna_def_manta_flow_settings(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem smoke_flow_types[] = {
+  static const EnumPropertyItem flow_types[] = {
       {FLUID_FLOW_TYPE_SMOKE, "SMOKE", 0, "Smoke", "Add smoke"},
       {FLUID_FLOW_TYPE_SMOKEFIRE, "BOTH", 0, "Fire + Smoke", "Add fire and smoke"},
       {FLUID_FLOW_TYPE_FIRE, "FIRE", 0, "Fire", "Add fire"},
@@ -2227,7 +2186,7 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static EnumPropertyItem smoke_flow_behaviors[] = {
+  static EnumPropertyItem flow_behaviors[] = {
       {FLUID_FLOW_BEHAVIOR_INFLOW, "INFLOW", 0, "Inflow", "Add fluid to simulation"},
       {FLUID_FLOW_BEHAVIOR_OUTFLOW, "OUTFLOW", 0, "Outflow", "Delete fluid from simulation"},
       {FLUID_FLOW_BEHAVIOR_GEOMETRY,
@@ -2239,12 +2198,12 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
   };
 
   /*  Flow source - generated dynamically based on flow type */
-  static EnumPropertyItem smoke_flow_sources[] = {
+  static EnumPropertyItem flow_sources[] = {
       {0, "NONE", 0, "", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem smoke_flow_texture_types[] = {
+  static const EnumPropertyItem flow_texture_types[] = {
       {FLUID_FLOW_TEXTURE_MAP_AUTO,
        "AUTO",
        0,
@@ -2254,77 +2213,77 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  srna = RNA_def_struct(brna, "SmokeFlowSettings", NULL);
-  RNA_def_struct_ui_text(srna, "Flow Settings", "Smoke flow settings");
-  RNA_def_struct_sdna(srna, "SmokeFlowSettings");
-  RNA_def_struct_path_func(srna, "rna_SmokeFlowSettings_path");
+  srna = RNA_def_struct(brna, "MantaFlowSettings", NULL);
+  RNA_def_struct_ui_text(srna, "Flow Settings", "Fluid flow settings");
+  RNA_def_struct_sdna(srna, "MantaFlowSettings");
+  RNA_def_struct_path_func(srna, "rna_MantaFlowSettings_path");
 
   prop = RNA_def_property(srna, "density", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "density");
   RNA_def_property_range(prop, 0.0, 1);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 4);
   RNA_def_property_ui_text(prop, "Density", "");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "smoke_color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, NULL, "color");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Smoke Color", "Color of smoke");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "fuel_amount", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10);
   RNA_def_property_ui_range(prop, 0.0, 5.0, 1.0, 4);
   RNA_def_property_ui_text(prop, "Flame Rate", "");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "temperature", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "temp");
   RNA_def_property_range(prop, -10, 10);
   RNA_def_property_ui_range(prop, -10, 10, 1, 1);
   RNA_def_property_ui_text(prop, "Temp. Diff.", "Temperature difference to ambient temperature");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "particle_system", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "psys");
   RNA_def_property_struct_type(prop, "ParticleSystem");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Particle Systems", "Particle systems emitted from the object");
-  RNA_def_property_update(prop, 0, "rna_Smoke_reset_dependency");
+  RNA_def_property_update(prop, 0, "rna_Manta_reset_dependency");
 
-  prop = RNA_def_property(srna, "smoke_flow_type", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "flow_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
-  RNA_def_property_enum_items(prop, smoke_flow_types);
-  RNA_def_property_enum_funcs(prop, NULL, "rna_Smoke_flowtype_set", NULL);
+  RNA_def_property_enum_items(prop, flow_types);
+  RNA_def_property_enum_funcs(prop, NULL, "rna_Manta_flowtype_set", NULL);
   RNA_def_property_ui_text(prop, "Flow Type", "Change type of fluid in the simulation");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
-  prop = RNA_def_property(srna, "smoke_flow_behavior", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "flow_behavior", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "behavior");
-  RNA_def_property_enum_items(prop, smoke_flow_behaviors);
+  RNA_def_property_enum_items(prop, flow_behaviors);
   RNA_def_property_ui_text(prop, "Flow Behavior", "Change flow behavior in the simulation");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
-  prop = RNA_def_property(srna, "smoke_flow_source", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "flow_source", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "source");
-  RNA_def_property_enum_items(prop, smoke_flow_sources);
+  RNA_def_property_enum_items(prop, flow_sources);
   RNA_def_property_enum_funcs(
-      prop, NULL, "rna_Smoke_flowsource_set", "rna_Smoke_flowsource_itemf");
+      prop, NULL, "rna_Manta_flowsource_set", "rna_Manta_flowsource_itemf");
   RNA_def_property_ui_text(prop, "Source", "Change how fluid is emitted");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_absolute", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_ABSOLUTE);
   RNA_def_property_ui_text(prop,
                            "Absolute Density",
                            "Only allow given density value in emitter area and will not add up");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_initial_velocity", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_INITVELOCITY);
   RNA_def_property_ui_text(
       prop, "Initial Velocity", "Fluid has some initial velocity when it is emitted");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "vel_multi");
@@ -2334,57 +2293,57 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
                            "Source",
                            "Multiplier of source velocity passed to fluid (source velocity is "
                            "non-zero only if object is moving)");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_normal", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "vel_normal");
   RNA_def_property_range(prop, -100.0, 100.0);
   RNA_def_property_ui_range(prop, -2.0, 2.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Normal", "Amount of normal directional velocity");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_random", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "vel_random");
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_range(prop, 0.0, 2.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Random", "Amount of random velocity");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_coord", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_float_sdna(prop, NULL, "vel_coord");
   RNA_def_property_array(prop, 3);
   RNA_def_property_range(prop, -1000.1, 1000.1);
   RNA_def_property_ui_text(prop, "Initial", "Initial velocity in X, Y and Z direction");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "volume_density", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Volume", "Factor for smoke emitted from inside the mesh volume");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Surface", "Maximum distance from mesh surface to emit fluid");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "particle_size", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.1, 20.0);
   RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Size", "Particle size in simulation cells");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_particle_size", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_USE_PART_SIZE);
   RNA_def_property_ui_text(
       prop, "Set Size", "Set particle size in simulation cells or use nearest cell");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_inflow", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_USE_INFLOW);
   RNA_def_property_ui_text(prop, "Enabled", "Control when to apply inflow");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "subframes", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, 50);
@@ -2393,55 +2352,55 @@ static void rna_def_smoke_flow_settings(BlenderRNA *brna)
                            "Subframes",
                            "Number of additional samples to take between frames to improve "
                            "quality of fast moving flows");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "density_vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
-                                "rna_SmokeFlow_density_vgroup_get",
-                                "rna_SmokeFlow_density_vgroup_length",
-                                "rna_SmokeFlow_density_vgroup_set");
+                                "rna_MantaFlow_density_vgroup_get",
+                                "rna_MantaFlow_density_vgroup_length",
+                                "rna_MantaFlow_density_vgroup_set");
   RNA_def_property_ui_text(
       prop, "Vertex Group", "Name of vertex group which determines surface emission rate");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "use_texture", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_TEXTUREEMIT);
   RNA_def_property_ui_text(prop, "Use Texture", "Use a texture to control emission strength");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "texture_map_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "texture_type");
-  RNA_def_property_enum_items(prop, smoke_flow_texture_types);
+  RNA_def_property_enum_items(prop, flow_texture_types);
   RNA_def_property_ui_text(prop, "Mapping", "Texture mapping type");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "uv_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "uvlayer_name");
   RNA_def_property_ui_text(prop, "UV Map", "UV map name");
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SmokeFlow_uvlayer_set");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_MantaFlow_uvlayer_set");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "noise_texture", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Texture", "Texture that controls emission strength");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "texture_size", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.01, 10.0);
   RNA_def_property_ui_range(prop, 0.1, 5.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Size", "Size of texture mapping");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "texture_offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 200.0);
   RNA_def_property_ui_range(prop, 0.0, 100.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Offset", "Z-offset of texture mapping");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 }
 
-static void rna_def_smoke_effec_settings(BlenderRNA *brna)
+static void rna_def_manta_effec_settings(BlenderRNA *brna)
 {
-  static EnumPropertyItem smoke_effec_type_items[] = {
+  static EnumPropertyItem effec_type_items[] = {
       {FLUID_EFFECTOR_TYPE_COLLISION, "COLLISION", 0, "Collision", "Create collision object"},
       {FLUID_EFFECTOR_TYPE_GUIDE, "GUIDE", 0, "Guide", "Create guiding object"},
       {0, NULL, 0, NULL, NULL},
@@ -2477,41 +2436,41 @@ static void rna_def_smoke_effec_settings(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "SmokeCollSettings", NULL);
+  srna = RNA_def_struct(brna, "MantaCollSettings", NULL);
   RNA_def_struct_ui_text(srna, "Collision Settings", "Smoke collision settings");
-  RNA_def_struct_sdna(srna, "SmokeCollSettings");
-  RNA_def_struct_path_func(srna, "rna_SmokeCollSettings_path");
+  RNA_def_struct_sdna(srna, "MantaCollSettings");
+  RNA_def_struct_path_func(srna, "rna_MantaCollSettings_path");
 
   prop = RNA_def_property(srna, "effec_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
-  RNA_def_property_enum_items(prop, smoke_effec_type_items);
+  RNA_def_property_enum_items(prop, effec_type_items);
   RNA_def_property_ui_text(prop, "Effector Type", "Change type of effector in the simulation");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(
       prop, "Distance", "Distance around mesh surface to consider as effector");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "vel_multi");
   RNA_def_property_range(prop, -100.0, 100.0);
   RNA_def_property_ui_text(prop, "Source", "Multiplier of obstacle velocity");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Smoke_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "guiding_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "guiding_mode");
   RNA_def_property_enum_items(prop, fluid_guiding_mode_items);
   RNA_def_property_ui_text(prop, "Guiding mode", "How to create guiding velocities");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Smoke_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_update");
 }
 
-void RNA_def_smoke(BlenderRNA *brna)
+void RNA_def_manta(BlenderRNA *brna)
 {
-  rna_def_smoke_domain_settings(brna);
-  rna_def_smoke_flow_settings(brna);
-  rna_def_smoke_effec_settings(brna);
+  rna_def_manta_domain_settings(brna);
+  rna_def_manta_flow_settings(brna);
+  rna_def_manta_effec_settings(brna);
 }
 
 #endif

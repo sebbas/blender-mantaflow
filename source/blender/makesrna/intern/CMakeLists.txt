@@ -54,6 +54,7 @@ set(DEFSRC
   rna_lightprobe.c
   rna_linestyle.c
   rna_main.c
+  rna_manta.c
   rna_mask.c
   rna_material.c
   rna_mesh.c
@@ -76,7 +77,6 @@ set(DEFSRC
   rna_sculpt_paint.c
   rna_sequencer.c
   rna_shader_fx.c
-  rna_smoke.c
   rna_sound.c
   rna_space.c
   rna_speaker.c

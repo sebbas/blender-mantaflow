@@ -770,7 +770,7 @@ const char *buttons_context_dir[] = {
     "cloth",
     "soft_body",
     "fluid",
-    "smoke",
+    "manta",
     "collision",
     "brush",
     "dynamic_paint",
@@ -1029,13 +1029,13 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
     }
   }
 
-  else if (CTX_data_equals(member, "smoke")) {
+  else if (CTX_data_equals(member, "manta")) {
     PointerRNA *ptr = get_pointer_type(path, &RNA_Object);
 
     if (ptr && ptr->data) {
       Object *ob = ptr->data;
-      ModifierData *md = modifiers_findByType(ob, eModifierType_Smoke);
-      CTX_data_pointer_set(result, &ob->id, &RNA_SmokeModifier, md);
+      ModifierData *md = modifiers_findByType(ob, eModifierType_Manta);
+      CTX_data_pointer_set(result, &ob->id, &RNA_MantaModifier, md);
       return 1;
     }
   }

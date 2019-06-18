@@ -82,11 +82,11 @@ endif()
 set(SRC
   intern/manta_python_API.cpp
   intern/manta_fluid_API.cpp
-  intern/FLUID.cpp
+  intern/MANTA_main.cpp
 
   extern/manta_python_API.h
   extern/manta_fluid_API.h
-  intern/FLUID.h
+  intern/MANTA_main.h
   intern/strings/fluid_script.h
   intern/strings/smoke_script.h
   intern/strings/liquid_script.h

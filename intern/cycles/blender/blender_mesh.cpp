@@ -281,7 +281,7 @@ static void mikk_compute_tangents(
 static void create_mesh_volume_attribute(
     BL::Object &b_ob, Mesh *mesh, ImageManager *image_manager, AttributeStandard std, float frame)
 {
-  BL::SmokeDomainSettings b_domain = object_smoke_domain_find(b_ob);
+  BL::MantaDomainSettings b_domain = object_manta_domain_find(b_ob);
 
   if (!b_domain)
     return;
@@ -878,13 +878,13 @@ static void sync_mesh_manta_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
   if (scene->need_motion() == Scene::MOTION_NONE)
     return;
 
-  BL::SmokeDomainSettings b_smoke_domain = object_smoke_domain_find(b_ob);
+  BL::MantaDomainSettings b_manta_domain = object_manta_domain_find(b_ob);
 
-  if (!b_smoke_domain)
+  if (!b_manta_domain)
     return;
 
   /* If the mesh has modifiers following the fluid domain we can't export motion. */
-  if (b_smoke_domain.mesh_vertices.length() != mesh->verts.size())
+  if (b_manta_domain.mesh_vertices.length() != mesh->verts.size())
     return;
 
   /* Find or add attribute */
@@ -901,10 +901,10 @@ static void sync_mesh_manta_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
     float relative_time = motion_times[step] * scene->motion_shutter_time() * 0.5f;
     float3 *mP = attr_mP->data_float3() + step * mesh->verts.size();
 
-    BL::SmokeDomainSettings::mesh_vertices_iterator svi;
+    BL::MantaDomainSettings::mesh_vertices_iterator svi;
     int i = 0;
 
-    for (b_smoke_domain.mesh_vertices.begin(svi); svi != b_smoke_domain.mesh_vertices.end();
+    for (b_manta_domain.mesh_vertices.begin(svi); svi != b_manta_domain.mesh_vertices.end();
          ++svi, ++i) {
       mP[i] = P[i] + get_float3(svi->velocity()) * relative_time;
     }
@@ -1134,8 +1134,8 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph &b_depsgraph,
   BL::Mesh b_mesh(PointerRNA_NULL);
 
   /* manta motion is exported immediate with mesh, skip here */
-  BL::SmokeDomainSettings b_smoke_domain = object_smoke_domain_find(b_ob);
-  if (b_smoke_domain)
+  BL::MantaDomainSettings b_manta_domain = object_manta_domain_find(b_ob);
+  if (b_manta_domain)
     return;
 
   /* fluid motion is exported immediate with mesh, skip here */

@@ -1767,7 +1767,7 @@ static int modifier_is_simulation(ModifierData *md)
            eModifierType_Cloth,
            eModifierType_Collision,
            eModifierType_Fluidsim,
-           eModifierType_Smoke,
+           eModifierType_Manta,
            eModifierType_Softbody,
            eModifierType_Surface,
            eModifierType_DynamicPaint)) {
@@ -2000,7 +2000,7 @@ static uiLayout *draw_modifier(uiLayout *layout,
                 eModifierType_Softbody,
                 eModifierType_ParticleSystem,
                 eModifierType_Cloth,
-                eModifierType_Smoke)) {
+                eModifierType_Manta)) {
         uiItemO(row,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
                 ICON_NONE,

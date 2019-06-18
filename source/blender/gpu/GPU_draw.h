@@ -36,7 +36,7 @@ struct Main;
 struct Object;
 struct RegionView3D;
 struct Scene;
-struct SmokeModifierData;
+struct MantaModifierData;
 struct View3D;
 struct ViewLayer;
 
@@ -97,11 +97,11 @@ void GPU_free_images_anim(struct Main *bmain);
 void GPU_free_images_old(struct Main *bmain);
 
 /* smoke drawing functions */
-void GPU_free_smoke(struct SmokeModifierData *smd);
-void GPU_free_smoke_velocity(struct SmokeModifierData *smd);
-void GPU_create_smoke(struct SmokeModifierData *smd, int highres);
-void GPU_create_smoke_coba_field(struct SmokeModifierData *smd);
-void GPU_create_smoke_velocity(struct SmokeModifierData *smd);
+void GPU_free_smoke(struct MantaModifierData *mmd);
+void GPU_free_smoke_velocity(struct MantaModifierData *mmd);
+void GPU_create_smoke(struct MantaModifierData *mmd, int highres);
+void GPU_create_smoke_coba_field(struct MantaModifierData *mmd);
+void GPU_create_smoke_velocity(struct MantaModifierData *mmd);
 
 /* Delayed free of OpenGL buffers by main thread */
 void GPU_free_unused_buffers(struct Main *bmain);

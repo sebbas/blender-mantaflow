@@ -36,7 +36,7 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_rigidbody_types.h"
-#include "DNA_smoke_types.h"
+#include "DNA_manta_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
@@ -2402,12 +2402,12 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
                                      Scene *scene,
                                      ModifierData *md)
 {
-  SmokeModifierData *smd = (SmokeModifierData *)md;
-  SmokeDomainSettings *sds = smd->domain;
+  MantaModifierData *mmd = (MantaModifierData *)md;
+  MantaDomainSettings *mds = mmd->domain;
   float *color;
   float one = 1.0f;
 
-  if (sds == NULL) {
+  if (mds == NULL) {
     return;
   }
 
@@ -2415,14 +2415,14 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
 
   /* Small cube showing voxel size (adjusts with adaptive domain) */
   float min[3], max[3], size[3];
-  madd_v3fl_v3fl_v3fl_v3i(min, sds->p0, sds->cell_size, sds->res_min);
-  madd_v3fl_v3fl_v3fl_v3i(max, sds->p0, sds->cell_size, sds->res_max);
+  madd_v3fl_v3fl_v3fl_v3i(min, mds->p0, mds->cell_size, mds->res_min);
+  madd_v3fl_v3fl_v3fl_v3i(max, mds->p0, mds->cell_size, mds->res_max);
   sub_v3_v3v3(size, max, min);
   float voxel_cubemat[4][4] = {{0.0f}};
   /* scale small cube */
-  voxel_cubemat[0][0] = (1.0f / (float)sds->res[0]) * size[0] * ob->obmat[0][0] * 0.5;
-  voxel_cubemat[1][1] = (1.0f / (float)sds->res[1]) * size[1] * ob->obmat[1][1] * 0.5;
-  voxel_cubemat[2][2] = (1.0f / (float)sds->res[2]) * size[2] * ob->obmat[2][2] * 0.5;
+  voxel_cubemat[0][0] = (1.0f / (float)mds->res[0]) * size[0] * ob->obmat[0][0] * 0.5;
+  voxel_cubemat[1][1] = (1.0f / (float)mds->res[1]) * size[1] * ob->obmat[1][1] * 0.5;
+  voxel_cubemat[2][2] = (1.0f / (float)mds->res[2]) * size[2] * ob->obmat[2][2] * 0.5;
   /* translate small cube */
   voxel_cubemat[3][0] = min[0] * ob->obmat[0][0] + ob->obmat[3][0];
   voxel_cubemat[3][1] = min[1] * ob->obmat[1][1] + ob->obmat[3][1];
@@ -2434,40 +2434,40 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
   DRW_buffer_add_entry(sgl->cube, color, &one, voxel_cubemat);
 
   /* Don't show smoke before simulation starts, this could be made an option in the future. */
-  if (!sds->draw_velocity || !sds->fluid || CFRA < sds->point_cache[0]->startframe) {
+  if (!mds->draw_velocity || !mds->fluid || CFRA < mds->point_cache[0]->startframe) {
     return;
   }
 
-  const bool use_needle = (sds->vector_draw_type == VECTOR_DRAW_NEEDLE);
+  const bool use_needle = (mds->vector_draw_type == VECTOR_DRAW_NEEDLE);
   int line_count = (use_needle) ? 6 : 1;
   int slice_axis = -1;
-  line_count *= sds->res[0] * sds->res[1] * sds->res[2];
+  line_count *= mds->res[0] * mds->res[1] * mds->res[2];
 
-  if (sds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
-      sds->axis_slice_method == AXIS_SLICE_SINGLE) {
+  if (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
+      mds->axis_slice_method == AXIS_SLICE_SINGLE) {
     float invviewmat[4][4];
     DRW_viewport_matrix_get(invviewmat, DRW_MAT_VIEWINV);
 
-    const int axis = (sds->slice_axis == SLICE_AXIS_AUTO) ?
+    const int axis = (mds->slice_axis == SLICE_AXIS_AUTO) ?
                          axis_dominant_v3_single(invviewmat[2]) :
-                         sds->slice_axis - 1;
+                         mds->slice_axis - 1;
     slice_axis = axis;
-    line_count /= sds->res[axis];
+    line_count /= mds->res[axis];
   }
 
-  GPU_create_smoke_velocity(smd);
+  GPU_create_smoke_velocity(mmd);
 
   DRWShadingGroup *grp = DRW_shgroup_create(volume_velocity_shader_get(use_needle),
                                             sgl->non_meshes);
-  DRW_shgroup_uniform_texture(grp, "velocityX", sds->tex_velocity_x);
-  DRW_shgroup_uniform_texture(grp, "velocityY", sds->tex_velocity_y);
-  DRW_shgroup_uniform_texture(grp, "velocityZ", sds->tex_velocity_z);
-  DRW_shgroup_uniform_float_copy(grp, "displaySize", sds->vector_scale);
-  DRW_shgroup_uniform_float_copy(grp, "slicePosition", sds->slice_depth);
+  DRW_shgroup_uniform_texture(grp, "velocityX", mds->tex_velocity_x);
+  DRW_shgroup_uniform_texture(grp, "velocityY", mds->tex_velocity_y);
+  DRW_shgroup_uniform_texture(grp, "velocityZ", mds->tex_velocity_z);
+  DRW_shgroup_uniform_float_copy(grp, "displaySize", mds->vector_scale);
+  DRW_shgroup_uniform_float_copy(grp, "slicePosition", mds->slice_depth);
   DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
   DRW_shgroup_call_procedural_lines(grp, line_count, ob->obmat);
 
-  BLI_addtail(&e_data.smoke_domains, BLI_genericNodeN(smd));
+  BLI_addtail(&e_data.smoke_domains, BLI_genericNodeN(mmd));
 }
 
 static void volumes_free_smoke_textures(void)
@@ -2479,8 +2479,8 @@ static void volumes_free_smoke_textures(void)
    * modifier is not used for display. We should share them for
    * all viewport in a redraw at least. */
   for (LinkData *link = e_data.smoke_domains.first; link; link = link->next) {
-    SmokeModifierData *smd = (SmokeModifierData *)link->data;
-    GPU_free_smoke_velocity(smd);
+    MantaModifierData *mmd = (MantaModifierData *)link->data;
+    GPU_free_smoke_velocity(mmd);
   }
   BLI_freelistN(&e_data.smoke_domains);
 }
@@ -3446,9 +3446,9 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
       DRW_buffer_add_entry(sgl->empty_axes, color, &axes_size, ob->obmat);
     }
 
-    if ((md = modifiers_findByType(ob, eModifierType_Smoke)) &&
+    if ((md = modifiers_findByType(ob, eModifierType_Manta)) &&
         (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-        (((SmokeModifierData *)md)->domain != NULL)) {
+        (((MantaModifierData *)md)->domain != NULL)) {
       DRW_shgroup_volume_extra(sgl, ob, view_layer, scene, md);
     }
   }

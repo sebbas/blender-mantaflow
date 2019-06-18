@@ -96,7 +96,7 @@
 
 /* manta sim particle import */
 #ifdef WITH_MANTA
-#  include "DNA_smoke_types.h"
+#  include "DNA_manta_types.h"
 #  include "manta_fluid_API.h"
 #endif  // WITH_MANTA
 
@@ -4132,10 +4132,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
 #ifdef WITH_MANTA
   {
     Object *ob = sim->ob;
-    SmokeModifierData *smd = (SmokeModifierData *)modifiers_findByType(ob, eModifierType_Smoke);
+    MantaModifierData *mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
 
-    if (smd && smd->domain && smd->domain->fluid) {
-      SmokeDomainSettings *sds = smd->domain;
+    if (mmd && mmd->domain && mmd->domain->fluid) {
+      MantaDomainSettings *mds = mmd->domain;
 
       ParticleSettings *part = psys->part;
       ParticleData *pa = NULL;
@@ -4152,15 +4152,15 @@ static void particles_manta_step(ParticleSimulationData *sim,
 
       /* Sanity check: parts also enabled in fluid domain? */
       if ((part->type & PART_MANTA_FLIP &&
-           (sds->particle_type & FLUID_DOMAIN_PARTICLE_FLIP) == 0) ||
+           (mds->particle_type & FLUID_DOMAIN_PARTICLE_FLIP) == 0) ||
           (part->type & PART_MANTA_SPRAY &&
-           (sds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) == 0) ||
+           (mds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) == 0) ||
           (part->type & PART_MANTA_BUBBLE &&
-           (sds->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) == 0) ||
+           (mds->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) == 0) ||
           (part->type & PART_MANTA_FOAM &&
-           (sds->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) == 0) ||
+           (mds->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) == 0) ||
           (part->type & PART_MANTA_TRACER &&
-           (sds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER) == 0)) {
+           (mds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER) == 0)) {
         BLI_snprintf(debugStrBuffer,
                      sizeof(debugStrBuffer),
                      "particles_manta_step::error - found particle system that is not enabled in "
@@ -4170,15 +4170,15 @@ static void particles_manta_step(ParticleSimulationData *sim,
 
       /* Count particle amount. tottypepart only important for snd particles */
       if (part->type & PART_MANTA_FLIP) {
-        tottypepart = totpart = liquid_get_num_flip_particles(sds->fluid);
+        tottypepart = totpart = manta_liquid_get_num_flip_particles(mds->fluid);
       }
       if (part->type &
           (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER)) {
-        totpart = liquid_get_num_snd_particles(sds->fluid);
+        totpart = manta_liquid_get_num_snd_particles(mds->fluid);
 
         /* tottypepart is the amount of particles of a snd particle type */
         for (p = 0; p < totpart; p++) {
-          flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
+          flagActivePart = manta_liquid_get_snd_particle_flag_at(mds->fluid, p);
           if ((part->type & PART_MANTA_SPRAY) && (flagActivePart & PSPRAY))
             tottypepart++;
           if ((part->type & PART_MANTA_BUBBLE) && (flagActivePart & PBUBBLE))
@@ -4217,39 +4217,39 @@ static void particles_manta_step(ParticleSimulationData *sim,
 
         /* flag, res, upres, pos, vel for FLIP and snd particles have different getterss */
         if (part->type & PART_MANTA_FLIP) {
-          flagActivePart = liquid_get_flip_particle_flag_at(sds->fluid, p);
+          flagActivePart = manta_liquid_get_flip_particle_flag_at(mds->fluid, p);
 
-          resX = (float)fluid_get_res_x(sds->fluid);
-          resY = (float)fluid_get_res_y(sds->fluid);
-          resZ = (float)fluid_get_res_z(sds->fluid);
+          resX = (float)manta_get_res_x(mds->fluid);
+          resY = (float)manta_get_res_y(mds->fluid);
+          resZ = (float)manta_get_res_z(mds->fluid);
 
           upres = 1;
 
-          posX = liquid_get_flip_particle_position_x_at(sds->fluid, p);
-          posY = liquid_get_flip_particle_position_y_at(sds->fluid, p);
-          posZ = liquid_get_flip_particle_position_z_at(sds->fluid, p);
+          posX = manta_liquid_get_flip_particle_position_x_at(mds->fluid, p);
+          posY = manta_liquid_get_flip_particle_position_y_at(mds->fluid, p);
+          posZ = manta_liquid_get_flip_particle_position_z_at(mds->fluid, p);
 
-          velX = liquid_get_flip_particle_velocity_x_at(sds->fluid, p);
-          velY = liquid_get_flip_particle_velocity_y_at(sds->fluid, p);
-          velZ = liquid_get_flip_particle_velocity_z_at(sds->fluid, p);
+          velX = manta_liquid_get_flip_particle_velocity_x_at(mds->fluid, p);
+          velY = manta_liquid_get_flip_particle_velocity_y_at(mds->fluid, p);
+          velZ = manta_liquid_get_flip_particle_velocity_z_at(mds->fluid, p);
         }
         else if (part->type &
                  (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER)) {
-          flagActivePart = liquid_get_snd_particle_flag_at(sds->fluid, p);
+          flagActivePart = manta_liquid_get_snd_particle_flag_at(mds->fluid, p);
 
-          resX = (float)liquid_get_particle_res_x(sds->fluid);
-          resY = (float)liquid_get_particle_res_y(sds->fluid);
-          resZ = (float)liquid_get_particle_res_z(sds->fluid);
+          resX = (float)manta_liquid_get_particle_res_x(mds->fluid);
+          resY = (float)manta_liquid_get_particle_res_y(mds->fluid);
+          resZ = (float)manta_liquid_get_particle_res_z(mds->fluid);
 
-          upres = liquid_get_particle_upres(sds->fluid);
+          upres = manta_liquid_get_particle_upres(mds->fluid);
 
-          posX = liquid_get_snd_particle_position_x_at(sds->fluid, p);
-          posY = liquid_get_snd_particle_position_y_at(sds->fluid, p);
-          posZ = liquid_get_snd_particle_position_z_at(sds->fluid, p);
+          posX = manta_liquid_get_snd_particle_position_x_at(mds->fluid, p);
+          posY = manta_liquid_get_snd_particle_position_y_at(mds->fluid, p);
+          posZ = manta_liquid_get_snd_particle_position_z_at(mds->fluid, p);
 
-          velX = liquid_get_snd_particle_velocity_x_at(sds->fluid, p);
-          velY = liquid_get_snd_particle_velocity_y_at(sds->fluid, p);
-          velZ = liquid_get_snd_particle_velocity_z_at(sds->fluid, p);
+          velX = manta_liquid_get_snd_particle_velocity_x_at(mds->fluid, p);
+          velY = manta_liquid_get_snd_particle_velocity_y_at(mds->fluid, p);
+          velZ = manta_liquid_get_snd_particle_velocity_z_at(mds->fluid, p);
         }
         else {
           BLI_snprintf(debugStrBuffer,
@@ -4286,10 +4286,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
             pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
 
           /* Get size (dimension) but considering scaling */
-          copy_v3_v3(cell_size_scaled, sds->cell_size);
+          copy_v3_v3(cell_size_scaled, mds->cell_size);
           mul_v3_v3(cell_size_scaled, ob->scale);
-          madd_v3fl_v3fl_v3fl_v3i(min, sds->p0, cell_size_scaled, sds->res_min);
-          madd_v3fl_v3fl_v3fl_v3i(max, sds->p0, cell_size_scaled, sds->res_max);
+          madd_v3fl_v3fl_v3fl_v3i(min, mds->p0, cell_size_scaled, mds->res_min);
+          madd_v3fl_v3fl_v3fl_v3i(max, mds->p0, cell_size_scaled, mds->res_max);
           sub_v3_v3v3(size, max, min);
 
           /* Biggest dimension will be used for upscaling */
@@ -4304,7 +4304,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
           pa->state.co[0] -= resX * 0.5f;
           pa->state.co[1] -= resY * 0.5f;
           pa->state.co[2] -= resZ * 0.5f;
-          mul_v3_fl(pa->state.co, sds->dx);
+          mul_v3_fl(pa->state.co, mds->dx);
 
           /* Match domain dimension / size */
           pa->state.co[0] *= max_size / fabsf(ob->scale[0]);
@@ -4320,7 +4320,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
           pa->state.vel[0] = velX;
           pa->state.vel[1] = velY;
           pa->state.vel[2] = velZ;
-          mul_v3_fl(pa->state.vel, sds->dx);
+          mul_v3_fl(pa->state.vel, mds->dx);
 
           // printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
