@@ -535,23 +535,6 @@ static inline BL::MantaDomainSettings object_manta_domain_find(BL::Object &b_ob)
   return BL::MantaDomainSettings(PointerRNA_NULL);
 }
 
-static inline BL::DomainFluidSettings object_fluid_domain_find(BL::Object b_ob)
-{
-  BL::Object::modifiers_iterator b_mod;
-
-  for (b_ob.modifiers.begin(b_mod); b_mod != b_ob.modifiers.end(); ++b_mod) {
-    if (b_mod->is_a(&RNA_FluidSimulationModifier)) {
-      BL::FluidSimulationModifier b_fmd(*b_mod);
-      BL::FluidSettings fss = b_fmd.settings();
-
-      if (fss.type() == BL::FluidSettings::type_DOMAIN)
-        return (BL::DomainFluidSettings)b_fmd.settings();
-    }
-  }
-
-  return BL::DomainFluidSettings(PointerRNA_NULL);
-}
-
 static inline Mesh::SubdivisionType object_subdivision_type(BL::Object &b_ob,
                                                             bool preview,
                                                             bool experimental)

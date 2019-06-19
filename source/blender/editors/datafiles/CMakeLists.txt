@@ -385,7 +385,6 @@ set(ICON_NAMES
   mod_mask
   mod_cloth
   mod_explode
-  mod_fluidsim
   mod_multires
   mod_manta
   mod_solidify

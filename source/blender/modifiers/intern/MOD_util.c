@@ -279,7 +279,6 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(ParticleInstance);
   INIT_TYPE(Explode);
   INIT_TYPE(Shrinkwrap);
-  INIT_TYPE(Fluidsim);
   INIT_TYPE(Mask);
   INIT_TYPE(SimpleDeform);
   INIT_TYPE(Multires);

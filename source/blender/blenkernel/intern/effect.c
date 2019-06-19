@@ -71,13 +71,6 @@
 #include "RE_render_ext.h"
 #include "RE_shader_ext.h"
 
-/* fluid sim particle import */
-#ifdef WITH_MOD_FLUID
-#  include "LBM_fluidsim.h"
-#  include <zlib.h>
-#  include <string.h>
-#endif  // WITH_MOD_FLUID
-
 EffectorWeights *BKE_effector_add_weights(Collection *collection)
 {
   EffectorWeights *weights = MEM_callocN(sizeof(EffectorWeights), "EffectorWeights");

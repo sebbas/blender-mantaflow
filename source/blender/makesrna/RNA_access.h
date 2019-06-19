@@ -259,7 +259,6 @@ extern StructRNA RNA_FloatProperty;
 extern StructRNA RNA_FloorConstraint;
 extern StructRNA RNA_FluidFluidSettings;
 extern StructRNA RNA_FluidSettings;
-extern StructRNA RNA_FluidSimulationModifier;
 extern StructRNA RNA_FollowPathConstraint;
 extern StructRNA RNA_FreestyleLineSet;
 extern StructRNA RNA_FreestyleLineStyle;

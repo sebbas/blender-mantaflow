@@ -134,7 +134,6 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     {eModifierType_Collision, "COLLISION", ICON_MOD_PHYSICS, "Collision", ""},
     {eModifierType_DynamicPaint, "DYNAMIC_PAINT", ICON_MOD_DYNAMICPAINT, "Dynamic Paint", ""},
     {eModifierType_Explode, "EXPLODE", ICON_MOD_EXPLODE, "Explode", ""},
-    {eModifierType_Fluidsim, "FLUID_SIMULATION", ICON_MOD_FLUIDSIM, "Fluid Simulation (old)", ""},
     {eModifierType_Ocean, "OCEAN", ICON_MOD_OCEAN, "Ocean", ""},
     {eModifierType_ParticleInstance,
      "PARTICLE_INSTANCE",
@@ -517,8 +516,6 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_BevelModifier;
     case eModifierType_Shrinkwrap:
       return &RNA_ShrinkwrapModifier;
-    case eModifierType_Fluidsim:
-      return &RNA_FluidSimulationModifier;
     case eModifierType_Mask:
       return &RNA_MaskModifier;
     case eModifierType_SimpleDeform:
@@ -574,6 +571,7 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
     case eModifierType_WeightedNormal:
       return &RNA_WeightedNormalModifier;
     /* Default */
+    case eModifierType_Fluidsim: /* deprecated */
     case eModifierType_None:
     case eModifierType_ShapeKey:
     case NUM_MODIFIER_TYPES:
@@ -3808,23 +3806,6 @@ static void rna_def_modifier_shrinkwrap(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
-static void rna_def_modifier_fluidsim(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "FluidSimulationModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Fluid Simulation Modifier", "Fluid simulation modifier");
-  RNA_def_struct_sdna(srna, "FluidsimModifierData");
-  RNA_def_struct_ui_icon(srna, ICON_MOD_FLUIDSIM);
-
-  prop = RNA_def_property(srna, "settings", PROP_POINTER, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_NEVER_NULL);
-  RNA_def_property_pointer_sdna(prop, NULL, "fss");
-  RNA_def_property_ui_text(
-      prop, "Settings", "Settings for how this object is used in the fluid simulation");
-}
-
 static void rna_def_modifier_mask(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6008,7 +5989,6 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_collision(brna);
   rna_def_modifier_bevel(brna);
   rna_def_modifier_shrinkwrap(brna);
-  rna_def_modifier_fluidsim(brna);
   rna_def_modifier_mask(brna);
   rna_def_modifier_simpledeform(brna);
   rna_def_modifier_warp(brna);

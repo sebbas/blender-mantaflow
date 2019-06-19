@@ -103,9 +103,6 @@ void BOID_OT_state_del(struct wmOperatorType *ot);
 void BOID_OT_state_move_up(struct wmOperatorType *ot);
 void BOID_OT_state_move_down(struct wmOperatorType *ot);
 
-/* physics_fluid.c */
-void FLUID_OT_bake(struct wmOperatorType *ot);
-
 /* physics_manta.c */
 void MANTA_OT_bake_data(struct wmOperatorType *ot);
 void MANTA_OT_free_data(struct wmOperatorType *ot);

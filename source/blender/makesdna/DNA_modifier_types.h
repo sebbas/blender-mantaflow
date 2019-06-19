@@ -967,6 +967,7 @@ typedef enum {
   eMultiresModifierFlag_UseCrease = (1 << 2),
 } MultiresModifierFlag;
 
+/* DEPRECATED, only used for versioning. */
 typedef struct FluidsimModifierData {
   ModifierData modifier;
 

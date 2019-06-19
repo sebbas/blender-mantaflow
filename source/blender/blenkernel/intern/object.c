@@ -121,10 +121,6 @@
 
 #include "DRW_engine.h"
 
-#ifdef WITH_MOD_FLUID
-#  include "LBM_fluidsim.h"
-#endif
-
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
@@ -869,9 +865,6 @@ void BKE_object_init(Object *ob)
   ob->col_mask = 0xffff;
   ob->preview = NULL;
   ob->duplicator_visibility_flag = OB_DUPLI_FLAG_VIEWPORT | OB_DUPLI_FLAG_RENDER;
-
-  /* NT fluid sim defaults */
-  ob->fluidsimSettings = NULL;
 
   BLI_listbase_clear(&ob->pc_ids);
 

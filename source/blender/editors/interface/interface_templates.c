@@ -1750,7 +1750,13 @@ static int modifier_can_delete(ModifierData *md)
 {
   /* fluid particle modifier can't be deleted here */
   if (md->type == eModifierType_ParticleSystem) {
-    if (((ParticleSystemModifierData *)md)->psys->part->type == PART_FLUID) {
+    if ( ((ParticleSystemModifierData *)md)->psys->part->type == PART_FLUID ||
+         ((ParticleSystemModifierData *)md)->psys->part->type == PART_MANTA_FLIP ||
+         ((ParticleSystemModifierData *)md)->psys->part->type == PART_MANTA_FOAM ||
+         ((ParticleSystemModifierData *)md)->psys->part->type == PART_MANTA_SPRAY ||
+         ((ParticleSystemModifierData *)md)->psys->part->type == PART_MANTA_BUBBLE ||
+         ((ParticleSystemModifierData *)md)->psys->part->type == PART_MANTA_BUBBLE)
+    {
       return 0;
     }
   }

@@ -40,10 +40,6 @@ if(WITH_MOD_REMESH)
   add_subdirectory(dualcon)
 endif()
 
-if(WITH_MOD_FLUID)
-  add_subdirectory(elbeem)
-endif()
-
 if(WITH_IK_SOLVER)
   add_subdirectory(iksolver)
 endif()

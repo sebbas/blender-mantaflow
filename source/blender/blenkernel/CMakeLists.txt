@@ -108,7 +108,6 @@ set(SRC
   intern/editmesh_tangent.c
   intern/effect.c
   intern/fcurve.c
-  intern/fluidsim.c
   intern/fmodifier.c
   intern/font.c
   intern/freestyle.c
@@ -266,7 +265,6 @@ set(SRC
   BKE_editmesh_tangent.h
   BKE_effect.h
   BKE_fcurve.h
-  BKE_fluidsim.h
   BKE_font.h
   BKE_freestyle.h
   BKE_global.h
@@ -509,16 +507,6 @@ if(WITH_PYTHON)
     add_definitions(-DPYTHON_EXECUTABLE_NAME=${_python_exe_name})
     unset(_python_exe_name)
   endif()
-endif()
-
-if(WITH_MOD_FLUID)
-  list(APPEND INC
-    ../../../intern/elbeem/extern
-  )
-  list(APPEND LIB
-    bf_intern_elbeem
-  )
-  add_definitions(-DWITH_MOD_FLUID)
 endif()
 
 if(WITH_MOD_MANTA)

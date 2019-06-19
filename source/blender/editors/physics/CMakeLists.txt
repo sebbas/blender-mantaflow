@@ -40,7 +40,6 @@ set(SRC
   particle_edit.c
   particle_edit_undo.c
   particle_object.c
-  physics_fluid.c
   physics_manta.c
   physics_ops.c
   physics_pointcache.c
@@ -56,16 +55,6 @@ set(LIB
   bf_blenkernel
   bf_blenlib
 )
-
-if(WITH_MOD_FLUID)
-  list(APPEND INC
-    ../../../../intern/elbeem/extern
-  )
-  list(APPEND LIB
-    bf_intern_elbeem
-  )
-  add_definitions(-DWITH_MOD_FLUID)
-endif()
 
 if(WITH_MOD_MANTA)
   list(APPEND LIB

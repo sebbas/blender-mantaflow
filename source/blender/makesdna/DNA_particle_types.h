@@ -435,7 +435,7 @@ typedef enum eParticleDrawFlag {
 #define PART_EMITTER (1 << 0)
 //#define PART_REACTOR                     (1<<0)
 #define PART_HAIR (1 << 2)
-#define PART_FLUID (1 << 3)
+#define PART_FLUID (1 << 3) /* deprecated (belonged to elbeem) */
 #define PART_MANTA_FLIP (1 << 4)
 #define PART_MANTA_SPRAY (1 << 5)
 #define PART_MANTA_BUBBLE (1 << 6)

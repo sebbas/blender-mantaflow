@@ -85,15 +85,6 @@
 
 #include "RE_shader_ext.h"
 
-/* fluid sim particle import */
-#ifdef WITH_MOD_FLUID
-#  include "DNA_object_fluidsim_types.h"
-#  include "LBM_fluidsim.h"
-#  include <zlib.h>
-#  include <string.h>
-
-#endif  // WITH_MOD_FLUID
-
 /* manta sim particle import */
 #ifdef WITH_MANTA
 #  include "DNA_manta_types.h"
@@ -4347,140 +4338,6 @@ static void particles_manta_step(ParticleSimulationData *sim,
 #endif  // WITH_MANTA
 }
 
-static void particles_fluid_step(ParticleSimulationData *sim,
-                                 int UNUSED(cfra),
-                                 const bool use_render_params)
-{
-  ParticleSystem *psys = sim->psys;
-  if (psys->particles) {
-    MEM_freeN(psys->particles);
-    psys->particles = 0;
-    psys->totpart = 0;
-  }
-
-  /* fluid sim particle import handling, actual loading of particles from file */
-#ifdef WITH_MOD_FLUID
-  {
-    FluidsimModifierData *fluidmd = (FluidsimModifierData *)modifiers_findByType(
-        sim->ob, eModifierType_Fluidsim);
-
-    if (fluidmd && fluidmd->fss) {
-      FluidsimSettings *fss = fluidmd->fss;
-      ParticleSettings *part = psys->part;
-      ParticleData *pa = NULL;
-      char filename[256];
-      char debugStrBuffer[256];
-      int curFrame = sim->scene->r.cfra - 1;  // warning - sync with derived mesh fsmesh loading
-      int p, j, totpart;
-      int readMask, activeParts = 0, fileParts = 0;
-      gzFile gzf;
-
-      // XXX          if (ob==G.obedit) // off...
-      //              return;
-
-      // ok, start loading
-      BLI_join_dirfile(
-          filename, sizeof(filename), fss->surfdataPath, OB_FLUIDSIM_SURF_PARTICLES_FNAME);
-
-      BLI_path_abs(filename, modifier_path_relbase_from_global(sim->ob));
-
-      BLI_path_frame(filename, curFrame, 0);  // fixed #frame-no
-
-      gzf = BLI_gzopen(filename, "rb");
-      if (!gzf) {
-        BLI_snprintf(debugStrBuffer,
-                     sizeof(debugStrBuffer),
-                     "readFsPartData::error - Unable to open file for reading '%s'\n",
-                     filename);
-        // XXX bad level call elbeemDebugOut(debugStrBuffer);
-        return;
-      }
-
-      gzread(gzf, &totpart, sizeof(totpart));
-      totpart = (use_render_params) ? totpart : (part->disp * totpart) / 100;
-
-      part->totpart = totpart;
-      part->sta = part->end = 1.0f;
-      part->lifetime = sim->scene->r.efra + 1;
-
-      /* allocate particles */
-      realloc_particles(sim, part->totpart);
-
-      // set up reading mask
-      readMask = fss->typeFlags;
-
-      for (p = 0, pa = psys->particles; p < totpart; p++, pa++) {
-        int ptype = 0;
-
-        gzread(gzf, &ptype, sizeof(ptype));
-        if (ptype & readMask) {
-          activeParts++;
-
-          gzread(gzf, &(pa->size), sizeof(float));
-
-          pa->size /= 10.0f;
-
-          for (j = 0; j < 3; j++) {
-            float wrf;
-            gzread(gzf, &wrf, sizeof(wrf));
-            pa->state.co[j] = wrf;
-            // fprintf(stderr,"Rj%d ",j);
-          }
-          for (j = 0; j < 3; j++) {
-            float wrf;
-            gzread(gzf, &wrf, sizeof(wrf));
-            pa->state.vel[j] = wrf;
-          }
-
-          zero_v3(pa->state.ave);
-          unit_qt(pa->state.rot);
-
-          pa->time = 1.f;
-          pa->dietime = sim->scene->r.efra + 1;
-          pa->lifetime = sim->scene->r.efra;
-          pa->alive = PARS_ALIVE;
-#  if 0
-          if (a < 25) {
-            fprintf(stderr,
-                    "FSPARTICLE debug set %s, a%d = %f,%f,%f, life=%f\n",
-                    filename,
-                    a,
-                    pa->co[0],
-                    pa->co[1],
-                    pa->co[2],
-                    pa->lifetime);
-          }
-#  endif
-        }
-        else {
-          // skip...
-          for (j = 0; j < 2 * 3 + 1; j++) {
-            float wrf;
-            gzread(gzf, &wrf, sizeof(wrf));
-          }
-        }
-        fileParts++;
-      }
-      gzclose(gzf);
-
-      totpart = psys->totpart = activeParts;
-      BLI_snprintf(debugStrBuffer,
-                   sizeof(debugStrBuffer),
-                   "readFsPartData::done - particles:%d, active:%d, file:%d, mask:%d\n",
-                   psys->totpart,
-                   activeParts,
-                   fileParts,
-                   readMask);
-      // bad level call
-      // XXX elbeemDebugOut(debugStrBuffer);
-
-    }  // fluid sim particles done
-  }
-#else
-  UNUSED_VARS(use_render_params);
-#endif  // WITH_MOD_FLUID
-}
-
 static int emit_particles(ParticleSimulationData *sim, PTCacheID *pid, float UNUSED(cfra))
 {
   ParticleSystem *psys = sim->psys;
@@ -4915,9 +4772,6 @@ void particle_system_update(struct Depsgraph *depsgraph,
     if (psys->flag & PSYS_HAIR_DONE) {
       hair_step(&sim, cfra, use_render_params);
     }
-  }
-  else if (part->type & PART_FLUID) {
-    particles_fluid_step(&sim, (int)cfra, use_render_params);
   }
   else if (part->type & (PART_MANTA_FLIP | PART_MANTA_BUBBLE | PART_MANTA_BUBBLE |
                          PART_MANTA_FOAM | PART_MANTA_TRACER)) {
