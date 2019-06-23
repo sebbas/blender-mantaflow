@@ -1136,6 +1136,8 @@ int MANTA::writeConfiguration(MantaModifierData *mmd, int framenr)
                 FLUID_DOMAIN_DIR_CONFIG,
                 NULL);
   BLI_path_make_safe(cacheDir);
+  BLI_dir_create_recursive(cacheDir); /* Create 'config' subdir if it does not exist already */
+
   ss << "config_####" << dformat;
   BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
   BLI_path_frame(targetFile, framenr, 0);

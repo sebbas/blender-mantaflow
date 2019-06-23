@@ -643,6 +643,8 @@ const std::string fluid_file_export =
 def fluid_file_export_s$ID$(dict, path, framenr, file_format, mode_override=True):\n\
     try:\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
+        if not os.path.exists(path):\n\
+            os.makedirs(path)\n\
         for name, object in dict.items():\n\
             file = os.path.join(path, name + '_' + framenr + file_format)\n\
             if not os.path.isfile(file) or mode_override: object.save(file)\n\
