@@ -56,7 +56,7 @@ class PhysicButtonsPanel:
         return md and (md.type == 'DOMAIN')
 
     @staticmethod
-    def poll_manta_domain(context):
+    def poll_gas_domain(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
 
@@ -278,7 +278,7 @@ class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        if not PhysicButtonsPanel.poll_manta_domain(context):
+        if not PhysicButtonsPanel.poll_gas_domain(context):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
@@ -312,7 +312,7 @@ class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        if not PhysicButtonsPanel.poll_manta_domain(context):
+        if not PhysicButtonsPanel.poll_gas_domain(context):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
@@ -354,7 +354,7 @@ class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        if not PhysicButtonsPanel.poll_manta_domain(context):
+        if not PhysicButtonsPanel.poll_gas_domain(context):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
@@ -556,7 +556,7 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        if not PhysicButtonsPanel.poll_manta_domain(context):
+        if not PhysicButtonsPanel.poll_gas_domain(context):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
@@ -599,7 +599,7 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        if not PhysicButtonsPanel.poll_manta_domain(context):
+        if not PhysicButtonsPanel.poll_gas_domain(context):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
@@ -1049,7 +1049,7 @@ class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_manta_domain(context))
+        return (PhysicButtonsPanel.poll_gas_domain(context))
 
     def draw(self, context):
         layout = self.layout
@@ -1095,7 +1095,7 @@ class PHYSICS_PT_manta_viewport_display_color(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_manta_domain(context))
+        return (PhysicButtonsPanel.poll_gas_domain(context))
 
     def draw_header(self, context):
         md = context.manta.domain_settings
@@ -1125,7 +1125,7 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_manta_domain(context))
+        return (PhysicButtonsPanel.poll_gas_domain(context))
 
     def draw_header(self, context):
         md = context.manta.domain_settings
