@@ -218,6 +218,12 @@ class GHOST_IWindow {
   virtual GHOST_TSuccess activateDrawingContext() = 0;
 
   /**
+   * Gets the OpenGL framebuffer associated with the window's contents.
+   * \return The name of an OpenGL framebuffer object.
+   */
+  virtual unsigned int getDefaultFramebuffer() = 0;
+
+  /**
    * Invalidates the contents of this window.
    * \return Indication of success.
    */
@@ -281,19 +287,13 @@ class GHOST_IWindow {
    * \param   hotY    The Y coordinate of the cursor hotspot.
    * \return  Indication of success.
    */
-  virtual GHOST_TSuccess setCustomCursorShape(GHOST_TUns8 bitmap[16][2],
-                                              GHOST_TUns8 mask[16][2],
-                                              int hotX,
-                                              int hotY) = 0;
-
   virtual GHOST_TSuccess setCustomCursorShape(GHOST_TUns8 *bitmap,
                                               GHOST_TUns8 *mask,
                                               int sizex,
                                               int sizey,
                                               int hotX,
                                               int hotY,
-                                              int fg_color,
-                                              int bg_color) = 0;
+                                              bool canInvertColor) = 0;
 
   /**
    * Returns the visibility state of the cursor.
@@ -314,6 +314,7 @@ class GHOST_IWindow {
    * \return  Indication of success.
    */
   virtual GHOST_TSuccess setCursorGrab(GHOST_TGrabCursorMode /*mode*/,
+                                       GHOST_TAxisFlag /*wrap_axis*/,
                                        GHOST_Rect * /*bounds*/,
                                        GHOST_TInt32 /*mouse_ungrab_xy*/[2])
   {

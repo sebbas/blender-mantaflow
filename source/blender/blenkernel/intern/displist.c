@@ -1011,7 +1011,7 @@ static void curve_calc_modifiers_post(Depsgraph *depsgraph,
   }
 
   if (r_final && *r_final) {
-    BKE_id_free(NULL, r_final);
+    BKE_id_free(NULL, *r_final);
   }
 
   for (; md; md = md->next) {
@@ -1158,6 +1158,10 @@ static void curve_calc_modifiers_post(Depsgraph *depsgraph,
     else {
       (*r_final) = NULL;
     }
+  }
+  else if (modified != NULL) {
+    /* Prety stupid to generate that whole mesh if it's unused, yet we have to free it. */
+    BKE_id_free(NULL, modified);
   }
 }
 
@@ -1807,6 +1811,11 @@ void BKE_displist_make_curveTypes(
 
   do_makeDispListCurveTypes(
       depsgraph, scene, ob, dispbase, for_render, for_orco, &ob->runtime.mesh_eval);
+
+  if (ob->runtime.mesh_eval != NULL) {
+    ob->runtime.mesh_eval->id.tag |= LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT;
+    ob->runtime.is_mesh_eval_owned = true;
+  }
 
   boundbox_displist_object(ob);
 }

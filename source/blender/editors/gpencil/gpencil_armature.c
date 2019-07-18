@@ -15,11 +15,12 @@
  *
  * The Original Code is Copyright (C) 2018, Blender Foundation
  * This is a new part of Blender
- * Operators for dealing with armatures and GP datablocks
  */
 
 /** \file
  * \ingroup edgpencil
+ *
+ * Operators for dealing with armatures and GP data-blocks.
  */
 
 #include <stdio.h>
@@ -357,12 +358,8 @@ static void gpencil_add_verts_to_dgroups(
 
   /* loop all strokes */
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    bGPDframe *init_gpf = gpl->actframe;
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
     bGPDspoint *pt = NULL;
-
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {

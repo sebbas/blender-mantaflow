@@ -25,12 +25,6 @@
 
 #  include <stdlib.h>
 
-#  include <libavformat/avformat.h>
-#  include <libavcodec/avcodec.h>
-#  include <libavutil/rational.h>
-#  include <libavutil/samplefmt.h>
-#  include <libswscale/swscale.h>
-
 #  include "MEM_guardedalloc.h"
 
 #  include "DNA_scene_types.h"
@@ -42,6 +36,7 @@
 #    include <AUD_Special.h>
 #  endif
 
+#  include "BLI_math_base.h"
 #  include "BLI_utildefines.h"
 
 #  include "BKE_global.h"
@@ -54,6 +49,14 @@
 #  include "BKE_writeffmpeg.h"
 
 #  include "IMB_imbuf.h"
+
+/* This needs to be included after BLI_math_base.h otherwise it will redefine some math defines
+ * like M_SQRT1_2 leading to warnings with MSVC */
+#  include <libavformat/avformat.h>
+#  include <libavcodec/avcodec.h>
+#  include <libavutil/rational.h>
+#  include <libavutil/samplefmt.h>
+#  include <libswscale/swscale.h>
 
 #  include "ffmpeg_compat.h"
 
@@ -588,9 +591,21 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
     c->time_base.den = rd->frs_sec;
     c->time_base.num = (int)rd->frs_sec_base;
   }
+  else if (compare_ff(rd->frs_sec_base, 1.001f, 0.000001f)) {
+    /* This converts xx/1.001 (which is used in presets) to xx000/1001 (which is used in the rest
+     * of the world, including FFmpeg). */
+    c->time_base.den = (int)(rd->frs_sec * 1000);
+    c->time_base.num = (int)(rd->frs_sec_base * 1000);
+  }
   else {
-    c->time_base.den = rd->frs_sec * 100000;
-    c->time_base.num = ((double)rd->frs_sec_base) * 100000;
+    /* This calculates a fraction (DENUM_MAX / num) which approximates the scene frame rate
+     * (frs_sec / frs_sec_base). It uses the maximum denominator allowed by FFmpeg.
+     */
+    const double DENUM_MAX = (codec_id == AV_CODEC_ID_MPEG4) ? (1UL << 16) - 1 : (1UL << 31) - 1;
+    const double num = (DENUM_MAX / (double)rd->frs_sec) * rd->frs_sec_base;
+
+    c->time_base.den = (int)DENUM_MAX;
+    c->time_base.num = (int)num;
   }
 
   c->gop_size = context->ffmpeg_gop_size;
@@ -681,9 +696,9 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   }
 
   if (codec_id == AV_CODEC_ID_QTRLE) {
-    if (rd->im_format.planes == R_IMF_PLANES_RGBA) {
-      c->pix_fmt = AV_PIX_FMT_ARGB;
-    }
+    /* Always write to ARGB. The default pixel format of QTRLE is RGB24, which uses 3 bytes per
+     * pixels, which breaks the export. */
+    c->pix_fmt = AV_PIX_FMT_ARGB;
   }
 
   if (codec_id == AV_CODEC_ID_PNG) {

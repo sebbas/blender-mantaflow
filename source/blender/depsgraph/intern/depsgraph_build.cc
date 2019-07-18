@@ -77,31 +77,6 @@ static DEG::NodeType deg_build_scene_component_type(eDepsSceneComponentType comp
   return DEG::NodeType::UNDEFINED;
 }
 
-static DEG::NodeType deg_build_object_component_type(eDepsObjectComponentType component)
-{
-  switch (component) {
-    case DEG_OB_COMP_PARAMETERS:
-      return DEG::NodeType::PARAMETERS;
-    case DEG_OB_COMP_PROXY:
-      return DEG::NodeType::PROXY;
-    case DEG_OB_COMP_ANIMATION:
-      return DEG::NodeType::ANIMATION;
-    case DEG_OB_COMP_TRANSFORM:
-      return DEG::NodeType::TRANSFORM;
-    case DEG_OB_COMP_GEOMETRY:
-      return DEG::NodeType::GEOMETRY;
-    case DEG_OB_COMP_EVAL_POSE:
-      return DEG::NodeType::EVAL_POSE;
-    case DEG_OB_COMP_BONE:
-      return DEG::NodeType::BONE;
-    case DEG_OB_COMP_SHADING:
-      return DEG::NodeType::SHADING;
-    case DEG_OB_COMP_CACHE:
-      return DEG::NodeType::CACHE;
-  }
-  return DEG::NodeType::UNDEFINED;
-}
-
 static DEG::DepsNodeHandle *get_node_handle(DepsNodeHandle *node_handle)
 {
   return reinterpret_cast<DEG::DepsNodeHandle *>(node_handle);
@@ -123,7 +98,7 @@ void DEG_add_object_relation(DepsNodeHandle *node_handle,
                              eDepsObjectComponentType component,
                              const char *description)
 {
-  DEG::NodeType type = deg_build_object_component_type(component);
+  DEG::NodeType type = DEG::nodeTypeFromObjectComponent(component);
   DEG::ComponentKey comp_key(&object->id, type);
   DEG::DepsNodeHandle *deg_node_handle = get_node_handle(node_handle);
   deg_node_handle->builder->add_node_handle_relation(comp_key, deg_node_handle, description);
@@ -134,7 +109,7 @@ void DEG_add_object_cache_relation(DepsNodeHandle *node_handle,
                                    eDepsObjectComponentType component,
                                    const char *description)
 {
-  DEG::NodeType type = deg_build_object_component_type(component);
+  DEG::NodeType type = DEG::nodeTypeFromObjectComponent(component);
   DEG::ComponentKey comp_key(&cache_file->id, type);
   DEG::DepsNodeHandle *deg_node_handle = get_node_handle(node_handle);
   deg_node_handle->builder->add_node_handle_relation(comp_key, deg_node_handle, description);
@@ -146,7 +121,7 @@ void DEG_add_bone_relation(DepsNodeHandle *node_handle,
                            eDepsObjectComponentType component,
                            const char *description)
 {
-  DEG::NodeType type = deg_build_object_component_type(component);
+  DEG::NodeType type = DEG::nodeTypeFromObjectComponent(component);
   DEG::ComponentKey comp_key(&object->id, type, bone_name);
   DEG::DepsNodeHandle *deg_node_handle = get_node_handle(node_handle);
   deg_node_handle->builder->add_node_handle_relation(comp_key, deg_node_handle, description);
@@ -157,7 +132,7 @@ void DEG_add_object_pointcache_relation(struct DepsNodeHandle *node_handle,
                                         eDepsObjectComponentType component,
                                         const char *description)
 {
-  DEG::NodeType type = deg_build_object_component_type(component);
+  DEG::NodeType type = DEG::nodeTypeFromObjectComponent(component);
   DEG::ComponentKey comp_key(&object->id, type);
   DEG::DepsNodeHandle *deg_node_handle = get_node_handle(node_handle);
   DEG::DepsgraphRelationBuilder *relation_builder = deg_node_handle->builder;
@@ -222,9 +197,33 @@ struct Depsgraph *DEG_get_graph_from_handle(struct DepsNodeHandle *node_handle)
 /* ******************** */
 /* Graph Building API's */
 
-/* Build depsgraph for the given scene layer, and dump results in given
- * graph container.
- */
+static void graph_build_finalize_common(DEG::Depsgraph *deg_graph, Main *bmain)
+{
+  /* Detect and solve cycles. */
+  DEG::deg_graph_detect_cycles(deg_graph);
+  /* Simplify the graph by removing redundant relations (to optimize
+   * traversal later). */
+  /* TODO: it would be useful to have an option to disable this in cases where
+   *       it is causing trouble. */
+  if (G.debug_value == 799) {
+    DEG::deg_graph_transitive_reduction(deg_graph);
+  }
+  /* Store pointers to commonly used valuated datablocks. */
+  deg_graph->scene_cow = (Scene *)deg_graph->get_cow_id(&deg_graph->scene->id);
+  /* Flush visibility layer and re-schedule nodes for update. */
+  DEG::deg_graph_build_finalize(bmain, deg_graph);
+  DEG_graph_on_visible_update(bmain, reinterpret_cast<::Depsgraph *>(deg_graph), false);
+#if 0
+  if (!DEG_debug_consistency_check(deg_graph)) {
+    printf("Consistency validation failed, ABORTING!\n");
+    abort();
+  }
+#endif
+  /* Relations are up to date. */
+  deg_graph->need_update = false;
+}
+
+/* Build depsgraph for the given scene layer, and dump results in given graph container. */
 void DEG_graph_build_from_view_layer(Depsgraph *graph,
                                      Main *bmain,
                                      Scene *scene,
@@ -245,34 +244,79 @@ void DEG_graph_build_from_view_layer(Depsgraph *graph,
   node_builder.begin_build();
   node_builder.build_view_layer(scene, view_layer, DEG::DEG_ID_LINKED_DIRECTLY);
   node_builder.end_build();
+  /* Hook up relationships between operations - to determine evaluation order. */
+  DEG::DepsgraphRelationBuilder relation_builder(bmain, deg_graph, &builder_cache);
+  relation_builder.begin_build();
+  relation_builder.build_view_layer(scene, view_layer, DEG::DEG_ID_LINKED_DIRECTLY);
+  relation_builder.build_copy_on_write_relations();
+  /* Finalize building. */
+  graph_build_finalize_common(deg_graph, bmain);
+  /* Finish statistics. */
+  if (G.debug & (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_TIME)) {
+    printf("Depsgraph built in %f seconds.\n", PIL_check_seconds_timer() - start_time);
+  }
+}
+
+void DEG_graph_build_for_render_pipeline(Depsgraph *graph,
+                                         Main *bmain,
+                                         Scene *scene,
+                                         ViewLayer *view_layer)
+{
+  double start_time = 0.0;
+  if (G.debug & (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_TIME)) {
+    start_time = PIL_check_seconds_timer();
+  }
+  DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(graph);
+  /* Perform sanity checks. */
+  BLI_assert(deg_graph->scene == scene);
+  deg_graph->is_render_pipeline_depsgraph = true;
+  DEG::DepsgraphBuilderCache builder_cache;
+  /* Generate all the nodes in the graph first */
+  DEG::DepsgraphNodeBuilder node_builder(bmain, deg_graph, &builder_cache);
+  node_builder.begin_build();
+  node_builder.build_scene_render(scene, view_layer);
+  node_builder.end_build();
   /* Hook up relationships between operations - to determine evaluation
    * order. */
   DEG::DepsgraphRelationBuilder relation_builder(bmain, deg_graph, &builder_cache);
   relation_builder.begin_build();
-  relation_builder.build_view_layer(scene, view_layer);
+  relation_builder.build_scene_render(scene, view_layer);
   relation_builder.build_copy_on_write_relations();
-  /* Detect and solve cycles. */
-  DEG::deg_graph_detect_cycles(deg_graph);
-  /* Simplify the graph by removing redundant relations (to optimize
-   * traversal later). */
-  /* TODO: it would be useful to have an option to disable this in cases where
-   *       it is causing trouble. */
-  if (G.debug_value == 799) {
-    DEG::deg_graph_transitive_reduction(deg_graph);
+  /* Finalize building. */
+  graph_build_finalize_common(deg_graph, bmain);
+  /* Finish statistics. */
+  if (G.debug & (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_TIME)) {
+    printf("Depsgraph built in %f seconds.\n", PIL_check_seconds_timer() - start_time);
   }
-  /* Store pointers to commonly used valuated datablocks. */
-  deg_graph->scene_cow = (Scene *)deg_graph->get_cow_id(&deg_graph->scene->id);
-  /* Flush visibility layer and re-schedule nodes for update. */
-  DEG::deg_graph_build_finalize(bmain, deg_graph);
-  DEG_graph_on_visible_update(bmain, graph);
-#if 0
-  if (!DEG_debug_consistency_check(deg_graph)) {
-    printf("Consistency validation failed, ABORTING!\n");
-    abort();
+}
+
+void DEG_graph_build_for_compositor_preview(
+    Depsgraph *graph, Main *bmain, Scene *scene, struct ViewLayer *view_layer, bNodeTree *nodetree)
+{
+  double start_time = 0.0;
+  if (G.debug & (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_TIME)) {
+    start_time = PIL_check_seconds_timer();
   }
-#endif
-  /* Relations are up to date. */
-  deg_graph->need_update = false;
+  DEG::Depsgraph *deg_graph = reinterpret_cast<DEG::Depsgraph *>(graph);
+  /* Perform sanity checks. */
+  BLI_assert(deg_graph->scene == scene);
+  deg_graph->is_render_pipeline_depsgraph = true;
+  DEG::DepsgraphBuilderCache builder_cache;
+  /* Generate all the nodes in the graph first */
+  DEG::DepsgraphNodeBuilder node_builder(bmain, deg_graph, &builder_cache);
+  node_builder.begin_build();
+  node_builder.build_scene_render(scene, view_layer);
+  node_builder.build_nodetree(nodetree);
+  node_builder.end_build();
+  /* Hook up relationships between operations - to determine evaluation
+   * order. */
+  DEG::DepsgraphRelationBuilder relation_builder(bmain, deg_graph, &builder_cache);
+  relation_builder.begin_build();
+  relation_builder.build_scene_render(scene, view_layer);
+  relation_builder.build_nodetree(nodetree);
+  relation_builder.build_copy_on_write_relations();
+  /* Finalize building. */
+  graph_build_finalize_common(deg_graph, bmain);
   /* Finish statistics. */
   if (G.debug & (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_TIME)) {
     printf("Depsgraph built in %f seconds.\n", PIL_check_seconds_timer() - start_time);

@@ -32,9 +32,9 @@
 struct Depsgraph;
 struct FreestyleSettings;
 struct ID;
-struct IDOverrideStatic;
-struct IDOverrideStaticProperty;
-struct IDOverrideStaticPropertyOperation;
+struct IDOverrideLibrary;
+struct IDOverrideLibraryProperty;
+struct IDOverrideLibraryPropertyOperation;
 struct IDProperty;
 struct Main;
 struct Mesh;
@@ -116,6 +116,16 @@ typedef struct BlenderDefRNA {
   ListBase allocs;
   struct StructRNA *laststruct;
   int error, silent, preprocess, verify, animate;
+  /* Keep last. */
+#ifndef RNA_RUNTIME
+  struct {
+    /** #RNA_def_property_update */
+    struct {
+      int noteflag;
+      const char *updatefunc;
+    } property_update;
+  } fallback;
+#endif
 } BlenderDefRNA;
 
 extern BlenderDefRNA DefRNA;
@@ -210,7 +220,7 @@ bool rna_AnimaData_override_apply(struct Main *bmain,
                                   struct PointerRNA *ptr_item_local,
                                   struct PointerRNA *ptr_item_reference,
                                   struct PointerRNA *ptr_item_storage,
-                                  struct IDOverrideStaticPropertyOperation *opop);
+                                  struct IDOverrideLibraryPropertyOperation *opop);
 
 void rna_def_animviz_common(struct StructRNA *srna);
 void rna_def_motionpath_common(struct StructRNA *srna);
@@ -340,6 +350,10 @@ bool rna_GPencil_datablocks_obdata_poll(struct PointerRNA *ptr, const struct Poi
 char *rna_TextureSlot_path(struct PointerRNA *ptr);
 char *rna_Node_ImageUser_path(struct PointerRNA *ptr);
 
+/* Set U.is_dirty and redraw. */
+void rna_userdef_is_dirty_update_impl(void);
+void rna_userdef_is_dirty_update(struct Main *bmain, struct Scene *scene, struct PointerRNA *ptr);
+
 /* API functions */
 
 void RNA_api_action(StructRNA *srna);
@@ -463,7 +477,7 @@ int rna_property_override_diff_default(struct Main *bmain,
                                        const int len_a,
                                        const int len_b,
                                        const int mode,
-                                       struct IDOverrideStatic *override,
+                                       struct IDOverrideLibrary *override,
                                        const char *rna_path,
                                        const int flags,
                                        bool *r_override_changed);
@@ -478,7 +492,7 @@ bool rna_property_override_store_default(struct Main *bmain,
                                          const int len_local,
                                          const int len_reference,
                                          const int len_storage,
-                                         struct IDOverrideStaticPropertyOperation *opop);
+                                         struct IDOverrideLibraryPropertyOperation *opop);
 
 bool rna_property_override_apply_default(struct Main *bmain,
                                          struct PointerRNA *ptr_dst,
@@ -493,7 +507,7 @@ bool rna_property_override_apply_default(struct Main *bmain,
                                          struct PointerRNA *ptr_item_dst,
                                          struct PointerRNA *ptr_item_src,
                                          struct PointerRNA *ptr_item_storage,
-                                         struct IDOverrideStaticPropertyOperation *opop);
+                                         struct IDOverrideLibraryPropertyOperation *opop);
 
 /* Builtin Property Callbacks */
 

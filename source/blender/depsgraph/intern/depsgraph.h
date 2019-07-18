@@ -152,6 +152,9 @@ struct Depsgraph {
   /* Indicates which ID types were updated. */
   char id_type_updated[MAX_LIBARRAY];
 
+  /* Indicates type of IDs present in the depsgraph. */
+  char id_type_exist[MAX_LIBARRAY];
+
   /* Quick-Access Temp Data ............. */
 
   /* Nodes which have been tagged as "directly modified". */
@@ -193,6 +196,12 @@ struct Depsgraph {
   string debug_name;
 
   bool debug_is_evaluating;
+
+  /* Is set to truth for dependency graph which are used for post-processing (compositor and
+   * sequencer).
+   * Such dependency graph needs all view layers (so render pipeline can access names), but it
+   * does not need any bases. */
+  bool is_render_pipeline_depsgraph;
 
   /* Cached list of colliders/effectors for collections and the scene
    * created along with relations, for fast lookup during evaluation. */

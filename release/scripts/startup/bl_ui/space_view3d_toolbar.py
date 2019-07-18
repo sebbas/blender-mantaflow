@@ -18,13 +18,13 @@
 
 # <pep8 compliant>
 from bpy.types import Menu, Panel, UIList
-from .properties_grease_pencil_common import (
+from bl_ui.properties_grease_pencil_common import (
     GreasePencilStrokeEditPanel,
     GreasePencilStrokeSculptPanel,
     GreasePencilSculptOptionsPanel,
     GreasePencilAppearancePanel,
 )
-from .properties_paint_common import (
+from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
     brush_mask_texture_settings,
     brush_texpaint_common,
@@ -82,6 +82,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     bl_category = "Tool"
     bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
     bl_label = "Options"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
@@ -94,8 +95,6 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         layout.use_property_decorate = False
 
         ob = context.active_object
-
-        tool_settings = context.tool_settings
         mesh = ob.data
 
         col = layout.column(align=True)
@@ -105,10 +104,33 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row.active = ob.data.use_mirror_x
         row.prop(mesh, "use_mirror_topology")
 
-        layout.prop(tool_settings, "use_edge_path_live_unwrap")
-        layout.prop(tool_settings, "use_mesh_automerge", toggle=False)
 
-        layout.prop(tool_settings, "double_threshold")
+class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
+    bl_label = "Auto Merge"
+    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object
+
+    def draw_header(self, context):
+        tool_settings = context.tool_settings
+
+        self.layout.prop(tool_settings, "use_mesh_automerge", text="", toggle=False)
+
+    def draw(self, context):
+        layout = self.layout
+
+        tool_settings = context.tool_settings
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        layout.active = tool_settings.use_mesh_automerge
+        layout.prop(tool_settings, "double_threshold", text="Threshold")
 
 # ********** default tools for editmode_curve ****************
 
@@ -282,7 +304,7 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
 
         # Sculpt Mode #
         if context.sculpt_object and brush:
-            from .properties_paint_common import (
+            from bl_ui.properties_paint_common import (
                 brush_basic_sculpt_settings,
             )
 
@@ -366,7 +388,7 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
 
         # Weight Paint Mode #
         elif context.weight_paint_object and brush:
-            from .properties_paint_common import (
+            from bl_ui.properties_paint_common import (
                 brush_basic_wpaint_settings,
             )
 
@@ -377,7 +399,7 @@ class VIEW3D_PT_tools_brush(Panel, View3DPaintPanel):
 
         # Vertex Paint Mode #
         elif context.vertex_paint_object and brush:
-            from .properties_paint_common import (
+            from bl_ui.properties_paint_common import (
                 brush_basic_vpaint_settings,
             )
 
@@ -1718,7 +1740,7 @@ class VIEW3D_PT_tools_grease_pencil_brush(View3DPanel, Panel):
                 row.prop(gp_settings, "use_material_pin", text="")
 
             if not self.is_popover:
-                from .properties_paint_common import (
+                from bl_ui.properties_paint_common import (
                     brush_basic_gpencil_paint_settings,
                 )
                 brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
@@ -2029,7 +2051,7 @@ class VIEW3D_PT_tools_grease_pencil_weight_paint(View3DPanel, Panel):
         col = layout.column()
 
         if not self.is_popover:
-            from .properties_paint_common import (
+            from bl_ui.properties_paint_common import (
                 brush_basic_gpencil_weight_settings,
             )
             brush_basic_gpencil_weight_settings(col, context, brush)
@@ -2071,6 +2093,7 @@ class VIEW3D_PT_gpencil_brush_presets(PresetPanel, Panel):
 
 classes = (
     VIEW3D_PT_tools_meshedit_options,
+    VIEW3D_PT_tools_meshedit_options_automerge,
     VIEW3D_PT_tools_curveedit_options_stroke,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,

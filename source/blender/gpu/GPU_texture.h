@@ -33,6 +33,8 @@ extern "C" {
 struct GPUVertBuf;
 struct Image;
 struct ImageUser;
+struct MovieClip;
+struct MovieClipUser;
 struct PreviewImage;
 struct rcti;
 
@@ -189,6 +191,12 @@ GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode);
 GPUTexture *GPU_texture_from_blender(struct Image *ima, struct ImageUser *iuser, int textarget);
 GPUTexture *GPU_texture_from_preview(struct PreviewImage *prv, int mipmap);
 
+/* movie clip drawing */
+GPUTexture *GPU_texture_from_movieclip(struct MovieClip *clip,
+                                       struct MovieClipUser *cuser,
+                                       int textarget);
+void GPU_free_texture_movieclip(struct MovieClip *clip);
+
 void GPU_texture_add_mipmap(GPUTexture *tex,
                             eGPUDataFormat gpu_data_format,
                             int miplvl,
@@ -206,10 +214,6 @@ void GPU_texture_update_sub(GPUTexture *tex,
                             int depth);
 
 void *GPU_texture_read(GPUTexture *tex, eGPUDataFormat gpu_data_format, int miplvl);
-void GPU_texture_read_rect(GPUTexture *tex,
-                           eGPUDataFormat gpu_data_format,
-                           const struct rcti *rect,
-                           void *r_buf);
 
 void GPU_invalid_tex_init(void);
 void GPU_invalid_tex_bind(int mode);
@@ -237,6 +241,9 @@ int GPU_texture_detach_framebuffer(GPUTexture *tex, struct GPUFrameBuffer *fb);
 int GPU_texture_target(const GPUTexture *tex);
 int GPU_texture_width(const GPUTexture *tex);
 int GPU_texture_height(const GPUTexture *tex);
+int GPU_texture_orig_width(const GPUTexture *tex);
+int GPU_texture_orig_height(const GPUTexture *tex);
+void GPU_texture_orig_size_set(GPUTexture *tex, int w, int h);
 int GPU_texture_layers(const GPUTexture *tex);
 eGPUTextureFormat GPU_texture_format(const GPUTexture *tex);
 int GPU_texture_samples(const GPUTexture *tex);

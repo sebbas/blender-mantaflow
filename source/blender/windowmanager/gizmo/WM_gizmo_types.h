@@ -85,6 +85,10 @@ typedef enum eWM_GizmoFlag {
 
   /** Use the active tools operator properties when running as an operator. */
   WM_GIZMO_OPERATOR_TOOL_INIT = (1 << 9),
+
+  /** Don't pass through events to other handlers
+   * (allows click/drag not to have it's events stolen by press events in other keymaps). */
+  WM_GIZMO_EVENT_HANDLE_ALL = (1 << 10),
 } eWM_GizmoFlag;
 
 /**
@@ -182,6 +186,9 @@ struct wmGizmo {
   /** Pointer back to group this gizmo is in (just for quick access). */
   struct wmGizmoGroup *parent_gzgroup;
 
+  /** Optional keymap to use for this gizmo (overrides #wmGizmoGroupType.keymap) */
+  struct wmKeyMap *keymap;
+
   void *py_instance;
 
   /** Rna pointer to access properties. */
@@ -195,7 +202,11 @@ struct wmGizmo {
   /** Optional ID for highlighting different parts of this gizmo.
    * -1 when unset, otherwise a valid index. (Used as index to 'op_data'). */
   int highlight_part;
-  /** For single click button gizmos, use a different part as a fallback, -1 when unused. */
+
+  /**
+   * For gizmos that differentiate between click & drag,
+   * use a different part for any drag events, -1 when unused.
+   */
   int drag_part;
 
   /** Distance to bias this gizmo above others when picking
@@ -236,6 +247,9 @@ struct wmGizmo {
   int op_data_len;
 
   struct IDProperty *properties;
+
+  /** Redraw tag. */
+  bool do_draw;
 
   /** Temporary data (assume dirty). */
   union {
@@ -306,7 +320,7 @@ typedef struct wmGizmoType {
   wmGizmoFnDrawSelect draw_select;
 
   /** Determine if the mouse intersects with the gizmo.
-   * The calculation should be done in the callback itself, -1 for no seleciton. */
+   * The calculation should be done in the callback itself, -1 for no selection. */
   wmGizmoFnTestSelect test_select;
 
   /** Handler used by the gizmo. Usually handles interaction tied to a gizmo type. */
@@ -406,6 +420,12 @@ typedef struct wmGizmoGroupType {
   /** Same as gizmo-maps, so registering/unregistering goes to the correct region. */
   struct wmGizmoMapType_Params gzmap_params;
 
+  /**
+   * Number of #wmGizmoGroup instances.
+   * Decremented when 'tag_remove' is set, or when removed.
+   */
+  int users;
+
 } wmGizmoGroupType;
 
 typedef struct wmGizmoGroup {
@@ -420,6 +440,8 @@ typedef struct wmGizmoGroup {
   void *py_instance;
   /** Errors and warnings storage. */
   struct ReportList *reports;
+
+  bool tag_remove;
 
   void *customdata;
   /** For freeing customdata from above. */

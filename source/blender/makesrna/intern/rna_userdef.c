@@ -184,6 +184,31 @@ static void rna_userdef_version_get(PointerRNA *ptr, int *value)
   value[2] = userdef->subversionfile;
 }
 
+#  define USERDEF_TAG_DIRTY rna_userdef_is_dirty_update_impl()
+
+/* Use single function so we can more easily breakpoint it. */
+void rna_userdef_is_dirty_update_impl(void)
+{
+  /* We can't use 'ptr->data' because this update function
+   * is used for themes and other nested data. */
+  if (U.runtime.is_dirty == false) {
+    U.runtime.is_dirty = true;
+    WM_main_add_notifier(NC_WINDOW, NULL);
+  }
+}
+
+/**
+ * Use as a fallback update handler,
+ * never use 'ptr' unless it's type is checked.
+ */
+void rna_userdef_is_dirty_update(Main *UNUSED(bmain),
+                                 Scene *UNUSED(scene),
+                                 PointerRNA *UNUSED(ptr))
+{
+  rna_userdef_is_dirty_update_impl();
+}
+
+/** Take care not to use this if we expet 'is_dirty' to be tagged. */
 static void rna_userdef_ui_update(Main *UNUSED(bmain),
                                   Scene *UNUSED(scene),
                                   PointerRNA *UNUSED(ptr))
@@ -193,16 +218,20 @@ static void rna_userdef_ui_update(Main *UNUSED(bmain),
 
 static void rna_userdef_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
 {
-  /* We can't use 'ptr->data' because this update function
-   * is used for themes and other nested data. */
-  U.runtime.is_dirty = true;
-
   WM_main_add_notifier(NC_WINDOW, NULL);
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_theme_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   /* Recreate gizmos when changing themes. */
+  WM_reinit_gizmomap_all(bmain);
+
+  rna_userdef_update(bmain, scene, ptr);
+}
+
+static void rna_userdef_gizmo_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
   WM_reinit_gizmomap_all(bmain);
 
   rna_userdef_update(bmain, scene, ptr);
@@ -224,24 +253,27 @@ static void rna_userdef_dpi_update(Main *UNUSED(bmain),
 
   WM_main_add_notifier(NC_WINDOW, NULL);             /* full redraw */
   WM_main_add_notifier(NC_SCREEN | NA_EDITED, NULL); /* refresh region sizes */
+  USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_update_ui(Main *UNUSED(bmain),
-                                  Scene *UNUSED(scene),
-                                  PointerRNA *UNUSED(ptr))
+static void rna_userdef_screen_update(Main *UNUSED(bmain),
+                                      Scene *UNUSED(scene),
+                                      PointerRNA *UNUSED(ptr))
 {
   WM_main_add_notifier(NC_WINDOW, NULL);
   WM_main_add_notifier(NC_SCREEN | NA_EDITED, NULL); /* refresh region sizes */
+  USERDEF_TAG_DIRTY;
 }
 
-static void rna_userdef_update_ui_header_default(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_userdef_screen_update_header_default(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   if (U.uiflag & USER_HEADER_FROM_PREF) {
     for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
       BKE_screen_header_alignment_reset(screen);
     }
-    rna_userdef_update_ui(bmain, scene, ptr);
+    rna_userdef_screen_update(bmain, scene, ptr);
   }
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_language_update(Main *UNUSED(bmain),
@@ -251,6 +283,7 @@ static void rna_userdef_language_update(Main *UNUSED(bmain),
   BLF_cache_clear();
   BLT_lang_set(NULL);
   UI_reinit_font();
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_script_autoexec_update(Main *UNUSED(bmain),
@@ -258,19 +291,27 @@ static void rna_userdef_script_autoexec_update(Main *UNUSED(bmain),
                                                PointerRNA *ptr)
 {
   UserDef *userdef = (UserDef *)ptr->data;
-  if (userdef->flag & USER_SCRIPT_AUTOEXEC_DISABLE)
+  if (userdef->flag & USER_SCRIPT_AUTOEXEC_DISABLE) {
     G.f &= ~G_FLAG_SCRIPT_AUTOEXEC;
-  else
+  }
+  else {
     G.f |= G_FLAG_SCRIPT_AUTOEXEC;
+  }
+
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_load_ui_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
   UserDef *userdef = (UserDef *)ptr->data;
-  if (userdef->flag & USER_FILENOUI)
+  if (userdef->flag & USER_FILENOUI) {
     G.fileflags |= G_FILE_NO_UI;
-  else
+  }
+  else {
     G.fileflags &= ~G_FILE_NO_UI;
+  }
+
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_anisotropic_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -298,8 +339,9 @@ static int rna_userdef_autokeymode_get(PointerRNA *ptr)
   UserDef *userdef = (UserDef *)ptr->data;
   short retval = userdef->autokey_mode;
 
-  if (!(userdef->autokey_mode & AUTOKEY_ON))
+  if (!(userdef->autokey_mode & AUTOKEY_ON)) {
     retval |= AUTOKEY_ON;
+  }
 
   return retval;
 }
@@ -323,6 +365,7 @@ static void rna_userdef_tablet_api_update(Main *UNUSED(bmain),
                                           PointerRNA *UNUSED(ptr))
 {
   WM_init_tablet_api();
+  USERDEF_TAG_DIRTY;
 }
 
 #  ifdef WITH_INPUT_NDOF
@@ -332,6 +375,7 @@ static void rna_userdef_ndof_deadzone_update(Main *UNUSED(bmain),
 {
   UserDef *userdef = ptr->data;
   WM_ndof_deadzone_set(userdef->ndof_deadzone);
+  USERDEF_TAG_DIRTY;
 }
 #  endif
 
@@ -341,6 +385,7 @@ static void rna_userdef_keyconfig_reload_update(bContext *C,
                                                 PointerRNA *UNUSED(ptr))
 {
   WM_keyconfig_reload(C);
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
@@ -373,8 +418,9 @@ static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
       break;
   }
 
-  if (U.v2d_min_gridsize < required_size)
+  if (U.v2d_min_gridsize < required_size) {
     U.v2d_min_gridsize = required_size;
+  }
 }
 
 static PointerRNA rna_UserDef_view_get(PointerRNA *ptr)
@@ -410,6 +456,7 @@ static PointerRNA rna_UserDef_system_get(PointerRNA *ptr)
 static void rna_UserDef_audio_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *UNUSED(ptr))
 {
   BKE_sound_init(bmain);
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_Userdef_memcache_update(Main *UNUSED(bmain),
@@ -417,6 +464,7 @@ static void rna_Userdef_memcache_update(Main *UNUSED(bmain),
                                         PointerRNA *UNUSED(ptr))
 {
   MEM_CacheLimiter_set_maximum(((size_t)U.memcachelimit) * 1024 * 1024);
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_UserDef_weight_color_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -424,8 +472,9 @@ static void rna_UserDef_weight_color_update(Main *bmain, Scene *scene, PointerRN
   Object *ob;
 
   for (ob = bmain->objects.first; ob; ob = ob->id.next) {
-    if (ob->mode & OB_MODE_WEIGHT_PAINT)
+    if (ob->mode & OB_MODE_WEIGHT_PAINT) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    }
   }
 
   rna_userdef_update(bmain, scene, ptr);
@@ -449,8 +498,9 @@ static void rna_userdef_autosave_update(Main *bmain, Scene *scene, PointerRNA *p
 {
   wmWindowManager *wm = bmain->wm.first;
 
-  if (wm)
+  if (wm) {
     WM_autosave_init(wm);
+  }
   rna_userdef_update(bmain, scene, ptr);
 }
 
@@ -459,7 +509,7 @@ static bAddon *rna_userdef_addon_new(void)
   ListBase *addons_list = &U.addons;
   bAddon *addon = BKE_addon_new();
   BLI_addtail(addons_list, addon);
-  U.runtime.is_dirty = true;
+  USERDEF_TAG_DIRTY;
   return addon;
 }
 
@@ -474,14 +524,14 @@ static void rna_userdef_addon_remove(ReportList *reports, PointerRNA *addon_ptr)
   BLI_remlink(addons_list, addon);
   BKE_addon_free(addon);
   RNA_POINTER_INVALIDATE(addon_ptr);
-  U.runtime.is_dirty = true;
+  USERDEF_TAG_DIRTY;
 }
 
 static bPathCompare *rna_userdef_pathcompare_new(void)
 {
   bPathCompare *path_cmp = MEM_callocN(sizeof(bPathCompare), "bPathCompare");
   BLI_addtail(&U.autoexec_paths, path_cmp);
-  U.runtime.is_dirty = true;
+  USERDEF_TAG_DIRTY;
   return path_cmp;
 }
 
@@ -495,7 +545,7 @@ static void rna_userdef_pathcompare_remove(ReportList *reports, PointerRNA *path
 
   BLI_freelinkN(&U.autoexec_paths, path_cmp);
   RNA_POINTER_INVALIDATE(path_cmp_ptr);
-  U.runtime.is_dirty = true;
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_temp_update(Main *UNUSED(bmain),
@@ -503,6 +553,7 @@ static void rna_userdef_temp_update(Main *UNUSED(bmain),
                                     PointerRNA *UNUSED(ptr))
 {
   BKE_tempdir_init(U.tempdir);
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_text_update(Main *UNUSED(bmain),
@@ -512,6 +563,7 @@ static void rna_userdef_text_update(Main *UNUSED(bmain),
   BLF_cache_clear();
   UI_reinit_font();
   WM_main_add_notifier(NC_WINDOW, NULL);
+  USERDEF_TAG_DIRTY;
 }
 
 static PointerRNA rna_Theme_space_generic_get(PointerRNA *ptr)
@@ -578,6 +630,7 @@ static void rna_userdef_opensubdiv_update(Main *bmain,
   for (object = bmain->objects.first; object; object = object->id.next) {
     DEG_id_tag_update(&object->id, ID_RECALC_TRANSFORM);
   }
+  USERDEF_TAG_DIRTY;
 }
 
 #  endif
@@ -660,8 +713,9 @@ static void rna_AddonPref_unregister(Main *UNUSED(bmain), StructRNA *type)
 {
   bAddonPrefType *apt = RNA_struct_blender_type_get(type);
 
-  if (!apt)
+  if (!apt) {
     return;
+  }
 
   RNA_struct_free_extension(type, &apt->ext);
   RNA_struct_free(&BLENDER_RNA, type);
@@ -689,8 +743,9 @@ static StructRNA *rna_AddonPref_register(Main *bmain,
   RNA_pointer_create(NULL, &RNA_AddonPreferences, &dummy_addon, &dummy_ptr);
 
   /* validate the python class */
-  if (validate(&dummy_ptr, data, NULL /* have_function */) != 0)
+  if (validate(&dummy_ptr, data, NULL /* have_function */) != 0) {
     return NULL;
+  }
 
   BLI_strncpy(dummy_apt.idname, dummy_addon.module, sizeof(dummy_apt.idname));
   if (strlen(identifier) >= sizeof(dummy_apt.idname)) {
@@ -899,6 +954,11 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 }
 
 #else
+
+#  define USERDEF_TAG_DIRTY_PROPERTY_UPDATE_ENABLE \
+    RNA_define_fallback_property_update(0, "rna_userdef_is_dirty_update")
+
+#  define USERDEF_TAG_DIRTY_PROPERTY_UPDATE_DISABLE RNA_define_fallback_property_update(0, NULL)
 
 /* TODO(sergey): This technically belongs to blenlib, but we don't link
  * makesrna against it.
@@ -2140,7 +2200,7 @@ static void rna_def_userdef_theme_space_graph(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "scrubbing_background", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -2855,7 +2915,7 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "scrubbing_background", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -2917,7 +2977,7 @@ static void rna_def_userdef_theme_space_action(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "scrubbing_background", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -3215,7 +3275,7 @@ static void rna_def_userdef_theme_space_nla(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "scrubbing_background", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -3324,7 +3384,7 @@ static void rna_def_userdef_theme_space_clip(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "scrubbing_background", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
@@ -3737,12 +3797,16 @@ static void rna_def_userdef_addon_pref(BlenderRNA *brna)
   RNA_def_struct_idprops_func(srna, "rna_AddonPref_idprops");
   RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES); /* Mandatory! */
 
+  USERDEF_TAG_DIRTY_PROPERTY_UPDATE_DISABLE;
+
   /* registration */
   RNA_define_verify_sdna(0);
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "module");
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_define_verify_sdna(1);
+
+  USERDEF_TAG_DIRTY_PROPERTY_UPDATE_ENABLE;
 }
 
 static void rna_def_userdef_dothemes(BlenderRNA *brna)
@@ -4059,7 +4123,15 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_boolean_negative_sdna(prop, NULL, "app_flag", USER_APP_LOCK_UI_LAYOUT);
   RNA_def_property_ui_text(
       prop, "Editor Corner Splitting", "Split and join editors by dragging from corners");
-  RNA_def_property_update(prop, 0, "rna_userdef_update_ui");
+  RNA_def_property_update(prop, 0, "rna_userdef_screen_update");
+
+  prop = RNA_def_property(srna, "show_navigate_ui", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_SHOW_GIZMO_NAVIGATE);
+  RNA_def_property_ui_text(
+      prop,
+      "Navigation Controls",
+      "Show navigation controls in 2D & 3D views which do not have scroll bars");
+  RNA_def_property_update(prop, 0, "rna_userdef_gizmo_update");
 
   /* menus */
   prop = RNA_def_property(srna, "use_mouse_over_open", PROP_BOOLEAN, PROP_NONE);
@@ -4160,7 +4232,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, header_align_items);
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "uiflag");
   RNA_def_property_ui_text(prop, "Header Position", "Default header position for new space-types");
-  RNA_def_property_update(prop, 0, "rna_userdef_update_ui_header_default");
+  RNA_def_property_update(prop, 0, "rna_userdef_screen_update_header_default");
 
   static const EnumPropertyItem text_hinting_items[] = {
       {0, "AUTO", 0, "Auto", ""},
@@ -4172,24 +4244,24 @@ static void rna_def_userdef_view(BlenderRNA *brna)
 
   /* mini axis */
   static const EnumPropertyItem mini_axis_type_items[] = {
-      {0, "MINIMAL", 0, "Simple Axis", ""},
-      {USER_SHOW_GIZMO_AXIS, "GIZMO", 0, "Interactive Navigation", ""},
+      {USER_MINI_AXIS_TYPE_NONE, "NONE", 0, "Off", ""},
+      {USER_MINI_AXIS_TYPE_MINIMAL, "MINIMAL", 0, "Simple Axis", ""},
+      {USER_MINI_AXIS_TYPE_GIZMO, "GIZMO", 0, "Interactive Navigation", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
   prop = RNA_def_property(srna, "mini_axis_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mini_axis_type_items);
-  RNA_def_property_enum_bitflag_sdna(prop, NULL, "uiflag");
   RNA_def_property_ui_text(prop,
                            "Mini Axes Type",
                            "Show a small rotating 3D axes in the top right corner of the 3D View");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gizmo_update");
 
   prop = RNA_def_property(srna, "mini_axis_size", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "rvisize");
   RNA_def_property_range(prop, 10, 64);
   RNA_def_property_ui_text(prop, "Mini Axes Size", "The axes icon's size");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_gizmo_update");
 
   prop = RNA_def_property(srna, "mini_axis_brightness", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "rvibright");
@@ -5154,23 +5226,37 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Walk Navigation", "Settings for walk navigation mode");
 
   /* tweak tablet & mouse preset */
+  prop = RNA_def_property(srna, "drag_threshold_mouse", PROP_INT, PROP_PIXEL);
+  RNA_def_property_range(prop, 1, 255);
+  RNA_def_property_ui_text(prop,
+                           "Mouse Drag Threshold",
+                           "Number of pixels to drag before a tweak/drag event is triggered "
+                           "for mouse/track-pad input "
+                           "(otherwise click events are detected)");
+
+  prop = RNA_def_property(srna, "drag_threshold_tablet", PROP_INT, PROP_PIXEL);
+  RNA_def_property_range(prop, 1, 255);
+  RNA_def_property_ui_text(prop,
+                           "Tablet Drag Threshold",
+                           "Number of pixels to drag before a tweak/drag event is triggered "
+                           "for tablet input "
+                           "(otherwise click events are detected)");
+
   prop = RNA_def_property(srna, "drag_threshold", PROP_INT, PROP_PIXEL);
-  RNA_def_property_int_sdna(prop, NULL, "tweak_threshold");
-  RNA_def_property_range(prop, 3, 1024);
-  RNA_def_property_ui_text(
-      prop,
-      "Drag Threshold",
-      "Number of pixels you have to drag before a tweak/drag event is triggered "
-      "(otherwise click events are detected)");
+  RNA_def_property_range(prop, 1, 255);
+  RNA_def_property_ui_text(prop,
+                           "Drag Threshold",
+                           "Number of pixels to drag before a drag event is triggered "
+                           "for keyboard and other non mouse/tablet input "
+                           "(otherwise click events are detected)");
 
   prop = RNA_def_property(srna, "move_threshold", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_range(prop, 0, 10, 1, -1);
-  RNA_def_property_ui_text(
-      prop,
-      "Motion Threshold",
-      "Number of pixels you have to before the cursor is considered to have moved "
-      "(used for cycling selected items on successive clicks)");
+  RNA_def_property_ui_text(prop,
+                           "Motion Threshold",
+                           "Number of pixels to before the cursor is considered to have moved "
+                           "(used for cycling selected items on successive clicks)");
 
   /* tablet pressure curve */
   prop = RNA_def_property(srna, "pressure_threshold_max", PROP_FLOAT, PROP_FACTOR);
@@ -5366,7 +5452,7 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_hidden_files_datablocks", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_HIDE_DOT);
   RNA_def_property_ui_text(prop,
-                           "Hide Dot Files/Libraries",
+                           "Hide Dot Files/Data-blocks",
                            "Hide files and data-blocks if their name start with a dot (.*)");
 
   prop = RNA_def_property(srna, "use_filter_files", PROP_BOOLEAN, PROP_NONE);
@@ -5497,8 +5583,8 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_AUTOSAVE);
   RNA_def_property_ui_text(prop,
                            "Auto Save Temporary Files",
-                           "Automatic saving of temporary files in temp directory, uses process "
-                           "ID (Sculpt or edit mode data won't be saved!')");
+                           "Automatic saving of temporary files in temp directory, "
+                           "uses process ID (sculpt & edit-mode data won't be saved!)");
   RNA_def_property_update(prop, 0, "rna_userdef_autosave_update");
 
   prop = RNA_def_property(srna, "auto_save_time", PROP_INT, PROP_NONE);
@@ -5574,6 +5660,8 @@ static void rna_def_userdef_autoexec_path_collection(BlenderRNA *brna, PropertyR
 
 void RNA_def_userdef(BlenderRNA *brna)
 {
+  USERDEF_TAG_DIRTY_PROPERTY_UPDATE_ENABLE;
+
   StructRNA *srna;
   PropertyRNA *prop;
 
@@ -5720,8 +5808,8 @@ void RNA_def_userdef(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "is_dirty", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "runtime.is_dirty", 0);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Dirty", "Preferences have changed");
+  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
   rna_def_userdef_view(brna);
   rna_def_userdef_edit(brna);
@@ -5734,6 +5822,8 @@ void RNA_def_userdef(BlenderRNA *brna)
   rna_def_userdef_studiolights(brna);
   rna_def_userdef_studiolight(brna);
   rna_def_userdef_pathcompare(brna);
+
+  USERDEF_TAG_DIRTY_PROPERTY_UPDATE_DISABLE;
 }
 
 #endif

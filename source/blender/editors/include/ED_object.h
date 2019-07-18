@@ -121,6 +121,9 @@ void ED_object_parent_clear(struct Object *ob, const int type);
 
 void ED_object_base_select(struct Base *base, eObjectSelect_Mode mode);
 void ED_object_base_activate(struct bContext *C, struct Base *base);
+void ED_object_base_active_refresh(struct Main *bmain,
+                                   struct Scene *scene,
+                                   struct ViewLayer *view_layer);
 void ED_object_base_free_and_unlink(struct Main *bmain, struct Scene *scene, struct Object *ob);
 bool ED_object_base_deselect_all_ex(struct ViewLayer *view_layer,
                                     struct View3D *v3d,
@@ -183,7 +186,8 @@ void ED_object_sculptmode_enter_ex(struct Main *bmain,
                                    const bool force_dyntopo,
                                    struct ReportList *reports);
 void ED_object_sculptmode_enter(struct bContext *C, struct ReportList *reports);
-void ED_object_sculptmode_exit_ex(struct Depsgraph *depsgraph,
+void ED_object_sculptmode_exit_ex(struct Main *bmain,
+                                  struct Depsgraph *depsgraph,
                                   struct Scene *scene,
                                   struct Object *ob);
 void ED_object_sculptmode_exit(struct bContext *C);

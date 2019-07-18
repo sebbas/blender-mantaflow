@@ -169,7 +169,13 @@ void ED_view3d_update_viewmat(Depsgraph *depsgraph,
     v2[2] = rv3d->persmat[2][1];
 
     len_px = 2.0f / sqrtf(min_ff(len_squared_v3(v1), len_squared_v3(v2)));
-    len_sc = (float)MAX2(ar->winx, ar->winy);
+
+    if (rect) {
+      len_sc = (float)max_ii(BLI_rcti_size_x(rect), BLI_rcti_size_y(rect));
+    }
+    else {
+      len_sc = (float)MAX2(ar->winx, ar->winy);
+    }
 
     rv3d->pixsize = len_px / len_sc;
   }
@@ -798,7 +804,11 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, bool a
   GPU_depth_test(true);
 
   GPUViewport *viewport = WM_draw_region_get_viewport(ar, 0);
-  DRW_draw_depth_loop(depsgraph, ar, v3d, viewport);
+  /* When Blender is starting, a click event can trigger a depth test while the viewport is not
+   * yet available. */
+  if (viewport != NULL) {
+    DRW_draw_depth_loop(depsgraph, ar, v3d, viewport);
+  }
 
   if (rv3d->rflag & RV3D_CLIPPING) {
     ED_view3d_clipping_disable();
@@ -1374,13 +1384,19 @@ void view3d_draw_region_info(const bContext *C, ARegion *ar)
 
   BLF_batch_draw_begin();
 
-  if ((U.uiflag & USER_SHOW_GIZMO_AXIS) ||
-      /* No need to display gizmo and this info. */
-      (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_NAVIGATE))) {
+  if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_NAVIGATE)) {
     /* pass */
   }
   else {
-    draw_view_axis(rv3d, &rect);
+    switch ((eUserpref_MiniAxisType)U.mini_axis_type) {
+      case USER_MINI_AXIS_TYPE_GIZMO:
+        /* The gizmo handles it's own drawing. */
+        break;
+      case USER_MINI_AXIS_TYPE_MINIMAL:
+        draw_view_axis(rv3d, &rect);
+      case USER_MINI_AXIS_TYPE_NONE:
+        break;
+    }
   }
 
   int xoffset = rect.xmin + U.widget_unit;
@@ -1447,13 +1463,16 @@ RenderEngineType *ED_view3d_engine_type(Scene *scene, int drawtype)
 {
   /*
    * Temporary viewport draw modes until we have a proper system.
-   * all modes are done in the draw manager, except
-   * cycles material as it is an external render engine.
+   * all modes are done in the draw manager, except external render
+   * engines like Cycles.
    */
-  if (strcmp(scene->r.engine, RE_engine_id_CYCLES) == 0 && drawtype == OB_MATERIAL) {
+  RenderEngineType *type = RE_engines_find(scene->r.engine);
+  if (drawtype == OB_MATERIAL && (type->flag & RE_USE_EEVEE_VIEWPORT)) {
     return RE_engines_find(RE_engine_id_BLENDER_EEVEE);
   }
-  return RE_engines_find(scene->r.engine);
+  else {
+    return type;
+  }
 }
 
 void view3d_main_region_draw(const bContext *C, ARegion *ar)

@@ -2176,13 +2176,14 @@ void IMB_colormanagement_colorspace_to_scene_linear(float *buffer,
   }
 }
 
-void IMB_colormanagement_imbuf_to_srgb_texture(unsigned char *out_buffer,
+void IMB_colormanagement_imbuf_to_byte_texture(unsigned char *out_buffer,
                                                const int offset_x,
                                                const int offset_y,
                                                const int width,
                                                const int height,
                                                const struct ImBuf *ibuf,
-                                               const bool compress_as_srgb)
+                                               const bool compress_as_srgb,
+                                               const bool store_premultiplied)
 {
   /* Convert byte buffer for texture storage on the GPU. These have builtin
    * support for converting sRGB to linear, which allows us to store textures
@@ -2195,9 +2196,9 @@ void IMB_colormanagement_imbuf_to_srgb_texture(unsigned char *out_buffer,
     processor = colorspace_to_scene_linear_processor(ibuf->rect_colorspace);
   }
 
-  /* TODO(brecht): make this multithreaded, or at least process in batches. */
+  /* TODO(brecht): make this multi-threaded, or at least process in batches. */
   const unsigned char *in_buffer = (unsigned char *)ibuf->rect;
-  const bool use_premultiply = IMB_alpha_affects_rgb(ibuf);
+  const bool use_premultiply = IMB_alpha_affects_rgb(ibuf) && store_premultiplied;
 
   for (int y = 0; y < height; y++) {
     const size_t in_offset = (offset_y + y) * ibuf->x + offset_x;
@@ -2234,6 +2235,58 @@ void IMB_colormanagement_imbuf_to_srgb_texture(unsigned char *out_buffer,
         out[1] = in[1];
         out[2] = in[2];
         out[3] = in[3];
+      }
+    }
+  }
+}
+
+void IMB_colormanagement_imbuf_to_float_texture(float *out_buffer,
+                                                const int offset_x,
+                                                const int offset_y,
+                                                const int width,
+                                                const int height,
+                                                const struct ImBuf *ibuf,
+                                                const bool store_premultiplied)
+{
+  /* Float texture are stored in scene linear color space, with premultiplied
+   * alpha depending on the image alpha mode. */
+  const float *in_buffer = ibuf->rect_float;
+  const int in_channels = ibuf->channels;
+  const bool use_unpremultiply = IMB_alpha_affects_rgb(ibuf) && !store_premultiplied;
+
+  for (int y = 0; y < height; y++) {
+    const size_t in_offset = (offset_y + y) * ibuf->x + offset_x;
+    const size_t out_offset = y * width;
+    const float *in = in_buffer + in_offset * 4;
+    float *out = out_buffer + out_offset * 4;
+
+    if (in_channels == 1) {
+      /* Copy single channel. */
+      for (int x = 0; x < width; x++, in += 1, out += 4) {
+        out[0] = in[0];
+        out[1] = in[0];
+        out[2] = in[0];
+        out[3] = in[0];
+      }
+    }
+    else if (in_channels == 3) {
+      /* Copy RGB. */
+      for (int x = 0; x < width; x++, in += 3, out += 4) {
+        out[0] = in[0];
+        out[1] = in[1];
+        out[2] = in[2];
+        out[3] = 1.0f;
+      }
+    }
+    else if (in_channels == 4) {
+      /* Copy or convert RGBA. */
+      if (use_unpremultiply) {
+        for (int x = 0; x < width; x++, in += 4, out += 4) {
+          premul_to_straight_v4_v4(out, in);
+        }
+      }
+      else {
+        memcpy(out, in, sizeof(float) * 4 * width);
       }
     }
   }
@@ -2614,8 +2667,7 @@ unsigned char *IMB_display_buffer_acquire(ImBuf *ibuf,
                                                  ibuf->invalid_rect.xmin,
                                                  ibuf->invalid_rect.ymin,
                                                  ibuf->invalid_rect.xmax,
-                                                 ibuf->invalid_rect.ymax,
-                                                 false);
+                                                 ibuf->invalid_rect.ymax);
     }
 
     BLI_rcti_init(&ibuf->invalid_rect, 0, 0, 0, 0);
@@ -3473,7 +3525,6 @@ static void imb_partial_display_buffer_update_ex(
     int ymin,
     int xmax,
     int ymax,
-    bool copy_display_to_byte_buffer,
     bool do_threads)
 {
   ColormanageCacheViewSettings cache_view_settings;
@@ -3509,12 +3560,6 @@ static void imb_partial_display_buffer_update_ex(
     ibuf->display_buffer_flags[display_index] |= view_flag;
 
     BLI_thread_unlock(LOCK_COLORMANAGE);
-  }
-
-  if (display_buffer == NULL) {
-    if (copy_display_to_byte_buffer) {
-      display_buffer = (unsigned char *)ibuf->rect;
-    }
   }
 
   if (display_buffer) {
@@ -3575,15 +3620,6 @@ static void imb_partial_display_buffer_update_ex(
 
     IMB_display_buffer_release(cache_handle);
   }
-
-  if (copy_display_to_byte_buffer && (unsigned char *)ibuf->rect != display_buffer) {
-    int y;
-    for (y = ymin; y < ymax; y++) {
-      size_t index = (size_t)y * buffer_width * 4;
-      memcpy(
-          (unsigned char *)ibuf->rect + index, display_buffer + index, (size_t)(xmax - xmin) * 4);
-    }
-  }
 }
 
 void IMB_partial_display_buffer_update(ImBuf *ibuf,
@@ -3597,8 +3633,7 @@ void IMB_partial_display_buffer_update(ImBuf *ibuf,
                                        int xmin,
                                        int ymin,
                                        int xmax,
-                                       int ymax,
-                                       bool copy_display_to_byte_buffer)
+                                       int ymax)
 {
   imb_partial_display_buffer_update_ex(ibuf,
                                        linear_buffer,
@@ -3612,7 +3647,6 @@ void IMB_partial_display_buffer_update(ImBuf *ibuf,
                                        ymin,
                                        xmax,
                                        ymax,
-                                       copy_display_to_byte_buffer,
                                        false);
 }
 
@@ -3628,8 +3662,7 @@ void IMB_partial_display_buffer_update_threaded(
     int xmin,
     int ymin,
     int xmax,
-    int ymax,
-    bool copy_display_to_byte_buffer)
+    int ymax)
 {
   int width = xmax - xmin;
   int height = ymax - ymin;
@@ -3646,7 +3679,6 @@ void IMB_partial_display_buffer_update_threaded(
                                        ymin,
                                        xmax,
                                        ymax,
-                                       copy_display_to_byte_buffer,
                                        do_threads);
 }
 

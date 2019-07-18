@@ -61,7 +61,6 @@
 #include "BKE_paint.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
-#include "BKE_sound.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
@@ -106,7 +105,8 @@
 
 /******************** view navigation utilities *********************/
 
-static void sima_zoom_set(SpaceImage *sima, ARegion *ar, float zoom, const float location[2])
+static void sima_zoom_set(
+    SpaceImage *sima, ARegion *ar, float zoom, const float location[2], const bool zoom_to_pos)
 {
   float oldzoom = sima->zoom;
   int width, height;
@@ -131,7 +131,7 @@ static void sima_zoom_set(SpaceImage *sima, ARegion *ar, float zoom, const float
     }
   }
 
-  if ((U.uiflag & USER_ZOOM_TO_MOUSEPOS) && location) {
+  if (zoom_to_pos && location) {
     float aspx, aspy, w, h;
 
     ED_space_image_get_size(sima, &width, &height);
@@ -145,12 +145,10 @@ static void sima_zoom_set(SpaceImage *sima, ARegion *ar, float zoom, const float
   }
 }
 
-static void sima_zoom_set_factor(SpaceImage *sima,
-                                 ARegion *ar,
-                                 float zoomfac,
-                                 const float location[2])
+static void sima_zoom_set_factor(
+    SpaceImage *sima, ARegion *ar, float zoomfac, const float location[2], const bool zoom_to_pos)
 {
-  sima_zoom_set(sima, ar, sima->zoom * zoomfac, location);
+  sima_zoom_set(sima, ar, sima->zoom * zoomfac, location, zoom_to_pos);
 }
 
 /**
@@ -178,7 +176,7 @@ static void sima_zoom_set_from_bounds(SpaceImage *sima, ARegion *ar, const rctf 
   size = min_ff(size_xy[0], size_xy[1]);
   CLAMP_MAX(size, 100.0f);
 
-  sima_zoom_set(sima, ar, size, NULL);
+  sima_zoom_set(sima, ar, size, NULL, false);
 }
 
 static Image *image_from_context(const bContext *C)
@@ -236,14 +234,6 @@ static bool image_not_packed_poll(bContext *C)
   return (ima && BLI_listbase_is_empty(&ima->packedfiles));
 }
 
-static bool imbuf_format_writeable(const ImBuf *ibuf)
-{
-  ImageFormatData im_format;
-  ImbFormatOptions options_dummy;
-  BKE_imbuf_to_image_format(&im_format, ibuf);
-  return (BKE_image_imtype_to_ftype(im_format.imtype, &options_dummy) == ibuf->ftype);
-}
-
 bool space_image_main_region_poll(bContext *C)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
@@ -296,15 +286,22 @@ typedef struct ViewPanData {
   float x, y;
   float xof, yof;
   int event_type;
+  bool own_cursor;
 } ViewPanData;
 
 static void image_view_pan_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  wmWindow *win = CTX_wm_window(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   ViewPanData *vpd;
 
   op->customdata = vpd = MEM_callocN(sizeof(ViewPanData), "ImageViewPanData");
-  WM_cursor_modal_set(CTX_wm_window(C), BC_NSEW_SCROLLCURSOR);
+
+  /* Grab will be set when running from gizmo. */
+  vpd->own_cursor = (win->grabcursor == 0);
+  if (vpd->own_cursor) {
+    WM_cursor_modal_set(win, BC_NSEW_SCROLLCURSOR);
+  }
 
   vpd->x = event->x;
   vpd->y = event->y;
@@ -326,7 +323,9 @@ static void image_view_pan_exit(bContext *C, wmOperator *op, bool cancel)
     ED_region_tag_redraw(CTX_wm_region(C));
   }
 
-  WM_cursor_modal_restore(CTX_wm_window(C));
+  if (vpd->own_cursor) {
+    WM_cursor_modal_restore(CTX_wm_window(C));
+  }
   MEM_freeN(op->customdata);
 }
 
@@ -409,7 +408,7 @@ void IMAGE_OT_view_pan(wmOperatorType *ot)
   ot->poll = space_image_main_region_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_LOCK_BYPASS;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_LOCK_BYPASS;
 
   /* properties */
   RNA_def_float_vector(ot->srna,
@@ -435,6 +434,7 @@ typedef struct ViewZoomData {
   /* needed for continuous zoom */
   wmTimer *timer;
   double timer_lastdraw;
+  bool own_cursor;
 
   /* */
   SpaceImage *sima;
@@ -443,12 +443,18 @@ typedef struct ViewZoomData {
 
 static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  wmWindow *win = CTX_wm_window(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   ARegion *ar = CTX_wm_region(C);
   ViewZoomData *vpd;
 
   op->customdata = vpd = MEM_callocN(sizeof(ViewZoomData), "ImageViewZoomData");
-  WM_cursor_modal_set(CTX_wm_window(C), BC_NSEW_SCROLLCURSOR);
+
+  /* Grab will be set when running from gizmo. */
+  vpd->own_cursor = (win->grabcursor == 0);
+  if (vpd->own_cursor) {
+    WM_cursor_modal_set(win, BC_NSEW_SCROLLCURSOR);
+  }
 
   vpd->origx = event->x;
   vpd->origy = event->y;
@@ -484,7 +490,9 @@ static void image_view_zoom_exit(bContext *C, wmOperator *op, bool cancel)
     WM_event_remove_timer(CTX_wm_manager(C), vpd->timer->win, vpd->timer);
   }
 
-  WM_cursor_modal_restore(CTX_wm_window(C));
+  if (vpd->own_cursor) {
+    WM_cursor_modal_restore(CTX_wm_window(C));
+  }
   MEM_freeN(op->customdata);
 }
 
@@ -493,7 +501,7 @@ static int image_view_zoom_exec(bContext *C, wmOperator *op)
   SpaceImage *sima = CTX_wm_space_image(C);
   ARegion *ar = CTX_wm_region(C);
 
-  sima_zoom_set_factor(sima, ar, RNA_float_get(op->ptr, "factor"), NULL);
+  sima_zoom_set_factor(sima, ar, RNA_float_get(op->ptr, "factor"), NULL, false);
 
   ED_region_tag_redraw(ar);
 
@@ -523,7 +531,12 @@ static int image_view_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
     factor = 1.0f + delta / 300.0f;
     RNA_float_set(op->ptr, "factor", factor);
-    sima_zoom_set(sima, ar, sima->zoom * factor, location);
+    const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
+    sima_zoom_set(sima,
+                  ar,
+                  sima->zoom * factor,
+                  location,
+                  (use_cursor_init && (U.uiflag & USER_ZOOM_TO_MOUSEPOS)));
     ED_region_tag_redraw(ar);
 
     return OPERATOR_FINISHED;
@@ -539,7 +552,8 @@ static void image_zoom_apply(ViewZoomData *vpd,
                              const int x,
                              const int y,
                              const short viewzoom,
-                             const short zoom_invert)
+                             const short zoom_invert,
+                             const bool zoom_to_pos)
 {
   float factor;
 
@@ -579,7 +593,7 @@ static void image_zoom_apply(ViewZoomData *vpd,
   }
 
   RNA_float_set(op->ptr, "factor", factor);
-  sima_zoom_set(vpd->sima, vpd->ar, vpd->zoom * factor, vpd->location);
+  sima_zoom_set(vpd->sima, vpd->ar, vpd->zoom * factor, vpd->location, zoom_to_pos);
   ED_region_tag_redraw(vpd->ar);
 }
 
@@ -601,7 +615,14 @@ static int image_view_zoom_modal(bContext *C, wmOperator *op, const wmEvent *eve
   }
 
   if (event_code == VIEW_APPLY) {
-    image_zoom_apply(vpd, op, event->x, event->y, U.viewzoom, (U.uiflag & USER_ZOOM_INVERT) != 0);
+    const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
+    image_zoom_apply(vpd,
+                     op,
+                     event->x,
+                     event->y,
+                     U.viewzoom,
+                     (U.uiflag & USER_ZOOM_INVERT) != 0,
+                     (use_cursor_init && (U.uiflag & USER_ZOOM_TO_MOUSEPOS)));
   }
   else if (event_code == VIEW_CONFIRM) {
     image_view_zoom_exit(C, op, false);
@@ -633,7 +654,7 @@ void IMAGE_OT_view_zoom(wmOperatorType *ot)
   ot->poll = space_image_main_region_poll;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR | OPTYPE_LOCK_BYPASS;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_LOCK_BYPASS;
 
   /* properties */
   prop = RNA_def_float(ot->srna,
@@ -646,6 +667,8 @@ void IMAGE_OT_view_zoom(wmOperatorType *ot)
                        -FLT_MAX,
                        FLT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN);
+
+  WM_operator_properties_use_cursor_init(ot);
 }
 
 #ifdef WITH_INPUT_NDOF
@@ -675,7 +698,7 @@ static int image_view_ndof_invoke(bContext *C, wmOperator *UNUSED(op), const wmE
     mul_v2_fl(pan_vec, (speed * ndof->dt) / sima->zoom);
     pan_vec[2] *= -ndof->dt;
 
-    sima_zoom_set_factor(sima, ar, 1.0f + pan_vec[2], NULL);
+    sima_zoom_set_factor(sima, ar, 1.0f + pan_vec[2], NULL, false);
     sima->xof += pan_vec[0];
     sima->yof += pan_vec[1];
 
@@ -735,7 +758,7 @@ static int image_view_all_exec(bContext *C, wmOperator *op)
     zoomx = (float)width / (w + 2 * margin);
     zoomy = (float)height / (h + 2 * margin);
 
-    sima_zoom_set(sima, ar, min_ff(zoomx, zoomy), NULL);
+    sima_zoom_set(sima, ar, min_ff(zoomx, zoomy), NULL, false);
   }
   else {
     if ((w >= width || h >= height) && (width > 0 && height > 0)) {
@@ -743,10 +766,10 @@ static int image_view_all_exec(bContext *C, wmOperator *op)
       zoomy = (float)height / h;
 
       /* find the zoom value that will fit the image in the image space */
-      sima_zoom_set(sima, ar, 1.0f / power_of_2(1.0f / min_ff(zoomx, zoomy)), NULL);
+      sima_zoom_set(sima, ar, 1.0f / power_of_2(1.0f / min_ff(zoomx, zoomy)), NULL, false);
     }
     else {
-      sima_zoom_set(sima, ar, 1.0f, NULL);
+      sima_zoom_set(sima, ar, 1.0f, NULL, false);
     }
   }
 
@@ -854,7 +877,8 @@ static int image_view_zoom_in_exec(bContext *C, wmOperator *op)
 
   RNA_float_get_array(op->ptr, "location", location);
 
-  sima_zoom_set_factor(sima, ar, powf(2.0f, 1.0f / 3.0f), location);
+  sima_zoom_set_factor(
+      sima, ar, powf(2.0f, 1.0f / 3.0f), location, U.uiflag & USER_ZOOM_TO_MOUSEPOS);
 
   ED_region_tag_redraw(ar);
 
@@ -911,7 +935,8 @@ static int image_view_zoom_out_exec(bContext *C, wmOperator *op)
 
   RNA_float_get_array(op->ptr, "location", location);
 
-  sima_zoom_set_factor(sima, ar, powf(0.5f, 1.0f / 3.0f), location);
+  sima_zoom_set_factor(
+      sima, ar, powf(0.5f, 1.0f / 3.0f), location, U.uiflag & USER_ZOOM_TO_MOUSEPOS);
 
   ED_region_tag_redraw(ar);
 
@@ -967,7 +992,7 @@ static int image_view_zoom_ratio_exec(bContext *C, wmOperator *op)
   SpaceImage *sima = CTX_wm_space_image(C);
   ARegion *ar = CTX_wm_region(C);
 
-  sima_zoom_set(sima, ar, RNA_float_get(op->ptr, "ratio"), NULL);
+  sima_zoom_set(sima, ar, RNA_float_get(op->ptr, "ratio"), NULL, false);
 
   /* ensure pixel exact locations for draw */
   sima->xof = (int)sima->xof;
@@ -1366,7 +1391,7 @@ static int image_open_exec(bContext *C, wmOperator *op)
     BKE_image_init_imageuser(ima, iuser);
   }
 
-  /* XXX unpackImage frees image buffers */
+  /* XXX BKE_packedfile_unpack_image frees image buffers */
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
   BKE_image_signal(bmain, ima, iuser, IMA_SIGNAL_RELOAD);
@@ -1526,7 +1551,7 @@ static int image_match_len_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
   iuser->frames = IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN);
-  BKE_image_user_frame_calc(iuser, scene->r.cfra);
+  BKE_image_user_frame_calc(ima, iuser, scene->r.cfra);
 
   return OPERATOR_FINISHED;
 }
@@ -1576,7 +1601,7 @@ static int image_replace_exec(bContext *C, wmOperator *op)
     sima->image->source = IMA_SRC_FILE;
   }
 
-  /* XXX unpackImage frees image buffers */
+  /* XXX BKE_packedfile_unpack_image frees image buffers */
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
   BKE_icon_changed(BKE_icon_id_ensure(&sima->image->id));
@@ -1869,8 +1894,7 @@ static int image_save_as_invoke(bContext *C, wmOperator *op, const wmEvent *UNUS
   Scene *scene = CTX_data_scene(C);
   ImageSaveOptions opts;
   PropertyRNA *prop;
-  const bool save_as_render = ((ima->source == IMA_SRC_VIEWER) ||
-                               (ima->flag & IMA_VIEW_AS_RENDER));
+  const bool save_as_render = (ima->source == IMA_SRC_VIEWER);
 
   if (RNA_struct_property_is_set(op->ptr, "filepath")) {
     return image_save_as_exec(C, op);
@@ -2028,7 +2052,7 @@ static bool image_file_path_saveable(bContext *C, Image *ima, ImageUser *iuser)
     else if (!BLI_file_is_writable(name)) {
       CTX_wm_operator_poll_msg_set(C, "image path can't be written to");
     }
-    else if (!imbuf_format_writeable(ibuf)) {
+    else if (!BKE_image_buffer_format_writable(ibuf)) {
       CTX_wm_operator_poll_msg_set(C, "image format is read-only");
     }
     else {
@@ -2222,9 +2246,9 @@ static bool image_should_be_saved_when_modified(Image *ima)
   return !ELEM(ima->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE);
 }
 
-static bool image_should_be_saved(Image *ima)
+static bool image_should_be_saved(Image *ima, bool *is_format_writable)
 {
-  if (BKE_image_is_dirty(ima) &&
+  if (BKE_image_is_dirty_writable(ima, is_format_writable) &&
       (ima->source == IMA_SRC_FILE || ima->source == IMA_SRC_GENERATED)) {
     return image_should_be_saved_when_modified(ima);
   }
@@ -2240,7 +2264,15 @@ static bool image_has_valid_path(Image *ima)
 
 bool ED_image_should_save_modified(const bContext *C)
 {
-  return ED_image_save_all_modified_info(C, NULL) > 0;
+  ReportList reports;
+  BKE_reports_init(&reports, RPT_STORE);
+
+  uint modified_images_count = ED_image_save_all_modified_info(C, &reports);
+  bool should_save = modified_images_count || !BLI_listbase_is_empty(&reports.list);
+
+  BKE_reports_clear(&reports);
+
+  return should_save;
 }
 
 int ED_image_save_all_modified_info(const bContext *C, ReportList *reports)
@@ -2251,7 +2283,9 @@ int ED_image_save_all_modified_info(const bContext *C, ReportList *reports)
   int num_saveable_images = 0;
 
   for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
-    if (image_should_be_saved(ima)) {
+    bool is_format_writable;
+
+    if (image_should_be_saved(ima, &is_format_writable)) {
       if (BKE_image_has_packedfile(ima) || (ima->source == IMA_SRC_GENERATED)) {
         if (ima->id.lib == NULL) {
           num_saveable_images++;
@@ -2260,9 +2294,15 @@ int ED_image_save_all_modified_info(const bContext *C, ReportList *reports)
           BKE_reportf(reports,
                       RPT_WARNING,
                       "Packed library image: %s from library %s can't be saved",
-                      ima->id.name,
+                      ima->id.name + 2,
                       ima->id.lib->name);
         }
+      }
+      else if (!is_format_writable) {
+        BKE_reportf(reports,
+                    RPT_WARNING,
+                    "Image %s can't be saved automatically, must use a different file format",
+                    ima->id.name + 2);
       }
       else {
         if (image_has_valid_path(ima)) {
@@ -2281,7 +2321,7 @@ int ED_image_save_all_modified_info(const bContext *C, ReportList *reports)
           BKE_reportf(reports,
                       RPT_WARNING,
                       "Image %s can't be saved, no valid file path: %s",
-                      ima->id.name,
+                      ima->id.name + 2,
                       ima->name);
         }
       }
@@ -2300,11 +2340,13 @@ bool ED_image_save_all_modified(const bContext *C, ReportList *reports)
   bool ok = true;
 
   for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
-    if (image_should_be_saved(ima)) {
+    bool is_format_writable;
+
+    if (image_should_be_saved(ima, &is_format_writable)) {
       if (BKE_image_has_packedfile(ima) || (ima->source == IMA_SRC_GENERATED)) {
         BKE_image_memorypack(ima);
       }
-      else {
+      else if (is_format_writable) {
         if (image_has_valid_path(ima)) {
           ImageSaveOptions opts;
           Scene *scene = CTX_data_scene(C);
@@ -2359,7 +2401,7 @@ static int image_reload_exec(bContext *C, wmOperator *UNUSED(op))
     return OPERATOR_CANCELLED;
   }
 
-  /* XXX unpackImage frees image buffers */
+  /* XXX BKE_packedfile_unpack_image frees image buffers */
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
   BKE_image_signal(bmain, ima, iuser, IMA_SIGNAL_RELOAD);
@@ -2457,7 +2499,7 @@ static int image_new_exec(bContext *C, wmOperator *op)
   }
 
   ima = BKE_image_add_generated(
-      bmain, width, height, name, alpha ? 32 : 24, floatbuf, gen_type, color, stereo3d);
+      bmain, width, height, name, alpha ? 32 : 24, floatbuf, gen_type, color, stereo3d, false);
 
   if (!ima) {
     image_new_free(op);
@@ -2817,10 +2859,10 @@ static int image_unpack_exec(bContext *C, wmOperator *op)
                "AutoPack is enabled, so image will be packed again on file save");
   }
 
-  /* XXX unpackImage frees image buffers */
+  /* XXX BKE_packedfile_unpack_image frees image buffers */
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
-  unpackImage(CTX_data_main(C), op->reports, ima, method);
+  BKE_packedfile_unpack_image(CTX_data_main(C), op->reports, ima, method);
 
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
@@ -3575,7 +3617,7 @@ static void change_frame_apply(bContext *C, wmOperator *op)
   SUBFRA = 0.0f;
 
   /* do updates */
-  BKE_sound_seek_scene(CTX_data_main(C), scene);
+  DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
 }
 

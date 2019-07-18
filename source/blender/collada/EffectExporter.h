@@ -40,7 +40,7 @@
 class EffectsExporter : COLLADASW::LibraryEffects {
  public:
   EffectsExporter(COLLADASW::StreamWriter *sw,
-                  const ExportSettings *export_settings,
+                  BCExportSettings &export_settings,
                   KeyImageMap &key_image_map);
   void exportEffects(bContext *C, Scene *sce);
 
@@ -55,10 +55,17 @@ class EffectsExporter : COLLADASW::LibraryEffects {
 
  private:
   void set_shader_type(COLLADASW::EffectProfile &ep, Material *ma);
-  void set_transparency(COLLADASW::EffectProfile &ep, Material *ma);
+
   void set_diffuse_color(COLLADASW::EffectProfile &ep, Material *ma);
-  void set_reflectivity(COLLADASW::EffectProfile &ep, Material *ma);
   void set_emission(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_ior(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_shininess(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_reflectivity(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_transparency(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_ambient(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_specular(COLLADASW::EffectProfile &ep, Material *ma);
+  void set_reflective(COLLADASW::EffectProfile &ep, Material *ma);
+
   void get_images(Material *ma, KeyImageMap &uid_image_map);
   void create_image_samplers(COLLADASW::EffectProfile &ep,
                              KeyImageMap &uid_image_map,
@@ -73,7 +80,7 @@ class EffectsExporter : COLLADASW::LibraryEffects {
 
   bool hasEffects(Scene *sce);
 
-  const ExportSettings *export_settings;
+  BCExportSettings &export_settings;
   KeyImageMap &key_image_map;
   Scene *scene;
   bContext *mContext;

@@ -24,6 +24,7 @@
 #include "node_composite_util.h"
 
 #include "BKE_context.h"
+#include "BKE_library.h"
 
 /* **************** Translate  ******************** */
 
@@ -53,6 +54,7 @@ static void init(const bContext *C, PointerRNA *ptr)
   Scene *scene = CTX_data_scene(C);
 
   node->id = (ID *)scene->clip;
+  id_us_plus(node->id);
 }
 
 static void storage_free(bNode *node)
@@ -64,7 +66,7 @@ static void storage_free(bNode *node)
   node->storage = NULL;
 }
 
-static void storage_copy(bNodeTree *UNUSED(dest_ntree), bNode *dest_node, bNode *src_node)
+static void storage_copy(bNodeTree *UNUSED(dest_ntree), bNode *dest_node, const bNode *src_node)
 {
   if (src_node->storage) {
     dest_node->storage = BKE_tracking_distortion_copy(src_node->storage);

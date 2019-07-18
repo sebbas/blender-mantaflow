@@ -80,7 +80,7 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
 {
   InsetData *opdata = op->customdata;
 
-  const char *str = IFACE_(
+  const char *str = TIP_(
       "Confirm: Enter/LClick, Cancel: (Esc/RClick), Thickness: %s, "
       "Depth (Ctrl to tweak): %s (%s), Outset (O): (%s), Boundary (B): (%s), Individual (I): "
       "(%s)");
@@ -577,7 +577,7 @@ void MESH_OT_inset(wmOperatorType *ot)
   ot->poll = ED_operator_editmesh;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR | OPTYPE_BLOCKING;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
 
   /* properties */
   RNA_def_boolean(ot->srna, "use_boundary", true, "Boundary", "Inset face boundaries");

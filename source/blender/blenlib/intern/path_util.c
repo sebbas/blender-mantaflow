@@ -1037,7 +1037,7 @@ bool BLI_path_abs(char *path, const char *basepath)
    * in this case, there is no use in trying C:/ since it
    * will never exist on a unix os.
    *
-   * Add a / prefix and lowercase the driveletter, remove the :
+   * Add a '/' prefix and lowercase the drive-letter, remove the ':'.
    * C:\foo.JPG -> /c/foo.JPG */
 
   if (isalpha(tmp[0]) && tmp[1] == ':' && (tmp[2] == '\\' || tmp[2] == '/')) {
@@ -1552,7 +1552,7 @@ bool BLI_path_extension_glob_validate(char *ext_fnmatch)
     only_wildcards = true;
   }
   /* Only one group in the pattern, so even if its only made of wildcard(s),
-   * it is assumed vaid. */
+   * it is assumed valid. */
   return false;
 }
 
@@ -1855,7 +1855,10 @@ const char *BLI_path_basename(const char *path)
  *
  * Ignores multiple slashes at any point in the path (including start/end).
  */
-bool BLI_path_name_at_index(const char *path, const int index, int *r_offset, int *r_len)
+bool BLI_path_name_at_index(const char *__restrict path,
+                            const int index,
+                            int *__restrict r_offset,
+                            int *__restrict r_len)
 {
   if (index >= 0) {
     int index_step = 0;

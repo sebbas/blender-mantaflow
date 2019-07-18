@@ -295,6 +295,7 @@ void BKE_object_eval_transform_all(struct Depsgraph *depsgraph,
 
 void BKE_object_eval_update_shading(struct Depsgraph *depsgraph, struct Object *object);
 void BKE_object_data_select_update(struct Depsgraph *depsgraph, struct ID *object_data);
+void BKE_object_select_update(struct Depsgraph *depsgraph, struct Object *object);
 
 void BKE_object_eval_eval_base_flags(struct Depsgraph *depsgraph,
                                      struct Scene *scene,
@@ -312,7 +313,6 @@ void BKE_object_handle_update_ex(struct Depsgraph *depsgraph,
                                  struct Object *ob,
                                  struct RigidBodyWorld *rbw,
                                  const bool do_proxy_update);
-void BKE_object_sculpt_modifiers_changed(struct Object *ob);
 
 void BKE_object_sculpt_data_create(struct Object *ob);
 
@@ -389,8 +389,6 @@ bool BKE_object_modifier_update_subframe(struct Depsgraph *depsgraph,
                                          float frame,
                                          int type);
 
-void BKE_object_type_set_empty_for_versioning(struct Object *ob);
-
 bool BKE_object_empty_image_frame_is_visible_in_view3d(const struct Object *ob,
                                                        const struct RegionView3D *rv3d);
 bool BKE_object_empty_image_data_is_visible_in_view3d(const struct Object *ob,
@@ -400,8 +398,16 @@ bool BKE_object_empty_image_data_is_visible_in_view3d(const struct Object *ob,
  * The result is owned by the object.
  *
  * The mesh will be freed when object is re-evaluated or is destroyed. It is possible to force to
- * clear memory sued by this mesh by calling BKE_object_to_mesh_clear(). */
-struct Mesh *BKE_object_to_mesh(struct Object *object);
+ * clear memory sued by this mesh by calling BKE_object_to_mesh_clear().
+ *
+ * If preserve_all_data_layers is truth then the modifier stack is re-evaluated to ensure it
+ * preserves all possible custom data layers.
+ *
+ * NOTE: Dependency graph argument is required when preserve_all_data_layers is truth, and is
+ * ignored otherwise. */
+struct Mesh *BKE_object_to_mesh(struct Depsgraph *depsgraph,
+                                struct Object *object,
+                                bool preserve_all_data_layers);
 
 void BKE_object_to_mesh_clear(struct Object *object);
 

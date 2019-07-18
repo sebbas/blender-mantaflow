@@ -278,9 +278,9 @@ static int ui_layout_vary_direction(uiLayout *layout)
 
 static bool ui_layout_variable_size(uiLayout *layout)
 {
-  /* Note that this code is probably a bit flacky, we'd probably want to know whether it's
+  /* Note that this code is probably a bit flakey, we'd probably want to know whether it's
    * variable in X and/or Y, etc. But for now it mimics previous one,
-   * with addition of variable flag set for children of gridflow layouts. */
+   * with addition of variable flag set for children of grid-flow layouts. */
   return ui_layout_vary_direction(layout) == UI_ITEM_VARY_X || layout->variable_size;
 }
 
@@ -1143,7 +1143,7 @@ static uiBut *uiItemFullO_ptr_ex(uiLayout *layout,
 
   if (!name) {
     if (ot && ot->srna && (flag & UI_ITEM_R_ICON_ONLY) == 0) {
-      name = RNA_struct_ui_name(ot->srna);
+      name = WM_operatortype_name(ot, NULL);
     }
     else {
       name = "";
@@ -2773,14 +2773,8 @@ static uiBut *ui_item_menu(uiLayout *layout,
   return but;
 }
 
-void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon)
+void uiItemM_ptr(uiLayout *layout, MenuType *mt, const char *name, int icon)
 {
-  MenuType *mt = WM_menutype_find(menuname, false);
-  if (mt == NULL) {
-    RNA_warning("not found %s", menuname);
-    return;
-  }
-
   if (!name) {
     name = CTX_IFACE_(mt->translation_context, mt->label);
   }
@@ -2797,6 +2791,16 @@ void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon)
                NULL,
                mt->description ? TIP_(mt->description) : "",
                false);
+}
+
+void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon)
+{
+  MenuType *mt = WM_menutype_find(menuname, false);
+  if (mt == NULL) {
+    RNA_warning("not found %s", menuname);
+    return;
+  }
+  uiItemM_ptr(layout, mt, name, icon);
 }
 
 void uiItemMContents(uiLayout *layout, const char *menuname)
@@ -3122,7 +3126,7 @@ void uiItemMenuEnumO_ptr(uiLayout *layout,
   BLI_assert(ot->srna != NULL);
 
   if (name == NULL) {
-    name = RNA_struct_ui_name(ot->srna);
+    name = WM_operatortype_name(ot, NULL);
   }
 
   if (layout->root->type == UI_LAYOUT_MENU && !icon) {

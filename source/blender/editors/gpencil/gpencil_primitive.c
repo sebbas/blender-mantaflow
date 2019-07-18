@@ -225,8 +225,8 @@ static void gp_primitive_update_cps(tGPDprimitive *tgpi)
   }
   else if (tgpi->type == GP_STROKE_CURVE) {
     mid_v2_v2v2(tgpi->midpoint, tgpi->start, tgpi->end);
-    copy_v2_v2(tgpi->cp1, tgpi->midpoint);
-    copy_v2_v2(tgpi->cp2, tgpi->cp1);
+    interp_v2_v2v2(tgpi->cp1, tgpi->midpoint, tgpi->start, 0.33f);
+    interp_v2_v2v2(tgpi->cp2, tgpi->midpoint, tgpi->end, 0.33f);
   }
   else if (tgpi->type == GP_STROKE_ARC) {
     if (tgpi->flip) {
@@ -305,20 +305,10 @@ static void gpencil_primitive_allocate_memory(tGPDprimitive *tgpi)
 /* Helper: Create internal strokes primitives data */
 static void gp_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
 {
-  ToolSettings *ts = CTX_data_tool_settings(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-
-  /* if brush doesn't exist, create a new one */
-  Paint *paint = &ts->gp_paint->paint;
-  /* if not exist, create a new one */
-  if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
-    /* create new brushes */
-    BKE_brush_gpencil_presets(C);
-  }
-  tgpi->brush = paint->brush;
 
   /* if layer doesn't exist, create a new one */
   if (gpl == NULL) {
@@ -410,32 +400,32 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
 
   if (tgpi->type == GP_STROKE_LINE) {
     BLI_strncpy(msg_str,
-                IFACE_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
-                       "adjust subdivision number, Shift to align, Alt to center, E: extrude"),
+                TIP_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
+                     "adjust subdivision number, Shift to align, Alt to center, E: extrude"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_BOX) {
     BLI_strncpy(msg_str,
-                IFACE_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
-                       "to adjust subdivision number, Shift to square, Alt to center"),
+                TIP_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
+                     "to adjust subdivision number, Shift to square, Alt to center"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_CIRCLE) {
     BLI_strncpy(msg_str,
-                IFACE_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge "
-                       "number, Shift to square, Alt to center"),
+                TIP_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge "
+                     "number, Shift to square, Alt to center"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_ARC) {
     BLI_strncpy(msg_str,
-                IFACE_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, "
-                       "Shift to square, Alt to center, M: Flip, E: extrude"),
+                TIP_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge number, "
+                     "Shift to square, Alt to center, M: Flip, E: extrude"),
                 UI_MAX_DRAW_STR);
   }
   else if (tgpi->type == GP_STROKE_CURVE) {
     BLI_strncpy(msg_str,
-                IFACE_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge "
-                       "number, Shift to square, Alt to center, E: extrude"),
+                TIP_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust edge "
+                     "number, Shift to square, Alt to center, E: extrude"),
                 UI_MAX_DRAW_STR);
   }
 
@@ -780,8 +770,9 @@ static void gp_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
         is_depth = false;
       }
       else {
-        if ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE_ENDPOINTS) ||
-            (ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE_FIRST)) {
+        if ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) &&
+            ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE_ENDPOINTS) ||
+             (ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE_FIRST))) {
           int first_valid = 0;
           int last_valid = 0;
 
@@ -1106,6 +1097,8 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Paint *paint = &ts->gp_paint->paint;
+
   int cfra_eval = (int)DEG_get_ctime(depsgraph);
 
   /* create temporary operator data */
@@ -1135,6 +1128,12 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   tgpi->gpd = gpd;
   /* region where paint was originated */
   tgpi->gpd->runtime.ar = tgpi->ar;
+
+  /* if brush doesn't exist, create a new set (fix damaged files from old versions) */
+  if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
+    BKE_brush_gpencil_presets(C);
+  }
+  tgpi->brush = paint->brush;
 
   /* control points */
   tgpi->gpd->runtime.cp_points = MEM_callocN(sizeof(bGPDcontrolpoint) * MAX_CP,
@@ -1283,6 +1282,11 @@ static void gpencil_primitive_interaction_end(bContext *C,
         dw->weight = ts->vgroup_weight;
       }
     }
+  }
+
+  /* Close stroke with geometry */
+  if ((tgpi->type == GP_STROKE_BOX) || (tgpi->type == GP_STROKE_CIRCLE)) {
+    BKE_gpencil_close_stroke(gps);
   }
 
   DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_COPY_ON_WRITE);

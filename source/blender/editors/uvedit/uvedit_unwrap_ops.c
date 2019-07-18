@@ -727,9 +727,9 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
     param_flush(ms->handle);
 
     if (sa) {
-      BLI_snprintf(str, sizeof(str), IFACE_("Minimize Stretch. Blend %.2f"), ms->blend);
+      BLI_snprintf(str, sizeof(str), TIP_("Minimize Stretch. Blend %.2f"), ms->blend);
       ED_area_status_text(sa, str);
-      ED_workspace_status_text(C, IFACE_("Press + and -, or scroll wheel to set blending"));
+      ED_workspace_status_text(C, TIP_("Press + and -, or scroll wheel to set blending"));
     }
 
     ms->lasttime = PIL_check_seconds_timer();
@@ -889,7 +889,7 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Minimize Stretch";
   ot->idname = "UV_OT_minimize_stretch";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR | OPTYPE_BLOCKING;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
   ot->description = "Reduce UV stretching by relaxing angles";
 
   /* api callbacks */
@@ -1272,10 +1272,11 @@ static void uv_map_rotation_matrix_ex(float result[4][4],
   }
 
   /* but shifting */
-  copy_v4_fl(viewmatrix[3], 0.0f);
+  zero_v3(viewmatrix[3]);
 
   /* get rotation of the current object matrix */
   copy_m4_m4(rotobj, ob->obmat);
+  zero_v3(rotobj[3]);
 
   /* but shifting */
   add_v4_v4(rotobj[3], offset);
@@ -2281,7 +2282,6 @@ static void uvedit_unwrap_cube_project(BMesh *bm,
    * component, but clusters all together around the center of map. */
 
   BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
-    /* tf = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_MTEXPOLY); */ /* UNUSED */
     if (use_select && !BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
       continue;
     }

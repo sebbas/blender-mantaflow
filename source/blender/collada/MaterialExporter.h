@@ -41,13 +41,13 @@ extern "C" {
 
 class MaterialsExporter : COLLADASW::LibraryMaterials {
  public:
-  MaterialsExporter(COLLADASW::StreamWriter *sw, const ExportSettings *export_settings);
+  MaterialsExporter(COLLADASW::StreamWriter *sw, BCExportSettings &export_settings);
   void exportMaterials(Scene *sce);
   void operator()(Material *ma, Object *ob);
 
  private:
   bool hasMaterials(Scene *sce);
-  const ExportSettings *export_settings;
+  BCExportSettings &export_settings;
 };
 
 // used in forEachMaterialInScene
@@ -68,8 +68,9 @@ template<class Functor> class ForEachMaterialFunctor {
 
       Material *ma = give_current_material(ob, a + 1);
 
-      if (!ma)
+      if (!ma) {
         continue;
+      }
 
       std::string translated_id = translate_id(id_name(ma));
       if (find(mMat.begin(), mMat.end(), translated_id) == mMat.end()) {

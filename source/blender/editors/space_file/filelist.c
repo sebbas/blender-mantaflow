@@ -2094,7 +2094,7 @@ static bool file_is_blend_backup(const char *str)
 }
 
 /* TODO: Maybe we should move this to BLI?
- * On the other hand, it's using defines from spacefile area, so not sure... */
+ * On the other hand, it's using defines from space-file area, so not sure... */
 int ED_path_extension_type(const char *path)
 {
   if (BLO_has_bfile_extension(path)) {
@@ -2471,13 +2471,15 @@ static void filelist_readjob_main_rec(Main *bmain, FileList *filelist)
 
   BLI_assert(filelist->filelist.entries == NULL);
 
-  if (filelist->filelist.root[0] == '/')
+  if (filelist->filelist.root[0] == '/') {
     filelist->filelist.root[0] = '\0';
+  }
 
   if (filelist->filelist.root[0]) {
     idcode = groupname_to_code(filelist->filelist.root);
-    if (idcode == 0)
+    if (idcode == 0) {
       filelist->filelist.root[0] = '\0';
+    }
   }
 
   if (filelist->dir[0] == 0) {
@@ -2525,8 +2527,9 @@ static void filelist_readjob_main_rec(Main *bmain, FileList *filelist)
     idcode = groupname_to_code(filelist->filelist.root);
 
     lb = which_libbase(bmain, idcode);
-    if (lb == NULL)
+    if (lb == NULL) {
       return;
+    }
 
     filelist->filelist.nbr_entries = 0;
     for (id = lb->first; id; id = id->next) {
@@ -2537,8 +2540,9 @@ static void filelist_readjob_main_rec(Main *bmain, FileList *filelist)
 
     /* XXX TODO: if databrowse F4 or append/link
      * filelist->flags & FLF_HIDE_PARENT has to be set */
-    if (!(filelist->filter_data.flags & FLF_HIDE_PARENT))
+    if (!(filelist->filter_data.flags & FLF_HIDE_PARENT)) {
       filelist->filelist.nbr_entries++;
+    }
 
     if (filelist->filelist.nbr_entries > 0) {
       filelist_resize(filelist, filelist->filelist.nbr_entries);
@@ -2604,8 +2608,9 @@ static void filelist_readjob_main_rec(Main *bmain, FileList *filelist)
 #  endif
 
           if (id->lib) {
-            if (totlib == 0)
+            if (totlib == 0) {
               firstlib = files;
+            }
             totlib++;
           }
 

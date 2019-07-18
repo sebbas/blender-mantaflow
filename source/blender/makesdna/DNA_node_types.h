@@ -161,8 +161,8 @@ typedef enum eNodeSocketDrawShape {
 
 /* socket side (input/output) */
 typedef enum eNodeSocketInOut {
-  SOCK_IN = 1,
-  SOCK_OUT = 2,
+  SOCK_IN = 1 << 0,
+  SOCK_OUT = 1 << 1,
 } eNodeSocketInOut;
 
 /* sock->flag, first bit is select */
@@ -479,9 +479,6 @@ typedef struct bNodeTree {
   int (*test_break)(void *);
   void (*update_draw)(void *);
   void *tbh, *prh, *sdh, *udh;
-
-  void *duplilock;
-
 } bNodeTree;
 
 /* ntree->type, index */

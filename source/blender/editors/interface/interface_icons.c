@@ -169,6 +169,7 @@ static const IconType icontypes[] = {
 #  define DEF_ICON_OBJECT_DATA(name) {ICON_TYPE_MONO_TEXTURE, TH_ICON_OBJECT_DATA},
 #  define DEF_ICON_MODIFIER(name) {ICON_TYPE_MONO_TEXTURE, TH_ICON_MODIFIER},
 #  define DEF_ICON_SHADING(name) {ICON_TYPE_MONO_TEXTURE, TH_ICON_SHADING},
+#  define DEF_ICON_FUND(name) {ICON_TYPE_MONO_TEXTURE, TH_ICON_FUND},
 #  define DEF_ICON_VECTOR(name) {ICON_TYPE_VECTOR, 0},
 #  define DEF_ICON_COLOR(name) {ICON_TYPE_COLOR_TEXTURE, 0},
 #  define DEF_ICON_BLANK(name) {ICON_TYPE_BLANK, 0},
@@ -317,7 +318,7 @@ static void vicon_keytype_draw_wrapper(
   uint flags_id = GPU_vertformat_attr_add(format, "flags", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
   immBindBuiltinProgram(GPU_SHADER_KEYFRAME_DIAMOND);
-  GPU_enable_program_point_size();
+  GPU_program_point_size(true);
   immUniform2f("ViewportSize", -1.0f, -1.0f);
   immBegin(GPU_PRIM_POINTS, 1);
 
@@ -343,7 +344,7 @@ static void vicon_keytype_draw_wrapper(
                       KEYFRAME_EXTREME_NONE);
 
   immEnd();
-  GPU_disable_program_point_size();
+  GPU_program_point_size(false);
   immUnbindProgram();
 
   UI_Theme_Restore(&theme_state);
@@ -1086,6 +1087,12 @@ static void free_iconfile_list(struct ListBase *list)
   }
 }
 
+#else
+
+void UI_icons_reload_internal_textures(void)
+{
+}
+
 #endif /* WITH_HEADLESS */
 
 int UI_iconfile_get_index(const char *filename)
@@ -1411,11 +1418,13 @@ static void icon_set_image(const bContext *C,
     return;
   }
 
+  const bool delay = prv_img->rect[size] != NULL;
   icon_create_rect(prv_img, size);
 
   if (use_job) {
     /* Job (background) version */
-    ED_preview_icon_job(C, prv_img, id, prv_img->rect[size], prv_img->w[size], prv_img->h[size]);
+    ED_preview_icon_job(
+        C, prv_img, id, prv_img->rect[size], prv_img->w[size], prv_img->h[size], delay);
   }
   else {
     if (!scene) {

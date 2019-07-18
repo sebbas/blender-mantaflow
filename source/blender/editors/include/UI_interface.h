@@ -723,7 +723,7 @@ bool UI_block_active_only_flagged_buttons(const struct bContext *C,
                                           struct ARegion *ar,
                                           struct uiBlock *block);
 
-void UI_but_execute(const struct bContext *C, uiBut *but);
+void UI_but_execute(const struct bContext *C, struct ARegion *ar, uiBut *but);
 
 bool UI_but_online_manual_id(const uiBut *but,
                              char *r_str,
@@ -1630,7 +1630,7 @@ struct Panel *UI_panel_begin(struct ScrArea *sa,
                              struct PanelType *pt,
                              struct Panel *pa,
                              bool *r_open);
-void UI_panel_end(uiBlock *block, int width, int height);
+void UI_panel_end(uiBlock *block, int width, int height, bool open);
 void UI_panels_scale(struct ARegion *ar, float new_width);
 void UI_panel_label_offset(struct uiBlock *block, int *r_x, int *r_y);
 int UI_panel_size_y(const struct Panel *pa);
@@ -1641,6 +1641,7 @@ struct PanelCategoryDyn *UI_panel_category_find(struct ARegion *ar, const char *
 struct PanelCategoryStack *UI_panel_category_active_find(struct ARegion *ar, const char *idname);
 const char *UI_panel_category_active_get(struct ARegion *ar, bool set_fallback);
 void UI_panel_category_active_set(struct ARegion *ar, const char *idname);
+void UI_panel_category_active_set_default(struct ARegion *ar, const char *idname);
 struct PanelCategoryDyn *UI_panel_category_find_mouse_over_ex(struct ARegion *ar,
                                                               const int x,
                                                               const int y);
@@ -2250,6 +2251,7 @@ void uiItemL(uiLayout *layout, const char *name, int icon); /* label */
 /* label icon for dragging */
 void uiItemLDrag(uiLayout *layout, struct PointerRNA *ptr, const char *name, int icon);
 /* menu */
+void uiItemM_ptr(uiLayout *layout, struct MenuType *mt, const char *name, int icon);
 void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon);
 /* menu contents */
 void uiItemMContents(uiLayout *layout, const char *menuname);

@@ -46,11 +46,9 @@ static void image_buf_fill_color_slice(
 
   /* blank image */
   if (rect_float) {
-    float linear_color[4];
-    srgb_to_linearrgb_v4(linear_color, color);
     for (y = 0; y < height; y++) {
       for (x = 0; x < width; x++) {
-        copy_v4_v4(rect_float, linear_color);
+        copy_v4_v4(rect_float, color);
         rect_float += 4;
       }
     }
@@ -242,9 +240,9 @@ static void checker_board_color_fill(
   }
 
   for (y = offset; y < height + offset; y++) {
+    /* Use a number lower then 1.0 else its too bright. */
+    hsv[2] = 0.1 + (y * (0.4 / total_height));
 
-    hsv[2] = 0.1 +
-             (y * (0.4 / total_height)); /* use a number lower then 1.0 else its too bright */
     for (x = 0; x < width; x++) {
       hsv[0] = (float)((double)(x / hue_step) * 1.0 / width * hue_step);
       hsv_to_rgb_v(hsv, rgb);

@@ -631,6 +631,8 @@ typedef bool (*MeshRemap_CheckIslandBoundary)(const struct MPoly *mpoly,
                                               const struct MLoop *mloop,
                                               const struct MEdge *medge,
                                               const int nbr_egde_users,
+                                              const struct MPoly *mpoly_array,
+                                              const struct MeshElemMap *edge_poly_map,
                                               void *user_data);
 
 static void poly_edge_loop_islands_calc(const MEdge *medge,
@@ -656,8 +658,10 @@ static void poly_edge_loop_islands_calc(const MEdge *medge,
 
   int poly_prev = 0;
   const int temp_poly_group_id = 3; /* Placeholder value. */
-  const int poly_group_id_overflowed =
-      5; /* Group we could not find any available bit, will be reset to 0 at end */
+
+  /* Group we could not find any available bit, will be reset to 0 at end. */
+  const int poly_group_id_overflowed = 5;
+
   int tot_group = 0;
   bool group_id_overflow = false;
 
@@ -728,7 +732,7 @@ static void poly_edge_loop_islands_calc(const MEdge *medge,
         const MeshElemMap *map_ele = &edge_poly_map[me_idx];
         const int *p = map_ele->indices;
         int i = map_ele->count;
-        if (!edge_boundary_check(mp, ml, me, i, edge_boundary_check_data)) {
+        if (!edge_boundary_check(mp, ml, me, i, mpoly, map_ele, edge_boundary_check_data)) {
           for (; i--; p++) {
             /* if we meet other non initialized its a bug */
             BLI_assert(ELEM(poly_groups[*p], 0, poly_group_id));
@@ -780,8 +784,10 @@ static void poly_edge_loop_islands_calc(const MEdge *medge,
             "Warning, could not find an available id for current smooth group, faces will me "
             "marked "
             "as out of any smooth group...\n");
-        poly_group_id =
-            poly_group_id_overflowed; /* Can't use 0, will have to set them to this value later. */
+
+        /* Can't use 0, will have to set them to this value later. */
+        poly_group_id = poly_group_id_overflowed;
+
         group_id_overflow = true;
       }
       if (gid_bit > tot_group) {
@@ -828,11 +834,20 @@ static bool poly_is_island_boundary_smooth_cb(const MPoly *mp,
                                               const MLoop *UNUSED(ml),
                                               const MEdge *me,
                                               const int nbr_egde_users,
+                                              const MPoly *mpoly_array,
+                                              const MeshElemMap *edge_poly_map,
                                               void *UNUSED(user_data))
 {
-  /* Edge is sharp if its poly is sharp, or edge itself is sharp,
+  /* Edge is sharp if one of its polys is flat, or edge itself is sharp,
    * or edge is not used by exactly two polygons. */
-  return (!(mp->flag & ME_SMOOTH) || (me->flag & ME_SHARP) || (nbr_egde_users != 2));
+  if ((mp->flag & ME_SMOOTH) && !(me->flag & ME_SHARP) && (nbr_egde_users == 2)) {
+    /* In that case, edge appears to be smooth, but we need to check its other poly too. */
+    const MPoly *mp_other = (mp == &mpoly_array[edge_poly_map->indices[0]]) ?
+                                &mpoly_array[edge_poly_map->indices[1]] :
+                                &mpoly_array[edge_poly_map->indices[0]];
+    return (mp_other->flag & ME_SMOOTH) != 0;
+  }
+  return true;
 }
 
 /**
@@ -998,6 +1013,8 @@ static bool mesh_check_island_boundary_uv(const MPoly *UNUSED(mp),
                                           const MLoop *ml,
                                           const MEdge *me,
                                           const int UNUSED(nbr_egde_users),
+                                          const MPoly *UNUSED(mpoly_array),
+                                          const MeshElemMap *UNUSED(edge_poly_map),
                                           void *user_data)
 {
   if (user_data) {

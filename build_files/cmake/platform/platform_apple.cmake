@@ -20,7 +20,7 @@
 
 # Libraries configuration for Apple.
 
-set(MACOSX_DEPLOYMENT_TARGET "10.9")
+set(MACOSX_DEPLOYMENT_TARGET "10.11")
 
 macro(find_package_wrapper)
 # do nothing, just satisfy the macro
@@ -181,7 +181,7 @@ endif()
 
 set(PLATFORM_CFLAGS "-pipe -funsigned-char")
 set(PLATFORM_LINKFLAGS
-  "-fexceptions -framework CoreServices -framework Foundation -framework IOKit -framework AppKit -framework Cocoa -framework Carbon -framework AudioUnit -framework AudioToolbox -framework CoreAudio"
+  "-fexceptions -framework CoreServices -framework Foundation -framework IOKit -framework AppKit -framework Cocoa -framework Carbon -framework AudioUnit -framework AudioToolbox -framework CoreAudio -framework Metal -framework QuartzCore"
 )
 
 list(APPEND PLATFORM_LINKLIBS c++)
@@ -393,16 +393,13 @@ if(WITH_OPENMP)
     set(OpenMP_CXX_FLAGS "-Xclang -fopenmp -I'${LIBDIR}/openmp/include'")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L'${LIBDIR}/openmp/lib' -lomp")
 
-    # Copy libomp.dylib to allow executables like datatoc to work.
-    if(CMAKE_MAKE_PROGRAM MATCHES "xcodebuild")
-      set(OPENMP_DYLIB_AUX_PATH "${CMAKE_BINARY_DIR}/bin")
-    else()
-      set(OPENMP_DYLIB_AUX_PATH "${CMAKE_BINARY_DIR}")
-    endif()
-
+    # Copy libomp.dylib to allow executables like datatoc and tests to work.
     execute_process(
-        COMMAND mkdir -p ${OPENMP_DYLIB_AUX_PATH}/Resources/lib
-        COMMAND cp -p ${LIBDIR}/openmp/lib/libomp.dylib ${OPENMP_DYLIB_AUX_PATH}/Resources/lib/libomp.dylib)
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/Resources/lib
+        COMMAND cp -p ${LIBDIR}/openmp/lib/libomp.dylib ${CMAKE_BINARY_DIR}/Resources/lib/libomp.dylib)
+    execute_process(
+        COMMAND mkdir -p ${CMAKE_BINARY_DIR}/bin/Resources/lib
+        COMMAND cp -p ${LIBDIR}/openmp/lib/libomp.dylib ${CMAKE_BINARY_DIR}/bin/Resources/lib/libomp.dylib)
   endif()
 endif()
 

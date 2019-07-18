@@ -124,10 +124,6 @@ void DepsgraphNodeBuilder::build_view_layer(Scene *scene,
   if (scene->world != NULL) {
     build_world(scene->world);
   }
-  /* Compositor nodes */
-  if (scene->nodetree != NULL) {
-    build_compositor(scene);
-  }
   /* Cache file. */
   LISTBASE_FOREACH (CacheFile *, cachefile, &bmain_->cachefiles) {
     build_cachefile(cachefile);
@@ -150,6 +146,11 @@ void DepsgraphNodeBuilder::build_view_layer(Scene *scene,
       build_collection(NULL, fls->group);
     }
   }
+  /* Sequencer. */
+  if (linked_state == DEG_ID_LINKED_DIRECTLY) {
+    build_scene_audio(scene);
+    build_scene_sequencer(scene);
+  }
   /* Collections. */
   add_operation_node(
       &scene->id,
@@ -157,7 +158,8 @@ void DepsgraphNodeBuilder::build_view_layer(Scene *scene,
       OperationCode::VIEW_LAYER_EVAL,
       function_bind(BKE_layer_eval_view_layer_indexed, _1, scene_cow, view_layer_index_));
   /* Parameters evaluation for scene relations mainly. */
-  add_operation_node(&scene->id, NodeType::PARAMETERS, OperationCode::SCENE_EVAL);
+  build_scene_compositor(scene);
+  build_scene_parameters(scene);
   /* Build all set scenes. */
   if (scene->set != NULL) {
     ViewLayer *set_view_layer = BKE_view_layer_default_render(scene->set);

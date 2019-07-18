@@ -71,6 +71,8 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
   View3D *v3d = draw_ctx->v3d;
   Scene *scene = draw_ctx->scene;
 
+  effects->lookdev_view = NULL;
+
   if (LOOK_DEV_OVERLAY_ENABLED(v3d)) {
     /* Viewport / Spheres size. */
     rcti rect;
@@ -126,7 +128,7 @@ void EEVEE_lookdev_cache_init(EEVEE_Data *vedata,
         MEM_SAFE_FREE(stl->lookdev_cube_mips);
 
         /* We do this to use a special light cache for lookdev.
-         * This lightcache needs to be per viewport. But we need to
+         * This light-cache needs to be per viewport. But we need to
          * have correct freeing when the viewport is closed. So we
          * need to reference all textures to the txl and the memblocks
          * to the stl. */
@@ -223,20 +225,28 @@ void EEVEE_lookdev_draw(EEVEE_Data *vedata)
     DRW_uniformbuffer_update(sldata->common_ubo, common);
 
     /* override matrices */
-    DRWMatrixState matstate;
-    unit_m4(matstate.winmat);
+    float winmat[4][4], viewmat[4][4];
+    unit_m4(winmat);
+    /* Look through the negative Z. */
+    negate_v3(winmat[2]);
 
-    eevee_lookdev_apply_taa(effects, effects->sphere_size, matstate.winmat);
+    eevee_lookdev_apply_taa(effects, effects->sphere_size, winmat);
 
     /* "Remove" view matrix location. Leaving only rotation. */
-    DRW_viewport_matrix_get(matstate.viewmat, DRW_MAT_VIEW);
-    zero_v3(matstate.viewmat[3]);
-    mul_m4_m4m4(matstate.persmat, matstate.winmat, matstate.viewmat);
-    invert_m4_m4(matstate.wininv, matstate.winmat);
-    invert_m4_m4(matstate.viewinv, matstate.viewmat);
-    invert_m4_m4(matstate.persinv, matstate.persmat);
+    DRW_view_viewmat_get(NULL, viewmat, false);
+    zero_v3(viewmat[3]);
 
-    DRW_viewport_matrix_override_set_all(&matstate);
+    if (effects->lookdev_view) {
+      /* When rendering just update the view. This avoids recomputing the culling. */
+      DRW_view_update_sub(effects->lookdev_view, viewmat, winmat);
+    }
+    else {
+      /* Using default view bypasses the culling. */
+      const DRWView *default_view = DRW_view_default_get();
+      effects->lookdev_view = DRW_view_create_sub(default_view, viewmat, winmat);
+    }
+
+    DRW_view_set_active(effects->lookdev_view);
 
     /* Find the right framebuffers to render to. */
     GPUFrameBuffer *fb = (effects->target_buffer == fbl->effect_color_fb) ? fbl->main_fb :
@@ -270,6 +280,6 @@ void EEVEE_lookdev_draw(EEVEE_Data *vedata)
 
     DRW_stats_group_end();
 
-    DRW_viewport_matrix_override_unset_all();
+    DRW_view_set_active(NULL);
   }
 }

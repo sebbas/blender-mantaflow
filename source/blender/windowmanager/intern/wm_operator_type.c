@@ -219,7 +219,7 @@ void wm_operatortype_free(void)
  * #OP_PROP_TAG_ADVANCED. Previously defined ones properties not touched.
  *
  * Calling this multiple times without a call to #WM_operatortype_props_advanced_end,
- * all calls after the first one are ignored. Meaning all propereties defined after the
+ * all calls after the first one are ignored. Meaning all proprieties defined after the
  * first call are tagged as advanced.
  *
  * This doesn't do the actual tagging, #WM_operatortype_props_advanced_end does which is
@@ -430,9 +430,18 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
          * */
         if (op->opm->type->flag & OPTYPE_BLOCKING) {
           int bounds[4] = {-1, -1, -1, -1};
-          const bool wrap = ((U.uiflag & USER_CONTINUOUS_MOUSE) &&
-                             ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
-                              (op->opm->type->flag & OPTYPE_GRAB_CURSOR)));
+          int wrap = WM_CURSOR_WRAP_NONE;
+
+          if ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
+              (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY)) {
+            wrap = WM_CURSOR_WRAP_XY;
+          }
+          else if (op->opm->type->flag & OPTYPE_GRAB_CURSOR_X) {
+            wrap = WM_CURSOR_WRAP_X;
+          }
+          else if (op->opm->type->flag & OPTYPE_GRAB_CURSOR_Y) {
+            wrap = WM_CURSOR_WRAP_Y;
+          }
 
           if (wrap) {
             ARegion *ar = CTX_wm_region(C);
@@ -573,6 +582,17 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
     }
   }
   BLI_freelistN(&ot->macro);
+}
+
+const char *WM_operatortype_name(struct wmOperatorType *ot, struct PointerRNA *properties)
+{
+  const char *name = NULL;
+
+  if (ot->get_name && properties) {
+    name = ot->get_name(ot, properties);
+  }
+
+  return (name && name[0]) ? name : RNA_struct_ui_name(ot->srna);
 }
 
 /** \} */

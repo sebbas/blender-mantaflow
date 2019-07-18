@@ -97,23 +97,38 @@ bool PE_poll(bContext *C)
   Object *ob = CTX_data_active_object(C);
 
   if (!scene || !ob || !(ob->mode & OB_MODE_PARTICLE_EDIT)) {
-    return 0;
+    return false;
   }
-  return (PE_get_current(scene, ob) != NULL);
+
+  PTCacheEdit *edit = PE_get_current(scene, ob);
+  if (edit == NULL) {
+    return false;
+  }
+  if (edit->psmd_eval == NULL || edit->psmd_eval->mesh_final == NULL) {
+    return false;
+  }
+
+  return true;
 }
 
 bool PE_hair_poll(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
-  PTCacheEdit *edit;
 
   if (!scene || !ob || !(ob->mode & OB_MODE_PARTICLE_EDIT)) {
-    return 0;
+    return false;
   }
-  edit = PE_get_current(scene, ob);
 
-  return (edit && edit->psys);
+  PTCacheEdit *edit = PE_get_current(scene, ob);
+  if (edit == NULL || edit->psys == NULL) {
+    return false;
+  }
+  if (edit->psmd_eval == NULL || edit->psmd_eval->mesh_final == NULL) {
+    return false;
+  }
+
+  return true;
 }
 
 bool PE_poll_view3d(bContext *C)
@@ -322,10 +337,13 @@ static PTCacheEdit *pe_get_current(Depsgraph *depsgraph, Scene *scene, Object *o
     }
   }
 
-  if (edit) {
+  /* Don't consider inactive or render dependency graphs, since they might be evaluated for a
+   * different number of childrem. or have different pointer to evaluated particle system or
+   * modifier which will also cause troubles. */
+  if (edit && DEG_is_active(depsgraph)) {
     edit->pid = *pid;
     if (edit->flags & PT_CACHE_EDIT_UPDATE_PARTICLE_FROM_EVAL) {
-      if (edit->psys != NULL) {
+      if (edit->psys != NULL && edit->psys_eval != NULL) {
         psys_copy_particles(edit->psys, edit->psys_eval);
         pe_update_hair_particle_edit_pointers(edit);
       }
@@ -1085,7 +1103,7 @@ static void PE_apply_mirror(Object *ob, ParticleSystem *psys)
   edit = psys->edit;
   psmd_eval = edit->psmd_eval;
 
-  if (!psmd_eval->mesh_final) {
+  if (psmd_eval == NULL || psmd_eval->mesh_final == NULL) {
     return;
   }
 
@@ -1217,7 +1235,7 @@ static void pe_deflect_emitter(Scene *scene, Object *ob, PTCacheEdit *edit)
 
   psys = edit->psys;
 
-  if (!edit->psmd_eval->mesh_final) {
+  if (edit->psmd_eval == NULL || edit->psmd_eval->mesh_final == NULL) {
     return;
   }
 
@@ -1489,7 +1507,7 @@ void update_world_cos(Depsgraph *UNUSED(depsgraph), Object *ob, PTCacheEdit *edi
   KEY_K;
   float hairmat[4][4];
 
-  if (psys == 0 || psys->edit == 0 || psmd_eval->mesh_final == NULL) {
+  if (psys == 0 || psys->edit == 0 || psmd_eval == NULL || psmd_eval->mesh_final == NULL) {
     return;
   }
 

@@ -699,6 +699,7 @@ void draw_image_sample_line(SpaceImage *sima)
     immUniformArray4fv(
         "colors", (float *)(float[][4]){{1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, 2);
     immUniform1f("dash_width", 2.0f);
+    immUniform1f("dash_factor", 0.5f);
 
     immBegin(GPU_PRIM_LINES, 2);
     immVertex2fv(shdr_dashed_pos, hist->co[0]);
@@ -795,6 +796,11 @@ void draw_image_main(const bContext *C, ARegion *ar)
   /* retrieve the image and information about it */
   ima = ED_space_image(sima);
   ED_space_image_get_zoom(sima, ar, &zoomx, &zoomy);
+
+  /* Tag image as in active use for garbage collector. */
+  if (ima) {
+    BKE_image_tag_time(ima);
+  }
 
   show_viewer = (ima && ima->source == IMA_SRC_VIEWER) != 0;
   show_render = (show_viewer && ima->type == IMA_TYPE_R_RESULT) != 0;

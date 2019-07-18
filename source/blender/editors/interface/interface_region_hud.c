@@ -27,6 +27,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BLI_string.h"
@@ -92,7 +93,7 @@ static bool hud_panel_operator_redo_poll(const bContext *C, PanelType *UNUSED(pt
 static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *pa)
 {
   wmOperator *op = WM_operator_last_redo(C);
-  BLI_strncpy(pa->drawname, RNA_struct_ui_name(op->type->srna), sizeof(pa->drawname));
+  BLI_strncpy(pa->drawname, WM_operatortype_name(op->type, op->ptr), sizeof(pa->drawname));
 }
 
 static void hud_panel_operator_redo_draw(const bContext *C, Panel *pa)
@@ -230,6 +231,11 @@ ARegionType *ED_area_type_hud(int space_type)
   art->draw = hud_region_draw;
   art->init = hud_region_init;
   art->free = hud_region_free;
+
+  /* We need to indicate a preferred size to avoid false `RGN_FLAG_TOO_SMALL`
+   * the first time the region is created. */
+  art->prefsizex = AREAMINX;
+  art->prefsizey = HEADERY;
 
   hud_panels_register(art, space_type, art->regionid);
 

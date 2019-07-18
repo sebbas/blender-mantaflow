@@ -126,7 +126,7 @@ class SelectCamera(Operator):
     extend: BoolProperty(
         name="Extend",
         description="Extend the selection",
-        default=False
+        default=False,
     )
 
     def execute(self, context):
@@ -312,8 +312,7 @@ class SubdivisionSet(Operator):
 
 
 class ShapeTransfer(Operator):
-    """Copy another selected objects active shape to this one by """ \
-        """applying the relative offsets"""
+    """Copy the active shape key of another selected object to this one"""
 
     bl_idname = "object.shape_key_transfer"
     bl_label = "Transfer Shape Key"
@@ -586,9 +585,9 @@ class JoinUVs(Operator):
 
 
 class MakeDupliFace(Operator):
-    """Convert objects into dupli-face instanced"""
+    """Convert objects into instanced faces"""
     bl_idname = "object.make_dupli_face"
-    bl_label = "Make Dupli-Face"
+    bl_label = "Make Instance Face"
     bl_options = {'REGISTER', 'UNDO'}
 
     @staticmethod
@@ -887,7 +886,7 @@ class LoadImageAsEmpty:
 
     view_align: BoolProperty(
         name="Align to view",
-        default=True
+        default=True,
     )
 
     @classmethod

@@ -579,6 +579,7 @@ static bool gp_brush_push_apply(
   mul_v3_v3fl(delta, gso->dvec, inf);
 
   /* apply */
+  mul_mat3_m4_v3(gso->object->obmat, delta); /* only rotation component */
   add_v3_v3(&pt->x, delta);
 
   /* compute lock axis */
@@ -646,7 +647,9 @@ static bool gp_brush_pinch_apply(
   inf = gp_brush_influence_calc(gso, radius, co) / 5.0f;
 
   /* 1) Make this point relative to the cursor/midpoint (dvec) */
-  sub_v3_v3v3(vec, &pt->x, gso->dvec);
+  float fpt[3];
+  mul_v3_m4v3(fpt, gso->object->obmat, &pt->x);
+  sub_v3_v3v3(vec, fpt, gso->dvec);
 
   /* 2) Shrink the distance by pulling the point towards the midpoint
    *    (0.0 = at midpoint, 1 = at edge of brush region)
@@ -664,7 +667,8 @@ static bool gp_brush_pinch_apply(
   mul_v3_fl(vec, fac);
 
   /* 3) Translate back to original space, with the shrinkage applied */
-  add_v3_v3v3(&pt->x, gso->dvec, vec);
+  add_v3_v3v3(fpt, gso->dvec, vec);
+  mul_v3_m4v3(&pt->x, gso->object->imat, fpt);
 
   /* compute lock axis */
   gpsculpt_compute_lock_axis(gso, pt, save_pt);
@@ -713,11 +717,14 @@ static bool gp_brush_twist_apply(
 
     axis_angle_normalized_to_mat3(rmat, axis, angle);
 
-    /* Rotate point (no matrix-space transforms needed, as GP points are in world space) */
-    sub_v3_v3v3(vec, &pt->x, gso->dvec); /* make relative to center
-                                          * (center is stored in dvec) */
+    /* Rotate point */
+    float fpt[3];
+    mul_v3_m4v3(fpt, gso->object->obmat, &pt->x);
+    sub_v3_v3v3(vec, fpt, gso->dvec); /* make relative to center
+                                       * (center is stored in dvec) */
     mul_m3_v3(rmat, vec);
-    add_v3_v3v3(&pt->x, vec, gso->dvec); /* restore */
+    add_v3_v3v3(fpt, vec, gso->dvec); /* restore */
+    mul_v3_m4v3(&pt->x, gso->object->imat, fpt);
 
     /* compute lock axis */
     gpsculpt_compute_lock_axis(gso, pt, save_pt);
@@ -894,7 +901,6 @@ static bool gp_brush_weight_apply(
   /* create dvert */
   BKE_gpencil_dvert_ensure(gps);
 
-  bGPDspoint *pt = gps->points + pt_index;
   MDeformVert *dvert = gps->dvert + pt_index;
   float inf;
 
@@ -923,25 +929,18 @@ static bool gp_brush_weight_apply(
   float curweight = dw ? dw->weight : 0.0f;
 
   if (gp_brush_invert_check(gso)) {
-    /* reduce weight */
     curweight -= inf;
   }
   else {
     /* increase weight */
     curweight += inf;
+    /* verify maximum target weight */
+    CLAMP_MAX(curweight, gso->gp_brush->weight);
   }
-
-  /* verify target weight */
-  CLAMP_MAX(curweight, gso->gp_brush->weight);
 
   CLAMP(curweight, 0.0f, 1.0f);
   if (dw) {
     dw->weight = curweight;
-  }
-
-  /* weight should stay within [0.0, 1.0] */
-  if (pt->pressure < 0.0f) {
-    pt->pressure = 0.0f;
   }
 
   return true;
@@ -1098,8 +1097,12 @@ static void gp_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
        * get pasted relative to where the cursor is now
        */
       for (i = 0, pt = new_stroke->points; i < new_stroke->totpoints; i++, pt++) {
+        /* Rotate around center new position */
+        mul_mat3_m4_v3(gso->object->obmat, &pt->x); /* only rotation component */
+
         /* assume that the delta can just be applied, and then everything works */
         add_v3_v3(&pt->x, delta);
+        mul_m4_v3(gso->object->imat, &pt->x);
       }
 
       /* Store ref for later */
@@ -1190,9 +1193,9 @@ static void gpsculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
 
   BLI_snprintf(str,
                sizeof(str),
-               IFACE_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
-                      " | Ctrl to Invert Action | Wheel Up/Down for Size "
-                      " | Shift-Wheel Up/Down for Strength"),
+               TIP_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
+                    " | Ctrl to Invert Action | Wheel Up/Down for Size "
+                    " | Shift-Wheel Up/Down for Strength"),
                (brush_name) ? brush_name : "<?>");
 
   ED_workspace_status_text(C, str);
@@ -2138,6 +2141,7 @@ static int gpsculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent *even
   return OPERATOR_RUNNING_MODAL;
 }
 
+/* Also used for weight paint. */
 void GPENCIL_OT_sculpt_paint(wmOperatorType *ot)
 {
   /* identifiers */

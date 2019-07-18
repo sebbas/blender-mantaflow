@@ -278,8 +278,9 @@ void ANIM_deselect_anim_channels(
           break;
         case ANIMTYPE_OBJECT:
 #if 0 /* for now, do not take object selection into account, since it gets too annoying */
-          if (ale->flag & SELECT)
+          if (ale->flag & SELECT) {
             sel = ACHANNEL_SETFLAG_CLEAR;
+          }
 #endif
           break;
         case ANIMTYPE_GROUP:
@@ -1710,8 +1711,7 @@ static void update_dependencies_on_delete(bAnimListElem *ale)
   AnimData *adt = BKE_animdata_from_id(id);
   /* TODO(sergey): Technically, if the animation element is being deleted
    * from a driver we don't have to tag action. This is something we can check
-   * for in the future. For now just do most reliable tag whic hwas always
-   * happening. */
+   * for in the future. For now just do most reliable tag which was always happening. */
   if (adt != NULL) {
     DEG_id_tag_update(id, ID_RECALC_ANIMATION);
     if (adt->action != NULL) {

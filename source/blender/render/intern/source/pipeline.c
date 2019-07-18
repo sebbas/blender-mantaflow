@@ -74,6 +74,7 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_debug.h"
 #include "DEG_depsgraph_query.h"
 
 #include "PIL_time.h"
@@ -180,22 +181,22 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
   megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
 
   fprintf(stdout,
-          IFACE_("Fra:%d Mem:%.2fM (%.2fM, Peak %.2fM) "),
+          TIP_("Fra:%d Mem:%.2fM (%.2fM, Peak %.2fM) "),
           rs->cfra,
           megs_used_memory,
           mmap_used_memory,
           megs_peak_memory);
 
   if (rs->curfield) {
-    fprintf(stdout, IFACE_("Field %d "), rs->curfield);
+    fprintf(stdout, TIP_("Field %d "), rs->curfield);
   }
   if (rs->curblur) {
-    fprintf(stdout, IFACE_("Blur %d "), rs->curblur);
+    fprintf(stdout, TIP_("Blur %d "), rs->curblur);
   }
 
   BLI_timecode_string_from_time_simple(
       info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
-  fprintf(stdout, IFACE_("| Time:%s | "), info_time_str);
+  fprintf(stdout, TIP_("| Time:%s | "), info_time_str);
 
   if (rs->infostr) {
     fprintf(stdout, "%s", rs->infostr);
@@ -203,7 +204,7 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
   else {
     if (rs->tothalo) {
       fprintf(stdout,
-              IFACE_("Sce: %s Ve:%d Fa:%d Ha:%d La:%d"),
+              TIP_("Sce: %s Ve:%d Fa:%d Ha:%d La:%d"),
               rs->scene_name,
               rs->totvert,
               rs->totface,
@@ -212,7 +213,7 @@ static void stats_background(void *UNUSED(arg), RenderStats *rs)
     }
     else {
       fprintf(stdout,
-              IFACE_("Sce: %s Ve:%d Fa:%d La:%d"),
+              TIP_("Sce: %s Ve:%d Fa:%d La:%d"),
               rs->scene_name,
               rs->totvert,
               rs->totface,
@@ -1115,7 +1116,7 @@ void *RE_gl_context_get(Render *re)
 void *RE_gpu_context_get(Render *re)
 {
   if (re->gpu_context == NULL) {
-    re->gpu_context = GPU_context_create();
+    re->gpu_context = GPU_context_create(0);
   }
   return re->gpu_context;
 }
@@ -1430,10 +1431,10 @@ static void free_all_freestyle_renders(void)
 /* returns fully composited render-result on given time step (in RenderData) */
 static void do_render_composite(Render *re)
 {
-  bNodeTree *ntree = re->scene->nodetree;
+  bNodeTree *ntree = re->pipeline_scene_eval->nodetree;
   int update_newframe = 0;
 
-  if (composite_needs_render(re->scene, 1)) {
+  if (composite_needs_render(re->pipeline_scene_eval, 1)) {
     /* save memory... free all cached images */
     ntreeFreeCache(ntree);
 
@@ -1471,7 +1472,7 @@ static void do_render_composite(Render *re)
   if (!re->test_break(re->tbh)) {
 
     if (ntree) {
-      ntreeCompositTagRender(re->scene);
+      ntreeCompositTagRender(re->pipeline_scene_eval);
     }
 
     if (ntree && re->scene->use_nodes && re->r.scemode & R_DOCOMP) {
@@ -1494,7 +1495,7 @@ static void do_render_composite(Render *re)
 
         RenderView *rv;
         for (rv = re->result->views.first; rv; rv = rv->next) {
-          ntreeCompositExecTree(re->scene,
+          ntreeCompositExecTree(re->pipeline_scene_eval,
                                 ntree,
                                 &re->r,
                                 true,
@@ -1595,12 +1596,8 @@ static void do_render_seq(Render *re)
   tot_views = BKE_scene_multiview_num_views_get(&re->r);
   ibuf_arr = MEM_mallocN(sizeof(ImBuf *) * tot_views, "Sequencer Views ImBufs");
 
-  /* TODO(sergey): Currently depsgraph is only used to check whether it is an active
-   * edit window or not to deal with unkeyed changes. We don't have depsgraph here yet,
-   * but we also dont' deal with unkeyed changes. But still nice to get proper depsgraph
-   * within tjhe render pipeline, somehow.
-   */
-  BKE_sequencer_new_render_data(re->main, NULL, re->scene, re_x, re_y, 100, true, &context);
+  BKE_sequencer_new_render_data(
+      re->main, re->pipeline_depsgraph, re->scene, re_x, re_y, 100, true, &context);
 
   /* the renderresult gets destroyed during the rendering, so we first collect all ibufs
    * and then we populate the final renderesult */
@@ -1613,7 +1610,7 @@ static void do_render_seq(Render *re)
       ibuf_arr[view_id] = IMB_dupImBuf(out);
       IMB_metadata_copy(ibuf_arr[view_id], out);
       IMB_freeImBuf(out);
-      BKE_sequencer_imbuf_from_sequencer_space(re->scene, ibuf_arr[view_id]);
+      BKE_sequencer_imbuf_from_sequencer_space(re->pipeline_scene_eval, ibuf_arr[view_id]);
     }
     else {
       ibuf_arr[view_id] = NULL;
@@ -1641,9 +1638,9 @@ static void do_render_seq(Render *re)
       }
 
       if (recurs_depth == 0) { /* with nested scenes, only free on toplevel... */
-        Editing *ed = re->scene->ed;
+        Editing *ed = re->pipeline_scene_eval->ed;
         if (ed) {
-          BKE_sequencer_free_imbuf(re->scene, &ed->seqbase, true);
+          BKE_sequencer_free_imbuf(re->pipeline_scene_eval, &ed->seqbase, true);
         }
       }
       IMB_freeImBuf(ibuf_arr[view_id]);
@@ -2071,6 +2068,30 @@ void RE_SetReports(Render *re, ReportList *reports)
   re->reports = reports;
 }
 
+static void render_update_depsgraph(Render *re)
+{
+  Scene *scene = re->scene;
+  DEG_evaluate_on_framechange(re->main, re->pipeline_depsgraph, CFRA);
+  BKE_scene_update_sound(re->pipeline_depsgraph, re->main);
+}
+
+static void render_init_depsgraph(Render *re)
+{
+  Scene *scene = re->scene;
+  ViewLayer *view_layer = BKE_view_layer_default_render(re->scene);
+
+  re->pipeline_depsgraph = DEG_graph_new(scene, view_layer, DAG_EVAL_RENDER);
+  DEG_debug_name_set(re->pipeline_depsgraph, "RENDER PIPELINE");
+
+  /* Make sure there is a correct evaluated scene pointer. */
+  DEG_graph_build_for_render_pipeline(re->pipeline_depsgraph, re->main, scene, view_layer);
+
+  /* Update immediately so we have proper evaluated scene. */
+  render_update_depsgraph(re);
+
+  re->pipeline_scene_eval = DEG_get_evaluated_scene(re->pipeline_depsgraph);
+}
+
 /* general Blender frame render call */
 void RE_RenderFrame(Render *re,
                     Main *bmain,
@@ -2092,6 +2113,8 @@ void RE_RenderFrame(Render *re,
           re, &scene->r, bmain, scene, single_layer, camera_override, 0, 0)) {
     const RenderData rd = scene->r;
     MEM_reset_peak_memory();
+
+    render_init_depsgraph(re);
 
     BLI_callback_exec(re->main, (ID *)scene, BLI_CB_EVT_RENDER_PRE);
 
@@ -2490,6 +2513,8 @@ void RE_RenderAnim(Render *re,
     return;
   }
 
+  render_init_depsgraph(re);
+
   if (is_movie) {
     size_t width, height;
     int i;
@@ -2510,8 +2535,14 @@ void RE_RenderAnim(Render *re,
 
       re->movie_ctx_arr[i] = mh->context_create();
 
-      if (!mh->start_movie(
-              re->movie_ctx_arr[i], scene, &re->r, width, height, re->reports, false, suffix)) {
+      if (!mh->start_movie(re->movie_ctx_arr[i],
+                           re->pipeline_scene_eval,
+                           &re->r,
+                           width,
+                           height,
+                           re->reports,
+                           false,
+                           suffix)) {
         is_error = true;
         break;
       }
@@ -2520,6 +2551,7 @@ void RE_RenderAnim(Render *re,
     if (is_error) {
       /* report is handled above */
       re_movie_free_all(re, mh, i + 1);
+      RE_CleanAfterRender(re);
       return;
     }
   }
@@ -2555,6 +2587,8 @@ void RE_RenderAnim(Render *re,
          */
         BKE_animsys_evaluate_animdata(NULL, scene, &scene->id, adt, ctime, ADT_RECALC_ALL);
       }
+
+      render_update_depsgraph(re);
 
       /* only border now, todo: camera lens. (ton) */
       render_initialize_from_main(re, &rd, bmain, scene, single_layer, camera_override, 1, 0);
@@ -2715,7 +2749,7 @@ void RE_RenderAnim(Render *re,
 
   BLI_callback_exec(
       re->main, (ID *)scene, G.is_break ? BLI_CB_EVT_RENDER_CANCEL : BLI_CB_EVT_RENDER_COMPLETE);
-  BKE_sound_reset_scene_specs(scene);
+  BKE_sound_reset_scene_specs(re->pipeline_scene_eval);
 
   RE_CleanAfterRender(re);
 
@@ -2746,6 +2780,11 @@ void RE_CleanAfterRender(Render *re)
 {
   /* Destroy the opengl context in the correct thread. */
   RE_gl_context_destroy(re);
+  if (re->pipeline_depsgraph != NULL) {
+    DEG_graph_free(re->pipeline_depsgraph);
+  }
+  re->pipeline_depsgraph = NULL;
+  re->pipeline_scene_eval = NULL;
 }
 
 /* note; repeated win/disprect calc... solve that nicer, also in compo */

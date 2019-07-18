@@ -1,5 +1,6 @@
 uniform int color_type;
 uniform sampler2D myTexture;
+uniform bool myTexturePremultiplied;
 
 uniform float gradient_f;
 
@@ -27,27 +28,6 @@ out vec4 fragColor;
 
 bool no_texture = (shading_type[0] == OB_SOLID) && (shading_type[1] != V3D_SHADING_TEXTURE_COLOR);
 
-float linearrgb_to_srgb(float c)
-{
-  if (c < 0.0031308) {
-    return (c < 0.0) ? 0.0 : c * 12.92;
-  }
-  else {
-    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
-  }
-}
-
-vec4 texture_read_as_srgb(sampler2D tex, vec2 co)
-{
-  /* By convention image textures return scene linear colors, but
-   * grease pencil still works in srgb. */
-  vec4 color = texture(tex, co);
-  color.r = linearrgb_to_srgb(color.r);
-  color.g = linearrgb_to_srgb(color.g);
-  color.b = linearrgb_to_srgb(color.b);
-  return color;
-}
-
 void main()
 {
 
@@ -68,10 +48,11 @@ void main()
   /* texture for endcaps */
   vec4 text_color;
   if (uvfac[1] == ENDCAP) {
-    text_color = texture_read_as_srgb(myTexture, vec2(mTexCoord.x, mTexCoord.y));
+    text_color = texture_read_as_srgb(
+        myTexture, myTexturePremultiplied, vec2(mTexCoord.x, mTexCoord.y));
   }
   else {
-    text_color = texture_read_as_srgb(myTexture, mTexCoord);
+    text_color = texture_read_as_srgb(myTexture, myTexturePremultiplied, mTexCoord);
   }
 
   /* texture */
@@ -104,6 +85,7 @@ void main()
   }
   */
 
-  if (fragColor.a < 0.0035)
+  if (fragColor.a < 0.0035) {
     discard;
+  }
 }

@@ -129,13 +129,21 @@ void IMB_colormanagement_colorspace_to_scene_linear(float *buffer,
                                                     struct ColorSpace *colorspace,
                                                     bool predivide);
 
-void IMB_colormanagement_imbuf_to_srgb_texture(unsigned char *rect,
+void IMB_colormanagement_imbuf_to_byte_texture(unsigned char *out_buffer,
                                                const int x,
                                                const int y,
                                                const int width,
                                                const int height,
                                                const struct ImBuf *ibuf,
-                                               const bool compress_as_srgb);
+                                               const bool compress_as_srgb,
+                                               const bool store_premultiplied);
+void IMB_colormanagement_imbuf_to_float_texture(float *out_buffer,
+                                                const int offset_x,
+                                                const int offset_y,
+                                                const int width,
+                                                const int height,
+                                                const struct ImBuf *ibuf,
+                                                const bool store_premultiplied);
 
 void IMB_colormanagement_scene_linear_to_color_picking_v3(float pixel[3]);
 void IMB_colormanagement_color_picking_to_scene_linear_v3(float pixel[3]);
@@ -261,8 +269,7 @@ void IMB_partial_display_buffer_update(struct ImBuf *ibuf,
                                        int xmin,
                                        int ymin,
                                        int xmax,
-                                       int ymax,
-                                       bool copy_display_to_byte_buffer);
+                                       int ymax);
 
 void IMB_partial_display_buffer_update_threaded(
     struct ImBuf *ibuf,
@@ -276,8 +283,7 @@ void IMB_partial_display_buffer_update_threaded(
     int xmin,
     int ymin,
     int xmax,
-    int ymax,
-    bool copy_display_to_byte_buffer);
+    int ymax);
 
 void IMB_partial_display_buffer_update_delayed(
     struct ImBuf *ibuf, int xmin, int ymin, int xmax, int ymax);

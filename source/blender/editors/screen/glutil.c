@@ -47,17 +47,6 @@
 
 /* ******************************************** */
 
-/* Invert line handling */
-
-#define GL_TOGGLE(mode, onoff) (((onoff) ? glEnable : glDisable)(mode))
-
-void set_inverted_drawing(int enable)
-{
-  glLogicOp(enable ? GL_INVERT : GL_COPY);
-  GL_TOGGLE(GL_COLOR_LOGIC_OP, enable);
-  GL_TOGGLE(GL_DITHER, !enable);
-}
-
 static int get_cached_work_texture(int *r_w, int *r_h)
 {
   static GLint texid = -1;
@@ -486,6 +475,9 @@ void immDrawPixelsTex_clipping(IMMDrawPixelsTexState *state,
 
 float bglPolygonOffsetCalc(const float winmat[16], float viewdist, float dist)
 {
+  /* Seems like we have a factor of 2 more offset than 2.79 for some reason. Correct for this. */
+  dist *= 0.5f;
+
   if (winmat[15] > 0.5f) {
 #if 1
     return 0.00001f * dist * viewdist;  // ortho tweaking

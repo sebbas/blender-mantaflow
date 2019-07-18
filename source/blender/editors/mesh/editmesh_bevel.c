@@ -169,19 +169,19 @@ static void edbm_bevel_update_header(bContext *C, wmOperator *op)
 
   BLI_snprintf(header,
                sizeof(header),
-               IFACE_("%s: confirm, "
-                      "%s: cancel, "
-                      "%s: mode (%s), "
-                      "%s: width (%s), "
-                      "%s: segments (%d), "
-                      "%s: profile (%.3f), "
-                      "%s: clamp overlap (%s), "
-                      "%s: vertex only (%s), "
-                      "%s: outer miter (%s), "
-                      "%s: inner miter (%s), "
-                      "%s: harden normals (%s), "
-                      "%s: mark seam (%s), "
-                      "%s: mark sharp (%s)"),
+               TIP_("%s: confirm, "
+                    "%s: cancel, "
+                    "%s: mode (%s), "
+                    "%s: width (%s), "
+                    "%s: segments (%d), "
+                    "%s: profile (%.3f), "
+                    "%s: clamp overlap (%s), "
+                    "%s: vertex only (%s), "
+                    "%s: outer miter (%s), "
+                    "%s: inner miter (%s), "
+                    "%s: harden normals (%s), "
+                    "%s: mark seam (%s), "
+                    "%s: mark sharp (%s)"),
                WM_MODALKEY(BEV_MODAL_CONFIRM),
                WM_MODALKEY(BEV_MODAL_CANCEL),
                WM_MODALKEY(BEV_MODAL_OFFSET_MODE_CHANGE),
@@ -263,14 +263,14 @@ static bool edbm_bevel_init(bContext *C, wmOperator *op, const bool is_modal)
     initNumInput(&opdata->num_input[i]);
     opdata->num_input[i].idx_max = 0;
     opdata->num_input[i].val_flag[0] |= NUM_NO_NEGATIVE;
+    opdata->num_input[i].unit_type[0] = B_UNIT_NONE;
     if (i == SEGMENTS_VALUE) {
       opdata->num_input[i].val_flag[0] |= NUM_NO_FRACTION | NUM_NO_ZERO;
     }
     if (i == OFFSET_VALUE) {
       opdata->num_input[i].unit_sys = scene->unit.system;
+      opdata->num_input[i].unit_type[0] = B_UNIT_LENGTH;
     }
-    /* Not sure this is a factor or a unit? */
-    opdata->num_input[i].unit_type[0] = B_UNIT_NONE;
   }
 
   /* avoid the cost of allocating a bm copy */
@@ -920,7 +920,7 @@ void MESH_OT_bevel(wmOperatorType *ot)
   ot->poll_property = edbm_bevel_poll_property;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR | OPTYPE_BLOCKING;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
 
   RNA_def_enum(
       ot->srna, "offset_type", offset_type_items, 0, "Width Type", "What distance Width measures");

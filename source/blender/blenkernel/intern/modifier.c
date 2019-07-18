@@ -128,7 +128,7 @@ ModifierData *modifier_new(int type)
 
   md->type = type;
   md->mode = eModifierMode_Realtime | eModifierMode_Render | eModifierMode_Expanded;
-  md->flag = eModifierFlag_StaticOverride_Local;
+  md->flag = eModifierFlag_OverrideLibrary_Local;
 
   if (mti->flags & eModifierTypeFlag_EnableInEditmode) {
     md->mode |= eModifierMode_Editmode;
@@ -530,13 +530,14 @@ bool modifier_isEnabled(const struct Scene *scene, ModifierData *md, int require
 CDMaskLink *modifiers_calcDataMasks(struct Scene *scene,
                                     Object *ob,
                                     ModifierData *md,
-                                    const CustomData_MeshMasks *dataMask,
+                                    CustomData_MeshMasks *final_datamask,
                                     int required_mode,
                                     ModifierData *previewmd,
                                     const CustomData_MeshMasks *previewmask)
 {
   CDMaskLink *dataMasks = NULL;
   CDMaskLink *curr, *prev;
+  bool have_deform_modifier = false;
 
   /* build a list of modifier data requirements in reverse order */
   for (; md; md = md->next) {
@@ -545,6 +546,10 @@ CDMaskLink *modifiers_calcDataMasks(struct Scene *scene,
     curr = MEM_callocN(sizeof(CDMaskLink), "CDMaskLink");
 
     if (modifier_isEnabled(scene, md, required_mode)) {
+      if (mti->type == eModifierTypeType_OnlyDeform) {
+        have_deform_modifier = true;
+      }
+
       if (mti->requiredDataMask) {
         mti->requiredDataMask(ob, md, &curr->mask);
       }
@@ -554,9 +559,19 @@ CDMaskLink *modifiers_calcDataMasks(struct Scene *scene,
       }
     }
 
+    if (!have_deform_modifier) {
+      /* Don't create orco layer when there is no deformation, we fall
+       * back to regular vertex coordinates */
+      curr->mask.vmask &= ~CD_MASK_ORCO;
+    }
+
     /* prepend new datamask */
     curr->next = dataMasks;
     dataMasks = curr;
+  }
+
+  if (!have_deform_modifier) {
+    final_datamask->vmask &= ~CD_MASK_ORCO;
   }
 
   /* build the list of required data masks - each mask in the list must
@@ -570,7 +585,7 @@ CDMaskLink *modifiers_calcDataMasks(struct Scene *scene,
       CustomData_MeshMasks_update(&curr->mask, &prev->mask);
     }
     else {
-      CustomData_MeshMasks_update(&curr->mask, dataMask);
+      CustomData_MeshMasks_update(&curr->mask, final_datamask);
     }
   }
 
@@ -760,6 +775,41 @@ bool modifiers_usesArmature(Object *ob, bArmature *arm)
     }
   }
 
+  return false;
+}
+
+bool modifiers_usesSubsurfFacedots(struct Scene *scene, Object *ob)
+{
+  /* Search (backward) in the modifier stack to find if we have a subsurf modifier (enabled) before
+   * the last modifier displayed on cage (or if the subsurf is the last). */
+  VirtualModifierData virtualModifierData;
+  ModifierData *md = modifiers_getVirtualModifierList(ob, &virtualModifierData);
+  int cage_index = modifiers_getCageIndex(scene, ob, NULL, 1);
+  if (cage_index == -1) {
+    return false;
+  }
+  /* Find first modifier enabled on cage. */
+  for (int i = 0; md && i < cage_index; i++) {
+    md = md->next;
+  }
+  /* Now from this point, search for subsurf modifier. */
+  for (; md; md = md->prev) {
+    const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
+    if (md->type == eModifierType_Subsurf) {
+      ModifierMode mode = eModifierMode_Realtime | eModifierMode_Editmode;
+      if (modifier_isEnabled(scene, md, mode)) {
+        return true;
+      }
+    }
+    else if (mti->type == eModifierTypeType_OnlyDeform) {
+      /* Theses modifiers do not reset the subdiv flag nor change the topology.
+       * We can still search for a subsurf modifier. */
+    }
+    else {
+      /* Other modifiers may reset the subdiv facedot flag or create. */
+      return false;
+    }
+  }
   return false;
 }
 

@@ -129,8 +129,6 @@ static bool sculpt_undo_restore_deformed(
 
 static bool sculpt_undo_restore_coords(bContext *C, SculptUndoNode *unode)
 {
-  Scene *scene = CTX_data_scene(C);
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = OBACT(view_layer);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
@@ -151,7 +149,7 @@ static bool sculpt_undo_restore_coords(bContext *C, SculptUndoNode *unode)
       if (kb) {
         ob->shapenr = BLI_findindex(&key->block, kb) + 1;
 
-        BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, false);
+        BKE_sculpt_update_object_for_edit(depsgraph, ob, false, false);
         WM_event_add_notifier(C, NC_OBJECT | ND_DATA, ob);
       }
       else {
@@ -460,8 +458,8 @@ static int sculpt_undo_bmesh_restore(bContext *C,
 static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 {
   Scene *scene = CTX_data_scene(C);
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   ViewLayer *view_layer = CTX_data_view_layer(C);
+  View3D *v3d = CTX_wm_view3d(C);
   Object *ob = OBACT(view_layer);
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   SculptSession *ss = ob->sculpt;
@@ -484,7 +482,7 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
 
   DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
 
-  BKE_sculpt_update_mesh_elements(depsgraph, scene, sd, ob, false, need_mask);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, false, need_mask);
 
   if (lb->first && sculpt_undo_bmesh_restore(C, lb->first, ob, ss)) {
     return;
@@ -552,20 +550,18 @@ static void sculpt_undo_restore_list(bContext *C, ListBase *lb)
     else {
       BKE_pbvh_search_callback(ss->pbvh, NULL, NULL, update_cb, &rebuild);
     }
-    BKE_pbvh_update(ss->pbvh,
-                    PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw | PBVH_UpdateNormals,
-                    NULL);
+    BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
 
     if (BKE_sculpt_multires_active(scene, ob)) {
       if (rebuild) {
-        multires_mark_as_modified(ob, MULTIRES_HIDDEN_MODIFIED);
+        multires_mark_as_modified(depsgraph, ob, MULTIRES_HIDDEN_MODIFIED);
       }
       else {
-        multires_mark_as_modified(ob, MULTIRES_COORDS_MODIFIED);
+        multires_mark_as_modified(depsgraph, ob, MULTIRES_COORDS_MODIFIED);
       }
     }
 
-    tag_update |= ((Mesh *)ob->data)->id.us > 1;
+    tag_update |= ((Mesh *)ob->data)->id.us > 1 || !BKE_sculptsession_use_pbvh_draw(ob, v3d);
 
     if (ss->kb || ss->modifiers_active) {
       Mesh *mesh = ob->data;
@@ -654,8 +650,9 @@ static bool sculpt_undo_cleanup(bContext *C, ListBase *lb)
   unode = lb->first;
 
   if (unode && !STREQ(unode->idname, ob->id.name)) {
-    if (unode->bm_entry)
+    if (unode->bm_entry) {
       BM_log_cleanup_entry(unode->bm_entry);
+    }
 
     return true;
   }
@@ -1112,10 +1109,8 @@ static void sculpt_undosys_step_decode_redo(struct bContext *C, SculptUndoStep *
   }
 }
 
-static void sculpt_undosys_step_decode(struct bContext *C,
-                                       struct Main *bmain,
-                                       UndoStep *us_p,
-                                       int dir)
+static void sculpt_undosys_step_decode(
+    struct bContext *C, struct Main *bmain, UndoStep *us_p, int dir, bool UNUSED(is_final))
 {
   /* Ensure sculpt mode. */
   {

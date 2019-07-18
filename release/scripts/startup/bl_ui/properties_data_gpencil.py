@@ -81,7 +81,8 @@ class GPENCIL_MT_layer_context_menu(Menu):
 
     def draw(self, context):
         layout = self.layout
-        gpd = context.gpencil
+        ob = context.object
+        gpd = ob.data
 
         layout.operator("gpencil.layer_duplicate", icon='ADD')  # XXX: needs a dedicated icon
 
@@ -137,8 +138,8 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
 
             srow = col.row(align=True)
             srow.prop(gpl, "opacity", text="Opacity", slider=True)
-            srow.prop(gpl, "clamp_layer", text="",
-                      icon='MOD_MASK' if gpl.clamp_layer else 'LAYER_ACTIVE')
+            srow.prop(gpl, "mask_layer", text="",
+                      icon='MOD_MASK' if gpl.mask_layer else 'LAYER_ACTIVE')
 
             srow = col.row(align=True)
             srow.prop(gpl, "use_solo_mode", text="Show Only On Keyframed")
@@ -243,7 +244,6 @@ class DATA_PT_gpencil_layer_display(LayerDataButtonsPanel, Panel):
 
 class DATA_PT_gpencil_onion_skinning(DataButtonsPanel, Panel):
     bl_label = "Onion Skinning"
-    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         gpd = context.gpencil

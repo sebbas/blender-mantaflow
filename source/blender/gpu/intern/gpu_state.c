@@ -20,6 +20,8 @@
 
 #include "DNA_userdef_types.h"
 
+#include "BLI_utildefines.h"
+
 #include "BKE_global.h"
 
 #include "GPU_glew.h"
@@ -126,6 +128,19 @@ void GPU_polygon_smooth(bool enable)
   }
 }
 
+/* Programmable point size
+ * - shaders set their own point size when enabled
+ * - use glPointSize when disabled */
+void GPU_program_point_size(bool enable)
+{
+  if (enable) {
+    glEnable(GL_PROGRAM_POINT_SIZE);
+  }
+  else {
+    glDisable(GL_PROGRAM_POINT_SIZE);
+  }
+}
+
 void GPU_scissor(int x, int y, int width, int height)
 {
   glScissor(x, y, width, height);
@@ -159,4 +174,18 @@ void GPU_flush(void)
 void GPU_finish(void)
 {
   glFinish();
+}
+
+void GPU_logic_op_invert_set(bool enable)
+{
+  if (enable) {
+    glLogicOp(GL_INVERT);
+    glEnable(GL_COLOR_LOGIC_OP);
+    glDisable(GL_DITHER);
+  }
+  else {
+    glLogicOp(GL_COPY);
+    glDisable(GL_COLOR_LOGIC_OP);
+    glEnable(GL_DITHER);
+  }
 }

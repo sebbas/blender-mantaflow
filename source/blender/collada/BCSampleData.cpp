@@ -20,10 +20,6 @@
 #include "BCSampleData.h"
 #include "collada_utils.h"
 
-BCSample::BCSample(Object *ob) : obmat(ob)
-{
-}
-
 BCSample::~BCSample()
 {
   BCBoneMatrixMap::iterator it;
@@ -43,32 +39,47 @@ void BCSample::add_bone_matrix(Bone *bone, Matrix &mat)
   bonemats[bone] = matrix;
 }
 
-BCMatrix::BCMatrix(Matrix &mat)
+/* Get channel value */
+const bool BCSample::get_value(std::string channel_target, const int array_index, float *val) const
 {
-  set_transform(mat);
-}
+  std::string bname = bc_string_before(channel_target, ".");
+  std::string channel_type = bc_string_after(channel_target, ".");
 
-BCMatrix::BCMatrix(Object *ob)
-{
-  set_transform(ob);
-}
+  const BCMatrix *matrix = &obmat;
+  if (bname != channel_target) {
+    bname = bname.substr(2);
+    bname = bc_string_before(bname, "\"");
+    BCBoneMatrixMap::const_iterator it;
+    for (it = bonemats.begin(); it != bonemats.end(); ++it) {
+      Bone *bone = it->first;
+      if (bname == bone->name) {
+        matrix = it->second;
+        break;
+      }
+    }
+  }
+  else {
+    matrix = &obmat;
+  }
 
-void BCMatrix::set_transform(Matrix &mat)
-{
-  copy_m4_m4(matrix, mat);
-  mat4_decompose(this->loc, this->q, this->size, mat);
-  quat_to_eul(this->rot, this->q);
-}
+  if (channel_type == "location") {
+    *val = matrix->location()[array_index];
+  }
+  else if (channel_type == "scale") {
+    *val = matrix->scale()[array_index];
+  }
+  else if (channel_type == "rotation" || channel_type == "rotation_euler") {
+    *val = matrix->rotation()[array_index];
+  }
+  else if (channel_type == "rotation_quaternion") {
+    *val = matrix->quat()[array_index];
+  }
+  else {
+    *val = 0;
+    return false;
+  }
 
-void BCMatrix::set_transform(Object *ob)
-{
-  Matrix lmat;
-
-  BKE_object_matrix_local_get(ob, lmat);
-  copy_m4_m4(matrix, lmat);
-
-  mat4_decompose(this->loc, this->q, this->size, lmat);
-  quat_to_compatible_eul(this->rot, ob->rot, this->q);
+  return true;
 }
 
 const BCMatrix *BCSample::get_matrix(Bone *bone) const
@@ -83,93 +94,4 @@ const BCMatrix *BCSample::get_matrix(Bone *bone) const
 const BCMatrix &BCSample::get_matrix() const
 {
   return obmat;
-}
-
-/* Get channel value */
-const bool BCSample::get_value(std::string channel_target, const int array_index, float *val) const
-{
-  if (channel_target == "location") {
-    *val = obmat.location()[array_index];
-  }
-  else if (channel_target == "scale") {
-    *val = obmat.scale()[array_index];
-  }
-  else if (channel_target == "rotation" || channel_target == "rotation_euler") {
-    *val = obmat.rotation()[array_index];
-  }
-  else if (channel_target == "rotation_quat") {
-    *val = obmat.quat()[array_index];
-  }
-  else {
-    *val = 0;
-    return false;
-  }
-
-  return true;
-}
-
-void BCMatrix::copy(Matrix &out, Matrix &in)
-{
-  /* destination comes first: */
-  memcpy(out, in, sizeof(Matrix));
-}
-
-void BCMatrix::transpose(Matrix &mat)
-{
-  transpose_m4(mat);
-}
-
-void BCMatrix::sanitize(Matrix &mat, int precision)
-{
-  bc_sanitize_mat(mat, precision);
-}
-
-void BCMatrix::unit()
-{
-  unit_m4(matrix);
-}
-
-/* We need double here because the OpenCollada API needs it.
- * precision = -1 indicates to not limit the precision. */
-void BCMatrix::get_matrix(double (&mat)[4][4], const bool transposed, const int precision) const
-{
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++) {
-      float val = (transposed) ? matrix[j][i] : matrix[i][j];
-      if (precision >= 0)
-        val = floor((val * pow(10, precision) + 0.5)) / pow(10, precision);
-      mat[i][j] = val;
-    }
-}
-
-const bool BCMatrix::in_range(const BCMatrix &other, float distance) const
-{
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      if (fabs(other.matrix[i][j] - matrix[i][j]) > distance) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-float (&BCMatrix::location() const)[3]
-{
-  return loc;
-}
-
-float (&BCMatrix::rotation() const)[3]
-{
-  return rot;
-}
-
-float (&BCMatrix::scale() const)[3]
-{
-  return size;
-}
-
-float (&BCMatrix::quat() const)[4]
-{
-  return q;
 }

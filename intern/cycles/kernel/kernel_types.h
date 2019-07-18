@@ -314,7 +314,7 @@ enum PathRayFlag {
   /* Ray is to be terminated, but continue with transparent bounces and
    * emission as long as we encounter them. This is required to make the
    * MIS between direct and indirect light rays match, as shadow rays go
-   * through transparent surfaces to reach emisison too. */
+   * through transparent surfaces to reach emission too. */
   PATH_RAY_TERMINATE_AFTER_TRANSPARENT = (1 << 21),
   /* Ray is to be terminated. */
   PATH_RAY_TERMINATE = (PATH_RAY_TERMINATE_IMMEDIATE | PATH_RAY_TERMINATE_AFTER_TRANSPARENT),
@@ -804,8 +804,9 @@ typedef struct AttributeDescriptor {
  * ShaderClosure has a fixed size, and any extra space must be allocated
  * with closure_alloc_extra().
  *
- * We pad the struct to 80 bytes and ensure it is aligned to 16 bytes, which
- * we assume to be the maximum required alignment for any struct. */
+ * We pad the struct to align to 16 bytes. All shader closures are assumed
+ * to fit in this struct size. CPU sizes are a bit larger because float3 is
+ * padded to be 16 bytes, while it's only 12 bytes on the GPU. */
 
 #define SHADER_CLOSURE_BASE \
   float3 weight; \
@@ -817,7 +818,10 @@ typedef ccl_addr_space struct ccl_align(16) ShaderClosure
 {
   SHADER_CLOSURE_BASE;
 
-  float data[10]; /* pad to 80 bytes */
+#ifdef __KERNEL_CPU__
+  float pad[2];
+#endif
+  float data[10];
 }
 ShaderClosure;
 
@@ -1144,7 +1148,7 @@ typedef struct KernelCamera {
   ProjectionTransform worldtondc;
   Transform worldtocamera;
 
-  /* Stores changes in the projeciton matrix. Use for camera zoom motion
+  /* Stores changes in the projection matrix. Use for camera zoom motion
    * blur and motion pass output for perspective camera. */
   ProjectionTransform perspective_pre;
   ProjectionTransform perspective_post;
@@ -1267,6 +1271,7 @@ typedef struct KernelIntegrator {
   int portal_offset;
 
   /* bounces */
+  int min_bounce;
   int max_bounce;
 
   int max_diffuse_bounce;
@@ -1277,6 +1282,7 @@ typedef struct KernelIntegrator {
   int ao_bounces;
 
   /* transparent */
+  int transparent_min_bounce;
   int transparent_max_bounce;
   int transparent_shadows;
 
@@ -1321,7 +1327,7 @@ typedef struct KernelIntegrator {
 
   int max_closures;
 
-  int pad1, pad2, pad3;
+  int pad1;
 } KernelIntegrator;
 static_assert_align(KernelIntegrator, 16);
 

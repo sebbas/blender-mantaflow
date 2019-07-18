@@ -36,13 +36,14 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+#include "BKE_packedFile.h"
+
 #include "rna_internal.h" /* own include */
 
 #ifdef RNA_RUNTIME
 
 #  include <errno.h>
 #  include "BKE_image.h"
-#  include "BKE_packedFile.h"
 #  include "BKE_main.h"
 
 #  include "IMB_imbuf.h"
@@ -55,7 +56,7 @@
 
 static void rna_ImagePackedFile_save(ImagePackedFile *imapf, Main *bmain, ReportList *reports)
 {
-  if (writePackedFile(
+  if (BKE_packedfile_write_to_file(
           reports, BKE_main_blendfile_path(bmain), imapf->filepath, imapf->packedfile, 0) !=
       RET_OK) {
     BKE_reportf(reports, RPT_ERROR, "Could not save packed file to disk as '%s'", imapf->filepath);
@@ -96,8 +97,9 @@ static void rna_Image_save_render(
         BKE_reportf(reports, RPT_ERROR, "Could not write image: %s, '%s'", strerror(errno), path);
       }
 
-      if (write_ibuf != ibuf)
+      if (write_ibuf != ibuf) {
         IMB_freeImBuf(write_ibuf);
+      }
     }
 
     BKE_image_release_ibuf(image, ibuf, lock);
@@ -123,8 +125,9 @@ static void rna_Image_save(Image *image, Main *bmain, bContext *C, ReportList *r
     if (IMB_saveiff(ibuf, filename, ibuf->flags)) {
       image->type = IMA_TYPE_IMAGE;
 
-      if (image->source == IMA_SRC_GENERATED)
+      if (image->source == IMA_SRC_GENERATED) {
         image->source = IMA_SRC_FILE;
+      }
 
       IMB_colormanagement_colorspace_from_ibuf_ftype(&image->colorspace_settings, ibuf);
 
@@ -177,7 +180,7 @@ static void rna_Image_unpack(Image *image, Main *bmain, ReportList *reports, int
   }
   else {
     /* reports its own error on failure */
-    unpackImage(bmain, reports, image, method);
+    BKE_packedfile_unpack_image(bmain, reports, image, method);
   }
 }
 
@@ -196,8 +199,9 @@ static void rna_Image_update(Image *image, ReportList *reports)
     return;
   }
 
-  if (ibuf->rect)
+  if (ibuf->rect) {
     IMB_rect_from_float(ibuf);
+  }
 
   ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
 
@@ -233,8 +237,9 @@ static int rna_Image_gl_touch(Image *image, ReportList *reports, int frame)
 
   BKE_image_tag_time(image);
 
-  if (image->gputexture[TEXTARGET_TEXTURE_2D] == NULL)
+  if (image->gputexture[TEXTARGET_TEXTURE_2D] == NULL) {
     error = rna_Image_gl_load(image, reports, frame);
+  }
 
   return error;
 }
@@ -338,7 +343,7 @@ void RNA_api_image(StructRNA *srna)
       func,
       "Load the image into an OpenGL texture. On success, image.bindcode will contain the "
       "OpenGL texture bindcode. Colors read from the texture will be in scene linear color space "
-      "and have premultiplied alpha.");
+      "and have premultiplied or straight alpha matching the image alpha mode");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_int(
       func, "frame", 0, 0, INT_MAX, "Frame", "Frame of image sequence or movie", 0, INT_MAX);

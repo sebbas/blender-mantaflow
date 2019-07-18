@@ -24,7 +24,7 @@ from bpy.types import (
     Panel,
     UIList,
 )
-from .properties_paint_common import (
+from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
     brush_texture_settings,
     brush_texpaint_common,
@@ -34,10 +34,10 @@ from .properties_paint_common import (
     brush_texpaint_common_options,
     brush_mask_texture_settings,
 )
-from .properties_grease_pencil_common import (
+from bl_ui.properties_grease_pencil_common import (
     AnnotationDataPanel,
 )
-from .space_toolsystem_common import (
+from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
 )
 
@@ -81,7 +81,7 @@ class IMAGE_MT_view(Menu):
 
         layout.prop(sima, "show_region_toolbar")
         layout.prop(sima, "show_region_ui")
-        layout.prop(view, "show_region_tool_header")
+        layout.prop(sima, "show_region_tool_header")
         layout.prop(sima, "show_region_hud")
 
         layout.separator()
@@ -108,10 +108,10 @@ class IMAGE_MT_view(Menu):
         layout.separator()
 
         if show_uvedit:
-            layout.operator("image.view_selected")
+            layout.operator("image.view_selected", text="Frame Selected")
 
-        layout.operator("image.view_all")
-        layout.operator("image.view_all", text="View Fit").fit_view = True
+        layout.operator("image.view_all", text="Frame All")
+        layout.operator("image.view_all", text="Frame All Fit").fit_view = True
 
         layout.separator()
 
@@ -347,7 +347,6 @@ class IMAGE_MT_uvs(Menu):
 
         sima = context.space_data
         uv = sima.uv_editor
-        tool_settings = context.tool_settings
 
         layout.menu("IMAGE_MT_uvs_transform")
         layout.menu("IMAGE_MT_uvs_mirror")
@@ -536,8 +535,6 @@ class IMAGE_HT_tool_header(Header):
 
         self.draw_tool_settings(context)
 
-        sima = context.space_data
-
         layout.separator_spacer()
 
         IMAGE_HT_header.draw_xform_template(layout, context)
@@ -551,7 +548,7 @@ class IMAGE_HT_tool_header(Header):
 
         # Active Tool
         # -----------
-        from .space_toolsystem_common import ToolSelectPanelHelper
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.draw_active_tool_header(context, layout)
         tool_mode = context.mode if tool is None else tool.mode
 
@@ -583,7 +580,7 @@ class IMAGE_HT_tool_header(Header):
 
         # Active Tool
         # -----------
-        from .space_toolsystem_common import ToolSelectPanelHelper
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.tool_active_from_context(context)
         tool_mode = context.mode if tool is None else tool.mode
 
@@ -600,7 +597,7 @@ class _draw_tool_settings_context_mode:
                 uv_sculpt = tool_settings.uv_sculpt
                 brush = uv_sculpt.brush
                 if brush:
-                    from .properties_paint_common import UnifiedPaintPanel
+                    from bl_ui.properties_paint_common import UnifiedPaintPanel
 
                     row = layout.row(align=True)
                     UnifiedPaintPanel.prop_unified_size(row, context, brush, "size", slider=True)
@@ -622,7 +619,7 @@ class _draw_tool_settings_context_mode:
         if brush is None:
             return
 
-        from .properties_paint_common import (
+        from bl_ui.properties_paint_common import (
             UnifiedPaintPanel,
             brush_basic_texpaint_settings,
         )
@@ -648,11 +645,18 @@ class IMAGE_HT_header(Header):
             tool_settings = context.tool_settings
 
             # Snap.
+            snap_uv_element = tool_settings.snap_uv_element
+            act_snap_uv_element = tool_settings.bl_rna.properties['snap_uv_element'].enum_items[snap_uv_element]
+
             row = layout.row(align=True)
             row.prop(tool_settings, "use_snap", text="")
-            row.prop(tool_settings, "snap_uv_element", icon_only=True)
-            if tool_settings.snap_uv_element != 'INCREMENT':
-                row.prop(tool_settings, "snap_target", text="")
+
+            sub = row.row(align=True)
+            sub.popover(
+                panel="IMAGE_PT_snapping",
+                icon=act_snap_uv_element.icon,
+                text="",
+            )
 
             # Proportional Editing
             row = layout.row(align=True)
@@ -706,7 +710,7 @@ class IMAGE_HT_header(Header):
             row.template_ID(sima, "mask", new="mask.new")
 
         if not show_render:
-            layout.prop(sima, "use_image_pin", text="")
+            layout.prop(sima, "use_image_pin", text="", emboss=False)
 
         layout.separator_spacer()
 
@@ -720,6 +724,9 @@ class IMAGE_HT_header(Header):
             if ima.is_stereo_3d:
                 row = layout.row()
                 row.prop(sima, "show_stereo_3d", text="")
+            if show_maskedit:
+                row = layout.row()
+                row.popover(panel='CLIP_PT_mask_display')
 
             # layers.
             layout.template_image_layers(ima, iuser)
@@ -769,11 +776,56 @@ class MASK_MT_editor_menus(Menu):
             layout.menu("MASK_MT_mask")
 
 
+class IMAGE_MT_mask_context_menu(Menu):
+    bl_label = "Mask Context Menu"
+
+    @classmethod
+    def poll(cls, context):
+        sima = context.space_data
+        return (sima.show_maskedit)
+
+    def draw(self, context):
+        layout = self.layout
+        sima = context.space_data
+
+        if not sima.mask:
+            layout.operator("mask.new")
+            layout.separator()
+            layout.operator("mask.primitive_circle_add", icon='MESH_CIRCLE')
+            layout.operator("mask.primitive_square_add", icon='MESH_PLANE')
+        else:
+            layout.operator_menu_enum("mask.handle_type_set", "type")
+            layout.operator("mask.switch_direction")
+            layout.operator("mask.cyclic_toggle")
+
+            layout.separator()
+            layout.operator("mask.primitive_circle_add", icon='MESH_CIRCLE')
+            layout.operator("mask.primitive_square_add", icon='MESH_PLANE')
+
+            layout.separator()
+            layout.operator("mask.copy_splines", icon='COPYDOWN')
+            layout.operator("mask.paste_splines", icon='PASTEDOWN')
+
+            layout.separator()
+
+            layout.operator("mask.shape_key_rekey", text="Re-key Shape Points")
+            layout.operator("mask.feather_weight_clear")
+            layout.operator("mask.shape_key_feather_reset", text="Reset Feather Animation")
+
+            layout.separator()
+
+            layout.operator("mask.parent_set")
+            layout.operator("mask.parent_clear")
+
+            layout.separator()
+
+            layout.operator("mask.delete")
+
 # -----------------------------------------------------------------------------
 # Mask (similar code in space_clip.py, keep in sync)
 # note! - panel placement does _not_ fit well with image panels... need to fix.
 
-from .properties_mask_common import (
+from bl_ui.properties_mask_common import (
     MASK_PT_mask,
     MASK_PT_layers,
     MASK_PT_spline,
@@ -785,34 +837,52 @@ from .properties_mask_common import (
 class IMAGE_PT_mask(MASK_PT_mask, Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Image"
+    bl_category = "Mask"
 
 
 class IMAGE_PT_mask_layers(MASK_PT_layers, Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Image"
-
-
-class IMAGE_PT_mask_display(MASK_PT_display, Panel):
-    bl_space_type = 'IMAGE_EDITOR'
-    bl_region_type = 'UI'
-    bl_category = "Image"
+    bl_category = "Mask"
 
 
 class IMAGE_PT_active_mask_spline(MASK_PT_spline, Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Image"
+    bl_category = "Mask"
 
 
 class IMAGE_PT_active_mask_point(MASK_PT_point, Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Image"
+    bl_category = "Mask"
 
 
 # --- end mask ---
+
+class IMAGE_PT_snapping(Panel):
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Snapping"
+
+    def draw(self, context):
+        tool_settings = context.tool_settings
+
+        layout = self.layout
+        col = layout.column()
+        col.label(text="Snapping")
+        col.prop(tool_settings, "snap_uv_element", expand=True)
+
+        if tool_settings.snap_uv_element != 'INCREMENT':
+            col.label(text="Target")
+            row = col.row(align=True)
+            row.prop(tool_settings, "snap_target", expand=True)
+
+        col.label(text="Affect")
+        row = col.row(align=True)
+        row.prop(tool_settings, "use_snap_translate", text="Move", toggle=True)
+        row.prop(tool_settings, "use_snap_rotate", text="Rotate", toggle=True)
+        row.prop(tool_settings, "use_snap_scale", text="Scale", toggle=True)
 
 
 class IMAGE_PT_image_properties(Panel):
@@ -955,7 +1025,7 @@ class IMAGE_PT_render_slots(Panel):
         col = row.column()
         col.template_list(
             "IMAGE_UL_render_slots", "render_slots", ima,
-            "render_slots", ima.render_slots, "active_index", rows=3
+            "render_slots", ima.render_slots, "active_index", rows=3,
         )
 
         col = row.column(align=True)
@@ -1410,14 +1480,14 @@ class IMAGE_PT_uv_sculpt_brush(Panel):
         sima = context.space_data
         # TODO(campbell): nicer way to check if we're in uv sculpt mode.
         if sima and sima.show_uvedit:
-            from .space_toolsystem_common import ToolSelectPanelHelper
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
             tool = ToolSelectPanelHelper.tool_active_from_context(context)
             if tool.has_datablock:
                 return True
         return False
 
     def draw(self, context):
-        from .properties_paint_common import UnifiedPaintPanel
+        from bl_ui.properties_paint_common import UnifiedPaintPanel
         layout = self.layout
 
         tool_settings = context.tool_settings
@@ -1639,6 +1709,7 @@ classes = (
     IMAGE_MT_uvs_weldalign,
     IMAGE_MT_uvs_select_mode,
     IMAGE_MT_uvs_context_menu,
+    IMAGE_MT_mask_context_menu,
     IMAGE_MT_pivot_pie,
     IMAGE_MT_uvs_snap_pie,
     IMAGE_HT_tool_header,
@@ -1647,9 +1718,9 @@ classes = (
     IMAGE_PT_active_tool,
     IMAGE_PT_mask,
     IMAGE_PT_mask_layers,
-    IMAGE_PT_mask_display,
     IMAGE_PT_active_mask_spline,
     IMAGE_PT_active_mask_point,
+    IMAGE_PT_snapping,
     IMAGE_PT_image_properties,
     IMAGE_UL_render_slots,
     IMAGE_PT_render_slots,

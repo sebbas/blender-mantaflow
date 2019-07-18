@@ -26,6 +26,9 @@
 
 #include "MEM_guardedalloc.h"
 
+/* Since we have versioning code here (CustomData_verify_versions()). */
+#define DNA_DEPRECATED_ALLOW
+
 #include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_ID.h"
@@ -1888,7 +1891,7 @@ bool CustomData_merge(const struct CustomData *source,
     else if ((maxnumber != -1) && (number >= maxnumber)) {
       continue;
     }
-    else if (CustomData_get_layer_named(dest, type, layer->name)) {
+    else if (CustomData_get_named_layer_index(dest, type, layer->name) != -1) {
       continue;
     }
 
@@ -2298,7 +2301,7 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
   int flag = 0, index = data->totlayer;
   void *newlayerdata = NULL;
 
-  /* Passing a layerdata to copy from with an alloctype that won't copy is
+  /* Passing a layer-data to copy from with an alloctype that won't copy is
    * most likely a bug */
   BLI_assert(!layerdata || (alloctype == CD_ASSIGN) || (alloctype == CD_DUPLICATE) ||
              (alloctype == CD_REFERENCE));
@@ -3452,6 +3455,34 @@ static void CustomData_bmesh_alloc_block(CustomData *data, void **block)
   }
 }
 
+static void CustomData_bmesh_set_default_n(CustomData *data, void **block, int n)
+{
+  const LayerTypeInfo *typeInfo;
+  int offset = data->layers[n].offset;
+
+  typeInfo = layerType_getInfo(data->layers[n].type);
+
+  if (typeInfo->set_default) {
+    typeInfo->set_default(POINTER_OFFSET(*block, offset), 1);
+  }
+  else {
+    memset(POINTER_OFFSET(*block, offset), 0, typeInfo->size);
+  }
+}
+
+void CustomData_bmesh_set_default(CustomData *data, void **block)
+{
+  int i;
+
+  if (*block == NULL) {
+    CustomData_bmesh_alloc_block(data, block);
+  }
+
+  for (i = 0; i < data->totlayer; ++i) {
+    CustomData_bmesh_set_default_n(data, block, i);
+  }
+}
+
 void CustomData_bmesh_copy_data(const CustomData *source,
                                 CustomData *dest,
                                 void *src_block,
@@ -3475,6 +3506,7 @@ void CustomData_bmesh_copy_data(const CustomData *source,
      * (this should work because layers are ordered by type)
      */
     while (dest_i < dest->totlayer && dest->layers[dest_i].type < source->layers[src_i].type) {
+      CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
       dest_i++;
     }
 
@@ -3504,6 +3536,11 @@ void CustomData_bmesh_copy_data(const CustomData *source,
        */
       dest_i++;
     }
+  }
+
+  while (dest_i < dest->totlayer) {
+    CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
+    dest_i++;
   }
 }
 
@@ -3813,34 +3850,6 @@ void CustomData_bmesh_interp(CustomData *data,
 
   if (count > SOURCE_BUF_SIZE) {
     MEM_freeN((void *)sources);
-  }
-}
-
-static void CustomData_bmesh_set_default_n(CustomData *data, void **block, int n)
-{
-  const LayerTypeInfo *typeInfo;
-  int offset = data->layers[n].offset;
-
-  typeInfo = layerType_getInfo(data->layers[n].type);
-
-  if (typeInfo->set_default) {
-    typeInfo->set_default(POINTER_OFFSET(*block, offset), 1);
-  }
-  else {
-    memset(POINTER_OFFSET(*block, offset), 0, typeInfo->size);
-  }
-}
-
-void CustomData_bmesh_set_default(CustomData *data, void **block)
-{
-  int i;
-
-  if (*block == NULL) {
-    CustomData_bmesh_alloc_block(data, block);
-  }
-
-  for (i = 0; i < data->totlayer; ++i) {
-    CustomData_bmesh_set_default_n(data, block, i);
   }
 }
 
@@ -4185,8 +4194,8 @@ bool CustomData_verify_versions(struct CustomData *data, int index)
      * Better to be safe here, and fix issue on the fly rather than crash... */
     /* 0 structnum is used in writing code to tag layer types that should not be written. */
     else if (typeInfo->structnum == 0 &&
-             /* XXX Not sure why those two are exception, maybe that should be fixed? */
-             !ELEM(layer->type, CD_PAINT_MASK, CD_FACEMAP)) {
+             /* XXX Not sure why those three are exception, maybe that should be fixed? */
+             !ELEM(layer->type, CD_PAINT_MASK, CD_FACEMAP, CD_MTEXPOLY)) {
       keeplayer = false;
       CLOG_WARN(&LOG, ".blend file read: removing a data layer that should not have been written");
     }

@@ -91,10 +91,12 @@ static void rna_LayerObjects_active_object_set(PointerRNA *ptr,
                                                struct ReportList *UNUSED(reports))
 {
   ViewLayer *view_layer = (ViewLayer *)ptr->data;
-  if (value.data)
+  if (value.data) {
     view_layer->basact = BKE_view_layer_base_find(view_layer, (Object *)value.data);
-  else
+  }
+  else {
     view_layer->basact = NULL;
+  }
 }
 
 static char *rna_ViewLayer_path(PointerRNA *ptr)
@@ -121,8 +123,9 @@ static IDProperty *rna_ViewLayer_idprops(PointerRNA *ptr, bool create)
 static void rna_ViewLayer_update_render_passes(ID *id)
 {
   Scene *scene = (Scene *)id;
-  if (scene->nodetree)
+  if (scene->nodetree) {
     ntreeCompositUpdateRLayers(scene->nodetree);
+  }
 }
 
 static PointerRNA rna_ViewLayer_objects_get(CollectionPropertyIterator *iter)
@@ -175,6 +178,13 @@ static void rna_ViewLayer_update_tagged(ID *id_ptr, ViewLayer *view_layer, Main 
 
   Scene *scene = (Scene *)id_ptr;
   Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer, true);
+  /* NOTE: This is similar to CTX_data_depsgraph(). Ideally such access would be de-duplicated
+   * across all possible cases, but for now this is safest and easiest way to go.
+   *
+   * The reason for this is that it's possible to have Python operator which asks view layer to
+   * be updated. After re-do of such operator view layer's dependency graph will not be marked
+   * as active. */
+  DEG_make_active(depsgraph);
   BKE_scene_graph_update_tagged(depsgraph, bmain);
 
 #  ifdef WITH_PYTHON
@@ -212,6 +222,43 @@ int rna_LayerCollection_name_length(PointerRNA *ptr)
   return strlen(id->name + 2);
 }
 
+static void rna_LayerCollection_flag_set(PointerRNA *ptr, const bool value, const int flag)
+{
+  LayerCollection *layer_collection = (LayerCollection *)ptr->data;
+  Collection *collection = layer_collection->collection;
+
+  if (collection->flag & COLLECTION_IS_MASTER) {
+    return;
+  }
+
+  if (value) {
+    layer_collection->flag |= flag;
+  }
+  else {
+    layer_collection->flag &= ~flag;
+  }
+}
+
+static void rna_LayerCollection_exclude_set(PointerRNA *ptr, bool value)
+{
+  rna_LayerCollection_flag_set(ptr, value, LAYER_COLLECTION_EXCLUDE);
+}
+
+static void rna_LayerCollection_holdout_set(PointerRNA *ptr, bool value)
+{
+  rna_LayerCollection_flag_set(ptr, value, LAYER_COLLECTION_HOLDOUT);
+}
+
+static void rna_LayerCollection_indirect_only_set(PointerRNA *ptr, bool value)
+{
+  rna_LayerCollection_flag_set(ptr, value, LAYER_COLLECTION_INDIRECT_ONLY);
+}
+
+static void rna_LayerCollection_hide_viewport_set(PointerRNA *ptr, bool value)
+{
+  rna_LayerCollection_flag_set(ptr, value, LAYER_COLLECTION_HIDE);
+}
+
 static void rna_LayerCollection_exclude_update_recursive(ListBase *lb, const bool exclude)
 {
   for (LayerCollection *lc = lb->first; lc; lc = lc->next) {
@@ -231,15 +278,18 @@ static void rna_LayerCollection_exclude_update(Main *bmain, Scene *UNUSED(scene)
   LayerCollection *lc = (LayerCollection *)ptr->data;
   ViewLayer *view_layer = BKE_view_layer_find_from_collection(scene, lc);
 
-  /* Set/Unset it recursively to match the behaviour of excluding via the menu or shortcuts. */
-  rna_LayerCollection_exclude_update_recursive(&lc->layer_collections,
-                                               (lc->flag & LAYER_COLLECTION_EXCLUDE) != 0);
+  /* Set/Unset it recursively to match the behavior of excluding via the menu or shortcuts. */
+  const bool exclude = (lc->flag & LAYER_COLLECTION_EXCLUDE) != 0;
+  rna_LayerCollection_exclude_update_recursive(&lc->layer_collections, exclude);
 
   BKE_layer_collection_sync(scene, view_layer);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, NULL);
+  if (exclude) {
+    ED_object_base_active_refresh(bmain, scene, view_layer);
+  }
 }
 
 static void rna_LayerCollection_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
@@ -299,14 +349,15 @@ static void rna_def_layer_collection(BlenderRNA *brna)
   /* Restriction flags. */
   prop = RNA_def_property(srna, "exclude", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", LAYER_COLLECTION_EXCLUDE);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_LayerCollection_exclude_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Exclude from View Layer", "Exclude from view layer");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_CHECKBOX_HLT, -1);
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER, "rna_LayerCollection_exclude_update");
 
   prop = RNA_def_property(srna, "holdout", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", LAYER_COLLECTION_HOLDOUT);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_LayerCollection_holdout_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_HOLDOUT_OFF, 1);
   RNA_def_property_ui_text(prop, "Holdout", "Mask out objects in collection from view layer");
@@ -314,6 +365,7 @@ static void rna_def_layer_collection(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "indirect_only", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", LAYER_COLLECTION_INDIRECT_ONLY);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_LayerCollection_indirect_only_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_icon(prop, ICON_INDIRECT_ONLY_OFF, 1);
   RNA_def_property_ui_text(
@@ -325,7 +377,8 @@ static void rna_def_layer_collection(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", LAYER_COLLECTION_HIDE);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_boolean_funcs(prop, NULL, "rna_LayerCollection_hide_viewport_set");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide in Viewport", "Temporarily hide in viewport");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_LayerCollection_update");
@@ -411,7 +464,8 @@ static void rna_def_object_base(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", BASE_HIDDEN);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_STATIC);
+  RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
   RNA_def_property_ui_text(prop, "Hide in Viewport", "Temporarily hide in viewport");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);

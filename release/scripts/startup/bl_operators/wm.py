@@ -69,6 +69,14 @@ rna_space_type_prop = EnumProperty(
     default='EMPTY',
 )
 
+# Note, this can be used for more operators,
+# currently not used for all "WM_OT_context_" operators.
+rna_module_prop = StringProperty(
+    name="Module",
+    description="Optionally override the context with a module",
+    maxlen=1024,
+)
+
 
 def context_path_validate(context, data_path):
     try:
@@ -325,16 +333,24 @@ class WM_OT_context_toggle(Operator):
     bl_options = {'UNDO', 'INTERNAL'}
 
     data_path: rna_path_prop
+    module: rna_module_prop
 
     def execute(self, context):
         data_path = self.data_path
 
-        if context_path_validate(context, data_path) is Ellipsis:
+        module = self.module
+        if not module:
+            base = context
+        else:
+            from importlib import import_module
+            base = import_module(self.module)
+
+        if context_path_validate(base, data_path) is Ellipsis:
             return {'PASS_THROUGH'}
 
-        exec("context.%s = not (context.%s)" % (data_path, data_path))
+        exec("base.%s = not (base.%s)" % (data_path, data_path))
 
-        return operator_path_undo_return(context, data_path)
+        return operator_path_undo_return(base, data_path)
 
 
 class WM_OT_context_toggle_enum(Operator):
@@ -1006,8 +1022,9 @@ class WM_OT_doc_view(Operator):
     bl_label = "View Documentation"
 
     doc_id: doc_id
-    if bpy.app.version_cycle == "release":
-        _prefix = ("https://docs.blender.org/api/current")
+    if bpy.app.version_cycle in {"release", "rc"}:
+        _prefix = ("https://docs.blender.org/api/%d.%d%s" %
+                   (bpy.app.version[0], bpy.app.version[1], bpy.app.version_char))
     else:
         _prefix = ("https://docs.blender.org/api/master")
 
@@ -1063,8 +1080,8 @@ rna_use_soft_limits = BoolProperty(
     name="Use Soft Limits",
 )
 
-rna_is_overridable_static = BoolProperty(
-    name="Is Statically Overridable",
+rna_is_overridable_library = BoolProperty(
+    name="Is Library Overridable",
     default=False,
 )
 
@@ -1082,7 +1099,7 @@ class WM_OT_properties_edit(Operator):
     min: rna_min
     max: rna_max
     use_soft_limits: rna_use_soft_limits
-    is_overridable_static: rna_is_overridable_static
+    is_overridable_library: rna_is_overridable_library
     soft_min: rna_min
     soft_max: rna_max
     description: StringProperty(
@@ -1150,7 +1167,7 @@ class WM_OT_properties_edit(Operator):
         # print(exec_str)
         exec(exec_str)
 
-        exec_str = "item.property_overridable_static_set('[\"%s\"]', %s)" % (prop, self.is_overridable_static)
+        exec_str = "item.property_overridable_library_set('[\"%s\"]', %s)" % (prop, self.is_overridable_library)
         exec(exec_str)
 
         rna_idprop_ui_prop_update(item, prop)
@@ -1227,8 +1244,8 @@ class WM_OT_properties_edit(Operator):
         item = eval("context.%s" % data_path)
 
         # retrieve overridable static
-        exec_str = "item.is_property_overridable_static('[\"%s\"]')" % (self.property)
-        self.is_overridable_static = bool(eval(exec_str))
+        exec_str = "item.is_property_overridable_library('[\"%s\"]')" % (self.property)
+        self.is_overridable_library = bool(eval(exec_str))
 
         # default default value
         prop_type = type(self.get_value_eval())
@@ -1304,7 +1321,8 @@ class WM_OT_properties_edit(Operator):
 
         row = layout.row()
         row.prop(self, "use_soft_limits")
-        row.prop(self, "is_overridable_static")
+        if bpy.app.use_override_library:
+            row.prop(self, "is_overridable_library")
 
         row = layout.row(align=True)
         row.enabled = self.use_soft_limits
@@ -1525,6 +1543,56 @@ class WM_OT_tool_set_by_id(Operator):
             return {'CANCELLED'}
 
 
+class WM_OT_tool_set_by_index(Operator):
+    """Set the tool by index (for keymaps)"""
+    bl_idname = "wm.tool_set_by_index"
+    bl_label = "Set Tool By Index"
+    index: IntProperty(
+        name="Index in toolbar",
+        default=0,
+    )
+    cycle: BoolProperty(
+        name="Cycle",
+        description="Cycle through tools in this group",
+        default=False,
+        options={'SKIP_SAVE'},
+    )
+
+    expand: BoolProperty(
+        description="Include tool sub-groups",
+        default=True,
+    )
+
+    space_type: rna_space_type_prop
+
+    def execute(self, context):
+        from bl_ui.space_toolsystem_common import (
+            activate_by_id,
+            activate_by_id_or_cycle,
+            item_from_index,
+            item_from_flat_index,
+        )
+
+        if self.properties.is_property_set("space_type"):
+            space_type = self.space_type
+        else:
+            space_type = context.space_data.type
+
+        fn = item_from_flat_index if self.expand else item_from_index
+        item = fn(context, space_type, self.index)
+        if item is None:
+            # Don't report, since the number of tools may change.
+            return {'CANCELLED'}
+
+        # Same as: WM_OT_tool_set_by_id
+        fn = activate_by_id_or_cycle if self.cycle else activate_by_id
+        if fn(context, space_type, item.idname):
+            return {'FINISHED'}
+        else:
+            # Since we already have the tool, this can't happen.
+            raise Exception("Internal error setting tool")
+
+
 class WM_OT_toolbar(Operator):
     bl_idname = "wm.toolbar"
     bl_label = "Toolbar"
@@ -1686,12 +1754,17 @@ class WM_MT_splash(Menu):
         if found_recent:
             col2_title.label(text="Recent Files")
         else:
+            if bpy.app.version_cycle in {'rc', 'release'}:
+                manual_version = '%d.%d' % bpy.app.version[:2]
+            else:
+                manual_version = 'dev'
+
             # Links if no recent files
             col2_title.label(text="Getting Started")
 
             col2.operator(
                 "wm.url_open", text="Manual", icon='URL'
-            ).url = "https://docs.blender.org/manual/en/dev/"
+            ).url = "https://docs.blender.org/manual/en/" + manual_version + "/"
             col2.operator(
                 "wm.url_open", text="Release Notes", icon='URL',
             ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
@@ -1713,20 +1786,12 @@ class WM_MT_splash(Menu):
         col1.operator("wm.recover_last_session", icon='RECOVER_LAST')
 
         col2 = split.column()
-        if found_recent:
-            col2.operator(
-                "wm.url_open", text="Release Notes", icon='URL',
-            ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
-            col2.operator(
-                "wm.url_open", text="Development Fund", icon='URL'
-            ).url = "https://fund.blender.org"
-        else:
-            col2.operator(
-                "wm.url_open", text="Development Fund", icon='URL'
-            ).url = "https://fund.blender.org"
-            col2.operator(
-                "wm.url_open", text="Donate", icon='URL'
-            ).url = "https://www.blender.org/foundation/donation-payment/"
+        col2.operator(
+            "wm.url_open", text="Release Notes", icon='URL',
+        ).url = "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
+        col2.operator(
+            "wm.url_open", text="Development Fund", icon='FUND'
+        ).url = "https://fund.blender.org"
 
         layout.separator()
         layout.separator()
@@ -1793,6 +1858,7 @@ classes = (
     WM_OT_owner_enable,
     WM_OT_url_open,
     WM_OT_tool_set_by_id,
+    WM_OT_tool_set_by_index,
     WM_OT_toolbar,
     WM_MT_splash,
 )

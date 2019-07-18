@@ -25,6 +25,7 @@
 #include "BCAnimationCurve.h"
 #include "BCAnimationSampler.h"
 #include "collada_utils.h"
+#include "BCMath.h"
 
 extern "C" {
 #include "BKE_action.h"
@@ -44,8 +45,8 @@ extern "C" {
 static std::string EMPTY_STRING;
 static BCAnimationCurveMap BCEmptyAnimationCurves;
 
-BCAnimationSampler::BCAnimationSampler(BlenderContext &blender_context, BCObjectSet &object_set)
-    : blender_context(blender_context)
+BCAnimationSampler::BCAnimationSampler(BCExportSettings &export_settings, BCObjectSet &object_set)
+    : export_settings(export_settings)
 {
   BCObjectSet::iterator it;
   for (it = object_set.begin(); it != object_set.end(); ++it) {
@@ -65,6 +66,7 @@ BCAnimationSampler::~BCAnimationSampler()
 
 void BCAnimationSampler::add_object(Object *ob)
 {
+  BlenderContext blender_context = export_settings.get_blender_context();
   BCAnimation *animation = new BCAnimation(blender_context.get_context(), ob);
   objects[ob] = animation;
 
@@ -75,8 +77,9 @@ void BCAnimationSampler::add_object(Object *ob)
 BCAnimationCurveMap *BCAnimationSampler::get_curves(Object *ob)
 {
   BCAnimation &animation = *objects[ob];
-  if (animation.curve_map.size() == 0)
+  if (animation.curve_map.size() == 0) {
     initialize_curves(animation.curve_map, ob);
+  }
   return &animation.curve_map;
 }
 
@@ -87,8 +90,9 @@ static void get_sample_frames(BCFrameSet &sample_frames,
 {
   sample_frames.clear();
 
-  if (sampling_rate < 1)
+  if (sampling_rate < 1) {
     return;  // no sample frames in this case
+  }
 
   float sfra = scene->r.sfra;
   float efra = scene->r.efra;
@@ -156,6 +160,10 @@ void BCAnimationSampler::update_animation_curves(BCAnimation &animation,
 BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool for_opensim)
 {
   BCSample &ob_sample = sample_data.add(ob, frame_index);
+  // if (export_settings.get_apply_global_orientation()) {
+  //  const BCMatrix &global_transform = export_settings.get_global_transform();
+  //  ob_sample.get_matrix(global_transform);
+  //}
 
   if (ob->type == OB_ARMATURE) {
     bPoseChannel *pchan;
@@ -163,6 +171,7 @@ BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool fo
       Bone *bone = pchan->bone;
       Matrix bmat;
       if (bc_bone_matrix_local_get(ob, bone, bmat, for_opensim)) {
+
         ob_sample.add_bone_matrix(bone, bmat);
       }
     }
@@ -170,12 +179,14 @@ BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool fo
   return ob_sample;
 }
 
-void BCAnimationSampler::sample_scene(int sampling_rate,
-                                      int keyframe_at_end,
-                                      bool for_opensim,
-                                      bool keep_keyframes,
-                                      BC_export_animation_type export_animation_type)
+void BCAnimationSampler::sample_scene(BCExportSettings &export_settings, bool keyframe_at_end)
 {
+  BlenderContext blender_context = export_settings.get_blender_context();
+  int sampling_rate = export_settings.get_sampling_rate();
+  bool for_opensim = export_settings.get_open_sim();
+  bool keep_keyframes = export_settings.get_keep_keyframes();
+  BC_export_animation_type export_animation_type = export_settings.get_export_animation_type();
+
   Scene *scene = blender_context.get_scene();
   BCFrameSet scene_sample_frames;
   get_sample_frames(scene_sample_frames, sampling_rate, keyframe_at_end, scene);
@@ -229,8 +240,9 @@ bool BCAnimationSampler::is_animated_by_constraint(Object *ob,
 
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
 
-    if (!bc_validateConstraints(con))
+    if (!bc_validateConstraints(con)) {
       continue;
+    }
 
     if (cti && cti->get_constraint_targets) {
       bConstraintTarget *ct;
@@ -239,8 +251,9 @@ bool BCAnimationSampler::is_animated_by_constraint(Object *ob,
       for (ct = (bConstraintTarget *)targets.first; ct; ct = ct->next) {
         obtar = ct->tar;
         if (obtar) {
-          if (animated_objects.find(obtar) != animated_objects.end())
+          if (animated_objects.find(obtar) != animated_objects.end()) {
             return true;
+          }
         }
       }
     }
@@ -289,8 +302,9 @@ void BCAnimationSampler::get_animated_from_export_set(std::set<Object *> &animat
     }
     else {
       ListBase conlist = cob->constraints;
-      if (conlist.first)
+      if (conlist.first) {
         candidates.insert(cob);
+      }
     }
   }
   find_depending_animated(animated_objects, candidates);
@@ -320,15 +334,16 @@ bool BCAnimationSampler::get_object_samples(BCMatrixSampleMap &samples, Object *
 
 #if 0
 /**
- * Add sampled values to FCurve
- * If no FCurve exists, create a temporary FCurve;
- * Note: The temporary FCurve will later be removed when the
- * BCAnimationSampler is removed (by its destructor)
+ * Add sampled values to #FCurve
+ * If no #FCurve exists, create a temporary #FCurve;
+ * \note The temporary #FCurve will later be removed when the
+ * #BCAnimationSampler is removed (by its destructor).
  *
- * curve: The curve to whioch the data is added
- * matrices: The set of matrix values from where the data is taken
- * animation_type BC_ANIMATION_EXPORT_SAMPLES: Use all matrix data
- * animation_type BC_ANIMATION_EXPORT_KEYS: Only take data from matrices for keyframes
+ * \param curve: The curve to which the data is added.
+ * \param matrices: The set of matrix values from where the data is taken.
+ * \param animation_type:
+ * - #BC_ANIMATION_EXPORT_SAMPLES: Use all matrix data.
+ * - #BC_ANIMATION_EXPORT_KEYS: Only take data from matrices for keyframes.
  */
 void BCAnimationSampler::add_value_set(BCAnimationCurve &curve,
                                        BCFrameSampleMap &samples,
@@ -395,8 +410,9 @@ void BCAnimationSampler::generate_transforms(Object *ob, Bone *bone, BCAnimation
   std::string prep = "pose.bones[\"" + std::string(bone->name) + "\"].";
   generate_transforms(ob, prep, BC_ANIMATION_TYPE_BONE, curves);
 
-  for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next)
+  for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
     generate_transforms(ob, child, curves);
+  }
 }
 
 /**
@@ -445,8 +461,9 @@ void BCAnimationSampler::initialize_curves(BCAnimationCurveMap &curves, Object *
   generate_transforms(ob, EMPTY_STRING, object_type, curves);
   if (ob->type == OB_ARMATURE) {
     bArmature *arm = (bArmature *)ob->data;
-    for (Bone *root_bone = (Bone *)arm->bonebase.first; root_bone; root_bone = root_bone->next)
+    for (Bone *root_bone = (Bone *)arm->bonebase.first; root_bone; root_bone = root_bone->next) {
       generate_transforms(ob, root_bone, curves);
+    }
   }
 
   /* Add curves on Object->data actions */

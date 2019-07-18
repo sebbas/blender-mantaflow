@@ -558,8 +558,11 @@ if(WIN32)
   set(WINDOWS_CODESIGN_PFX_PASSWORD CACHE STRING  "password for pfx file used for codesigning.")
   mark_as_advanced(WINDOWS_CODESIGN_PFX_PASSWORD)
 
-  option(WINDOWS_USE_VISUAL_STUDIO_FOLDERS "Organize the visual studio project according to source folders." ON)
-  mark_as_advanced(WINDOWS_USE_VISUAL_STUDIO_FOLDERS)
+  option(WINDOWS_USE_VISUAL_STUDIO_PROJECT_FOLDERS "Organize the visual studio projects according to source folder structure." ON)
+  mark_as_advanced(WINDOWS_USE_VISUAL_STUDIO_PROJECT_FOLDERS)
+
+  option(WINDOWS_USE_VISUAL_STUDIO_SOURCE_FOLDERS "Organize the source files in filters matching the source folders." ON)
+  mark_as_advanced(WINDOWS_USE_VISUAL_STUDIO_SOURCE_FOLDERS)
 
   option(WINDOWS_PYTHON_DEBUG "Include the files needed for debugging python scripts with visual studio 2017+." OFF)
   mark_as_advanced(WINDOWS_PYTHON_DEBUG)
@@ -737,7 +740,7 @@ endif()
 # Auto-enable CUDA dynload if toolkit is not found.
 if(NOT WITH_CUDA_DYNLOAD)
   find_package(CUDA)
-  if (NOT CUDA_FOUND)
+  if(NOT CUDA_FOUND)
     message("CUDA toolkit not found, using dynamic runtime loading of libraries instead")
     set(WITH_CUDA_DYNLOAD ON)
   endif()
@@ -812,7 +815,7 @@ set(PLATFORM_LINKLIBS "")
 set(PLATFORM_LINKFLAGS "")
 set(PLATFORM_LINKFLAGS_DEBUG "")
 
-if (NOT CMAKE_BUILD_TYPE MATCHES "Release")
+if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
   if(WITH_COMPILER_ASAN)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${COMPILER_ASAN_CFLAGS}")
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${COMPILER_ASAN_CFLAGS}")
@@ -962,9 +965,9 @@ if(MSVC)
   # for some reason this fails on msvc
   add_definitions(-D__LITTLE_ENDIAN__)
 
-# OSX-Note: as we do cross-compiling with specific set architecture,
-# endianess-detection and auto-setting is counterproductive
-# so we just set endianness according CMAKE_OSX_ARCHITECTURES
+  # OSX-Note: as we do cross-compiling with specific set architecture,
+  # endianess-detection and auto-setting is counterproductive
+  # so we just set endianness according CMAKE_OSX_ARCHITECTURES
 
 elseif(CMAKE_OSX_ARCHITECTURES MATCHES i386 OR CMAKE_OSX_ARCHITECTURES MATCHES x86_64)
   add_definitions(-D__LITTLE_ENDIAN__)
@@ -1559,6 +1562,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     "/wd4800"  # forcing value to bool 'true' or 'false'
     "/wd4828"  # The file contains a character that is illegal
     "/wd4996"  # identifier was declared deprecated
+    "/wd4661"  # no suitable definition provided for explicit template instantiation request
     # errors:
     "/we4013"  # 'function' undefined; assuming extern returning int
     "/we4133"  # incompatible pointer types

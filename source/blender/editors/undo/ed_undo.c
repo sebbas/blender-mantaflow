@@ -99,16 +99,22 @@ void ED_undo_push(bContext *C, const char *str)
     BKE_undosys_stack_limit_steps_and_memory(wm->undo_stack, 0, memory_limit);
   }
 
+  if (CLOG_CHECK(&LOG, 1)) {
+    BKE_undosys_print(wm->undo_stack);
+  }
+
   WM_file_tag_modified();
 }
 
 /**
  * \note Also check #undo_history_exec in bottom if you change notifiers.
  */
-static int ed_undo_step(bContext *C, int step, const char *undoname, ReportList *reports)
+static int ed_undo_step_impl(
+    bContext *C, int step, const char *undoname, int undo_index, ReportList *reports)
 {
   /* Mutually exclusives, ensure correct input. */
-  BLI_assert((undoname && !step) || (!undoname && step));
+  BLI_assert(((undoname || undo_index != -1) && !step) ||
+             (!(undoname || undo_index != -1) && step));
   CLOG_INFO(&LOG, 1, "name='%s', step=%d", undoname, step);
   wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
@@ -153,6 +159,12 @@ static int ed_undo_step(bContext *C, int step, const char *undoname, ReportList 
                             1 :
                             -1;
   }
+  else if (undo_index != -1) {
+    step_for_callback = (undo_index <
+                         BLI_findindex(&wm->undo_stack->steps, wm->undo_stack->step_active)) ?
+                            1 :
+                            -1;
+  }
 
   /* App-Handlers (pre). */
   {
@@ -168,6 +180,9 @@ static int ed_undo_step(bContext *C, int step, const char *undoname, ReportList 
   {
     if (undoname) {
       BKE_undosys_step_undo_with_data(wm->undo_stack, C, step_data_from_name);
+    }
+    else if (undo_index != -1) {
+      BKE_undosys_step_undo_from_index(wm->undo_stack, C, undo_index);
     }
     else {
       if (step == 1) {
@@ -225,7 +240,26 @@ static int ed_undo_step(bContext *C, int step, const char *undoname, ReportList 
   Main *bmain = CTX_data_main(C);
   WM_toolsystem_refresh_screen_all(bmain);
 
+  if (CLOG_CHECK(&LOG, 1)) {
+    BKE_undosys_print(wm->undo_stack);
+  }
+
   return OPERATOR_FINISHED;
+}
+
+static int ed_undo_step_direction(bContext *C, int step, ReportList *reports)
+{
+  return ed_undo_step_impl(C, step, NULL, -1, reports);
+}
+
+static int ed_undo_step_by_name(bContext *C, const char *undo_name, ReportList *reports)
+{
+  return ed_undo_step_impl(C, 0, undo_name, -1, reports);
+}
+
+static int ed_undo_step_by_index(bContext *C, int index, ReportList *reports)
+{
+  return ed_undo_step_impl(C, 0, NULL, index, reports);
 }
 
 void ED_undo_grouped_push(bContext *C, const char *str)
@@ -243,11 +277,11 @@ void ED_undo_grouped_push(bContext *C, const char *str)
 
 void ED_undo_pop(bContext *C)
 {
-  ed_undo_step(C, 1, NULL, NULL);
+  ed_undo_step_direction(C, 1, NULL);
 }
 void ED_undo_redo(bContext *C)
 {
-  ed_undo_step(C, -1, NULL, NULL);
+  ed_undo_step_direction(C, -1, NULL);
 }
 
 void ED_undo_push_op(bContext *C, wmOperator *op)
@@ -269,7 +303,7 @@ void ED_undo_grouped_push_op(bContext *C, wmOperator *op)
 void ED_undo_pop_op(bContext *C, wmOperator *op)
 {
   /* search back a couple of undo's, in case something else added pushes */
-  ed_undo_step(C, 0, op->type->name, op->reports);
+  ed_undo_step_by_name(C, op->type->name, op->reports);
 }
 
 /* name optionally, function used to check for operator redo panel */
@@ -289,6 +323,39 @@ bool ED_undo_is_memfile_compatible(const bContext *C)
     if (obact != NULL) {
       if (obact->mode & (OB_MODE_SCULPT | OB_MODE_EDIT)) {
         return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * When a property of ID changes, return false.
+ *
+ * This is to avoid changes to a property making undo pushes
+ * which are ignored by the undo-system.
+ * For example, changing a brush property isn't stored by sculpt-mode undo steps.
+ * This workaround is needed until the limitation is removed, see: T61948.
+ */
+bool ED_undo_is_legacy_compatible_for_property(struct bContext *C, ID *id)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  if (view_layer != NULL) {
+    Object *obact = OBACT(view_layer);
+    if (obact != NULL) {
+      if (obact->mode & OB_MODE_ALL_PAINT) {
+        /* Don't store property changes when painting
+         * (only do undo pushes on brush strokes which each paint operator handles on it's own). */
+        CLOG_INFO(&LOG, 1, "skipping undo for paint-mode");
+        return false;
+      }
+      else if (obact->mode & OB_MODE_EDIT) {
+        if ((id == NULL) || (obact->data == NULL) ||
+            (GS(id->name) != GS(((ID *)obact->data)->name))) {
+          /* No undo push on id type mismatch in edit-mode. */
+          CLOG_INFO(&LOG, 1, "skipping undo for edit-mode");
+          return false;
+        }
       }
     }
   }
@@ -318,7 +385,7 @@ static int ed_undo_exec(bContext *C, wmOperator *op)
 {
   /* "last operator" should disappear, later we can tie this with undo stack nicer */
   WM_operator_stack_clear(CTX_wm_manager(C));
-  int ret = ed_undo_step(C, 1, NULL, op->reports);
+  int ret = ed_undo_step_direction(C, 1, op->reports);
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
     WM_event_add_mousemove(C);
@@ -345,7 +412,7 @@ static int ed_undo_push_exec(bContext *C, wmOperator *op)
 
 static int ed_redo_exec(bContext *C, wmOperator *op)
 {
-  int ret = ed_undo_step(C, -1, NULL, op->reports);
+  int ret = ed_undo_step_direction(C, -1, op->reports);
   if (ret & OPERATOR_FINISHED) {
     /* Keep button under the cursor active. */
     WM_event_add_mousemove(C);
@@ -392,15 +459,6 @@ static bool ed_undo_redo_poll(bContext *C)
           WM_operator_check_ui_enabled(C, last_op->type->name));
 }
 
-static bool ed_undo_poll(bContext *C)
-{
-  if (!ed_undo_is_init_and_screenactive_poll(C)) {
-    return false;
-  }
-  UndoStack *undo_stack = CTX_wm_manager(C)->undo_stack;
-  return (undo_stack->step_active != NULL) && (undo_stack->step_active->prev != NULL);
-}
-
 void ED_OT_undo(wmOperatorType *ot)
 {
   /* identifiers */
@@ -410,7 +468,7 @@ void ED_OT_undo(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = ed_undo_exec;
-  ot->poll = ed_undo_poll;
+  ot->poll = ed_undo_is_init_and_screenactive_poll;
 }
 
 void ED_OT_undo_push(wmOperatorType *ot)
@@ -435,15 +493,6 @@ void ED_OT_undo_push(wmOperatorType *ot)
                  "");
 }
 
-static bool ed_redo_poll(bContext *C)
-{
-  if (!ed_undo_is_init_and_screenactive_poll(C)) {
-    return false;
-  }
-  UndoStack *undo_stack = CTX_wm_manager(C)->undo_stack;
-  return (undo_stack->step_active != NULL) && (undo_stack->step_active->next != NULL);
-}
-
 void ED_OT_redo(wmOperatorType *ot)
 {
   /* identifiers */
@@ -453,7 +502,7 @@ void ED_OT_redo(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = ed_redo_exec;
-  ot->poll = ed_redo_poll;
+  ot->poll = ed_undo_is_init_and_screenactive_poll;
 }
 
 void ED_OT_undo_redo(wmOperatorType *ot)
@@ -609,7 +658,8 @@ static int undo_history_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSE
     const EnumPropertyItem *item = rna_undo_itemf(C, &totitem);
 
     if (totitem > 0) {
-      uiPopupMenu *pup = UI_popup_menu_begin(C, RNA_struct_ui_name(op->type->srna), ICON_NONE);
+      uiPopupMenu *pup = UI_popup_menu_begin(
+          C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
       uiLayout *layout = UI_popup_menu_layout(pup);
       uiLayout *split = uiLayoutSplit(layout, 0.0f, false);
       uiLayout *column = NULL;
@@ -643,22 +693,12 @@ static int undo_history_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "item");
   if (RNA_property_is_set(op->ptr, prop)) {
     int item = RNA_property_int_get(op->ptr, prop);
-    wmWindowManager *wm = CTX_wm_manager(C);
-    BKE_undosys_step_undo_from_index(wm->undo_stack, C, item);
+    WM_operator_stack_clear(CTX_wm_manager(C));
+    ed_undo_step_by_index(C, item, op->reports);
     WM_event_add_notifier(C, NC_WINDOW, NULL);
     return OPERATOR_FINISHED;
   }
   return OPERATOR_CANCELLED;
-}
-
-static bool undo_history_poll(bContext *C)
-{
-  if (!ed_undo_is_init_and_screenactive_poll(C)) {
-    return false;
-  }
-  UndoStack *undo_stack = CTX_wm_manager(C)->undo_stack;
-  /* more than just original state entry */
-  return BLI_listbase_count_at_most(&undo_stack->steps, 2) > 1;
 }
 
 void ED_OT_undo_history(wmOperatorType *ot)
@@ -671,7 +711,7 @@ void ED_OT_undo_history(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = undo_history_invoke;
   ot->exec = undo_history_exec;
-  ot->poll = undo_history_poll;
+  ot->poll = ed_undo_is_init_and_screenactive_poll;
 
   RNA_def_int(ot->srna, "item", 0, 0, INT_MAX, "Item", "", 0, INT_MAX);
 }

@@ -1,3 +1,5 @@
+#define COMMON_VIEW_LIB
+
 /* keep in sync with DRWManager.view_data */
 layout(std140) uniform viewBlock
 {
@@ -9,10 +11,17 @@ layout(std140) uniform viewBlock
   mat4 ProjectionMatrix;
   mat4 ProjectionMatrixInverse;
 
-  vec4 CameraTexCoFactors;
+  vec4 clipPlanes[6];
 
-  vec4 clipPlanes[2];
+  /* TODO move it elsewhere. */
+  vec4 CameraTexCoFactors;
 };
+
+#ifdef world_clip_planes_calc_clip_distance
+#  undef world_clip_planes_calc_clip_distance
+#  define world_clip_planes_calc_clip_distance(p) \
+    _world_clip_planes_calc_clip_distance(p, clipPlanes)
+#endif
 
 uniform mat4 ModelMatrix;
 uniform mat4 ModelMatrixInverse;
@@ -48,3 +57,11 @@ uniform mat4 ModelMatrixInverse;
 #define point_world_to_ndc(p) (ViewProjectionMatrix * vec4(p, 1.0))
 #define point_world_to_object(p) ((ModelMatrixInverse * vec4(p, 1.0)).xyz)
 #define point_world_to_view(p) ((ViewMatrix * vec4(p, 1.0)).xyz)
+
+/* Due to some shader compiler bug, we somewhat need to access gl_VertexID
+ * to make vertex shaders work. even if it's actually dead code. */
+#ifdef GPU_INTEL
+#  define GPU_INTEL_VERTEX_SHADER_WORKAROUND gl_Position.x = float(gl_VertexID);
+#else
+#  define GPU_INTEL_VERTEX_SHADER_WORKAROUND
+#endif

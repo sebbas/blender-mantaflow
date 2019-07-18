@@ -446,7 +446,7 @@ static void get_pixel(const ImBuf *ibuf, const int idx, float r_col[4])
   }
   else {
     /* XXX: This case probably doesn't happen, as we only write to the float buffer,
-     * but we get compiler warnings about uninitialised vars otherwise
+     * but we get compiler warnings about uninitialized vars otherwise
      */
     BLI_assert(!"gpencil_fill.c - get_pixel() non-float case is used!");
     zero_v4(r_col);
@@ -1141,7 +1141,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 /* Helper: Draw status message while the user is running the operator */
 static void gpencil_fill_status_indicators(bContext *C, tGPDfill *UNUSED(tgpf))
 {
-  const char *status_str = IFACE_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back");
+  const char *status_str = TIP_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back");
   ED_workspace_status_text(C, status_str);
 }
 

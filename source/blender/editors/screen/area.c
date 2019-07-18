@@ -687,26 +687,33 @@ void ED_region_tag_redraw_no_rebuild(ARegion *ar)
 void ED_region_tag_refresh_ui(ARegion *ar)
 {
   if (ar) {
-    ar->do_draw |= RGN_DRAW_REFRESH_UI;
+    ar->do_draw |= RGN_REFRESH_UI;
   }
 }
 
-void ED_region_tag_redraw_partial(ARegion *ar, const rcti *rct)
+void ED_region_tag_redraw_partial(ARegion *ar, const rcti *rct, bool rebuild)
 {
   if (ar && !(ar->do_draw & RGN_DRAWING)) {
-    if (!(ar->do_draw & (RGN_DRAW | RGN_DRAW_NO_REBUILD | RGN_DRAW_PARTIAL))) {
-      /* no redraw set yet, set partial region */
-      ar->do_draw |= RGN_DRAW_PARTIAL;
-      ar->drawrct = *rct;
-    }
-    else if (ar->drawrct.xmin != ar->drawrct.xmax) {
-      BLI_assert((ar->do_draw & RGN_DRAW_PARTIAL) != 0);
-      /* partial redraw already set, expand region */
+    if (ar->do_draw & RGN_DRAW_PARTIAL) {
+      /* Partial redraw already set, expand region. */
       BLI_rcti_union(&ar->drawrct, rct);
+      if (rebuild) {
+        ar->do_draw &= ~RGN_DRAW_NO_REBUILD;
+      }
+    }
+    else if (ar->do_draw & (RGN_DRAW | RGN_DRAW_NO_REBUILD)) {
+      /* Full redraw already requested. */
+      if (rebuild) {
+        ar->do_draw &= ~RGN_DRAW_NO_REBUILD;
+      }
     }
     else {
-      BLI_assert((ar->do_draw & (RGN_DRAW | RGN_DRAW_NO_REBUILD)) != 0);
-      /* Else, full redraw is already requested, nothing to do here. */
+      /* No redraw set yet, set partial region. */
+      ar->drawrct = *rct;
+      ar->do_draw |= RGN_DRAW_PARTIAL;
+      if (!rebuild) {
+        ar->do_draw |= RGN_DRAW_NO_REBUILD;
+      }
     }
   }
 }
@@ -1586,7 +1593,7 @@ static void ed_default_handlers(
     UI_region_handlers_add(handlers);
   }
   if (flag & ED_KEYMAP_GIZMO) {
-    BLI_assert(ar && ar->type->regionid == RGN_TYPE_WINDOW);
+    BLI_assert(ar && ELEM(ar->type->regionid, RGN_TYPE_WINDOW, RGN_TYPE_PREVIEW));
     if (ar) {
       /* Anything else is confusing, only allow this. */
       BLI_assert(&ar->handlers == handlers);
@@ -1612,9 +1619,9 @@ static void ed_default_handlers(
     keymap = WM_keymap_ensure(wm->defaultconf, "Markers", 0, 0);
     WM_event_add_keymap_handler_poll(handlers, keymap, event_in_markers_region);
 
-    /* time-scrubbing */
-    keymap = WM_keymap_ensure(wm->defaultconf, "Scrubbing", 0, 0);
-    WM_event_add_keymap_handler_poll(handlers, keymap, ED_event_in_scrubbing_region);
+    /* time-scrub */
+    keymap = WM_keymap_ensure(wm->defaultconf, "Time Scrub", 0, 0);
+    WM_event_add_keymap_handler_poll(handlers, keymap, ED_time_scrub_event_in_region);
 
     /* frame changing and timeline operators (for time spaces) */
     keymap = WM_keymap_ensure(wm->defaultconf, "Animation", 0, 0);
@@ -2292,7 +2299,7 @@ static void ed_panel_draw(const bContext *C,
     }
   }
 
-  UI_panel_end(block, w, h);
+  UI_panel_end(block, w, h, open);
 }
 
 /**

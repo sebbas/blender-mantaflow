@@ -359,6 +359,16 @@ static void setup_app_data(bContext *C,
     /* TODO(sergey): Can this be also move above? */
     RE_FreeAllPersistentData();
   }
+
+  if (mode == LOAD_UNDO) {
+    /* In undo/redo case, we do a whole lot of magic tricks to avoid having to re-read linked
+     * data-blocks from libraries (since those are not supposed to change). Unfortunately, that
+     * means that we do not reset their user count, however we do increase that one when doing
+     * lib_link on local IDs using linked ones.
+     * There is no real way to predict amount of changes here, so we have to fully redo
+     * refcounting . */
+    BLE_main_id_refcount_recompute(bmain, true);
+  }
 }
 
 static void setup_app_blend_file_data(bContext *C,
@@ -660,9 +670,14 @@ WorkspaceConfigFileData *BKE_blendfile_workspace_config_read(const char *filepat
   }
 
   if (bfd) {
-    workspace_config = MEM_mallocN(sizeof(*workspace_config), __func__);
+    workspace_config = MEM_callocN(sizeof(*workspace_config), __func__);
     workspace_config->main = bfd->main;
-    workspace_config->workspaces = bfd->main->workspaces;
+
+    /* Only 2.80+ files have actual workspaces, don't try to use screens
+     * from older versions. */
+    if (bfd->main->versionfile >= 280) {
+      workspace_config->workspaces = bfd->main->workspaces;
+    }
 
     MEM_freeN(bfd);
   }
@@ -772,13 +787,13 @@ bool BKE_blendfile_write_partial(Main *bmain_src,
 
   /* Backup paths because remap relative will overwrite them.
    *
-   * NOTE: we do this only on the list of datablocks that we are writing
+   * NOTE: we do this only on the list of data-blocks that we are writing
    * because the restored full list is not guaranteed to be in the same
    * order as before, as expected by BKE_bpath_list_restore.
    *
    * This happens because id_sort_by_name does not take into account
    * string case or the library name, so the order is not strictly
-   * defined for two linked datablocks with the same name! */
+   * defined for two linked data-blocks with the same name! */
   if (write_flags & G_FILE_RELATIVE_REMAP) {
     path_list_backup = BKE_bpath_list_backup(bmain_dst, path_list_flag);
   }

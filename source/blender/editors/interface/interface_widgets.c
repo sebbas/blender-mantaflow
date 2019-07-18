@@ -106,6 +106,7 @@ typedef enum {
   UI_WTYPE_SCROLL,
   UI_WTYPE_LISTITEM,
   UI_WTYPE_PROGRESSBAR,
+  UI_WTYPE_NODESOCKET,
 } uiWidgetTypeEnum;
 
 /* Button state argument shares bits with 'uiBut.flag'.
@@ -1261,7 +1262,9 @@ void UI_widgetbase_draw_cache_flush(void)
                                 (float *)g_widget_base_batch.params);
     GPU_batch_uniform_3fv(batch, "checkerColorAndSize", checker_params);
     GPU_matrix_bind(batch->interface);
-    GPU_batch_draw_range_ex(batch, 0, g_widget_base_batch.count, true);
+    GPU_batch_bind(batch);
+    GPU_batch_draw_advanced(batch, 0, 0, 0, g_widget_base_batch.count);
+
     GPU_batch_program_use_end(batch);
   }
   g_widget_base_batch.count = 0;
@@ -1651,7 +1654,7 @@ float UI_text_clip_middle_ex(const uiFontStyle *fstyle,
 
   if ((okwidth > 0.0f) && (strwidth > okwidth)) {
     /* utf8 two-dots leader '..' (shorter than ellipsis '...'),
-     * some compilers complain with real litteral string. */
+     * some compilers complain with real literal string. */
     const char sep[] = {0xe2, 0x80, 0xA5, 0x0};
     const int sep_len = sizeof(sep) - 1;
     const float sep_strwidth = BLF_width(fstyle->uifont_id, sep, sep_len + 1);
@@ -1946,9 +1949,9 @@ static void ui_text_clip_right_label(const uiFontStyle *fstyle, uiBut *but, cons
 }
 
 #ifdef WITH_INPUT_IME
-static void widget_draw_text_ime_underline(uiFontStyle *fstyle,
-                                           uiWidgetColors *wcol,
-                                           uiBut *but,
+static void widget_draw_text_ime_underline(const uiFontStyle *fstyle,
+                                           const uiWidgetColors *wcol,
+                                           const uiBut *but,
                                            const rcti *rect,
                                            const wmIMEData *ime_data,
                                            const char *drawstr)
@@ -2183,7 +2186,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER) &&
       /* if we're editing or multi-drag (fake editing), then use left alignment */
       (but->editstr == NULL) && (drawstr == but->drawstr)) {
-    drawstr_right = strchr(drawstr + but->ofs, ':');
+    drawstr_right = strrchr(drawstr + but->ofs, ':');
     if (drawstr_right) {
       drawstr_right++;
       drawstr_left_len = (drawstr_right - drawstr);
@@ -2499,11 +2502,58 @@ static void ui_widget_color_disabled(uiWidgetType *wt)
   wt->wcol_theme = &wcol_theme_s;
 }
 
+static void rgb_tint(char cp[3], int tint)
+{
+  cp[0] = clamp_i(cp[0] + tint, 0, 255);
+  cp[1] = clamp_i(cp[1] + tint, 0, 255);
+  cp[2] = clamp_i(cp[2] + tint, 0, 255);
+}
+
+static void rgb_ensure_contrast(char cp[3], const char cp_other[3], int contrast)
+{
+  BLI_assert(contrast > 0);
+  const int item_value = rgb_to_grayscale_byte((const uchar *)cp);
+  const int inner_value = rgb_to_grayscale_byte((const uchar *)cp_other);
+  const int delta = item_value - inner_value;
+  if (delta >= 0) {
+    if (contrast > delta) {
+      rgb_tint(cp, contrast - delta);
+    }
+  }
+  else {
+    if (contrast > -delta) {
+      rgb_tint(cp, -contrast - delta);
+    }
+  }
+}
+
 static void widget_active_color(char cp[3])
 {
   cp[0] = cp[0] >= 240 ? 255 : cp[0] + 15;
   cp[1] = cp[1] >= 240 ? 255 : cp[1] + 15;
   cp[2] = cp[2] >= 240 ? 255 : cp[2] + 15;
+}
+
+static const char *widget_color_blend_from_flags(const uiWidgetStateColors *wcol_state,
+                                                 int state,
+                                                 int drawflag)
+{
+  if (drawflag & UI_BUT_ANIMATED_CHANGED) {
+    return wcol_state->inner_changed_sel;
+  }
+  if (state & UI_BUT_ANIMATED_KEY) {
+    return wcol_state->inner_key_sel;
+  }
+  if (state & UI_BUT_ANIMATED) {
+    return wcol_state->inner_anim_sel;
+  }
+  if (state & UI_BUT_DRIVEN) {
+    return wcol_state->inner_driven_sel;
+  }
+  if (state & UI_BUT_OVERRIDEN) {
+    return wcol_state->inner_overridden_sel;
+  }
+  return NULL;
 }
 
 /* copy colors from theme, and set changes in it based on state */
@@ -2523,22 +2573,12 @@ static void widget_state(uiWidgetType *wt, int state, int drawflag)
 
   wt->wcol = *(wt->wcol_theme);
 
+  const char *color_blend = widget_color_blend_from_flags(wcol_state, state, drawflag);
+
   if (state & UI_SELECT) {
     copy_v4_v4_char(wt->wcol.inner, wt->wcol.inner_sel);
-    if (drawflag & UI_BUT_ANIMATED_CHANGED) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_changed_sel, wcol_state->blend);
-    }
-    else if (state & UI_BUT_ANIMATED_KEY) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_key_sel, wcol_state->blend);
-    }
-    else if (state & UI_BUT_ANIMATED) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_anim_sel, wcol_state->blend);
-    }
-    else if (state & UI_BUT_DRIVEN) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_driven_sel, wcol_state->blend);
-    }
-    else if (state & UI_BUT_OVERRIDEN) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_overridden_sel, wcol_state->blend);
+    if (color_blend != NULL) {
+      widget_state_blend(wt->wcol.inner, color_blend, wcol_state->blend);
     }
 
     copy_v3_v3_char(wt->wcol.text, wt->wcol.text_sel);
@@ -2548,20 +2588,8 @@ static void widget_state(uiWidgetType *wt, int state, int drawflag)
     }
   }
   else {
-    if (drawflag & UI_BUT_ANIMATED_CHANGED) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_changed, wcol_state->blend);
-    }
-    else if (state & UI_BUT_ANIMATED_KEY) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_key, wcol_state->blend);
-    }
-    else if (state & UI_BUT_ANIMATED) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_anim, wcol_state->blend);
-    }
-    else if (state & UI_BUT_DRIVEN) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_driven, wcol_state->blend);
-    }
-    else if (state & UI_BUT_OVERRIDEN) {
-      widget_state_blend(wt->wcol.inner, wcol_state->inner_overridden, wcol_state->blend);
+    if (color_blend != NULL) {
+      widget_state_blend(wt->wcol.inner, color_blend, wcol_state->blend);
     }
 
     if (state & UI_ACTIVE) { /* mouse over? */
@@ -2596,52 +2624,23 @@ static void widget_state(uiWidgetType *wt, int state, int drawflag)
 static void widget_state_numslider(uiWidgetType *wt, int state, int drawflag)
 {
   uiWidgetStateColors *wcol_state = wt->wcol_state;
-  /* XXX special tweak to make sure that bar will still be visible */
-  float blend = wcol_state->blend - 0.2f;
 
   /* call this for option button */
   widget_state(wt, state, drawflag);
 
-  /* now, set the inner-part so that it reflects state settings too */
-  /* TODO: maybe we should have separate settings for the blending colors used for this case? */
-  if (state & UI_SELECT) {
-
-    if (drawflag & UI_BUT_ANIMATED_CHANGED) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_changed_sel, blend);
-    }
-    else if (state & UI_BUT_ANIMATED_KEY) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_key_sel, blend);
-    }
-    else if (state & UI_BUT_ANIMATED) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_anim_sel, blend);
-    }
-    else if (state & UI_BUT_DRIVEN) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_driven_sel, blend);
-    }
-    else if (state & UI_BUT_OVERRIDEN) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_overridden_sel, blend);
-    }
-
-    if (state & UI_SELECT) {
-      SWAP(short, wt->wcol.shadetop, wt->wcol.shadedown);
-    }
+  const char *color_blend = widget_color_blend_from_flags(wcol_state, state, drawflag);
+  if (color_blend != NULL) {
+    /* Set the slider 'item' so that it reflects state settings too.
+     * De-saturate so the color of the slider doesn't conflict with the blend color,
+     * which can make the color hard to see when the slider is set to full (see T66102). */
+    wt->wcol.item[0] = wt->wcol.item[1] = wt->wcol.item[2] = rgb_to_grayscale_byte(
+        (const uchar *)wt->wcol.item);
+    widget_state_blend(wt->wcol.item, color_blend, wcol_state->blend);
+    rgb_ensure_contrast(wt->wcol.item, wt->wcol.inner, 30);
   }
-  else {
-    if (drawflag & UI_BUT_ANIMATED_CHANGED) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_changed, blend);
-    }
-    else if (state & UI_BUT_ANIMATED_KEY) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_key, blend);
-    }
-    else if (state & UI_BUT_ANIMATED) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_anim, blend);
-    }
-    else if (state & UI_BUT_DRIVEN) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_driven, blend);
-    }
-    else if (state & UI_BUT_OVERRIDEN) {
-      widget_state_blend(wt->wcol.item, wcol_state->inner_overridden, blend);
-    }
+
+  if (state & UI_SELECT) {
+    SWAP(short, wt->wcol.shadetop, wt->wcol.shadedown);
   }
 }
 
@@ -3622,6 +3621,41 @@ static void widget_progressbar(
   rect->xmax += (BLI_rcti_size_x(&rect_prog) / 2);
 }
 
+static void widget_nodesocket(
+    uiBut *but, uiWidgetColors *wcol, rcti *rect, int UNUSED(state), int UNUSED(roundboxalign))
+{
+  uiWidgetBase wtb;
+  int radi = 5;
+  char old_inner[3], old_outline[3];
+
+  widget_init(&wtb);
+
+  copy_v3_v3_char(old_inner, wcol->inner);
+  copy_v3_v3_char(old_outline, wcol->outline);
+
+  wcol->inner[0] = but->col[0];
+  wcol->inner[1] = but->col[1];
+  wcol->inner[2] = but->col[2];
+  wcol->outline[0] = 0;
+  wcol->outline[1] = 0;
+  wcol->outline[2] = 0;
+  wcol->outline[3] = 150;
+
+  int cent_x = BLI_rcti_cent_x(rect);
+  int cent_y = BLI_rcti_cent_y(rect);
+  rect->xmin = cent_x - radi;
+  rect->xmax = cent_x + radi;
+  rect->ymin = cent_y - radi;
+  rect->ymax = cent_y + radi;
+
+  wtb.draw_outline = true;
+  round_box_edges(&wtb, UI_CNR_ALL, rect, (float)radi);
+  widgetbase_draw(&wtb, wcol);
+
+  copy_v3_v3_char(wcol->inner, old_inner);
+  copy_v3_v3_char(wcol->outline, old_outline);
+}
+
 static void widget_numslider(
     uiBut *but, uiWidgetColors *wcol, rcti *rect, int state, int roundboxalign)
 {
@@ -3762,7 +3796,7 @@ static void widget_swatch(
   if (state & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
     /* Now we reduce alpha of the inner color (i.e. the color shown)
      * so that this setting can look grayed out, while retaining
-     * the checkboard (for transparent values). This is needed
+     * the checkerboard (for transparent values). This is needed
      * here as the effects of ui_widget_color_disabled() are overwritten.
      */
     wcol->inner[3] /= 2;
@@ -4374,6 +4408,10 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       wt.custom = widget_progressbar;
       break;
 
+    case UI_WTYPE_NODESOCKET:
+      wt.custom = widget_nodesocket;
+      break;
+
     case UI_WTYPE_MENU_ITEM_RADIAL:
       wt.wcol_theme = &btheme->tui.wcol_pie_menu;
       wt.custom = widget_menu_radial_itembut;
@@ -4696,7 +4734,7 @@ void ui_draw_but(const bContext *C, ARegion *ar, uiStyle *style, uiBut *but, rct
         break;
 
       case UI_BTYPE_NODE_SOCKET:
-        ui_draw_but_NODESOCKET(ar, but, &tui->wcol_regular, rect);
+        wt = widget_type(UI_WTYPE_NODESOCKET);
         break;
 
       default:

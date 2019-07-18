@@ -59,6 +59,7 @@
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_movieclip.h"
 #include "BKE_node.h"
 #include "BKE_scene.h"
 
@@ -240,29 +241,30 @@ static uint gpu_texture_create_from_ibuf(Image *ima, ImBuf *ibuf, int textarget)
         return bindcode;
       }
 
-      IMB_colormanagement_imbuf_to_srgb_texture(
-          rect, 0, 0, ibuf->x, ibuf->y, ibuf, compress_as_srgb);
+      /* Texture storage of images is defined by the alpha mode of the image. The
+       * downside of this is that there can be artifacts near alpha edges. However,
+       * this allows us to use sRGB texture formats and preserves color values in
+       * zero alpha areas, and appears generally closer to what game engines that we
+       * want to be compatible with do. */
+      const bool store_premultiplied = ima ? (ima->alpha_mode == IMA_ALPHA_PREMUL) : true;
+      IMB_colormanagement_imbuf_to_byte_texture(
+          rect, 0, 0, ibuf->x, ibuf->y, ibuf, compress_as_srgb, store_premultiplied);
     }
   }
-  else if (ibuf->channels != 4) {
+  else {
     /* Float image is already in scene linear colorspace or non-color data by
      * convention, no colorspace conversion needed. But we do require 4 channels
      * currently. */
-    rect_float = MEM_mallocN(sizeof(float) * 4 * ibuf->x * ibuf->y, __func__);
-    if (rect_float == NULL) {
-      return bindcode;
-    }
+    const bool store_premultiplied = ima ? (ima->alpha_mode != IMA_ALPHA_STRAIGHT) : false;
 
-    IMB_buffer_float_from_float(rect_float,
-                                ibuf->rect_float,
-                                ibuf->channels,
-                                IB_PROFILE_LINEAR_RGB,
-                                IB_PROFILE_LINEAR_RGB,
-                                false,
-                                ibuf->x,
-                                ibuf->y,
-                                ibuf->x,
-                                ibuf->x);
+    if (ibuf->channels != 4 || !store_premultiplied) {
+      rect_float = MEM_mallocN(sizeof(float) * 4 * ibuf->x * ibuf->y, __func__);
+      if (rect_float == NULL) {
+        return bindcode;
+      }
+      IMB_colormanagement_imbuf_to_float_texture(
+          rect_float, 0, 0, ibuf->x, ibuf->y, ibuf, store_premultiplied);
+    }
   }
 
   /* Create OpenGL texture. */
@@ -285,6 +287,38 @@ static uint gpu_texture_create_from_ibuf(Image *ima, ImBuf *ibuf, int textarget)
   }
 
   return bindcode;
+}
+
+static GPUTexture **gpu_get_movieclip_gputexture(MovieClip *clip,
+                                                 MovieClipUser *cuser,
+                                                 GLenum textarget)
+{
+  MovieClip_RuntimeGPUTexture *tex;
+  for (tex = clip->runtime.gputextures.first; tex; tex = tex->next) {
+    if (memcmp(&tex->user, cuser, sizeof(MovieClipUser)) == 0) {
+      break;
+    }
+  }
+
+  if (tex == NULL) {
+    tex = MEM_mallocN(sizeof(MovieClip_RuntimeGPUTexture), __func__);
+
+    for (int i = 0; i < TEXTARGET_COUNT; i++) {
+      tex->gputexture[i] = NULL;
+    }
+
+    memcpy(&tex->user, cuser, sizeof(MovieClipUser));
+    BLI_addtail(&clip->runtime.gputextures, tex);
+  }
+
+  if (textarget == GL_TEXTURE_2D) {
+    return &tex->gputexture[TEXTARGET_TEXTURE_2D];
+  }
+  else if (textarget == GL_TEXTURE_CUBE_MAP) {
+    return &tex->gputexture[TEXTARGET_TEXTURE_CUBE_MAP];
+  }
+
+  return NULL;
 }
 
 static void gpu_texture_update_scaled(
@@ -346,7 +380,7 @@ static void gpu_texture_update_unscaled(
   glPixelStorei(GL_UNPACK_ROW_LENGTH, row_length);
 }
 
-static void gpu_texture_update_from_ibuf(ImBuf *ibuf, int x, int y, int w, int h)
+static void gpu_texture_update_from_ibuf(Image *ima, ImBuf *ibuf, int x, int y, int w, int h)
 {
   /* Partial update of texture for texture painting. This is often much
    * quicker than fully updating the texture for high resolution images.
@@ -386,30 +420,27 @@ static void gpu_texture_update_from_ibuf(ImBuf *ibuf, int x, int y, int w, int h
 
       /* Convert to scene linear with sRGB compression, and premultiplied for
        * correct texture interpolation. */
-      IMB_colormanagement_imbuf_to_srgb_texture(rect, x, y, w, h, ibuf, compress_as_srgb);
+      const bool store_premultiplied = (ima->alpha_mode == IMA_ALPHA_PREMUL);
+      IMB_colormanagement_imbuf_to_byte_texture(
+          rect, x, y, w, h, ibuf, compress_as_srgb, store_premultiplied);
     }
   }
-  else if (ibuf->channels != 4 || scaled) {
+  else {
     /* Float pixels. */
-    rect_float = MEM_mallocN(sizeof(float) * 4 * x * y, __func__);
-    if (rect_float == NULL) {
-      return;
+    const bool store_premultiplied = (ima->alpha_mode != IMA_ALPHA_STRAIGHT);
+
+    if (ibuf->channels != 4 || scaled || !store_premultiplied) {
+      rect_float = MEM_mallocN(sizeof(float) * 4 * w * h, __func__);
+      if (rect_float == NULL) {
+        return;
+      }
+
+      tex_stride = w;
+      tex_offset = 0;
+
+      IMB_colormanagement_imbuf_to_float_texture(
+          rect_float, x, y, w, h, ibuf, store_premultiplied);
     }
-
-    tex_stride = w;
-    tex_offset = 0;
-
-    size_t ibuf_offset = (y * ibuf->x + x) * ibuf->channels;
-    IMB_buffer_float_from_float(rect_float,
-                                ibuf->rect_float + ibuf_offset,
-                                ibuf->channels,
-                                IB_PROFILE_LINEAR_RGB,
-                                IB_PROFILE_LINEAR_RGB,
-                                false,
-                                w,
-                                h,
-                                x,
-                                ibuf->x);
   }
 
   if (scaled) {
@@ -442,6 +473,9 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, int textarget
     ima->gpuflag &= ~IMA_GPU_REFRESH;
   }
 
+  /* Tag as in active use for garbage collector. */
+  BKE_image_tag_time(ima);
+
   /* Test if we already have a texture. */
   GPUTexture **tex = gpu_get_image_gputexture(ima, textarget);
   if (*tex) {
@@ -468,7 +502,56 @@ GPUTexture *GPU_texture_from_blender(Image *ima, ImageUser *iuser, int textarget
   BKE_image_release_ibuf(ima, ibuf, NULL);
 
   *tex = GPU_texture_from_bindcode(textarget, bindcode);
+
+  GPU_texture_orig_size_set(*tex, ibuf->x, ibuf->y);
+
   return *tex;
+}
+
+GPUTexture *GPU_texture_from_movieclip(MovieClip *clip, MovieClipUser *cuser, int textarget)
+{
+  if (clip == NULL) {
+    return NULL;
+  }
+
+  GPUTexture **tex = gpu_get_movieclip_gputexture(clip, cuser, textarget);
+  if (*tex) {
+    return *tex;
+  }
+
+  /* check if we have a valid image buffer */
+  uint bindcode = 0;
+  ImBuf *ibuf = BKE_movieclip_get_ibuf(clip, cuser);
+  if (ibuf == NULL) {
+    *tex = GPU_texture_from_bindcode(textarget, bindcode);
+    return *tex;
+  }
+
+  bindcode = gpu_texture_create_from_ibuf(NULL, ibuf, textarget);
+  IMB_freeImBuf(ibuf);
+
+  *tex = GPU_texture_from_bindcode(textarget, bindcode);
+  return *tex;
+}
+
+void GPU_free_texture_movieclip(struct MovieClip *clip)
+{
+  /* number of gpu textures to keep around as cache
+   * We don't want to keep too many GPU textures for
+   * movie clips around, as they can be large.*/
+  const int MOVIECLIP_NUM_GPUTEXTURES = 1;
+
+  while (BLI_listbase_count(&clip->runtime.gputextures) > MOVIECLIP_NUM_GPUTEXTURES) {
+    MovieClip_RuntimeGPUTexture *tex = BLI_pophead(&clip->runtime.gputextures);
+    for (int i = 0; i < TEXTARGET_COUNT; i++) {
+      /* free glsl image binding */
+      if (tex->gputexture[i]) {
+        GPU_texture_free(tex->gputexture[i]);
+        tex->gputexture[i] = NULL;
+      }
+    }
+    MEM_freeN(tex);
+  }
 }
 
 static void **gpu_gen_cube_map(uint *rect, float *frect, int rectw, int recth)
@@ -823,7 +906,7 @@ void GPU_paint_update_image(Image *ima, ImageUser *iuser, int x, int y, int w, i
     /* Partial update of texture. */
     GPU_texture_bind(ima->gputexture[TEXTARGET_TEXTURE_2D], 0);
 
-    gpu_texture_update_from_ibuf(ibuf, x, y, w, h);
+    gpu_texture_update_from_ibuf(ima, ibuf, x, y, w, h);
 
     if (GPU_get_mipmap()) {
       glGenerateMipmap(GL_TEXTURE_2D);
@@ -1041,8 +1124,9 @@ static GPUTexture *create_flame_texture(MantaDomainSettings *mds, int highres)
                                     manta_smoke_has_fuel(mds->fluid);
   int *dim = (highres) ? mds->res_noise : mds->res;
 
-  if (!has_fuel)
+  if (!has_fuel) {
     return NULL;
+  }
 
   if (highres) {
     source = manta_smoke_turbulence_get_flame(mds->fluid);
@@ -1332,7 +1416,7 @@ static void gpu_disable_multisample(void)
 
 void GPU_state_init(void)
 {
-  GPU_disable_program_point_size();
+  GPU_program_point_size(false);
 
   glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
@@ -1350,16 +1434,16 @@ void GPU_state_init(void)
   glDisable(GL_CULL_FACE);
 
   gpu_disable_multisample();
-}
 
-void GPU_enable_program_point_size(void)
-{
-  glEnable(GL_PROGRAM_POINT_SIZE);
-}
+  /* This is a bit dangerous since addons could change this. */
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex((GLuint)0xFFFFFFFF);
 
-void GPU_disable_program_point_size(void)
-{
-  glDisable(GL_PROGRAM_POINT_SIZE);
+  /* TODO: Should become default. But needs at least GL 4.3 */
+  if (GLEW_ARB_ES3_compatibility) {
+    /* Takes predecence over GL_PRIMITIVE_RESTART */
+    glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+  }
 }
 
 /** \name Framebuffer color depth, for selection codes

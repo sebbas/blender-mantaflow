@@ -29,6 +29,7 @@
 #  include <AUD_Device.h>
 #endif
 
+struct Depsgraph;
 struct Main;
 struct Sequence;
 struct bSound;
@@ -71,9 +72,35 @@ void BKE_sound_cache(struct bSound *sound);
 
 void BKE_sound_delete_cache(struct bSound *sound);
 
+void BKE_sound_reset_runtime(struct bSound *sound);
 void BKE_sound_load(struct Main *main, struct bSound *sound);
+void BKE_sound_ensure_loaded(struct Main *bmain, struct bSound *sound);
 
 void BKE_sound_free(struct bSound *sound);
+
+/* Matches AUD_Channels. */
+typedef enum eSoundChannels {
+  SOUND_CHANNELS_INVALID = 0,
+  SOUND_CHANNELS_MONO = 1,
+  SOUND_CHANNELS_STEREO = 2,
+  SOUND_CHANNELS_STEREO_LFE = 3,
+  SOUND_CHANNELS_SURROUND4 = 4,
+  SOUND_CHANNELS_SURROUND5 = 5,
+  SOUND_CHANNELS_SURROUND51 = 6,
+  SOUND_CHANNELS_SURROUND61 = 7,
+  SOUND_CHANNELS_SURROUND71 = 8,
+} eSoundChannels;
+
+typedef struct SoundInfo {
+  struct {
+    eSoundChannels channels;
+  } specs;
+  float length;
+} SoundInfo;
+
+/* Get information about given sound. Returns truth on success., false if sound can not be loaded
+ * or if the codes is not supported. */
+bool BKE_sound_info_get(struct Main *main, struct bSound *sound, SoundInfo *sound_info);
 
 void BKE_sound_copy_data(struct Main *bmain,
                          struct bSound *sound_dst,
@@ -86,7 +113,9 @@ void BKE_sound_make_local(struct Main *bmain, struct bSound *sound, const bool l
 AUD_Device *BKE_sound_mixdown(struct Scene *scene, AUD_DeviceSpecs specs, int start, float volume);
 #endif
 
+void BKE_sound_reset_scene_runtime(struct Scene *scene);
 void BKE_sound_create_scene(struct Scene *scene);
+void BKE_sound_ensure_scene(struct Scene *scene);
 
 void BKE_sound_destroy_scene(struct Scene *scene);
 
@@ -94,7 +123,7 @@ void BKE_sound_reset_scene_specs(struct Scene *scene);
 
 void BKE_sound_mute_scene(struct Scene *scene, int muted);
 
-void BKE_sound_update_fps(struct Scene *scene);
+void BKE_sound_update_fps(struct Main *bmain, struct Scene *scene);
 
 void BKE_sound_update_scene_listener(struct Scene *scene);
 
@@ -140,14 +169,25 @@ int BKE_sound_scene_playing(struct Scene *scene);
 
 void BKE_sound_free_waveform(struct bSound *sound);
 
-void BKE_sound_read_waveform(struct bSound *sound, short *stop);
+void BKE_sound_read_waveform(struct Main *bmain, struct bSound *sound, short *stop);
 
-void BKE_sound_update_scene(struct Main *bmain, struct Scene *scene);
+void BKE_sound_update_scene(struct Depsgraph *depsgraph, struct Scene *scene);
 
 void *BKE_sound_get_factory(void *sound);
 
-float BKE_sound_get_length(struct bSound *sound);
+float BKE_sound_get_length(struct Main *bmain, struct bSound *sound);
 
 char **BKE_sound_get_device_names(void);
+
+typedef void (*SoundJackSyncCallback)(struct Main *bmain, int mode, float time);
+
+void BKE_sound_jack_sync_callback_set(SoundJackSyncCallback callback);
+void BKE_sound_jack_scene_update(struct Scene *scene, int mode, float time);
+
+/* Dependency graph evaluation. */
+
+struct Depsgraph;
+
+void BKE_sound_evaluate(struct Depsgraph *depsgraph, struct Main *bmain, struct bSound *sound);
 
 #endif /* __BKE_SOUND_H__ */

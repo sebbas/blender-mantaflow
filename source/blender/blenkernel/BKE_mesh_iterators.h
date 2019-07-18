@@ -30,8 +30,8 @@ struct Mesh;
 
 typedef enum MeshForeachFlag {
   MESH_FOREACH_NOP = 0,
-  MESH_FOREACH_USE_NORMAL =
-      (1 << 0), /* foreachMappedVert, foreachMappedLoop, foreachMappedFaceCenter */
+  /* foreachMappedVert, foreachMappedLoop, foreachMappedFaceCenter */
+  MESH_FOREACH_USE_NORMAL = (1 << 0),
 } MeshForeachFlag;
 
 void BKE_mesh_foreach_mapped_vert(struct Mesh *mesh,
@@ -55,6 +55,11 @@ void BKE_mesh_foreach_mapped_loop(struct Mesh *mesh,
                                   void *userData,
                                   MeshForeachFlag flag);
 void BKE_mesh_foreach_mapped_face_center(
+    struct Mesh *mesh,
+    void (*func)(void *userData, int index, const float cent[3], const float no[3]),
+    void *userData,
+    MeshForeachFlag flag);
+void BKE_mesh_foreach_mapped_subdiv_face_center(
     struct Mesh *mesh,
     void (*func)(void *userData, int index, const float cent[3], const float no[3]),
     void *userData,

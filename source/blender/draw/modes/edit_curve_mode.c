@@ -112,10 +112,6 @@ static void EDIT_CURVE_engine_init(void *UNUSED(vedata))
   const DRWContextState *draw_ctx = DRW_context_state_get();
   EDIT_CURVE_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
 
-  if (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) {
-    DRW_state_clip_planes_set_from_rv3d(draw_ctx->rv3d);
-  }
-
   const GPUShaderConfigData *sh_cfg_data = &GPU_shader_cfg_data[draw_ctx->sh_cfg];
 
   if (!sh_data->wire_sh) {
@@ -172,7 +168,7 @@ static void EDIT_CURVE_wire_shgrp_create(EDIT_CURVE_Shaders *sh_data,
   DRWShadingGroup *grp = DRW_shgroup_create(sh_data->wire_sh, pass);
   DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorWireEdit, 1);
   if (rv3d->rflag & RV3D_CLIPPING) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   *wire_shgrp = grp;
 
@@ -180,7 +176,7 @@ static void EDIT_CURVE_wire_shgrp_create(EDIT_CURVE_Shaders *sh_data,
   DRW_shgroup_uniform_vec4(grp, "color", G_draw.block.colorWireEdit, 1);
   DRW_shgroup_uniform_float_copy(grp, "normalSize", v3d->overlay.normals_length);
   if (rv3d->rflag & RV3D_CLIPPING) {
-    DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+    DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
   }
   *wire_normals_shgrp = grp;
 }
@@ -226,14 +222,14 @@ static void EDIT_CURVE_cache_init(void *vedata)
                                  &stl->g_data->wire_normals_shgrp_xray);
 
     psl->overlay_edge_pass = DRW_pass_create("Curve Handle Overlay",
-                                             DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND);
+                                             DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA);
 
     grp = DRW_shgroup_create(sh_data->overlay_edge_sh, psl->overlay_edge_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_vec2(grp, "viewportSize", DRW_viewport_size_get(), 1);
     DRW_shgroup_uniform_bool(grp, "showCurveHandles", &stl->g_data->show_handles, 1);
     if (rv3d->rflag & RV3D_CLIPPING) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     stl->g_data->overlay_edge_shgrp = grp;
 
@@ -242,7 +238,7 @@ static void EDIT_CURVE_cache_init(void *vedata)
     grp = DRW_shgroup_create(sh_data->overlay_vert_sh, psl->overlay_vert_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     if (rv3d->rflag & RV3D_CLIPPING) {
-      DRW_shgroup_world_clip_planes_from_rv3d(grp, rv3d);
+      DRW_shgroup_state_enable(grp, DRW_STATE_CLIP_PLANES);
     }
     stl->g_data->overlay_vert_shgrp = grp;
   }
@@ -273,30 +269,38 @@ static void EDIT_CURVE_cache_populate(void *vedata, Object *ob)
       }
 
       geom = DRW_cache_curve_edge_wire_get(ob);
-      DRW_shgroup_call(wire_shgrp, geom, ob->obmat);
+      if (geom) {
+        DRW_shgroup_call(wire_shgrp, geom, ob);
+      }
 
       if ((cu->flag & CU_3D) && (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_CU_NORMALS) != 0) {
         geom = DRW_cache_curve_edge_normal_get(ob);
-        DRW_shgroup_call_instances(wire_normals_shgrp, geom, ob->obmat, 2);
+        DRW_shgroup_call_instances(wire_normals_shgrp, ob, geom, 2);
       }
 
       geom = DRW_cache_curve_edge_overlay_get(ob);
       if (geom) {
-        DRW_shgroup_call(stl->g_data->overlay_edge_shgrp, geom, ob->obmat);
+        DRW_shgroup_call(stl->g_data->overlay_edge_shgrp, geom, ob);
       }
 
       geom = DRW_cache_curve_vert_overlay_get(ob, stl->g_data->show_handles);
-      DRW_shgroup_call(stl->g_data->overlay_vert_shgrp, geom, ob->obmat);
+      if (geom) {
+        DRW_shgroup_call(stl->g_data->overlay_vert_shgrp, geom, ob);
+      }
     }
   }
 
   if (ob->type == OB_SURF) {
     if (BKE_object_is_in_editmode(ob)) {
       struct GPUBatch *geom = DRW_cache_curve_edge_overlay_get(ob);
-      DRW_shgroup_call(stl->g_data->overlay_edge_shgrp, geom, ob->obmat);
+      if (geom) {
+        DRW_shgroup_call(stl->g_data->overlay_edge_shgrp, geom, ob);
+      }
 
       geom = DRW_cache_curve_vert_overlay_get(ob, false);
-      DRW_shgroup_call(stl->g_data->overlay_vert_shgrp, geom, ob->obmat);
+      if (geom) {
+        DRW_shgroup_call(stl->g_data->overlay_vert_shgrp, geom, ob);
+      }
     }
   }
 }
@@ -334,8 +338,6 @@ static void EDIT_CURVE_draw_scene(void *vedata)
   /* Thoses passes don't write to depth and are AA'ed using other tricks. */
   DRW_draw_pass(psl->overlay_edge_pass);
   DRW_draw_pass(psl->overlay_vert_pass);
-
-  DRW_state_clip_planes_reset();
 }
 
 /* Cleanup when destroying the engine.

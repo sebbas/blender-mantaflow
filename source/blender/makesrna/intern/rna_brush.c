@@ -89,8 +89,8 @@ const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
     {SCULPT_TOOL_NUDGE, "NUDGE", ICON_BRUSH_NUDGE, "Nudge", ""},
     {SCULPT_TOOL_ROTATE, "ROTATE", ICON_BRUSH_ROTATE, "Rotate", ""},
     {0, "", 0, NULL, NULL},
+    {SCULPT_TOOL_SIMPLIFY, "SIMPLIFY", ICON_BRUSH_DATA, "Simplify", ""},
     {SCULPT_TOOL_MASK, "MASK", ICON_BRUSH_MASK, "Mask", ""},
-    {SCULPT_TOOL_SIMPLIFY, "SIMPLIFY", ICON_BRUSH_DATA /* icon TODO */, "Simplify", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -461,8 +461,9 @@ static void rna_Brush_reset_icon(Brush *br)
 {
   ID *id = &br->id;
 
-  if (br->flag & BRUSH_CUSTOM_ICON)
+  if (br->flag & BRUSH_CUSTOM_ICON) {
     return;
+  }
 
   if (id->icon_id >= BIFICONID_LAST) {
     BKE_icon_id_delete(id);
@@ -568,13 +569,16 @@ static void rna_Brush_use_gradient_set(PointerRNA *ptr, bool value)
 {
   Brush *br = (Brush *)ptr->data;
 
-  if (value)
+  if (value) {
     br->flag |= BRUSH_USE_GRADIENT;
-  else
+  }
+  else {
     br->flag &= ~BRUSH_USE_GRADIENT;
+  }
 
-  if ((br->flag & BRUSH_USE_GRADIENT) && br->gradient == NULL)
+  if ((br->flag & BRUSH_USE_GRADIENT) && br->gradient == NULL) {
     br->gradient = BKE_colorband_add(true);
+  }
 }
 
 static void rna_Brush_set_unprojected_radius(PointerRNA *ptr, float value)
@@ -1422,7 +1426,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "use_occlude_eraser", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", GP_BRUSH_OCCLUDE_ERASER);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_BRUSH_OCCLUDE_ERASER);
   RNA_def_property_ui_text(prop, "Occlude Eraser", "Erase only strokes visible and not occluded");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 }
@@ -1556,8 +1560,8 @@ static void rna_def_brush(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem brush_size_unit_items[] = {
-      {0, "VIEW", 0, "View", "Measure brush size relateve to the view"},
-      {BRUSH_LOCK_SIZE, "SCENE", 0, "Scene", "Measure brush size relateve to the scene"},
+      {0, "VIEW", 0, "View", "Measure brush size relative to the view"},
+      {BRUSH_LOCK_SIZE, "SCENE", 0, "Scene", "Measure brush size relative to the scene"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1803,9 +1807,8 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Topology Rake",
                            "Automatically align edges to the brush direction to "
-                           "to generate cleaner topology and define sharp features "
-                           "dynamic topology. Best used on low-poly meshes as it has "
-                           "a performance impact");
+                           "generate cleaner topology and define sharp features. "
+                           "Best used on low-poly meshes as it has a performance impact");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "stencil_pos", PROP_FLOAT, PROP_XYZ);

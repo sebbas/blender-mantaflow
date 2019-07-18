@@ -283,7 +283,7 @@ typedef struct ThemeSpace {
   char cframe[4];
   char time_keyframe[4], time_gp_keyframe[4];
   char freestyle_edge_mark[4], freestyle_face_mark[4];
-  char scrubbing_background[4];
+  char time_scrub_background[4];
   char _pad5[4];
 
   char nurb_uline[4], nurb_vline[4];
@@ -591,7 +591,8 @@ typedef struct UserDef {
   short dbl_click_time;
 
   char _pad0[2];
-  short wheellinescroll;
+  char wheellinescroll;
+  char mini_axis_type;
   /** #eUserpref_UI_Flag. */
   int uiflag;
   /** #eUserpref_UI_Flag2. */
@@ -735,7 +736,9 @@ typedef struct UserDef {
 
   /** Options for text rendering. */
   short text_render;
-  char _pad9[2];
+  char _pad9;
+
+  char navigation_mode;
 
   /** From texture.h. */
   struct ColorBand coba_weight;
@@ -744,9 +747,11 @@ typedef struct UserDef {
   /** Default color for newly created Grease Pencil layers. */
   float gpencil_new_layer_col[4];
 
-  short tweak_threshold;
+  /** Drag pixels (scaled by DPI). */
+  char drag_threshold_mouse;
+  char drag_threshold_tablet;
+  char drag_threshold;
   char move_threshold;
-  char navigation_mode;
 
   char font_path_ui[1024];
   char font_path_ui_mono[1024];
@@ -887,6 +892,13 @@ typedef enum eViewNavigation_Method {
   VIEW_NAVIGATION_FLY = 1,
 } eViewNavigation_Method;
 
+/** #UserDef.uiflag */
+typedef enum eUserpref_MiniAxisType {
+  USER_MINI_AXIS_TYPE_GIZMO = 0,
+  USER_MINI_AXIS_TYPE_MINIMAL = 1,
+  USER_MINI_AXIS_TYPE_NONE = 2,
+} eUserpref_MiniAxisType;
+
 /** #UserDef.flag */
 typedef enum eWalkNavigation_Flag {
   USER_WALK_GRAVITY = (1 << 0),
@@ -913,7 +925,7 @@ typedef enum eUserpref_UI_Flag {
   USER_ORBIT_SELECTION = (1 << 14),
   USER_DEPTH_NAVIGATE = (1 << 15),
   USER_HIDE_DOT = (1 << 16),
-  USER_SHOW_GIZMO_AXIS = (1 << 17),
+  USER_SHOW_GIZMO_NAVIGATE = (1 << 17),
   USER_SHOW_VIEWPORTNAME = (1 << 18),
   USER_CAM_LOCK_NO_PARENT = (1 << 19),
   USER_ZOOM_TO_MOUSEPOS = (1 << 20),

@@ -111,7 +111,7 @@ void workbench_volume_engine_free(void)
 void workbench_volume_cache_init(WORKBENCH_Data *vedata)
 {
   vedata->psl->volume_pass = DRW_pass_create(
-      "Volumes", DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_PREMUL | DRW_STATE_CULL_FRONT);
+      "Volumes", DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
 }
 
 void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
@@ -153,7 +153,7 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
 
   if (use_slice) {
     float invviewmat[4][4];
-    DRW_viewport_matrix_get(invviewmat, DRW_MAT_VIEWINV);
+    DRW_view_viewmat_get(NULL, invviewmat, true);
 
     const int axis = (mds->slice_axis == SLICE_AXIS_AUTO) ?
                          axis_dominant_v3_single(invviewmat[2]) :
@@ -210,10 +210,10 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
   DRW_shgroup_uniform_float_copy(grp, "densityScale", 10.0f * mds->display_thickness);
 
   if (use_slice) {
-    DRW_shgroup_call_object(grp, DRW_cache_quad_get(), ob);
+    DRW_shgroup_call(grp, DRW_cache_quad_get(), ob);
   }
   else {
-    DRW_shgroup_call_object(grp, DRW_cache_cube_get(), ob);
+    DRW_shgroup_call(grp, DRW_cache_cube_get(), ob);
   }
 
   BLI_addtail(&wpd->smoke_domains, BLI_genericNodeN(mmd));

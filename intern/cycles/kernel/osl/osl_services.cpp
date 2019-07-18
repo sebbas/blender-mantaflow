@@ -617,7 +617,7 @@ static bool get_primitive_attribute(KernelGlobals *kg,
     return set_attribute_float3(fval, type, derivatives, val);
   }
   else if (attr.type == TypeFloat2) {
-    float2 fval[2];
+    float2 fval[3];
     fval[0] = primitive_attribute_float2(
         kg, sd, attr.desc, (derivatives) ? &fval[1] : NULL, (derivatives) ? &fval[2] : NULL);
     return set_attribute_float2(fval, type, derivatives, val);
@@ -1392,9 +1392,16 @@ bool OSLRenderServices::trace(TraceOpt &options,
   tracedata->init = true;
   tracedata->sd.osl_globals = sd->osl_globals;
 
+  KernelGlobals *kg = sd->osl_globals;
+
+  /* Can't raytrace from shaders like displacement, before BVH exists. */
+  if (kernel_data.bvh.bvh_layout == BVH_LAYOUT_NONE) {
+    return false;
+  }
+
   /* Raytrace, leaving out shadow opaque to avoid early exit. */
   uint visibility = PATH_RAY_ALL_VISIBILITY - PATH_RAY_SHADOW_OPAQUE;
-  return scene_intersect(sd->osl_globals, ray, visibility, &tracedata->isect);
+  return scene_intersect(kg, ray, visibility, &tracedata->isect);
 }
 
 bool OSLRenderServices::getmessage(OSL::ShaderGlobals *sg,

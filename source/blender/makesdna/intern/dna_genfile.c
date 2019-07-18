@@ -39,9 +39,7 @@
 #include "BLI_memarena.h"
 #include "BLI_string.h"
 
-#ifdef WITH_DNA_GHASH
-#  include "BLI_ghash.h"
-#endif
+#include "BLI_ghash.h"
 
 #include "DNA_genfile.h"
 #include "DNA_sdna_types.h"  // for SDNA ;-)
@@ -161,6 +159,11 @@ void DNA_sdna_free(SDNA *sdna)
 
   MEM_SAFE_FREE(sdna->alias.names);
   MEM_SAFE_FREE(sdna->alias.types);
+#ifdef WITH_DNA_GHASH
+  if (sdna->alias.structs_map) {
+    BLI_ghash_free(sdna->alias.structs_map, NULL, NULL);
+  }
+#endif
 
   MEM_freeN(sdna);
 }
@@ -222,18 +225,29 @@ static void printstruct(SDNA *sdna, short strnr)
 /**
  * Returns the index of the struct info for the struct with the specified name.
  */
-int DNA_struct_find_nr_ex(const SDNA *sdna, const char *str, unsigned int *index_last)
+static int dna_struct_find_nr_ex_impl(
+    /* From SDNA struct. */
+    const char **types,
+    const int UNUSED(types_len),
+    short **const structs,
+    const int structs_len,
+#ifdef WITH_DNA_GHASH
+    GHash *structs_map,
+#endif
+    /* Regular args. */
+    const char *str,
+    unsigned int *index_last)
 {
-  if (*index_last < sdna->structs_len) {
-    const short *sp = sdna->structs[*index_last];
-    if (STREQ(sdna->types[sp[0]], str)) {
+  if (*index_last < structs_len) {
+    const short *sp = structs[*index_last];
+    if (STREQ(types[sp[0]], str)) {
       return *index_last;
     }
   }
 
 #ifdef WITH_DNA_GHASH
   {
-    void **index_p = BLI_ghash_lookup_p(sdna->structs_map, str);
+    void **index_p = BLI_ghash_lookup_p(structs_map, str);
     if (index_p) {
       const int index = POINTER_AS_INT(*index_p);
       *index_last = index;
@@ -242,9 +256,9 @@ int DNA_struct_find_nr_ex(const SDNA *sdna, const char *str, unsigned int *index
   }
 #else
   {
-    for (int index = 0; index < sdna->structs_len; index++) {
-      const short *sp = sdna->structs[index];
-      if (STREQ(sdna->types[sp[0]], str)) {
+    for (int index = 0; index < structs_len; index++) {
+      const short *sp = structs[index];
+      if (STREQ(types[sp[0]], str)) {
         *index_last = index;
         return index;
       }
@@ -254,10 +268,56 @@ int DNA_struct_find_nr_ex(const SDNA *sdna, const char *str, unsigned int *index
   return -1;
 }
 
+/**
+ * Returns the index of the struct info for the struct with the specified name.
+ */
+int DNA_struct_find_nr_ex(const SDNA *sdna, const char *str, unsigned int *index_last)
+{
+  return dna_struct_find_nr_ex_impl(
+      /* Expand SDNA. */
+      sdna->types,
+      sdna->types_len,
+      sdna->structs,
+      sdna->structs_len,
+#ifdef WITH_DNA_GHASH
+      sdna->structs_map,
+#endif
+      /* Regular args. */
+      str,
+      index_last);
+}
+
+/** \note requires #DNA_sdna_alias_data_ensure_structs_map to be called. */
+int DNA_struct_alias_find_nr_ex(const SDNA *sdna, const char *str, unsigned int *index_last)
+{
+#ifdef WITH_DNA_GHASH
+  BLI_assert(sdna->alias.structs_map != NULL);
+#endif
+  return dna_struct_find_nr_ex_impl(
+      /* Expand SDNA. */
+      sdna->alias.types,
+      sdna->types_len,
+      sdna->structs,
+      sdna->structs_len,
+#ifdef WITH_DNA_GHASH
+      sdna->alias.structs_map,
+#endif
+      /* Regular args. */
+      str,
+      index_last);
+}
+
 int DNA_struct_find_nr(const SDNA *sdna, const char *str)
 {
   unsigned int index_last_dummy = UINT_MAX;
   return DNA_struct_find_nr_ex(sdna, str, &index_last_dummy);
+}
+
+/** \note requires #DNA_sdna_alias_data_ensure_structs_map to be called. */
+int DNA_struct_alias_find_nr(const SDNA *sdna, const char *str)
+{
+  unsigned int index_last_dummy = UINT_MAX;
+  return DNA_struct_alias_find_nr_ex(sdna, str, &index_last_dummy);
 }
 
 /* ************************* END DIV ********************** */
@@ -909,7 +969,14 @@ static int elem_strcmp(const char *name, const char *oname)
  * \param old: Pointer to struct information in sdna
  * \return true when existing, false otherwise.
  */
-static bool elem_exists(const SDNA *sdna, const char *type, const char *name, const short *old)
+static bool elem_exists_impl(
+    /* Expand SDNA. */
+    const char **types,
+    const char **names,
+    /* Regular args. */
+    const char *type,
+    const char *name,
+    const short *old)
 {
   int a, elemcount;
   const char *otype, *oname;
@@ -918,14 +985,41 @@ static bool elem_exists(const SDNA *sdna, const char *type, const char *name, co
   elemcount = old[1];
   old += 2;
   for (a = 0; a < elemcount; a++, old += 2) {
-    otype = sdna->types[old[0]];
-    oname = sdna->names[old[1]];
+    otype = types[old[0]];
+    oname = names[old[1]];
 
     if (elem_strcmp(name, oname) == 0) { /* name equal */
       return strcmp(type, otype) == 0;   /* type equal */
     }
   }
   return false;
+}
+
+static bool elem_exists(const SDNA *sdna, const char *type, const char *name, const short *old)
+{
+  return elem_exists_impl(
+      /* Expand SDNA. */
+      sdna->types,
+      sdna->names,
+      /* Regular args. */
+      type,
+      name,
+      old);
+}
+
+static bool elem_exists_alias(const SDNA *sdna,
+                              const char *type,
+                              const char *name,
+                              const short *old)
+{
+  return elem_exists_impl(
+      /* Expand SDNA. */
+      sdna->alias.types,
+      sdna->alias.names,
+      /* Regular args. */
+      type,
+      name,
+      old);
 }
 
 /**
@@ -1384,6 +1478,25 @@ bool DNA_struct_elem_find(const SDNA *sdna,
   return false;
 }
 
+/** \note requires #DNA_sdna_alias_data_ensure_structs_map to be called. */
+bool DNA_struct_alias_elem_find(const SDNA *sdna,
+                                const char *stype,
+                                const char *vartype,
+                                const char *name)
+{
+  const int SDNAnr = DNA_struct_alias_find_nr(sdna, stype);
+
+  if (SDNAnr != -1) {
+    const short *const spo = sdna->structs[SDNAnr];
+    const bool found = elem_exists_alias(sdna, vartype, name, spo);
+
+    if (found) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Returns the size in bytes of a primitive type.
  */
@@ -1472,7 +1585,8 @@ static bool DNA_sdna_patch_struct_member_nr(SDNA *sdna,
 
       if (sdna->names_len == sdna->names_len_alloc) {
         sdna->names_len_alloc += 64;
-        sdna->names = MEM_recallocN(sdna->names, sizeof(*sdna->names) * sdna->names_len_alloc);
+        sdna->names = MEM_recallocN((void *)sdna->names,
+                                    sizeof(*sdna->names) * sdna->names_len_alloc);
         sdna->names_array_len = MEM_recallocN(
             (void *)sdna->names_array_len, sizeof(*sdna->names_array_len) * sdna->names_len_alloc);
       }
@@ -1548,10 +1662,10 @@ static void sdna_expand_names(SDNA *sdna)
   sdna->names_len = names_expand_len;
 }
 
-static const char *dna_sdna_alias_alias_from_static_elem_full(SDNA *sdna,
-                                                              GHash *elem_map_alias_from_static,
-                                                              const char *struct_name_static,
-                                                              const char *elem_static_full)
+static const char *dna_sdna_alias_from_static_elem_full(SDNA *sdna,
+                                                        GHash *elem_map_alias_from_static,
+                                                        const char *struct_name_static,
+                                                        const char *elem_static_full)
 {
   const int elem_static_full_len = strlen(elem_static_full);
   char *elem_static = alloca(elem_static_full_len + 1);
@@ -1614,7 +1728,7 @@ void DNA_sdna_alias_data_ensure(SDNA *sdna)
       const int dna_struct_names_len = sp[1];
       sp += 2;
       for (int a = 0; a < dna_struct_names_len; a++, sp += 2) {
-        const char *elem_alias_full = dna_sdna_alias_alias_from_static_elem_full(
+        const char *elem_alias_full = dna_sdna_alias_from_static_elem_full(
             sdna, elem_map_alias_from_static, struct_name_static, sdna->names[sp[1]]);
         if (elem_alias_full != NULL) {
           sdna->alias.names[sp[1]] = elem_alias_full;
@@ -1627,6 +1741,26 @@ void DNA_sdna_alias_data_ensure(SDNA *sdna)
   }
   BLI_ghash_free(struct_map_alias_from_static, NULL, NULL);
   BLI_ghash_free(elem_map_alias_from_static, MEM_freeN, NULL);
+}
+
+/**
+ * Separated from #DNA_sdna_alias_data_ensure because it's not needed
+ * unless we want to lookup aliased struct names (#DNA_struct_alias_find_nr and friends).
+ */
+void DNA_sdna_alias_data_ensure_structs_map(SDNA *sdna)
+{
+  DNA_sdna_alias_data_ensure(sdna);
+#ifdef WITH_DNA_GHASH
+  /* create a ghash lookup to speed up */
+  struct GHash *structs_map = BLI_ghash_str_new_ex(__func__, sdna->structs_len);
+  for (intptr_t nr = 0; nr < sdna->structs_len; nr++) {
+    const short *sp = sdna->structs[nr];
+    BLI_ghash_insert(structs_map, (void *)sdna->alias.types[sp[0]], POINTER_FROM_INT(nr));
+  }
+  sdna->alias.structs_map = structs_map;
+#else
+  UNUSED_VARS(sdna);
+#endif
 }
 
 /** \} */

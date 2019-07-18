@@ -173,7 +173,7 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
   }
 
   const float *full_size = DRW_viewport_size_get();
-  int size[2] = {full_size[0] / 2, full_size[1] / 2};
+  int size[2] = {max_ii(1, (int)full_size[0] / 2), max_ii(1, (int)full_size[1] / 2)};
 #if 0
   /* NOTE: We Ceil here in order to not miss any edge texel if using a NPO2 texture.  */
   int shrink_h_size[2] = {ceilf(size[0] / 8.0f), size[1]};
@@ -231,7 +231,6 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
 
   {
     const DRWContextState *draw_ctx = DRW_context_state_get();
-    const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
     RegionView3D *rv3d = draw_ctx->rv3d;
 
     /* Parameters */
@@ -242,14 +241,7 @@ void workbench_dof_engine_init(WORKBENCH_Data *vedata, Object *camera)
     float focal_len = cam->lens;
 
     /* TODO(fclem) deduplicate with eevee */
-
-    /* this is factor that converts to the scene scale. focal length and sensor are expressed in mm
-     * unit.scale_length is how many meters per blender unit we have. We want to convert to blender
-     * units though because the shader reads coordinates in world space, which is in blender units.
-     * Note however that focus_distance is already in blender units and shall not be scaled here
-     * (see T48157). */
-    float scale = (scene_eval->unit.system) ? scene_eval->unit.scale_length : 1.0f;
-    float scale_camera = 0.001f / scale;
+    const float scale_camera = 0.001f;
     /* we want radius here for the aperture number  */
     float aperture = 0.5f * scale_camera * focal_len / fstop;
     float focal_len_scaled = scale_camera * focal_len;
@@ -306,7 +298,8 @@ void workbench_dof_create_pass(WORKBENCH_Data *vedata,
   psl->dof_dilate_v_ps = DRW_pass_create("DoF Dilate Coc V", DRW_STATE_WRITE_COLOR);
   psl->dof_blur1_ps = DRW_pass_create("DoF Blur 1", DRW_STATE_WRITE_COLOR);
   psl->dof_blur2_ps = DRW_pass_create("DoF Blur 2", DRW_STATE_WRITE_COLOR);
-  psl->dof_resolve_ps = DRW_pass_create("DoF Resolve", DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND);
+  psl->dof_resolve_ps = DRW_pass_create("DoF Resolve",
+                                        DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA);
 
   {
     DRWShadingGroup *grp = DRW_shgroup_create(e_data.effect_dof_prepare_sh, psl->dof_down_ps);

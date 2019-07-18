@@ -141,7 +141,8 @@ GPUBatch *DRW_temp_batch_instance_request(DRWInstanceDataList *idatalist,
 
   GPUBatch *batch = BLI_memblock_alloc(idatalist->pool_instancing);
   bool is_compatible = (batch->gl_prim_type == geom->gl_prim_type) && (batch->inst == buf) &&
-                       (batch->phase == GPU_BATCH_READY_TO_DRAW);
+                       (buf->vbo_id != 0) && (batch->phase == GPU_BATCH_READY_TO_DRAW) &&
+                       (batch->elem == geom->elem);
   for (int i = 0; i < GPU_BATCH_VBO_MAX_LEN && is_compatible; i++) {
     if (batch->verts[i] != geom->verts[i]) {
       is_compatible = false;
@@ -167,7 +168,7 @@ GPUBatch *DRW_temp_batch_request(DRWInstanceDataList *idatalist,
                                  GPUPrimType prim_type)
 {
   GPUBatch *batch = BLI_memblock_alloc(idatalist->pool_batching);
-  bool is_compatible = (batch->verts[0] == buf) &&
+  bool is_compatible = (batch->verts[0] == buf) && (buf->vbo_id != 0) &&
                        (batch->gl_prim_type == convert_prim_type_to_gl(prim_type));
   if (!is_compatible) {
     GPU_batch_clear(batch);
@@ -284,9 +285,9 @@ DRWInstanceDataList *DRW_instance_data_list_create(void)
 {
   DRWInstanceDataList *idatalist = MEM_callocN(sizeof(DRWInstanceDataList), "DRWInstanceDataList");
 
-  idatalist->pool_batching = BLI_memblock_create(sizeof(GPUBatch), true);
-  idatalist->pool_instancing = BLI_memblock_create(sizeof(GPUBatch), true);
-  idatalist->pool_buffers = BLI_memblock_create(sizeof(DRWTempBufferHandle), true);
+  idatalist->pool_batching = BLI_memblock_create(sizeof(GPUBatch));
+  idatalist->pool_instancing = BLI_memblock_create(sizeof(GPUBatch));
+  idatalist->pool_buffers = BLI_memblock_create(sizeof(DRWTempBufferHandle));
 
   BLI_addtail(&g_idatalists, idatalist);
 

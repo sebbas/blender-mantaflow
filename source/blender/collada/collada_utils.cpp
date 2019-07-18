@@ -60,6 +60,7 @@ extern "C" {
 #include "ED_armature.h"
 #include "ED_screen.h"
 #include "ED_node.h"
+#include "ED_object.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -82,13 +83,16 @@ extern "C" {
 
 float bc_get_float_value(const COLLADAFW::FloatOrDoubleArray &array, unsigned int index)
 {
-  if (index >= array.getValuesCount())
+  if (index >= array.getValuesCount()) {
     return 0.0f;
+  }
 
-  if (array.getType() == COLLADAFW::MeshVertexData::DATA_TYPE_FLOAT)
+  if (array.getType() == COLLADAFW::MeshVertexData::DATA_TYPE_FLOAT) {
     return array.getFloatValues()->getData()[index];
-  else
+  }
+  else {
     return array.getDoubleValues()->getData()[index];
+  }
 }
 
 /* copied from /editors/object/object_relations.c */
@@ -96,32 +100,14 @@ int bc_test_parent_loop(Object *par, Object *ob)
 {
   /* test if 'ob' is a parent somewhere in par's parents */
 
-  if (par == NULL)
+  if (par == NULL) {
     return 0;
-  if (ob == par)
+  }
+  if (ob == par) {
     return 1;
+  }
 
   return bc_test_parent_loop(par->parent, ob);
-}
-
-void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer)
-{
-  Base *base;
-  for (base = (Base *)view_layer->object_bases.first; base; base = base->next) {
-    Object *cob = base->object;
-    if (cob->parent == ob) {
-      switch (ob->type) {
-        case OB_MESH:
-        case OB_CAMERA:
-        case OB_LAMP:
-        case OB_EMPTY:
-        case OB_ARMATURE:
-          child_set.push_back(cob);
-        default:
-          break;
-      }
-    }
-  }
 }
 
 bool bc_validateConstraints(bConstraint *con)
@@ -129,60 +115,40 @@ bool bc_validateConstraints(bConstraint *con)
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
 
   /* these we can skip completely (invalid constraints...) */
-  if (cti == NULL)
+  if (cti == NULL) {
     return false;
-  if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF))
+  }
+  if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
     return false;
+  }
 
   /* these constraints can't be evaluated anyway */
-  if (cti->evaluate_constraint == NULL)
+  if (cti->evaluate_constraint == NULL) {
     return false;
+  }
 
   /* influence == 0 should be ignored */
-  if (con->enforce == 0.0f)
+  if (con->enforce == 0.0f) {
     return false;
+  }
 
   /* validation passed */
   return true;
 }
 
-/* a shortened version of parent_set_exec()
- * if is_parent_space is true then ob->obmat will be multiplied by par->obmat before parenting */
-int bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
+bool bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
 {
-  Object workob;
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  Scene *sce = CTX_data_scene(C);
+  Scene *scene = CTX_data_scene(C);
+  int partype = PAR_OBJECT;
+  const bool xmirror = false;
+  const bool keep_transform = false;
 
-  if (!par || bc_test_parent_loop(par, ob))
-    return false;
-
-  ob->parent = par;
-  ob->partype = PAROBJECT;
-
-  ob->parsubstr[0] = 0;
-
-  if (is_parent_space) {
-    float mat[4][4];
-    /* calc par->obmat */
-    BKE_object_where_is_calc(depsgraph, sce, par);
-
-    /* move child obmat into world space */
-    mul_m4_m4m4(mat, par->obmat, ob->obmat);
-    copy_m4_m4(ob->obmat, mat);
+  if (par && is_parent_space) {
+    mul_m4_m4m4(ob->obmat, par->obmat, ob->obmat);
   }
 
-  /* apply child obmat (i.e. decompose it into rot/loc/size) */
-  BKE_object_apply_mat4(ob, ob->obmat, 0, 0);
-
-  /* compute parentinv */
-  BKE_object_workob_calc_parent(depsgraph, sce, ob, &workob);
-  invert_m4_m4(ob->parentinv, workob.obmat);
-
-  DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  DEG_id_tag_update(&par->id, ID_RECALC_TRANSFORM);
-
-  return true;
+  bool ok = ED_object_parent_set(NULL, C, scene, ob, par, partype, xmirror, keep_transform, NULL);
+  return ok;
 }
 
 std::vector<bAction *> bc_getSceneActions(const bContext *C, Object *ob, bool all_actions)
@@ -214,10 +180,12 @@ std::string bc_get_action_id(std::string action_name,
                              std::string axis_separator)
 {
   std::string result = action_name + "_" + channel_type;
-  if (ob_name.length() > 0)
+  if (ob_name.length() > 0) {
     result = ob_name + "_" + result;
-  if (axis_name.length() > 0)
+  }
+  if (axis_name.length() > 0) {
     result += axis_separator + axis_name;
+  }
   return translate_id(result);
 }
 
@@ -309,49 +277,6 @@ Object *bc_get_assigned_armature(Object *ob)
   return ob_arm;
 }
 
-/**
- * Returns the highest selected ancestor
- * returns NULL if no ancestor is selected
- * IMPORTANT: This function expects that all exported objects have set:
- * ob->id.tag & LIB_TAG_DOIT
- */
-Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob)
-
-{
-  Object *ancestor = ob;
-  while (ob->parent && bc_is_marked(ob->parent)) {
-    ob = ob->parent;
-    ancestor = ob;
-  }
-  return ancestor;
-}
-
-bool bc_is_base_node(LinkNode *export_set, Object *ob)
-{
-  Object *root = bc_get_highest_selected_ancestor_or_self(export_set, ob);
-  return (root == ob);
-}
-
-bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, ViewLayer *view_layer)
-{
-  bool to_export = (BLI_linklist_index(export_set, ob) != -1);
-
-  if (!to_export) {
-    /* Mark this object as to_export even if it is not in the
-     * export list, but it contains children to export. */
-
-    std::vector<Object *> children;
-    bc_get_children(children, ob, view_layer);
-    for (int i = 0; i < children.size(); i++) {
-      if (bc_is_in_Export_set(export_set, children[i], view_layer)) {
-        to_export = true;
-        break;
-      }
-    }
-  }
-  return to_export;
-}
-
 bool bc_has_object_type(LinkNode *export_set, short obtype)
 {
   LinkNode *node;
@@ -364,21 +289,6 @@ bool bc_has_object_type(LinkNode *export_set, short obtype)
     }
   }
   return false;
-}
-
-int bc_is_marked(Object *ob)
-{
-  return ob && (ob->id.tag & LIB_TAG_DOIT);
-}
-
-void bc_remove_mark(Object *ob)
-{
-  ob->id.tag &= ~LIB_TAG_DOIT;
-}
-
-void bc_set_mark(Object *ob)
-{
-  ob->id.tag |= LIB_TAG_DOIT;
 }
 
 /* Use bubble sort algorithm for sorting the export set */
@@ -415,14 +325,16 @@ bool bc_is_root_bone(Bone *aBone, bool deform_bones_only)
     Bone *root = NULL;
     Bone *bone = aBone;
     while (bone) {
-      if (!(bone->flag & BONE_NO_DEFORM))
+      if (!(bone->flag & BONE_NO_DEFORM)) {
         root = bone;
+      }
       bone = bone->parent;
     }
     return (aBone == root);
   }
-  else
+  else {
     return !(aBone->parent);
+  }
 }
 
 int bc_get_active_UVLayer(Object *ob)
@@ -556,8 +468,9 @@ void bc_triangulate_mesh(Mesh *me)
 bool bc_is_leaf_bone(Bone *bone)
 {
   for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
-    if (child->flag & BONE_CONNECTED)
+    if (child->flag & BONE_CONNECTED) {
       return false;
+    }
   }
   return true;
 }
@@ -567,8 +480,9 @@ EditBone *bc_get_edit_bone(bArmature *armature, char *name)
   EditBone *eBone;
 
   for (eBone = (EditBone *)armature->edbo->first; eBone; eBone = eBone->next) {
-    if (STREQ(name, eBone->name))
+    if (STREQ(name, eBone->name)) {
       return eBone;
+    }
   }
 
   return NULL;
@@ -582,10 +496,12 @@ int bc_set_layer(int bitfield, int layer, bool enable)
 {
   int bit = 1u << layer;
 
-  if (enable)
+  if (enable) {
     bitfield |= bit;
-  else
+  }
+  else {
     bitfield &= ~bit;
+  }
 
   return bitfield;
 }
@@ -614,8 +530,9 @@ BoneExtensionManager::~BoneExtensionManager()
     for (BoneExtensionMap::iterator ext_it = extended_bones->begin();
          ext_it != extended_bones->end();
          ++ext_it) {
-      if (ext_it->second != NULL)
+      if (ext_it->second != NULL) {
         delete ext_it->second;
+      }
     }
     extended_bones->clear();
     delete extended_bones;
@@ -710,8 +627,9 @@ float *BoneExtended::get_tail()
 
 inline bool isInteger(const std::string &s)
 {
-  if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+')))
+  if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) {
     return false;
+  }
 
   char *p;
   strtol(s.c_str(), &p, 10);
@@ -807,9 +725,11 @@ void bc_set_IDPropertyMatrix(EditBone *ebone, const char *key, float mat[4][4])
 
   IDProperty *data = IDP_New(IDP_ARRAY, &val, key);
   float *array = (float *)IDP_Array(data);
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
       array[4 * i + j] = mat[i][j];
+    }
+  }
 
   IDP_AddToGroup(idgroup, data);
 }
@@ -883,9 +803,11 @@ bool bc_get_property_matrix(Bone *bone, std::string key, float mat[4][4])
   IDProperty *property = bc_get_IDProperty(bone, key);
   if (property && property->type == IDP_ARRAY && property->len == 16) {
     float *array = (float *)IDP_Array(property);
-    for (int i = 0; i < 4; i++)
-      for (int j = 0; j < 4; j++)
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
         mat[i][j] = array[4 * i + j];
+      }
+    }
     return true;
   }
   return false;
@@ -906,8 +828,9 @@ void bc_get_property_vector(Bone *bone, std::string key, float val[3], const flo
  */
 static bool has_custom_props(Bone *bone, bool enabled, std::string key)
 {
-  if (!enabled)
+  if (!enabled) {
     return false;
+  }
 
   return (bc_get_IDProperty(bone, key + "_x") || bc_get_IDProperty(bone, key + "_y") ||
           bc_get_IDProperty(bone, key + "_z"));
@@ -918,15 +841,18 @@ void bc_enable_fcurves(bAction *act, char *bone_name)
   FCurve *fcu;
   char prefix[200];
 
-  if (bone_name)
+  if (bone_name) {
     BLI_snprintf(prefix, sizeof(prefix), "pose.bones[\"%s\"]", bone_name);
+  }
 
   for (fcu = (FCurve *)act->curves.first; fcu; fcu = fcu->next) {
     if (bone_name) {
-      if (STREQLEN(fcu->rna_path, prefix, strlen(prefix)))
+      if (STREQLEN(fcu->rna_path, prefix, strlen(prefix))) {
         fcu->flag &= ~FCURVE_DISABLED;
-      else
+      }
+      else {
         fcu->flag |= FCURVE_DISABLED;
+      }
     }
     else {
       fcu->flag &= ~FCURVE_DISABLED;
@@ -954,8 +880,9 @@ bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_open
     invert_m4_m4(ipar, parchan->pose_mat);
     mul_m4_m4m4(mat, ipar, pchan->pose_mat);
   }
-  else
+  else {
     copy_m4_m4(mat, pchan->pose_mat);
+  }
 
   /* OPEN_SIM_COMPATIBILITY
    * AFAIK animation to second life is via BVH, but no
@@ -983,8 +910,9 @@ bool bc_is_animated(BCMatrixSampleMap &values)
 {
   static float MIN_DISTANCE = 0.00001;
 
-  if (values.size() < 2)
+  if (values.size() < 2) {
     return false; /* need at least 2 entries to be not flat */
+  }
 
   BCMatrixSampleMap::iterator it;
   const BCMatrix *refmat = NULL;
@@ -996,8 +924,9 @@ bool bc_is_animated(BCMatrixSampleMap &values)
       continue;
     }
 
-    if (!matrix->in_range(*refmat, MIN_DISTANCE))
+    if (!matrix->in_range(*refmat, MIN_DISTANCE)) {
       return true;
+    }
   }
   return false;
 }
@@ -1007,36 +936,90 @@ bool bc_has_animations(Object *ob)
   /* Check for object, light and camera transform animations */
   if ((bc_getSceneObjectAction(ob) && bc_getSceneObjectAction(ob)->curves.first) ||
       (bc_getSceneLightAction(ob) && bc_getSceneLightAction(ob)->curves.first) ||
-      (bc_getSceneCameraAction(ob) && bc_getSceneCameraAction(ob)->curves.first))
+      (bc_getSceneCameraAction(ob) && bc_getSceneCameraAction(ob)->curves.first)) {
     return true;
+  }
 
   /* Check Material Effect parameter animations. */
   for (int a = 0; a < ob->totcol; a++) {
     Material *ma = give_current_material(ob, a + 1);
-    if (!ma)
+    if (!ma) {
       continue;
-    if (ma->adt && ma->adt->action && ma->adt->action->curves.first)
+    }
+    if (ma->adt && ma->adt->action && ma->adt->action->curves.first) {
       return true;
+    }
   }
 
   Key *key = BKE_key_from_object(ob);
-  if ((key && key->adt && key->adt->action) && key->adt->action->curves.first)
+  if ((key && key->adt && key->adt->action) && key->adt->action->curves.first) {
     return true;
+  }
 
   return false;
 }
 
-bool bc_has_animations(Scene *sce, LinkNode &export_set)
+bool bc_has_animations(Scene *sce, LinkNode *export_set)
 {
   LinkNode *node;
+  if (export_set) {
+    for (node = export_set; node; node = node->next) {
+      Object *ob = (Object *)node->link;
 
-  for (node = &export_set; node; node = node->next) {
-    Object *ob = (Object *)node->link;
-
-    if (bc_has_animations(ob))
-      return true;
+      if (bc_has_animations(ob)) {
+        return true;
+      }
+    }
   }
   return false;
+}
+
+void bc_add_global_transform(Matrix &to_mat,
+                             const Matrix &from_mat,
+                             const BCMatrix &global_transform,
+                             const bool invert)
+{
+  copy_m4_m4(to_mat, from_mat);
+  bc_add_global_transform(to_mat, global_transform, invert);
+}
+
+void bc_add_global_transform(Vector &to_vec,
+                             const Vector &from_vec,
+                             const BCMatrix &global_transform,
+                             const bool invert)
+{
+  copy_v3_v3(to_vec, from_vec);
+  bc_add_global_transform(to_vec, global_transform, invert);
+}
+
+void bc_add_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert)
+{
+  BCMatrix mat(to_mat);
+  mat.add_transform(global_transform, invert);
+  mat.get_matrix(to_mat);
+}
+
+void bc_add_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert)
+{
+  Matrix mat;
+  Vector from_vec;
+  copy_v3_v3(from_vec, to_vec);
+  global_transform.get_matrix(mat, false, 6, invert);
+  mul_v3_m4v3(to_vec, mat, from_vec);
+}
+
+void bc_apply_global_transform(Matrix &to_mat, const BCMatrix &global_transform, const bool invert)
+{
+  BCMatrix mat(to_mat);
+  mat.apply_transform(global_transform, invert);
+  mat.get_matrix(to_mat);
+}
+
+void bc_apply_global_transform(Vector &to_vec, const BCMatrix &global_transform, const bool invert)
+{
+  Matrix transform;
+  global_transform.get_matrix(transform);
+  mul_v3_m4v3(to_vec, transform, to_vec);
 }
 
 /**
@@ -1045,7 +1028,7 @@ bool bc_has_animations(Scene *sce, LinkNode &export_set)
  *
  * Note: This is old style for Blender <= 2.78 only kept for compatibility
  */
-void bc_create_restpose_mat(const ExportSettings *export_settings,
+void bc_create_restpose_mat(BCExportSettings &export_settings,
                             Bone *bone,
                             float to_mat[4][4],
                             float from_mat[4][4],
@@ -1056,9 +1039,9 @@ void bc_create_restpose_mat(const ExportSettings *export_settings,
   float scale[3];
   static const float V0[3] = {0, 0, 0};
 
-  if (!has_custom_props(bone, export_settings->keep_bind_info, "restpose_loc") &&
-      !has_custom_props(bone, export_settings->keep_bind_info, "restpose_rot") &&
-      !has_custom_props(bone, export_settings->keep_bind_info, "restpose_scale")) {
+  if (!has_custom_props(bone, export_settings.get_keep_bind_info(), "restpose_loc") &&
+      !has_custom_props(bone, export_settings.get_keep_bind_info(), "restpose_rot") &&
+      !has_custom_props(bone, export_settings.get_keep_bind_info(), "restpose_scale")) {
     /* No need */
     copy_m4_m4(to_mat, from_mat);
     return;
@@ -1067,7 +1050,7 @@ void bc_create_restpose_mat(const ExportSettings *export_settings,
   bc_decompose(from_mat, loc, rot, NULL, scale);
   loc_eulO_size_to_mat4(to_mat, loc, rot, scale, 6);
 
-  if (export_settings->keep_bind_info) {
+  if (export_settings.get_keep_bind_info()) {
     bc_get_property_vector(bone, "restpose_loc", loc, loc);
 
     if (use_local_space && bone->parent) {
@@ -1083,33 +1066,23 @@ void bc_create_restpose_mat(const ExportSettings *export_settings,
     }
   }
 
-  if (export_settings->keep_bind_info) {
-    if (bc_get_IDProperty(bone, "restpose_rot_x"))
+  if (export_settings.get_keep_bind_info()) {
+    if (bc_get_IDProperty(bone, "restpose_rot_x")) {
       rot[0] = DEG2RADF(bc_get_property(bone, "restpose_rot_x", 0));
-    if (bc_get_IDProperty(bone, "restpose_rot_y"))
+    }
+    if (bc_get_IDProperty(bone, "restpose_rot_y")) {
       rot[1] = DEG2RADF(bc_get_property(bone, "restpose_rot_y", 0));
-    if (bc_get_IDProperty(bone, "restpose_rot_z"))
+    }
+    if (bc_get_IDProperty(bone, "restpose_rot_z")) {
       rot[2] = DEG2RADF(bc_get_property(bone, "restpose_rot_z", 0));
+    }
   }
 
-  if (export_settings->keep_bind_info) {
+  if (export_settings.get_keep_bind_info()) {
     bc_get_property_vector(bone, "restpose_scale", scale, scale);
   }
 
   loc_eulO_size_to_mat4(to_mat, loc, rot, scale, 6);
-}
-
-/*
- * Make 4*4 matrices better readable
- */
-void bc_sanitize_mat(float mat[4][4], int precision)
-{
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++) {
-      double val = (double)mat[i][j];
-      val = double_round(val, precision);
-      mat[i][j] = (float)val;
-    }
 }
 
 void bc_sanitize_v3(float v[3], int precision)
@@ -1121,13 +1094,6 @@ void bc_sanitize_v3(float v[3], int precision)
   }
 }
 
-void bc_sanitize_mat(double mat[4][4], int precision)
-{
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      mat[i][j] = double_round(mat[i][j], precision);
-}
-
 void bc_sanitize_v3(double v[3], int precision)
 {
   for (int i = 0; i < 3; i++) {
@@ -1137,23 +1103,29 @@ void bc_sanitize_v3(double v[3], int precision)
 
 void bc_copy_m4_farray(float r[4][4], float *a)
 {
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
       r[i][j] = *a++;
+    }
+  }
 }
 
 void bc_copy_farray_m4(float *r, float a[4][4])
 {
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
       *r++ = a[i][j];
+    }
+  }
 }
 
 void bc_copy_darray_m4d(double *r, double a[4][4])
 {
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
       *r++ = a[i][j];
+    }
+  }
 }
 
 void bc_copy_v44_m4d(std::vector<std::vector<double>> &r, double (&a)[4][4])
@@ -1349,37 +1321,74 @@ void bc_add_default_shader(bContext *C, Material *ma)
 
 COLLADASW::ColorOrTexture bc_get_base_color(Material *ma)
 {
+  Color default_color = {0.8, 0.8, 0.8, 1.0};
+  bNode *shader = bc_get_master_shader(ma);
+  if (ma->use_nodes && shader) {
+    return bc_get_cot_from_shader(shader, "Base Color", default_color);
+  }
+  else {
+    return bc_get_cot(default_color);
+  }
+}
+
+COLLADASW::ColorOrTexture bc_get_emission(Material *ma)
+{
+  Color default_color = {0, 0, 0, 1};
+  bNode *shader = bc_get_master_shader(ma);
+  if (ma->use_nodes && shader) {
+    return bc_get_cot_from_shader(shader, "Emission", default_color);
+  }
+  else {
+    return bc_get_cot(default_color); /* default black */
+  }
+}
+
+COLLADASW::ColorOrTexture bc_get_ambient(Material *ma)
+{
+  Color default_color = {0, 0, 0, 1.0};
+  return bc_get_cot(default_color);
+}
+
+COLLADASW::ColorOrTexture bc_get_specular(Material *ma)
+{
+  Color default_color = {0, 0, 0, 1.0};
+  return bc_get_cot(default_color);
+}
+
+COLLADASW::ColorOrTexture bc_get_reflective(Material *ma)
+{
+  Color default_color = {0, 0, 0, 1.0};
+  return bc_get_cot(default_color);
+}
+
+double bc_get_alpha(Material *ma)
+{
+  double alpha = ma->a; /* fallback if no socket found */
   bNode *master_shader = bc_get_master_shader(ma);
   if (ma->use_nodes && master_shader) {
-    return bc_get_base_color(master_shader);
+    bc_get_float_from_shader(master_shader, alpha, "Alpha");
   }
-  else {
-    return bc_get_cot(ma->r, ma->g, ma->b, ma->a);
-  }
+  return alpha;
 }
 
-COLLADASW::ColorOrTexture bc_get_base_color(bNode *shader)
+double bc_get_ior(Material *ma)
 {
-  bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, "Base Color");
-  if (socket) {
-    bNodeSocketValueRGBA *dcol = (bNodeSocketValueRGBA *)socket->default_value;
-    float *col = dcol->value;
-    return bc_get_cot(col[0], col[1], col[2], col[3]);
+  double ior = -1; /* fallback if no socket found */
+  bNode *master_shader = bc_get_master_shader(ma);
+  if (ma->use_nodes && master_shader) {
+    bc_get_float_from_shader(master_shader, ior, "IOR");
   }
-  else {
-    return bc_get_cot(0.8, 0.8, 0.8, 1.0); /* default white */
-  }
+  return ior;
 }
 
-bool bc_get_reflectivity(bNode *shader, double &reflectivity)
+double bc_get_shininess(Material *ma)
 {
-  bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, "Specular");
-  if (socket) {
-    bNodeSocketValueFloat *ref = (bNodeSocketValueFloat *)socket->default_value;
-    reflectivity = (double)ref->value;
-    return true;
+  double ior = -1; /* fallback if no socket found */
+  bNode *master_shader = bc_get_master_shader(ma);
+  if (ma->use_nodes && master_shader) {
+    bc_get_float_from_shader(master_shader, ior, "Roughness");
   }
-  return false;
+  return ior;
 }
 
 double bc_get_reflectivity(Material *ma)
@@ -1387,9 +1396,35 @@ double bc_get_reflectivity(Material *ma)
   double reflectivity = ma->spec; /* fallback if no socket found */
   bNode *master_shader = bc_get_master_shader(ma);
   if (ma->use_nodes && master_shader) {
-    bc_get_reflectivity(master_shader, reflectivity);
+    bc_get_float_from_shader(master_shader, reflectivity, "Metallic");
   }
   return reflectivity;
+}
+
+double bc_get_float_from_shader(bNode *shader, double &val, std::string nodeid)
+{
+  bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, nodeid.c_str());
+  if (socket) {
+    bNodeSocketValueFloat *ref = (bNodeSocketValueFloat *)socket->default_value;
+    val = (double)ref->value;
+    return true;
+  }
+  return false;
+}
+
+COLLADASW::ColorOrTexture bc_get_cot_from_shader(bNode *shader,
+                                                 std::string nodeid,
+                                                 Color &default_color)
+{
+  bNodeSocket *socket = nodeFindSocket(shader, SOCK_IN, nodeid.c_str());
+  if (socket) {
+    bNodeSocketValueRGBA *dcol = (bNodeSocketValueRGBA *)socket->default_value;
+    float *col = dcol->value;
+    return bc_get_cot(col);
+  }
+  else {
+    return bc_get_cot(default_color); /* default black */
+  }
 }
 
 bNode *bc_get_master_shader(Material *ma)
@@ -1408,6 +1443,13 @@ bNode *bc_get_master_shader(Material *ma)
 COLLADASW::ColorOrTexture bc_get_cot(float r, float g, float b, float a)
 {
   COLLADASW::Color color(r, g, b, a);
+  COLLADASW::ColorOrTexture cot(color);
+  return cot;
+}
+
+COLLADASW::ColorOrTexture bc_get_cot(Color col)
+{
+  COLLADASW::Color color(col[0], col[1], col[2], col[3]);
   COLLADASW::ColorOrTexture cot(color);
   return cot;
 }

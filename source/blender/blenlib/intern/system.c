@@ -33,7 +33,10 @@
 #if defined(WIN32)
 #  include <intrin.h>
 #  include <windows.h>
+#  pragma warning(push)
+#  pragma warning(disable : 4091)
 #  include <dbghelp.h>
+#  pragma warning(pop)
 #else
 #  include <execinfo.h>
 #  include <unistd.h>
@@ -122,7 +125,7 @@ void BLI_system_backtrace(FILE *fp)
   for (i = 0; i < nframes; i++) {
     SymFromAddr(process, (DWORD64)(stack[i]), 0, symbolinfo);
 
-    fprintf(fp, "%u: %s - 0x%0X\n", nframes - i - 1, symbolinfo->Name, symbolinfo->Address);
+    fprintf(fp, "%u: %s - 0x%0llX\n", nframes - i - 1, symbolinfo->Name, symbolinfo->Address);
   }
 
   MEM_freeN(symbolinfo);

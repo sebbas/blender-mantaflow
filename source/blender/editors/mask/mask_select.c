@@ -36,12 +36,15 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "ED_clip.h"
 #include "ED_screen.h"
 #include "ED_select_utils.h"
 #include "ED_mask.h" /* own include */
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+
+#include "DEG_depsgraph.h"
 
 #include "mask_intern.h" /* own include */
 
@@ -209,6 +212,17 @@ void ED_mask_select_flush_all(Mask *mask)
   }
 }
 
+void ED_mask_deselect_all(const bContext *C)
+{
+  Mask *mask = CTX_data_edit_mask(C);
+  if (mask) {
+    ED_mask_select_toggle_all(mask, SEL_DESELECT);
+    ED_mask_select_flush_all(mask);
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -223,6 +237,7 @@ static int select_all_exec(bContext *C, wmOperator *op)
   ED_mask_select_toggle_all(mask, action);
   ED_mask_select_flush_all(mask);
 
+  DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
   return OPERATOR_FINISHED;
@@ -326,6 +341,7 @@ static int select_exec(bContext *C, wmOperator *op)
 
     ED_mask_select_flush_all(mask);
 
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
     return OPERATOR_FINISHED;
@@ -365,18 +381,17 @@ static int select_exec(bContext *C, wmOperator *op)
 
       ED_mask_select_flush_all(mask);
 
+      DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
       return OPERATOR_FINISHED;
     }
     else if (deselect_all) {
-      ED_mask_select_toggle_all(mask, SEL_DESELECT);
-
-      ED_mask_select_flush_all(mask);
-
-      WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
-
-      return OPERATOR_FINISHED;
+      /* For clip editor tracks, leave deselect all to clip editor. */
+      if (!ED_clip_can_select(C)) {
+        ED_mask_deselect_all(C);
+        return OPERATOR_FINISHED;
+      }
     }
   }
 
@@ -488,6 +503,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   if (changed) {
     ED_mask_select_flush_all(mask);
 
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
     return OPERATOR_FINISHED;
@@ -592,6 +608,7 @@ static bool do_lasso_select_mask(bContext *C,
   if (changed) {
     ED_mask_select_flush_all(mask);
 
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
   }
 
@@ -719,6 +736,7 @@ static int circle_select_exec(bContext *C, wmOperator *op)
   if (changed) {
     ED_mask_select_flush_all(mask);
 
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
     return OPERATOR_FINISHED;
@@ -783,6 +801,7 @@ static int mask_select_linked_pick_invoke(bContext *C, wmOperator *op, const wmE
   if (changed) {
     ED_mask_select_flush_all(mask);
 
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
     return OPERATOR_FINISHED;
@@ -840,6 +859,7 @@ static int mask_select_linked_exec(bContext *C, wmOperator *UNUSED(op))
   if (changed) {
     ED_mask_select_flush_all(mask);
 
+    DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
     return OPERATOR_FINISHED;
@@ -940,6 +960,7 @@ static int mask_select_more_less(bContext *C, bool more)
     }
   }
 
+  DEG_id_tag_update(&mask->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_MASK | ND_SELECT, mask);
 
   return OPERATOR_FINISHED;

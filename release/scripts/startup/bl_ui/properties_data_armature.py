@@ -21,7 +21,7 @@ import bpy
 from bpy.types import Panel, Menu
 from rna_prop_ui import PropertyPanel
 
-from .properties_animviz import (
+from bl_ui.properties_animviz import (
     MotionPathButtonsPanel,
     MotionPathButtonsPanel_display,
 )
@@ -96,8 +96,6 @@ class DATA_PT_display(ArmatureButtonsPanel, Panel):
         if ob:
             col = flow.column()
             col.prop(ob, "show_in_front", text="In Front")
-        col = flow.column()
-        col.prop(arm, "use_deform_delay", text="Delay Refresh")
 
 
 class DATA_MT_bone_group_context_menu(Menu):

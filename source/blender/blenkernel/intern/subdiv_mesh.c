@@ -63,7 +63,7 @@ typedef struct SubdivMeshContext {
    * Averaging is happening for vertices along the coarse edges and corners.
    * This is needed for both displacement and normals.
    *
-   * Displacement is being accumulated to a verticies coordinates, since those
+   * Displacement is being accumulated to a vertices coordinates, since those
    * are not needed during traversal of edge/corner vertices.
    *
    * For normals we are using dedicated array, since we can not use same
@@ -169,7 +169,7 @@ static void loops_of_ptex_get(const SubdivMeshContext *ctx,
 typedef struct VerticesForInterpolation {
   /* This field points to a vertex data which is to be used for interpolation.
    * The idea is to avoid unnecessary allocations for regular faces, where
-   * we can simply use corner verticies. */
+   * we can simply use corner vertices. */
   const CustomData *vertex_data;
   /* Vertices data calculated for ptex corners. There are always 4 elements
    * in this custom data, aligned the following way:
@@ -182,7 +182,7 @@ typedef struct VerticesForInterpolation {
    * Is allocated for non-regular faces (triangles and n-gons). */
   CustomData vertex_data_storage;
   bool vertex_data_storage_allocated;
-  /* Infices within vertex_data to interpolate for. The indices are aligned
+  /* Indices within vertex_data to interpolate for. The indices are aligned
    * with uv coordinates in a similar way as indices in loop_data_storage. */
   int vertex_indices[4];
 } VerticesForInterpolation;
@@ -302,7 +302,7 @@ static void vertex_interpolation_end(VerticesForInterpolation *vertex_interpolat
 typedef struct LoopsForInterpolation {
   /* This field points to a loop data which is to be used for interpolation.
    * The idea is to avoid unnecessary allocations for regular faces, where
-   * we can simply interpolate corner verticies. */
+   * we can simply interpolate corner vertices. */
   const CustomData *loop_data;
   /* Loops data calculated for ptex corners. There are always 4 elements
    * in this custom data, aligned the following way:
@@ -570,6 +570,8 @@ static void evaluate_vertex_and_apply_displacement_copy(const SubdivMeshContext 
     normalize_v3(N);
     normal_float_to_short_v3(subdiv_vert->no, N);
   }
+  /* Remove facedot flag. This can happen if there is more than one subsurf modifier. */
+  subdiv_vert->flag &= ~ME_VERT_FACEDOT;
 }
 
 static void evaluate_vertex_and_apply_displacement_interpolate(
@@ -719,6 +721,31 @@ static void subdiv_mesh_vertex_edge(const SubdivForeachContext *foreach_context,
       ctx, ptex_face_index, u, v, &tls->vertex_interpolation, subdiv_vert);
 }
 
+static bool subdiv_mesh_is_center_vertex(const MPoly *coarse_poly, const float u, const float v)
+{
+  if (coarse_poly->totloop == 4) {
+    if (u == 0.5f && v == 0.5f) {
+      return true;
+    }
+  }
+  else {
+    if (u == 1.0f && v == 1.0f) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void subdiv_mesh_tag_center_vertex(const MPoly *coarse_poly,
+                                          MVert *subdiv_vert,
+                                          const float u,
+                                          const float v)
+{
+  if (subdiv_mesh_is_center_vertex(coarse_poly, u, v)) {
+    subdiv_vert->flag |= ME_VERT_FACEDOT;
+  }
+}
+
 static void subdiv_mesh_vertex_inner(const SubdivForeachContext *foreach_context,
                                      void *tls_v,
                                      const int ptex_face_index,
@@ -741,6 +768,7 @@ static void subdiv_mesh_vertex_inner(const SubdivForeachContext *foreach_context
   subdiv_vertex_data_interpolate(ctx, subdiv_vert, &tls->vertex_interpolation, u, v);
   eval_final_point_and_vertex_normal(
       subdiv, ptex_face_index, u, v, subdiv_vert->co, subdiv_vert->no);
+  subdiv_mesh_tag_center_vertex(coarse_poly, subdiv_vert, u, v);
 }
 
 /* =============================================================================
@@ -1092,14 +1120,14 @@ static void setup_foreach_callbacks(const SubdivMeshContext *subdiv_context,
   memset(foreach_context, 0, sizeof(*foreach_context));
   /* General information. */
   foreach_context->topology_info = subdiv_mesh_topology_info;
-  /* Every boundary geometry. Used for dispalcement and normals averaging. */
+  /* Every boundary geometry. Used for displacement and normals averaging. */
   if (subdiv_context->can_evaluate_normals || subdiv_context->have_displacement) {
     foreach_context->vertex_every_corner = subdiv_mesh_vertex_every_corner;
     foreach_context->vertex_every_edge = subdiv_mesh_vertex_every_edge;
   }
   else {
-    foreach_context->vertex_every_corner = NULL;
-    foreach_context->vertex_every_edge = NULL;
+    foreach_context->vertex_every_corner = subdiv_mesh_vertex_every_corner;
+    foreach_context->vertex_every_edge = subdiv_mesh_vertex_every_edge;
   }
   foreach_context->vertex_corner = subdiv_mesh_vertex_corner;
   foreach_context->vertex_edge = subdiv_mesh_vertex_edge;

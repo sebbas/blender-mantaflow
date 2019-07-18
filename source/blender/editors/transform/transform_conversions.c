@@ -812,7 +812,7 @@ static void bone_children_clear_transflag(int mode, short around, ListBase *lb)
       bone->flag |= BONE_TRANSFORM_CHILD;
     }
     else {
-      bone->flag &= ~BONE_TRANSFORM;
+      bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
     }
 
     bone_children_clear_transflag(mode, around, &bone->childbase);
@@ -838,14 +838,14 @@ int count_set_pose_transflags(Object *ob,
         bone->flag |= BONE_TRANSFORM;
       }
       else {
-        bone->flag &= ~BONE_TRANSFORM;
+        bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
       }
 
       bone->flag &= ~BONE_HINGE_CHILD_TRANSFORM;
       bone->flag &= ~BONE_TRANSFORM_CHILD;
     }
     else {
-      bone->flag &= ~BONE_TRANSFORM;
+      bone->flag &= ~(BONE_TRANSFORM | BONE_TRANSFORM_MIRROR);
     }
   }
 
@@ -1289,7 +1289,6 @@ static void createTransPose(TransInfo *t)
     bPose *pose = ob->pose;
 
     bArmature *arm;
-    short ik_on = 0;
 
     /* check validity of state */
     arm = BKE_armature_from_object(tc->poseobj);
@@ -1315,8 +1314,7 @@ static void createTransPose(TransInfo *t)
 
     /* do we need to add temporal IK chains? */
     if ((pose->flag & POSE_AUTO_IK) && t->mode == TFM_TRANSLATION) {
-      ik_on = pose_grab_with_ik(bmain, ob);
-      if (ik_on) {
+      if (pose_grab_with_ik(bmain, ob)) {
         t->flag |= T_AUTOIK;
         has_translate_rotate[0] = true;
       }
@@ -1359,7 +1357,6 @@ static void createTransPose(TransInfo *t)
     Object *ob = tc->poseobj;
     TransData *td;
     TransDataExtension *tdx;
-    short ik_on = 0;
     int i;
 
     PoseInitData_Mirror *pid = tc->custom.type.data;
@@ -1407,7 +1404,7 @@ static void createTransPose(TransInfo *t)
     }
 
     /* initialize initial auto=ik chainlen's? */
-    if (ik_on) {
+    if (t->flag & T_AUTOIK) {
       transform_autoik_update(t, 0);
     }
   }
@@ -1835,7 +1832,12 @@ static void calc_distanceCurveVerts(TransData *head, TransData *tail)
     }
     else if (td_near) {
       float dist;
-      dist = len_v3v3(td_near->center, td->center);
+      float vec[3];
+
+      sub_v3_v3v3(vec, td_near->center, td->center);
+      mul_m3_v3(head->mtx, vec);
+      dist = len_v3(vec);
+
       if (dist < (td - 1)->dist) {
         td->dist = (td - 1)->dist;
       }
@@ -1856,7 +1858,12 @@ static void calc_distanceCurveVerts(TransData *head, TransData *tail)
     }
     else if (td_near) {
       float dist;
-      dist = len_v3v3(td_near->center, td->center);
+      float vec[3];
+
+      sub_v3_v3v3(vec, td_near->center, td->center);
+      mul_m3_v3(head->mtx, vec);
+      dist = len_v3(vec);
+
       if (td->flag & TD_NOTCONNECTED || dist < td->dist || (td + 1)->dist < td->dist) {
         td->flag &= ~TD_NOTCONNECTED;
         if (dist < (td + 1)->dist) {
@@ -2527,6 +2534,7 @@ void flushTransParticles(TransInfo *t)
     }
 
     PE_update_object(t->depsgraph, scene, OBACT(view_layer), 1);
+    BKE_particle_batch_cache_dirty_tag(psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
     DEG_id_tag_update(&ob->id, ID_RECALC_PSYS_REDO);
   }
 }
@@ -2925,11 +2933,16 @@ static void VertsToTransData(TransInfo *t,
   }
   else if (t->mode == TFM_SKIN_RESIZE) {
     MVertSkin *vs = CustomData_bmesh_get(&em->bm->vdata, eve->head.data, CD_MVERT_SKIN);
-    /* skin node size */
-    td->ext = tx;
-    copy_v3_v3(tx->isize, vs->radius);
-    tx->size = vs->radius;
-    td->val = vs->radius;
+    if (vs) {
+      /* skin node size */
+      td->ext = tx;
+      copy_v3_v3(tx->isize, vs->radius);
+      tx->size = vs->radius;
+      td->val = vs->radius;
+    }
+    else {
+      td->flag |= TD_SKIP;
+    }
   }
   else if (t->mode == TFM_SHRINKFATTEN) {
     td->ext = tx;
@@ -3052,6 +3065,8 @@ static void createTransEditVerts(TransInfo *t)
     if (modifiers_getCageIndex(t->scene, tc->obedit, NULL, 1) != -1) {
       int totleft = -1;
       if (modifiers_isCorrectableDeformed(t->scene, tc->obedit)) {
+        BKE_scene_graph_evaluated_ensure(t->depsgraph, CTX_data_main(t->context));
+
         /* Use evaluated state because we need b-bone cache. */
         Scene *scene_eval = (Scene *)DEG_get_evaluated_id(t->depsgraph, &t->scene->id);
         Object *obedit_eval = (Object *)DEG_get_evaluated_id(t->depsgraph, &tc->obedit->id);
@@ -3072,7 +3087,7 @@ static void createTransEditVerts(TransInfo *t)
       if (totleft > 0)
 #endif
       {
-        mappedcos = BKE_crazyspace_get_mapped_editverts(t->depsgraph, t->scene, tc->obedit);
+        mappedcos = BKE_crazyspace_get_mapped_editverts(t->depsgraph, tc->obedit);
         quats = MEM_mallocN(em->bm->totvert * sizeof(*quats), "crazy quats");
         BKE_crazyspace_set_quats_editmesh(em, defcos, mappedcos, quats, !prop_mode);
         if (mappedcos) {
@@ -3693,50 +3708,48 @@ bool clipUVTransform(TransInfo *t, float vec[2], const bool resize)
     for (a = 0, td = tc->data; a < tc->data_len; a++, td++) {
       minmax_v2v2_v2(min, max, td->loc);
     }
+  }
 
-    if (resize) {
-      if (min[0] < 0.0f && t->center_global[0] > 0.0f &&
-          t->center_global[0] < t->aspect[0] * 0.5f) {
-        vec[0] *= t->center_global[0] / (t->center_global[0] - min[0]);
-      }
-      else if (max[0] > t->aspect[0] && t->center_global[0] < t->aspect[0]) {
-        vec[0] *= (t->center_global[0] - t->aspect[0]) / (t->center_global[0] - max[0]);
-      }
-      else {
-        clipx = 0;
-      }
-
-      if (min[1] < 0.0f && t->center_global[1] > 0.0f &&
-          t->center_global[1] < t->aspect[1] * 0.5f) {
-        vec[1] *= t->center_global[1] / (t->center_global[1] - min[1]);
-      }
-      else if (max[1] > t->aspect[1] && t->center_global[1] < t->aspect[1]) {
-        vec[1] *= (t->center_global[1] - t->aspect[1]) / (t->center_global[1] - max[1]);
-      }
-      else {
-        clipy = 0;
-      }
+  if (resize) {
+    if (min[0] < 0.0f && t->center_global[0] > 0.0f && t->center_global[0] < t->aspect[0] * 0.5f) {
+      vec[0] *= t->center_global[0] / (t->center_global[0] - min[0]);
+    }
+    else if (max[0] > t->aspect[0] && t->center_global[0] < t->aspect[0]) {
+      vec[0] *= (t->center_global[0] - t->aspect[0]) / (t->center_global[0] - max[0]);
     }
     else {
-      if (min[0] < 0.0f) {
-        vec[0] -= min[0];
-      }
-      else if (max[0] > t->aspect[0]) {
-        vec[0] -= max[0] - t->aspect[0];
-      }
-      else {
-        clipx = 0;
-      }
+      clipx = 0;
+    }
 
-      if (min[1] < 0.0f) {
-        vec[1] -= min[1];
-      }
-      else if (max[1] > t->aspect[1]) {
-        vec[1] -= max[1] - t->aspect[1];
-      }
-      else {
-        clipy = 0;
-      }
+    if (min[1] < 0.0f && t->center_global[1] > 0.0f && t->center_global[1] < t->aspect[1] * 0.5f) {
+      vec[1] *= t->center_global[1] / (t->center_global[1] - min[1]);
+    }
+    else if (max[1] > t->aspect[1] && t->center_global[1] < t->aspect[1]) {
+      vec[1] *= (t->center_global[1] - t->aspect[1]) / (t->center_global[1] - max[1]);
+    }
+    else {
+      clipy = 0;
+    }
+  }
+  else {
+    if (min[0] < 0.0f) {
+      vec[0] -= min[0];
+    }
+    else if (max[0] > t->aspect[0]) {
+      vec[0] -= max[0] - t->aspect[0];
+    }
+    else {
+      clipx = 0;
+    }
+
+    if (min[1] < 0.0f) {
+      vec[1] -= min[1];
+    }
+    else if (max[1] > t->aspect[1]) {
+      vec[1] -= max[1] - t->aspect[1];
+    }
+    else {
+      clipy = 0;
     }
   }
 
@@ -6426,10 +6439,15 @@ static void trans_object_base_deps_flag_prepare(ViewLayer *view_layer)
   }
 }
 
-static void set_trans_object_base_deps_flag_cb(ID *id, void *UNUSED(user_data))
+static void set_trans_object_base_deps_flag_cb(ID *id,
+                                               eDepsObjectComponentType component,
+                                               void *UNUSED(user_data))
 {
   /* Here we only handle object IDs. */
   if (GS(id->name) != ID_OB) {
+    return;
+  }
+  if (!ELEM(component, DEG_OB_COMP_TRANSFORM, DEG_OB_COMP_GEOMETRY)) {
     return;
   }
   id->tag |= LIB_TAG_DOIT;
@@ -6438,7 +6456,8 @@ static void set_trans_object_base_deps_flag_cb(ID *id, void *UNUSED(user_data))
 static void flush_trans_object_base_deps_flag(Depsgraph *depsgraph, Object *object)
 {
   object->id.tag |= LIB_TAG_DOIT;
-  DEG_foreach_dependent_ID(depsgraph, &object->id, set_trans_object_base_deps_flag_cb, NULL);
+  DEG_foreach_dependent_ID_component(
+      depsgraph, &object->id, DEG_OB_COMP_TRANSFORM, set_trans_object_base_deps_flag_cb, NULL);
 }
 
 static void trans_object_base_deps_flag_finish(ViewLayer *view_layer)
@@ -6776,7 +6795,8 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
     }
 
     for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
-      if (pchan->bone->flag & BONE_TRANSFORM) {
+      if (pchan->bone->flag & (BONE_TRANSFORM | BONE_TRANSFORM_MIRROR)) {
+
         ListBase dsources = {NULL, NULL};
 
         /* clear any 'unkeyed' flag it may have */
@@ -7079,6 +7099,10 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
           FOREACH_TRANS_DATA_CONTAINER (t, tc) {
             EdgeSlideData *sld = tc->custom.mode.data;
+
+            if (sld == NULL) {
+              continue;
+            }
 
             /* Free temporary faces to avoid auto-merging and deleting
              * during cleanup - psy-fi. */
@@ -7423,12 +7447,10 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
 
-      bArmature *arm;
       bPoseChannel *pchan;
       short targetless_ik = 0;
 
       ob = tc->poseobj;
-      arm = ob->data;
 
       if ((t->flag & T_AUTOIK) && (t->options & CTX_AUTOCONFIRM)) {
         /* when running transform non-interactively (operator exec),
@@ -7465,14 +7487,6 @@ void special_aftertrans_update(bContext *C, TransInfo *t)
        * only if transform wasn't canceled (or TFM_DUMMY) */
       if (!canceled && (t->mode != TFM_DUMMY)) {
         autokeyframe_pose(C, t->scene, ob, t->mode, targetless_ik);
-        DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-      }
-      else if (arm->flag & ARM_DELAYDEFORM) {
-        /* TODO(sergey): Armature is already updated by recalcData(), so we
-         * might save some time by skipping re-evaluating it. But this isn't
-         * possible yet within new dependency graph, and also other contexts
-         * might need to update their CoW copies.
-         */
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       }
       else {
@@ -9651,6 +9665,9 @@ void createTransData(bContext *C, TransInfo *t)
     has_transform_context = false;
   }
   else {
+    /* Needed for correct Object.obmat after duplication, see: T62135. */
+    BKE_scene_graph_evaluated_ensure(t->depsgraph, CTX_data_main(t->context));
+
     createTransObject(C, t);
     countAndCleanTransDataContainer(t);
     t->flag |= T_OBJECT;

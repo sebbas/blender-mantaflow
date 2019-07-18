@@ -496,7 +496,7 @@ static float rotation_contribution(TrackStabilizationBase *track_ref,
  * Currently, the public API functions do not support this flexibility.
  * Rather, rotation will always be applied around a fixed origin.
  * As a workaround, we shift the image after rotation to match the
- * desired rotation centre. And since this offset needs to be applied
+ * desired rotation center. And since this offset needs to be applied
  * after the rotation and scaling, we can collapse it with the
  * translation compensation, which is also a lateral shift (offset).
  * The offset to apply is intended_pivot - rotated_pivot
@@ -640,9 +640,9 @@ static bool average_track_contributions(StabContext *ctx,
 
 /* Calculate weight center of location tracks for given frame.
  * This function performs similar calculations as average_track_contributions(),
- * but does not require the tracks to be initialized for stabilisation. Moreover,
+ * but does not require the tracks to be initialized for stabilization. Moreover,
  * when there is no usable tracking data for the given frame number, data from
- * a neighbouring frame is used. Thus this function can be used to calculate
+ * a neighboring frame is used. Thus this function can be used to calculate
  * a starting point on initialization.
  */
 static void average_marker_positions(StabContext *ctx, int framenr, float r_ref_pos[2])
@@ -672,14 +672,14 @@ static void average_marker_positions(StabContext *ctx, int framenr, float r_ref_
   }
   else {
     /* No usable tracking data on any track on this frame.
-     * Use data from neighbouring frames to extrapolate...
+     * Use data from neighboring frames to extrapolate...
      */
     int next_lower = MINAFRAME;
     int next_higher = MAXFRAME;
     use_values_from_fcurves(ctx, true);
     for (track = tracking->tracks.first; track; track = track->next) {
       /* Note: we deliberately do not care if this track
-       *       is already initialized for stabilisation */
+       *       is already initialized for stabilization. */
       if (track->flag & TRACK_USE_2D_STAB) {
         int startpoint = search_closest_marker_index(track, framenr);
         retrieve_next_higher_usable_frame(ctx, track, startpoint, framenr, &next_higher);

@@ -19,8 +19,13 @@
 MaterialNode::MaterialNode(bContext *C, Material *ma, KeyImageMap &key_image_map)
     : mContext(C), material(ma), effect(nullptr), key_image_map(&key_image_map)
 {
-  ntree = prepare_material_nodetree();
+  bNodeTree *new_ntree = prepare_material_nodetree();
   setShaderType();
+  if (new_ntree) {
+    shader_node = add_node(SH_NODE_BSDF_PRINCIPLED, 0, 300, "");
+    output_node = add_node(SH_NODE_OUTPUT_MATERIAL, 300, 300, "");
+    add_link(shader_node, 0, output_node, 0);
+  }
 }
 
 MaterialNode::MaterialNode(bContext *C,
@@ -29,7 +34,7 @@ MaterialNode::MaterialNode(bContext *C,
                            UidImageMap &uid_image_map)
     : mContext(C), material(ma), effect(ef), uid_image_map(&uid_image_map)
 {
-  ntree = prepare_material_nodetree();
+  prepare_material_nodetree();
   setShaderType();
 
   std::map<std::string, bNode *> nmap;
@@ -86,13 +91,18 @@ void MaterialNode::setShaderType()
 #endif
 }
 
+// returns null if material already has a node tree
 bNodeTree *MaterialNode::prepare_material_nodetree()
 {
-  if (material->nodetree == NULL) {
-    material->nodetree = ntreeAddTree(NULL, "Shader Nodetree", "ShaderNodeTree");
-    material->use_nodes = true;
+  if (material->nodetree) {
+    ntree = material->nodetree;
+    return NULL;
   }
-  return material->nodetree;
+
+  material->nodetree = ntreeAddTree(NULL, "Shader Nodetree", "ShaderNodeTree");
+  material->use_nodes = true;
+  ntree = material->nodetree;
+  return ntree;
 }
 
 bNode *MaterialNode::add_node(int node_type, int locx, int locy, std::string label)
@@ -118,25 +128,70 @@ void MaterialNode::add_link(bNode *from_node, int from_index, bNode *to_node, in
   nodeAddLink(ntree, from_node, from_socket, to_node, to_socket);
 }
 
-void MaterialNode::set_reflectivity(float val)
+void MaterialNode::set_reflectivity(COLLADAFW::FloatOrParam &val)
 {
-  material->metallic = val;
-  bNodeSocket *socket = (bNodeSocket *)BLI_findlink(&shader_node->inputs, BC_PBR_METALLIC);
-  *(float *)socket->default_value = val;
+  float reflectivity = val.getFloatValue();
+  if (reflectivity >= 0) {
+    bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "Metallic");
+    ((bNodeSocketValueFloat *)socket->default_value)->value = reflectivity;
+    material->metallic = reflectivity;
+  }
 }
 
-void MaterialNode::set_ior(float val)
+#if 0
+// needs rework to be done for 2.81
+void MaterialNode::set_shininess(COLLADAFW::FloatOrParam &val)
 {
-  bNodeSocket *socket = (bNodeSocket *)BLI_findlink(&shader_node->inputs, BC_PBR_IOR);
-  *(float *)socket->default_value = val;
+  float roughness = val.getFloatValue();
+  if (roughness >= 0) {
+    bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "Roughness");
+    ((bNodeSocketValueFloat *)socket->default_value)->value = roughness;
+  }
+}
+#endif
+
+void MaterialNode::set_ior(COLLADAFW::FloatOrParam &val)
+{
+  float ior = val.getFloatValue();
+  if (ior < 0) {
+    fprintf(stderr,
+            "IOR of negative value is not allowed for materials (using Blender default value "
+            "instead)");
+    return;
+  }
+
+  bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "IOR");
+  ((bNodeSocketValueFloat *)socket->default_value)->value = ior;
 }
 
-void MaterialNode::set_diffuse(COLLADAFW::ColorOrTexture &cot, std::string label)
+void MaterialNode::set_alpha(COLLADAFW::EffectCommon::OpaqueMode mode,
+                             COLLADAFW::ColorOrTexture &cot,
+                             COLLADAFW::FloatOrParam &val)
+{
+  if (effect == nullptr) {
+    return;
+  }
+
+  if (cot.isColor() || !cot.isValid()) {
+    COLLADAFW::Color col = (cot.isValid()) ? cot.getColor() : COLLADAFW::Color(1, 1, 1, 1);
+    float alpha = val.getFloatValue() * col.getAlpha();  // Assuming A_ONE opaque mode
+
+    bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "Alpha");
+    ((bNodeSocketValueFloat *)socket->default_value)->value = alpha;
+  }
+  else if (cot.isTexture()) {
+    int locy = -300 * (node_map.size() - 2);
+    add_texture_node(cot, -300, locy, "Alpha");
+    // TODO: Connect node
+  }
+}
+
+void MaterialNode::set_diffuse(COLLADAFW::ColorOrTexture &cot)
 {
   int locy = -300 * (node_map.size() - 2);
   if (cot.isColor()) {
     COLLADAFW::Color col = cot.getColor();
-    bNodeSocket *socket = (bNodeSocket *)BLI_findlink(&shader_node->inputs, BC_PBR_DIFFUSE);
+    bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "Base Color");
     float *fcol = (float *)socket->default_value;
 
     fcol[0] = material->r = col.getRed();
@@ -145,7 +200,7 @@ void MaterialNode::set_diffuse(COLLADAFW::ColorOrTexture &cot, std::string label
     fcol[3] = material->a = col.getAlpha();
   }
   else if (cot.isTexture()) {
-    bNode *texture_node = add_texture_node(cot, -300, locy, label);
+    bNode *texture_node = add_texture_node(cot, -300, locy, "Base Color");
     if (texture_node != NULL) {
       add_link(texture_node, 0, shader_node, 0);
     }
@@ -159,7 +214,7 @@ Image *MaterialNode::get_diffuse_image()
     return nullptr;
   }
 
-  bNodeSocket *in_socket = (bNodeSocket *)BLI_findlink(&shader->inputs, BC_PBR_DIFFUSE);
+  bNodeSocket *in_socket = nodeFindSocket(shader, SOCK_IN, "Base Color");
   if (in_socket == nullptr) {
     return nullptr;
   }
@@ -193,54 +248,60 @@ static bNodeSocket *set_color(bNode *node, COLLADAFW::Color col)
   return socket;
 }
 
-void MaterialNode::set_ambient(COLLADAFW::ColorOrTexture &cot, std::string label)
+void MaterialNode::set_ambient(COLLADAFW::ColorOrTexture &cot)
 {
   int locy = -300 * (node_map.size() - 2);
   if (cot.isColor()) {
     COLLADAFW::Color col = cot.getColor();
-    bNode *node = add_node(SH_NODE_RGB, -300, locy, label);
+    bNode *node = add_node(SH_NODE_RGB, -300, locy, "Ambient");
     set_color(node, col);
     // TODO: Connect node
   }
   // texture
   else if (cot.isTexture()) {
-    add_texture_node(cot, -300, locy, label);
-    // TODO: Connect node
-  }
-}
-void MaterialNode::set_reflective(COLLADAFW::ColorOrTexture &cot, std::string label)
-{
-  int locy = -300 * (node_map.size() - 2);
-  if (cot.isColor()) {
-    COLLADAFW::Color col = cot.getColor();
-    bNode *node = add_node(SH_NODE_RGB, -300, locy, label);
-    set_color(node, col);
-    // TODO: Connect node
-  }
-  // texture
-  else if (cot.isTexture()) {
-    add_texture_node(cot, -300, locy, label);
+    add_texture_node(cot, -300, locy, "Ambient");
     // TODO: Connect node
   }
 }
 
-void MaterialNode::set_emission(COLLADAFW::ColorOrTexture &cot, std::string label)
+void MaterialNode::set_reflective(COLLADAFW::ColorOrTexture &cot)
 {
   int locy = -300 * (node_map.size() - 2);
   if (cot.isColor()) {
     COLLADAFW::Color col = cot.getColor();
-    bNode *node = add_node(SH_NODE_RGB, -300, locy, label);
+    bNode *node = add_node(SH_NODE_RGB, -300, locy, "Reflective");
     set_color(node, col);
     // TODO: Connect node
   }
   // texture
   else if (cot.isTexture()) {
-    add_texture_node(cot, -300, locy, label);
+    add_texture_node(cot, -300, locy, "Reflective");
     // TODO: Connect node
   }
 }
 
-void MaterialNode::set_opacity(COLLADAFW::ColorOrTexture &cot, std::string label)
+void MaterialNode::set_emission(COLLADAFW::ColorOrTexture &cot)
+{
+  int locy = -300 * (node_map.size() - 2);
+  if (cot.isColor()) {
+    COLLADAFW::Color col = cot.getColor();
+    bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "Emission");
+    float *fcol = (float *)socket->default_value;
+
+    fcol[0] = col.getRed();
+    fcol[1] = col.getGreen();
+    fcol[2] = col.getBlue();
+    fcol[3] = col.getAlpha();
+  }
+  else if (cot.isTexture()) {
+    bNode *texture_node = add_texture_node(cot, -300, locy, "Emission");
+    if (texture_node != NULL) {
+      add_link(texture_node, 0, shader_node, 0);
+    }
+  }
+}
+
+void MaterialNode::set_opacity(COLLADAFW::ColorOrTexture &cot)
 {
   if (effect == nullptr) {
     return;
@@ -254,37 +315,29 @@ void MaterialNode::set_opacity(COLLADAFW::ColorOrTexture &cot, std::string label
     if (col.isValid()) {
       alpha *= col.getAlpha();  // Assuming A_ONE opaque mode
     }
-    if (col.isValid() || alpha < 1.0) {
-      // not sure what to do here
-    }
 
-    bNode *node = add_node(SH_NODE_RGB, -300, locy, label);
-    set_color(node, col);
-    // TODO: Connect node
+    bNodeSocket *socket = nodeFindSocket(shader_node, SOCK_IN, "Alpha");
+    ((bNodeSocketValueFloat *)socket->default_value)->value = alpha;
   }
   // texture
   else if (cot.isTexture()) {
-    add_texture_node(cot, -300, locy, label);
+    add_texture_node(cot, -300, locy, "Alpha");
     // TODO: Connect node
   }
 }
 
-void MaterialNode::set_specular(COLLADAFW::ColorOrTexture &cot, std::string label)
+void MaterialNode::set_specular(COLLADAFW::ColorOrTexture &cot)
 {
   int locy = -300 * (node_map.size() - 2);
   if (cot.isColor()) {
     COLLADAFW::Color col = cot.getColor();
-    material->specr = col.getRed();
-    material->specg = col.getGreen();
-    material->specb = col.getBlue();
-
-    bNode *node = add_node(SH_NODE_RGB, -300, locy, label);
+    bNode *node = add_node(SH_NODE_RGB, -300, locy, "Specular");
     set_color(node, col);
     // TODO: Connect node
   }
   // texture
   else if (cot.isTexture()) {
-    add_texture_node(cot, -300, locy, label);
+    add_texture_node(cot, -300, locy, "Specular");
     // TODO: Connect node
   }
 }

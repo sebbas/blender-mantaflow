@@ -29,12 +29,14 @@ extern "C" {
 #include <string.h>  // XXX: memcpy
 
 #include "BLI_utildefines.h"
+#include "BLI_listbase.h"
+#include "BLI_ghash.h"
+
+#include "BKE_action.h"  // XXX: BKE_pose_channel_find_name
 #include "BKE_customdata.h"
 #include "BKE_idcode.h"
 #include "BKE_main.h"
-#include "BLI_listbase.h"
 
-#include "BKE_action.h"  // XXX: BKE_pose_channel_from_name
 } /* extern "C" */
 
 #include "DNA_object_types.h"
@@ -93,6 +95,12 @@ bool DEG_id_type_any_updated(const Depsgraph *graph)
   return false;
 }
 
+bool DEG_id_type_any_exists(const Depsgraph *depsgraph, short id_type)
+{
+  const DEG::Depsgraph *deg_graph = reinterpret_cast<const DEG::Depsgraph *>(depsgraph);
+  return deg_graph->id_type_exist[BKE_idcode_to_index(id_type)] != 0;
+}
+
 uint32_t DEG_get_eval_flags_for_id(const Depsgraph *graph, ID *id)
 {
   if (graph == NULL) {
@@ -145,7 +153,7 @@ Scene *DEG_get_evaluated_scene(const Depsgraph *graph)
 {
   const DEG::Depsgraph *deg_graph = reinterpret_cast<const DEG::Depsgraph *>(graph);
   Scene *scene_cow = deg_graph->scene_cow;
-  /* TODO(sergey): Shall we expand datablock here? Or is it OK to assume
+  /* TODO(sergey): Shall we expand data-block here? Or is it OK to assume
    * that calleer is OK with just a pointer in case scene is not updated
    * yet? */
   BLI_assert(scene_cow != NULL && DEG::deg_copy_on_write_is_expanded(&scene_cow->id));
@@ -180,7 +188,7 @@ ID *DEG_get_evaluated_id(const Depsgraph *depsgraph, ID *id)
   }
   /* TODO(sergey): This is a duplicate of Depsgraph::get_cow_id(),
    * but here we never do assert, since we don't know nature of the
-   * incoming ID datablock. */
+   * incoming ID data-block. */
   const DEG::Depsgraph *deg_graph = (const DEG::Depsgraph *)depsgraph;
   const DEG::IDNode *id_node = deg_graph->find_id_node(id);
   if (id_node == NULL) {
@@ -271,17 +279,17 @@ bool DEG_is_original_id(ID *id)
    * What we want here is to be able to tell whether given ID is a result of dependency graph
    * evaluation or not.
    *
-   * All the datablocks which are created by copy-on-write mechanism will have will be tagged with
-   * LIB_TAG_COPIED_ON_WRITE tag. Those datablocks can not be original.
+   * All the data-blocks which are created by copy-on-write mechanism will have will be tagged with
+   * LIB_TAG_COPIED_ON_WRITE tag. Those data-blocks can not be original.
    *
-   * Modifier stack evaluation might create special datablocks which have all the modifiers
-   * applied, and those will be tagged with LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT. Such datablocks
+   * Modifier stack evaluation might create special data-blocks which have all the modifiers
+   * applied, and those will be tagged with LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT. Such data-blocks
    * can not be original as well.
    *
-   * Localization is usually happening from evaluated datablock, or will have some special pointer
+   * Localization is usually happening from evaluated data-block, or will have some special pointer
    * magic which will make them to act as evaluated.
    *
-   * NOTE: We conder ID evaluated if ANY of those flags is set. We do NOT require ALL of them. */
+   * NOTE: We consider ID evaluated if ANY of those flags is set. We do NOT require ALL of them. */
   if (id->tag &
       (LIB_TAG_COPIED_ON_WRITE | LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT | LIB_TAG_LOCALIZED)) {
     return false;
@@ -302,4 +310,18 @@ bool DEG_is_evaluated_id(ID *id)
 bool DEG_is_evaluated_object(Object *object)
 {
   return !DEG_is_original_object(object);
+}
+
+bool DEG_is_fully_evaluated(const struct Depsgraph *depsgraph)
+{
+  const DEG::Depsgraph *deg_graph = (const DEG::Depsgraph *)depsgraph;
+  /* Check whether relations are up to date. */
+  if (deg_graph->need_update) {
+    return false;
+  }
+  /* Check whether IDs are up to date. */
+  if (BLI_gset_len(deg_graph->entry_tags) > 0) {
+    return false;
+  }
+  return true;
 }

@@ -139,7 +139,13 @@ typedef struct Object_Runtime {
 
   /** Selection id of this object; only available in the original object */
   int select_id;
-  char _pad1[4];
+  char _pad1[3];
+
+  /**
+   * Denotes whether the evaluated mesh is owned by this object or is referenced and owned by
+   * somebody else.
+   */
+  char is_mesh_eval_owned;
 
   /** Axis aligned boundbox (in localspace). */
   struct BoundBox *bb;

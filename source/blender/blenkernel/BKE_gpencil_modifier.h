@@ -38,7 +38,8 @@ struct Object;
 struct Scene;
 struct ViewLayer;
 struct bArmature;
-/* NOTE: bakeModifier() called from UI: needs to create new datablocks, hence the need for this. */
+/* NOTE: bakeModifier() called from UI:
+ * needs to create new databloc-ks, hence the need for this. */
 struct bContext;
 struct bGPDframe;
 struct bGPDlayer;
@@ -51,10 +52,10 @@ struct bGPDstroke;
   ((((_md)->mode & eGpencilModifierMode_Editmode) == 0) && (_is_edit))
 
 typedef enum {
-  /* Should not be used, only for None modifier type */
+  /** Should not be used, only for None modifier type. */
   eGpencilModifierTypeType_None,
 
-  /* grease pencil modifiers */
+  /** Grease pencil modifiers. */
   eGpencilModifierTypeType_Gpencil,
 } GpencilModifierTypeType;
 
@@ -62,25 +63,26 @@ typedef enum {
   eGpencilModifierTypeFlag_SupportsMapping = (1 << 0),
   eGpencilModifierTypeFlag_SupportsEditmode = (1 << 1),
 
-  /* For modifiers that support editmode this determines if the
-   * modifier should be enabled by default in editmode. This should
+  /**
+   * For modifiers that support edit-mode this determines if the
+   * modifier should be enabled by default in edit-mode. This should
    * only be used by modifiers that are relatively speedy and
-   * also generally used in editmode, otherwise let the user enable
-   * it by hand.
+   * also generally used in edit-mode, otherwise let the user enable it by hand.
    */
   eGpencilModifierTypeFlag_EnableInEditmode = (1 << 2),
 
-  /* For modifiers that require original data and so cannot
-   * be placed after any non-deformative modifier.
+  /**
+   * For modifiers that require original data and so cannot
+   * be placed after any non-deform modifier.
    */
   eGpencilModifierTypeFlag_RequiresOriginalData = (1 << 3),
 
-  /* max one per type */
+  /** Max one per type. */
   eGpencilModifierTypeFlag_Single = (1 << 4),
 
-  /* can't be added manually by user */
+  /** Can't be added manually by user. */
   eGpencilModifierTypeFlag_NoUserAdd = (1 << 5),
-  /* can't be applied */
+  /** Can't be applied. */
   eGpencilModifierTypeFlag_NoApply = (1 << 6),
 } GpencilModifierTypeFlag;
 
@@ -159,11 +161,11 @@ typedef struct GpencilModifierTypeInfo {
                           struct bGPDframe *gpf);
 
   /**
-   * Bake-down GP modifier's effects into the GP datablock.
+   * Bake-down GP modifier's effects into the GP data-block.
    *
    * This gets called when the user clicks the "Apply" button in the UI.
    * As such, this callback needs to go through all layers/frames in the
-   * datablock, mutating the geometry and/or creating new datablocks/objects
+   * data-block, mutating the geometry and/or creating new data-blocks/objects
    */
   void (*bakeModifier)(struct Main *bmain,
                        struct Depsgraph *depsgraph,
@@ -175,7 +177,7 @@ typedef struct GpencilModifierTypeInfo {
   /**
    * Callback for GP "time" modifiers that offset keyframe time
    * Returns the frame number to be used after apply the modifier. This is
-   * usually an offset of the animation for duplicated datablocks.
+   * usually an offset of the animation for duplicated data-blocks.
    *
    * This function is optional.
    */
@@ -243,9 +245,9 @@ typedef struct GpencilModifierTypeInfo {
 
   /**
    * Should call the given walk function with a pointer to each ID
-   * pointer (i.e. each datablock pointer) that the modifier data
+   * pointer (i.e. each data-block pointer) that the modifier data
    * stores. This is used for linking on file load and for
-   * unlinking datablocks or forwarding datablock references.
+   * unlinking data-blocks or forwarding data-block references.
    *
    * This function is optional. If it is not present, foreachObjectLink
    * will be used.

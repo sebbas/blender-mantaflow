@@ -35,7 +35,6 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 #include "BKE_report.h"
-#include "BKE_sound.h"
 
 #include "DEG_depsgraph.h"
 
@@ -153,7 +152,7 @@ void CLIP_OT_add_marker(wmOperatorType *ot)
 
 static int add_marker_at_click_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
-  ED_workspace_status_text(C, IFACE_("Use LMB click to define location where place the marker"));
+  ED_workspace_status_text(C, TIP_("Use LMB click to define location where place the marker"));
 
   /* Add modal handler for ESC. */
   WM_event_add_modal_handler(C, op);
@@ -991,7 +990,7 @@ void CLIP_OT_slide_marker(wmOperatorType *ot)
   ot->modal = slide_marker_modal;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR | OPTYPE_BLOCKING;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
 
   /* properties */
   RNA_def_float_vector(ot->srna,
@@ -1356,7 +1355,7 @@ static int frame_jump_exec(bContext *C, wmOperator *op)
 
   if (CFRA != sc->user.framenr) {
     CFRA = sc->user.framenr;
-    BKE_sound_seek_scene(CTX_data_main(C), scene);
+    DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_SEEK);
 
     WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
   }
@@ -1466,6 +1465,7 @@ static int join_tracks_exec(bContext *C, wmOperator *op)
   }
 
   BLI_gset_free(point_tracks, NULL);
+  DEG_id_tag_update(&clip->id, 0);
 
   WM_event_add_notifier(C, NC_MOVIECLIP | NA_EDITED, clip);
 
@@ -1625,6 +1625,7 @@ static int track_copy_color_exec(bContext *C, wmOperator *UNUSED(op))
     }
   }
 
+  DEG_id_tag_update(&clip->id, 0);
   WM_event_add_notifier(C, NC_MOVIECLIP | ND_DISPLAY, clip);
 
   return OPERATOR_FINISHED;
@@ -1806,6 +1807,7 @@ static int clean_tracks_exec(bContext *C, wmOperator *op)
     }
   }
 
+  DEG_id_tag_update(&clip->id, 0);
   BKE_tracking_dopesheet_tag_update(tracking);
 
   WM_event_add_notifier(C, NC_MOVIECLIP | ND_SELECT, clip);

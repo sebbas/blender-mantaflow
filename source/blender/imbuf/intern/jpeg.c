@@ -356,7 +356,7 @@ static ImBuf *ibJpegImageFromCinfo(struct jpeg_decompress_struct *cinfo, int fla
         /*
          * Because JPEG format don't support the
          * pair "key/value" like PNG, we store the
-         * stampinfo in a single "encode" string:
+         * stamp-info in a single "encode" string:
          * "Blender:key:value"
          *
          * That is why we need split it to the
@@ -579,8 +579,9 @@ static int init_jpeg(FILE *outfile, struct jpeg_compress_struct *cinfo, struct I
   /* just write RGBA as RGB,
    * unsupported feature only confuses other s/w */
 
-  if (ibuf->planes == 32)
+  if (ibuf->planes == 32) {
     cinfo->in_color_space = JCS_UNKNOWN;
+  }
 #endif
   switch (cinfo->in_color_space) {
     case JCS_RGB:

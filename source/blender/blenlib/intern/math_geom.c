@@ -506,7 +506,7 @@ float dist_to_line_v3(const float p[3], const float l1[3], const float l2[3])
  *
  * \param axis_ref: used when v1,v2,v3 form a line and to check if the corner is concave/convex.
  *
- * \note the distance from \a v1 & \a v3 to \a v2 doesnt matter
+ * \note the distance from \a v1 & \a v3 to \a v2 doesn't matter
  * (it just defines the planes).
  *
  * \return the lowest squared distance to either of the planes.
@@ -1959,16 +1959,18 @@ bool isect_ray_tri_threshold_v3(const float ray_origin[3],
 
   cross_v3_v3v3(p, ray_direction, e2);
   a = dot_v3v3(e1, p);
-  if ((a > -epsilon) && (a < epsilon))
+  if ((a > -epsilon) && (a < epsilon)) {
     return false;
+  }
   f = 1.0f / a;
 
   sub_v3_v3v3(s, ray_origin, v0);
 
   cross_v3_v3v3(q, s, e1);
   *r_lambda = f * dot_v3v3(e2, q);
-  if ((*r_lambda < 0.0f))
+  if ((*r_lambda < 0.0f)) {
     return false;
+  }
 
   u = f * dot_v3v3(s, p);
   v = f * dot_v3v3(ray_direction, q);
@@ -1979,19 +1981,25 @@ bool isect_ray_tri_threshold_v3(const float ray_origin[3],
     dv = v - t;
   }
   else {
-    if (u < 0)
+    if (u < 0) {
       du = u;
-    else if (u > 1)
+    }
+    else if (u > 1) {
       du = u - 1;
-    else
+    }
+    else {
       du = 0.0f;
+    }
 
-    if (v < 0)
+    if (v < 0) {
       dv = v;
-    else if (v > 1)
+    }
+    else if (v > 1) {
       dv = v - 1;
-    else
+    }
+    else {
       dv = 0.0f;
+    }
   }
 
   mul_v3_fl(e1, du);
@@ -2524,7 +2532,7 @@ bool isect_sweeping_sphere_tri_v3(const float p1[3],
   }
 
   /*---test edges---*/
-  sub_v3_v3v3(e3, v2, v1); /* wasnt yet calculated */
+  sub_v3_v3v3(e3, v2, v1); /* wasn't yet calculated */
 
   /*e1*/
   sub_v3_v3v3(bv, v0, p1);

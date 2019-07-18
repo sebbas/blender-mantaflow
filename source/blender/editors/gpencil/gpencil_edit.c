@@ -883,7 +883,7 @@ static void gpencil_add_move_points(bGPDframe *gpf, bGPDstroke *gps)
     }
     gps->flag |= GP_STROKE_RECALC_GEOMETRY;
 
-    /* if first point, add new point at the begining */
+    /* If first point, add new point at the beginning. */
     if (do_first) {
       copy_move_point(gps, temp_points, temp_dverts, 0, 0, true);
       /* deselect old */
@@ -929,10 +929,7 @@ static int gp_extrude_exec(bContext *C, wmOperator *op)
   }
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -997,7 +994,7 @@ ListBase gp_strokes_copypastebuf = {NULL, NULL};
 
 /* Hash for hanging on to all the colors used by strokes in the buffer
  *
- * This is needed to prevent dangling and unsafe pointers when pasting across datablocks,
+ * This is needed to prevent dangling and unsafe pointers when pasting across data-blocks,
  * or after a color used by a stroke in the buffer gets deleted (via user action or undo).
  */
 static GHash *gp_strokes_copypastebuf_colors = NULL;
@@ -1761,10 +1758,7 @@ static int gp_delete_selected_strokes(bContext *C)
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -1827,10 +1821,7 @@ static int gp_dissolve_selected_points(bContext *C, eGP_DissolveMode mode)
   int last = 0;
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -2325,10 +2316,7 @@ static int gp_delete_selected_points(bContext *C)
   bool changed = false;
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -2816,6 +2804,9 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
 
   const int type = RNA_enum_get(op->ptr, "type");
+  const bool geometry = RNA_boolean_get(op->ptr, "geometry");
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  bGPDstroke *gps = NULL;
 
   /* sanity checks */
   if (ELEM(NULL, gpd)) {
@@ -2824,39 +2815,55 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
 
   /* loop all selected strokes */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    if (gpl->actframe == NULL) {
-      continue;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
-    for (bGPDstroke *gps = gpl->actframe->strokes.last; gps; gps = gps->prev) {
-      MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+        if (gpf == NULL) {
+          continue;
+        }
 
-      /* skip strokes that are not selected or invalid for current view */
-      if (((gps->flag & GP_STROKE_SELECT) == 0) || ED_gpencil_stroke_can_use(C, gps) == false) {
-        continue;
-      }
-      /* skip hidden or locked colors */
-      if (!gp_style || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
-          (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
-        continue;
-      }
+        for (gps = gpf->strokes.first; gps; gps = gps->next) {
+          MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps->mat_nr + 1);
+          /* skip strokes that are not selected or invalid for current view */
+          if (((gps->flag & GP_STROKE_SELECT) == 0) ||
+              ED_gpencil_stroke_can_use(C, gps) == false) {
+            continue;
+          }
+          /* skip hidden or locked colors */
+          if (!gp_style || (gp_style->flag & GP_STYLE_COLOR_HIDE) ||
+              (gp_style->flag & GP_STYLE_COLOR_LOCKED)) {
+            continue;
+          }
 
-      switch (type) {
-        case GP_STROKE_CYCLIC_CLOSE:
-          /* Close all (enable) */
-          gps->flag |= GP_STROKE_CYCLIC;
+          switch (type) {
+            case GP_STROKE_CYCLIC_CLOSE:
+              /* Close all (enable) */
+              gps->flag |= GP_STROKE_CYCLIC;
+              break;
+            case GP_STROKE_CYCLIC_OPEN:
+              /* Open all (disable) */
+              gps->flag &= ~GP_STROKE_CYCLIC;
+              break;
+            case GP_STROKE_CYCLIC_TOGGLE:
+              /* Just toggle flag... */
+              gps->flag ^= GP_STROKE_CYCLIC;
+              break;
+            default:
+              BLI_assert(0);
+              break;
+          }
+
+          /* Create new geometry. */
+          if ((gps->flag & GP_STROKE_CYCLIC) && (geometry)) {
+            BKE_gpencil_close_stroke(gps);
+          }
+        }
+
+        /* if not multiedit, exit loop*/
+        if (!is_multiedit) {
           break;
-        case GP_STROKE_CYCLIC_OPEN:
-          /* Open all (disable) */
-          gps->flag &= ~GP_STROKE_CYCLIC;
-          break;
-        case GP_STROKE_CYCLIC_TOGGLE:
-          /* Just toggle flag... */
-          gps->flag ^= GP_STROKE_CYCLIC;
-          break;
-        default:
-          BLI_assert(0);
-          break;
+        }
       }
     }
   }
@@ -2875,6 +2882,8 @@ static int gp_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
  */
 void GPENCIL_OT_stroke_cyclical_set(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   static const EnumPropertyItem cyclic_type[] = {
       {GP_STROKE_CYCLIC_CLOSE, "CLOSE", 0, "Close all", ""},
       {GP_STROKE_CYCLIC_OPEN, "OPEN", 0, "Open all", ""},
@@ -2896,6 +2905,9 @@ void GPENCIL_OT_stroke_cyclical_set(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", cyclic_type, GP_STROKE_CYCLIC_TOGGLE, "Type", "");
+  prop = RNA_def_boolean(
+      ot->srna, "geometry", false, "Create Geometry", "Create new geometry for closing stroke");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /* ******************* Flat Stroke Caps ************************** */
@@ -3886,10 +3898,7 @@ static int gp_stroke_trim_exec(bContext *C, wmOperator *UNUSED(op))
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -3996,10 +4005,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
   if ((mode == GP_SEPARATE_POINT) || (mode == GP_SEPARATE_STROKE)) {
     CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
       gpl_dst = NULL;
-      bGPDframe *init_gpf = gpl->actframe;
-      if (is_multiedit) {
-        init_gpf = gpl->frames.first;
-      }
+      bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
       for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
         if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -4044,7 +4050,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
                 /* make copy of source stroke */
                 bGPDstroke *gps_dst = BKE_gpencil_stroke_duplicate(gps);
 
-                /* reasign material */
+                /* Reassign material. */
                 gps_dst->mat_nr = idx;
 
                 /* link to destination frame */
@@ -4070,7 +4076,7 @@ static int gp_stroke_separate_exec(bContext *C, wmOperator *op)
                 gps->prev = gps->next = NULL;
                 /* relink to destination frame */
                 BLI_addtail(&gpf_dst->strokes, gps);
-                /* reasign material */
+                /* Reassign material. */
                 gps->mat_nr = idx;
               }
             }
@@ -4167,10 +4173,7 @@ static int gp_stroke_split_exec(bContext *C, wmOperator *UNUSED(op))
 
   /* loop strokes and split parts */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -4535,4 +4538,24 @@ void GPENCIL_OT_stroke_cutter(wmOperatorType *ot)
 
   /* properties */
   WM_operator_properties_gesture_lasso(ot);
+}
+
+bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
+{
+  bool ok = false;
+  if (ob) {
+    bGPdata *gpd = (bGPdata *)ob->data;
+
+    gpd->flag &= ~(GP_DATA_STROKE_PAINTMODE | GP_DATA_STROKE_EDITMODE | GP_DATA_STROKE_SCULPTMODE |
+                   GP_DATA_STROKE_WEIGHTMODE);
+
+    ob->restore_mode = ob->mode;
+    ob->mode &= ~(OB_MODE_PAINT_GPENCIL | OB_MODE_EDIT_GPENCIL | OB_MODE_SCULPT_GPENCIL |
+                  OB_MODE_WEIGHT_GPENCIL);
+
+    /* Inform all CoW versions that we changed the mode. */
+    DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_COPY_ON_WRITE);
+    ok = true;
+  }
+  return ok;
 }

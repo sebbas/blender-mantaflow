@@ -32,6 +32,7 @@ struct Collection;
 struct Depsgraph;
 struct Main;
 struct Object;
+struct ReportList;
 struct Scene;
 
 /* -------------- */
@@ -43,8 +44,10 @@ void BKE_rigidbody_free_constraint(struct Object *ob);
 
 /* ...... */
 
-struct RigidBodyOb *BKE_rigidbody_copy_object(const struct Object *ob, const int flag);
-struct RigidBodyCon *BKE_rigidbody_copy_constraint(const struct Object *ob, const int flag);
+void BKE_rigidbody_object_copy(struct Main *bmain,
+                               struct Object *ob_dst,
+                               const struct Object *ob_src,
+                               const int flag);
 
 /* Callback format for performing operations on ID-pointers for rigidbody world. */
 typedef void (*RigidbodyWorldIDFunc)(struct RigidBodyWorld *rbw,
@@ -94,6 +97,12 @@ void BKE_rigidbody_calc_center_of_mass(struct Object *ob, float r_center[3]);
 /* Utilities */
 
 struct RigidBodyWorld *BKE_rigidbody_get_world(struct Scene *scene);
+bool BKE_rigidbody_add_object(struct Main *bmain,
+                              struct Scene *scene,
+                              struct Object *ob,
+                              int type,
+                              struct ReportList *reports);
+void BKE_rigidbody_ensure_local_object(struct Main *bmain, struct Object *ob);
 void BKE_rigidbody_remove_object(struct Main *bmain, struct Scene *scene, struct Object *ob);
 void BKE_rigidbody_remove_constraint(struct Scene *scene, struct Object *ob);
 

@@ -92,8 +92,9 @@ inline bAction *bc_getSceneObjectAction(Object *ob)
 /* Returns Light Action or NULL */
 inline bAction *bc_getSceneLightAction(Object *ob)
 {
-  if (ob->type != OB_LAMP)
+  if (ob->type != OB_LAMP) {
     return NULL;
+  }
 
   Light *lamp = (Light *)ob->data;
   return (lamp->adt && lamp->adt->action) ? lamp->adt->action : NULL;
@@ -102,8 +103,9 @@ inline bAction *bc_getSceneLightAction(Object *ob)
 /* Return Camera Action or NULL */
 inline bAction *bc_getSceneCameraAction(Object *ob)
 {
-  if (ob->type != OB_CAMERA)
+  if (ob->type != OB_CAMERA) {
     return NULL;
+  }
 
   Camera *camera = (Camera *)ob->data;
   return (camera->adt && camera->adt->action) ? camera->adt->action : NULL;
@@ -112,16 +114,18 @@ inline bAction *bc_getSceneCameraAction(Object *ob)
 /* returns material action or NULL */
 inline bAction *bc_getSceneMaterialAction(Material *ma)
 {
-  if (ma == NULL)
+  if (ma == NULL) {
     return NULL;
+  }
 
   return (ma->adt && ma->adt->action) ? ma->adt->action : NULL;
 }
 
 inline void bc_setSceneObjectAction(bAction *action, Object *ob)
 {
-  if (ob->adt)
+  if (ob->adt) {
     ob->adt->action = action;
+  }
 }
 
 std::string bc_get_action_id(std::string action_name,
@@ -133,10 +137,9 @@ std::string bc_get_action_id(std::string action_name,
 extern float bc_get_float_value(const COLLADAFW::FloatOrDoubleArray &array, unsigned int index);
 extern int bc_test_parent_loop(Object *par, Object *ob);
 
-extern void bc_get_children(std::vector<Object *> &child_set, Object *ob, ViewLayer *view_layer);
 extern bool bc_validateConstraints(bConstraint *con);
 
-extern int bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space = true);
+bool bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space = true);
 extern Object *bc_add_object(
     Main *bmain, Scene *scene, ViewLayer *view_layer, int type, const char *name);
 extern Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
@@ -146,14 +149,7 @@ extern Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
                               bool triangulate);
 
 extern Object *bc_get_assigned_armature(Object *ob);
-extern Object *bc_get_highest_selected_ancestor_or_self(LinkNode *export_set, Object *ob);
-extern bool bc_is_base_node(LinkNode *export_set, Object *ob);
-extern bool bc_is_in_Export_set(LinkNode *export_set, Object *ob, ViewLayer *view_layer);
 extern bool bc_has_object_type(LinkNode *export_set, short obtype);
-
-extern int bc_is_marked(Object *ob);
-extern void bc_remove_mark(Object *ob);
-extern void bc_set_mark(Object *ob);
 
 extern char *bc_CustomData_get_layer_name(const CustomData *data, int type, int n);
 extern char *bc_CustomData_get_active_layer_name(const CustomData *data, int type);
@@ -164,27 +160,47 @@ extern int bc_get_active_UVLayer(Object *ob);
 
 std::string bc_find_bonename_in_path(std::string path, std::string probe);
 
-inline std::string bc_string_after(const std::string &s, const char c)
+inline std::string bc_string_after(const std::string &s, const std::string probe)
 {
-  size_t i = s.rfind(c, s.length());
+  size_t i = s.rfind(probe);
   if (i != std::string::npos) {
-    return (s.substr(i + 1, s.length() - i));
+    return (s.substr(i + probe.length(), s.length() - i));
+  }
+  return (s);
+}
+
+inline std::string bc_string_before(const std::string &s, const std::string probe)
+{
+  size_t i = s.find(probe);
+  if (i != std::string::npos) {
+    return s.substr(0, i);
   }
   return (s);
 }
 
 inline bool bc_startswith(std::string const &value, std::string const &starting)
 {
-  if (starting.size() > value.size())
+  if (starting.size() > value.size()) {
     return false;
+  }
   return (value.substr(0, starting.size()) == starting);
+}
+
+inline bool bc_endswith(const std::string &value, const std::string &ending)
+{
+  if (ending.size() > value.size()) {
+    return false;
+  }
+
+  return value.compare(value.size() - ending.size(), ending.size(), ending) == 0;
 }
 
 #if 0 /* UNUSED */
 inline bool bc_endswith(std::string const &value, std::string const &ending)
 {
-  if (ending.size() > value.size())
+  if (ending.size() > value.size()) {
     return false;
+  }
   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 #endif
@@ -219,8 +235,6 @@ void bc_copy_darray_m4d(double *r, double a[4][4]);
 void bc_copy_m4d_v44(double (&r)[4][4], std::vector<std::vector<double>> &a);
 void bc_copy_v44_m4d(std::vector<std::vector<double>> &a, double (&r)[4][4]);
 
-void bc_sanitize_mat(float mat[4][4], int precision);
-void bc_sanitize_mat(double mat[4][4], int precision);
 void bc_sanitize_v3(double v[3], int precision);
 void bc_sanitize_v3(float v[3], int precision);
 
@@ -235,14 +249,61 @@ extern bool bc_get_property_matrix(Bone *bone, std::string key, float mat[4][4])
 extern void bc_enable_fcurves(bAction *act, char *bone_name);
 extern bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_opensim);
 extern bool bc_is_animated(BCMatrixSampleMap &values);
-extern bool bc_has_animations(Scene *sce, LinkNode &node);
+extern bool bc_has_animations(Scene *sce, LinkNode *node);
 extern bool bc_has_animations(Object *ob);
 
-extern void bc_create_restpose_mat(const ExportSettings *export_settings,
+extern void bc_add_global_transform(Matrix &to_mat,
+                                    const Matrix &from_mat,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_add_global_transform(Vector &to_vec,
+                                    const Vector &from_vec,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_add_global_transform(Vector &to_vec,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_add_global_transform(Matrix &to_mat,
+                                    const BCMatrix &global_transform,
+                                    const bool invert = false);
+extern void bc_apply_global_transform(Matrix &to_mat,
+                                      const BCMatrix &global_transform,
+                                      const bool invert = false);
+extern void bc_apply_global_transform(Vector &to_vec,
+                                      const BCMatrix &global_transform,
+                                      const bool invert = false);
+extern void bc_create_restpose_mat(BCExportSettings &export_settings,
                                    Bone *bone,
                                    float to_mat[4][4],
-                                   float world[4][4],
+                                   float from_mat[4][4],
                                    bool use_local_space);
+
+class ColladaBaseNodes {
+ private:
+  std::vector<Object *> base_objects;
+
+ public:
+  void add(Object *ob)
+  {
+    base_objects.push_back(ob);
+  }
+
+  bool contains(Object *ob)
+  {
+    std::vector<Object *>::iterator it = std::find(base_objects.begin(), base_objects.end(), ob);
+    return (it != base_objects.end());
+  }
+
+  int size()
+  {
+    return base_objects.size();
+  }
+
+  Object *get(int index)
+  {
+    return base_objects[index];
+  }
+};
 
 class BCPolygonNormalsIndices {
   std::vector<unsigned int> normal_indices;
@@ -293,7 +354,7 @@ class BoneExtended {
   bool has_roll();
   float get_roll();
 
-  void set_tail(float *vec);
+  void set_tail(float vec[]);
   float *get_tail();
   bool has_tail();
 
@@ -308,7 +369,7 @@ class BoneExtended {
 typedef std::map<std::string, BoneExtended *> BoneExtensionMap;
 
 /*
- * A class to organise bone extendion data for multiple Armatures.
+ * A class to organize bone extension data for multiple Armatures.
  * this is needed for the case where a Collada file contains 2 or more
  * separate armatures.
  */
@@ -323,10 +384,24 @@ class BoneExtensionManager {
 
 void bc_add_default_shader(bContext *C, Material *ma);
 bNode *bc_get_master_shader(Material *ma);
-COLLADASW::ColorOrTexture bc_get_cot(float r, float g, float b, float a);
-COLLADASW::ColorOrTexture bc_get_base_color(bNode *shader);
-bool bc_get_reflectivity(bNode *shader, double &reflectivity);
-double bc_get_reflectivity(Material *ma);
+
 COLLADASW::ColorOrTexture bc_get_base_color(Material *ma);
+COLLADASW::ColorOrTexture bc_get_emission(Material *ma);
+COLLADASW::ColorOrTexture bc_get_ambient(Material *ma);
+COLLADASW::ColorOrTexture bc_get_specular(Material *ma);
+COLLADASW::ColorOrTexture bc_get_reflective(Material *ma);
+
+double bc_get_reflectivity(Material *ma);
+double bc_get_alpha(Material *ma);
+double bc_get_ior(Material *ma);
+double bc_get_shininess(Material *ma);
+
+double bc_get_float_from_shader(bNode *shader, double &ior, std::string nodeid);
+COLLADASW::ColorOrTexture bc_get_cot_from_shader(bNode *shader,
+                                                 std::string nodeid,
+                                                 Color &default_color);
+
+COLLADASW::ColorOrTexture bc_get_cot(float r, float g, float b, float a);
+COLLADASW::ColorOrTexture bc_get_cot(Color col);
 
 #endif

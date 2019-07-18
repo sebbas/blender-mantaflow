@@ -15,11 +15,12 @@
  *
  * The Original Code is Copyright (C) 2008, Blender Foundation
  * This is a new part of Blender
- * Operators for dealing with GP datablocks and layers
  */
 
 /** \file
  * \ingroup edgpencil
+ *
+ * Operators for dealing with GP data-blocks and layers.
  */
 
 #include <stdio.h>
@@ -539,7 +540,7 @@ static int gp_layer_duplicate_object_exec(bContext *C, wmOperator *op)
       Material *ma_src = give_current_material(ob_src, gps_src->mat_nr + 1);
       int idx = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma_src);
 
-      /* reasign the stroke material to the right slot in destination object */
+      /* Reassign the stroke material to the right slot in destination object. */
       gps_dst->mat_nr = idx;
 
       /* add new stroke to frame */
@@ -740,12 +741,9 @@ static int gp_frame_clean_loose_exec(bContext *C, wmOperator *op)
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
     bGPDstroke *gps = NULL;
     bGPDstroke *gpsn = NULL;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -1080,7 +1078,7 @@ static int gp_isolate_layer_exec(bContext *C, wmOperator *op)
   }
 
   /* Set/Clear flags as appropriate */
-  /* TODO: Include onionskinning on this list? */
+  /* TODO: Include onion-skinning on this list? */
   if (isolate) {
     /* Set flags on all "other" layers */
     for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -1274,100 +1272,109 @@ static int gp_stroke_arrange_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_getactive(gpd);
-  bGPDstroke *gps;
+  bGPDlayer *gpl_act = BKE_gpencil_layer_getactive(gpd);
 
   /* sanity checks */
-  if (ELEM(NULL, gpd, gpl, gpl->actframe)) {
+  if (ELEM(NULL, gpd, gpl_act, gpl_act->actframe)) {
     return OPERATOR_CANCELLED;
   }
 
   const int direction = RNA_enum_get(op->ptr, "direction");
+  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
-  for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-    /* temp listbase to store selected strokes by layer */
+  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
+    /* temp listbase to store selected strokes */
     ListBase selected = {NULL};
-    bGPDframe *gpf = gpl->actframe;
-    if (gpl->flag & GP_LAYER_LOCKED) {
-      continue;
-    }
 
-    if (gpf == NULL) {
-      continue;
-    }
-    bool gpf_lock = false;
-    /* verify if any selected stroke is in the extreme of the stack and select to move */
-    for (gps = gpf->strokes.first; gps; gps = gps->next) {
-      /* only if selected */
-      if (gps->flag & GP_STROKE_SELECT) {
-        /* skip strokes that are invalid for current view */
-        if (ED_gpencil_stroke_can_use(C, gps) == false) {
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+    bGPDstroke *gps = NULL;
+
+    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
+        if (gpf == NULL) {
           continue;
         }
-        /* check if the color is editable */
-        if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
-          continue;
-        }
-        /* some stroke is already at front*/
-        if ((direction == GP_STROKE_MOVE_TOP) || (direction == GP_STROKE_MOVE_UP)) {
-          if (gps == gpf->strokes.last) {
-            gpf_lock = true;
-            continue;
+        bool gpf_lock = false;
+        /* verify if any selected stroke is in the extreme of the stack and select to move */
+        for (gps = gpf->strokes.first; gps; gps = gps->next) {
+          /* only if selected */
+          if (gps->flag & GP_STROKE_SELECT) {
+            /* skip strokes that are invalid for current view */
+            if (ED_gpencil_stroke_can_use(C, gps) == false) {
+              continue;
+            }
+            /* check if the color is editable */
+            if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
+              continue;
+            }
+            /* some stroke is already at front*/
+            if ((direction == GP_STROKE_MOVE_TOP) || (direction == GP_STROKE_MOVE_UP)) {
+              if (gps == gpf->strokes.last) {
+                gpf_lock = true;
+                continue;
+              }
+            }
+            /* some stroke is already at botom */
+            if ((direction == GP_STROKE_MOVE_BOTTOM) || (direction == GP_STROKE_MOVE_DOWN)) {
+              if (gps == gpf->strokes.first) {
+                gpf_lock = true;
+                continue;
+              }
+            }
+            /* add to list (if not locked) */
+            if (!gpf_lock) {
+              BLI_addtail(&selected, BLI_genericNodeN(gps));
+            }
           }
         }
-        /* some stroke is already at botom */
-        if ((direction == GP_STROKE_MOVE_BOTTOM) || (direction == GP_STROKE_MOVE_DOWN)) {
-          if (gps == gpf->strokes.first) {
-            gpf_lock = true;
-            continue;
-          }
-        }
-        /* add to list (if not locked) */
+        /* Now do the movement of the stroke */
         if (!gpf_lock) {
-          BLI_addtail(&selected, BLI_genericNodeN(gps));
+          switch (direction) {
+            /* Bring to Front */
+            case GP_STROKE_MOVE_TOP:
+              for (LinkData *link = selected.first; link; link = link->next) {
+                gps = link->data;
+                BLI_remlink(&gpf->strokes, gps);
+                BLI_addtail(&gpf->strokes, gps);
+              }
+              break;
+            /* Bring Forward */
+            case GP_STROKE_MOVE_UP:
+              for (LinkData *link = selected.last; link; link = link->prev) {
+                gps = link->data;
+                BLI_listbase_link_move(&gpf->strokes, gps, 1);
+              }
+              break;
+            /* Send Backward */
+            case GP_STROKE_MOVE_DOWN:
+              for (LinkData *link = selected.first; link; link = link->next) {
+                gps = link->data;
+                BLI_listbase_link_move(&gpf->strokes, gps, -1);
+              }
+              break;
+            /* Send to Back */
+            case GP_STROKE_MOVE_BOTTOM:
+              for (LinkData *link = selected.last; link; link = link->prev) {
+                gps = link->data;
+                BLI_remlink(&gpf->strokes, gps);
+                BLI_addhead(&gpf->strokes, gps);
+              }
+              break;
+            default:
+              BLI_assert(0);
+              break;
+          }
         }
+        BLI_freelistN(&selected);
+      }
+
+      /* if not multiedit, exit loop*/
+      if (!is_multiedit) {
+        break;
       }
     }
-    /* Now do the movement of the stroke */
-    if (!gpf_lock) {
-      switch (direction) {
-        /* Bring to Front */
-        case GP_STROKE_MOVE_TOP:
-          for (LinkData *link = selected.first; link; link = link->next) {
-            gps = link->data;
-            BLI_remlink(&gpf->strokes, gps);
-            BLI_addtail(&gpf->strokes, gps);
-          }
-          break;
-        /* Bring Forward */
-        case GP_STROKE_MOVE_UP:
-          for (LinkData *link = selected.last; link; link = link->prev) {
-            gps = link->data;
-            BLI_listbase_link_move(&gpf->strokes, gps, 1);
-          }
-          break;
-        /* Send Backward */
-        case GP_STROKE_MOVE_DOWN:
-          for (LinkData *link = selected.first; link; link = link->next) {
-            gps = link->data;
-            BLI_listbase_link_move(&gpf->strokes, gps, -1);
-          }
-          break;
-        /* Send to Back */
-        case GP_STROKE_MOVE_BOTTOM:
-          for (LinkData *link = selected.last; link; link = link->prev) {
-            gps = link->data;
-            BLI_remlink(&gpf->strokes, gps);
-            BLI_addhead(&gpf->strokes, gps);
-          }
-          break;
-        default:
-          BLI_assert(0);
-          break;
-      }
-    }
-    BLI_freelistN(&selected);
   }
+  CTX_DATA_END;
 
   /* notifiers */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -1439,10 +1446,7 @@ static int gp_stroke_change_color_exec(bContext *C, wmOperator *op)
 
   /* loop all strokes */
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
 
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
@@ -1517,8 +1521,10 @@ static int gp_stroke_lock_color_exec(bContext *C, wmOperator *UNUSED(op))
   /* first lock all colors */
   for (short i = 0; i < *totcol; i++) {
     Material *tmp_ma = give_current_material(ob, i + 1);
-    tmp_ma->gp_style->flag |= GP_STYLE_COLOR_LOCKED;
-    DEG_id_tag_update(&tmp_ma->id, ID_RECALC_COPY_ON_WRITE);
+    if (tmp_ma) {
+      tmp_ma->gp_style->flag |= GP_STYLE_COLOR_LOCKED;
+      DEG_id_tag_update(&tmp_ma->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 
   /* loop all selected strokes and unlock any color */
@@ -2319,7 +2325,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
           for (bGPDframe *gpf = gpl_new->frames.first; gpf; gpf = gpf->next) {
             for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
 
-              /* reasign material. Look old material and try to find in dst */
+              /* Reassign material. Look old material and try to find in destination. */
               ma_src = give_current_material(ob_src, gps->mat_nr + 1);
               gps->mat_nr = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma_src);
 
@@ -2429,10 +2435,12 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
-    gp_style = ma->gp_style;
-    gp_style->flag |= GP_STYLE_COLOR_LOCKED;
-    gp_style->flag |= GP_STYLE_COLOR_HIDE;
-    DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    if (ma) {
+      gp_style = ma->gp_style;
+      gp_style->flag |= GP_STYLE_COLOR_LOCKED;
+      gp_style->flag |= GP_STYLE_COLOR_HIDE;
+      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 
   /* loop all selected strokes and unlock any color used in active layer */
@@ -2511,7 +2519,7 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
     /* Skip if this is the active one */
-    if (ma == active_ma) {
+    if ((ma == NULL) || (ma == active_ma)) {
       continue;
     }
 
@@ -2530,6 +2538,9 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
     /* Set flags on all "other" colors */
     for (short i = 0; i < *totcol; i++) {
       ma = give_current_material(ob, i + 1);
+      if (ma == NULL) {
+        continue;
+      }
       gp_style = ma->gp_style;
       if (gp_style == active_color) {
         continue;
@@ -2544,6 +2555,9 @@ static int gpencil_color_isolate_exec(bContext *C, wmOperator *op)
     /* Clear flags - Restore everything else */
     for (short i = 0; i < *totcol; i++) {
       ma = give_current_material(ob, i + 1);
+      if (ma == NULL) {
+        continue;
+      }
       gp_style = ma->gp_style;
       gp_style->flag &= ~flags;
       DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
@@ -2606,10 +2620,12 @@ static int gpencil_color_hide_exec(bContext *C, wmOperator *op)
     MaterialGPencilStyle *color = NULL;
     for (short i = 0; i < *totcol; i++) {
       ma = give_current_material(ob, i + 1);
-      color = ma->gp_style;
-      if (active_color != color) {
-        color->flag |= GP_STYLE_COLOR_HIDE;
-        DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      if (ma) {
+        color = ma->gp_style;
+        if (active_color != color) {
+          color->flag |= GP_STYLE_COLOR_HIDE;
+          DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+        }
       }
     }
   }
@@ -2667,9 +2683,11 @@ static int gpencil_color_reveal_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
-    gp_style = ma->gp_style;
-    gp_style->flag &= ~GP_STYLE_COLOR_HIDE;
-    DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    if (ma) {
+      gp_style = ma->gp_style;
+      gp_style->flag &= ~GP_STYLE_COLOR_HIDE;
+      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 
   /* updates */
@@ -2718,9 +2736,11 @@ static int gpencil_color_lock_all_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
-    gp_style = ma->gp_style;
-    gp_style->flag |= GP_STYLE_COLOR_LOCKED;
-    DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    if (ma) {
+      gp_style = ma->gp_style;
+      gp_style->flag |= GP_STYLE_COLOR_LOCKED;
+      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 
   /* updates */
@@ -2769,9 +2789,11 @@ static int gpencil_color_unlock_all_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (short i = 0; i < *totcol; i++) {
     ma = give_current_material(ob, i + 1);
-    gp_style = ma->gp_style;
-    gp_style->flag &= ~GP_STYLE_COLOR_LOCKED;
-    DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    if (ma) {
+      gp_style = ma->gp_style;
+      gp_style->flag &= ~GP_STYLE_COLOR_LOCKED;
+      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+    }
   }
 
   /* updates */
@@ -2818,10 +2840,8 @@ static int gpencil_color_select_exec(bContext *C, wmOperator *op)
 
   /* read all strokes and select*/
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = gpl->actframe;
-    if (is_multiedit) {
-      init_gpf = gpl->frames.first;
-    }
+    bGPDframe *init_gpf = (is_multiedit) ? gpl->frames.first : gpl->actframe;
+
     for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
       if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
 
@@ -2892,4 +2912,46 @@ void GPENCIL_OT_color_select(wmOperatorType *ot)
   /* props */
   ot->prop = RNA_def_boolean(ot->srna, "deselect", 0, "Deselect", "Unselect strokes");
   RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+/* Parent GPencil object to Lattice */
+bool ED_gpencil_add_lattice_modifier(const bContext *C,
+                                     ReportList *reports,
+                                     Object *ob,
+                                     Object *ob_latt)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+
+  if (ob == NULL) {
+    return false;
+  }
+
+  /* if no lattice modifier, add a new one */
+  GpencilModifierData *md = BKE_gpencil_modifiers_findByType(ob, eGpencilModifierType_Lattice);
+  if (md == NULL) {
+    md = ED_object_gpencil_modifier_add(
+        reports, bmain, scene, ob, "Lattice", eGpencilModifierType_Lattice);
+    if (md == NULL) {
+      BKE_report(reports, RPT_ERROR, "Unable to add a new Lattice modifier to object");
+      return false;
+    }
+    DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
+
+  /* verify lattice */
+  LatticeGpencilModifierData *mmd = (LatticeGpencilModifierData *)md;
+  if (mmd->object == NULL) {
+    mmd->object = ob_latt;
+  }
+  else {
+    if (ob_latt != mmd->object) {
+      BKE_report(reports,
+                 RPT_ERROR,
+                 "The existing Lattice modifier is already using a different Lattice object");
+      return false;
+    }
+  }
+
+  return true;
 }

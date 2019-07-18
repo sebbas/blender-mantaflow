@@ -120,8 +120,8 @@ class TOPBAR_PT_gpencil_layers(Panel):
 
             srow = col.row(align=True)
             srow.prop(gpl, "opacity", text="Opacity", slider=True)
-            srow.prop(gpl, "clamp_layer", text="",
-                      icon='MOD_MASK' if gpl.clamp_layer else 'LAYER_ACTIVE')
+            srow.prop(gpl, "mask_layer", text="",
+                      icon='MOD_MASK' if gpl.mask_layer else 'LAYER_ACTIVE')
 
             srow = col.row(align=True)
             srow.prop(gpl, "use_solo_mode", text="Show Only On Keyframed")
@@ -171,9 +171,8 @@ class TOPBAR_MT_editor_menus(Menu):
 class TOPBAR_MT_app(Menu):
     bl_label = "Blender"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
-        prefs = context.preferences
 
         layout.operator("wm.splash")
 
@@ -235,9 +234,6 @@ class TOPBAR_MT_file(Menu):
 
         layout.separator()
 
-        layout.operator_context = 'EXEC_AREA'
-        if bpy.data.is_dirty:
-            layout.operator_context = 'INVOKE_SCREEN'  # quit dialog
         layout.operator("wm.quit_blender", text="Quit", icon='QUIT')
 
 
@@ -309,7 +305,7 @@ class TOPBAR_MT_file_new(Menu):
 class TOPBAR_MT_file_recover(Menu):
     bl_label = "Recover"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator("wm.recover_last_session", text="Last Session")
@@ -338,20 +334,11 @@ class TOPBAR_MT_file_defaults(Menu):
         if app_template:
             props.app_template = app_template
 
-        if prefs.use_preferences_save:
-            props = layout.operator(
-                "wm.read_factory_settings",
-                text="Load Factory Settings (Temporary)"
-            )
-            if app_template:
-                props.app_template = app_template
-            props.use_temporary_preferences = True
-
 
 class TOPBAR_MT_app_about(Menu):
     bl_label = "About"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator(
@@ -377,11 +364,11 @@ class TOPBAR_MT_app_about(Menu):
 class TOPBAR_MT_app_support(Menu):
     bl_label = "Support Blender"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
 
         layout.operator(
-            "wm.url_open", text="Development Fund", icon='URL',
+            "wm.url_open", text="Development Fund", icon='FUND',
         ).url = "https://fund.blender.org"
 
         layout.separator()
@@ -583,9 +570,14 @@ class TOPBAR_MT_help(Menu):
 
         show_developer = context.preferences.view.show_developer_ui
 
+        if bpy.app.version_cycle in {'rc', 'release'}:
+            manual_version = '%d.%d' % bpy.app.version[:2]
+        else:
+            manual_version = 'dev'
+
         layout.operator(
             "wm.url_open", text="Manual", icon='HELP',
-        ).url = "https://docs.blender.org/manual/en/dev/"
+        ).url = "https://docs.blender.org/manual/en/" + manual_version + "/"
         layout.operator(
             "wm.url_open", text="Tutorials", icon='URL',
         ).url = "https://www.blender.org/tutorials"

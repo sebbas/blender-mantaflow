@@ -139,19 +139,24 @@ struct ID *BKE_libblock_find_name(struct Main *bmain,
  */
 enum {
   /* *** Generic options (should be handled by all ID types freeing). *** */
-  /* Do not try to remove freed ID from given Main (passed Main may be NULL). */
+  /** Do not try to remove freed ID from given Main (passed Main may be NULL). */
   LIB_ID_FREE_NO_MAIN = 1 << 0,
-  /* Do not affect user refcount of datablocks used by freed one.
-   * Implies LIB_ID_FREE_NO_MAIN. */
+  /**
+   * Do not affect user refcount of datablocks used by freed one.
+   * Implies LIB_ID_FREE_NO_MAIN.
+   */
   LIB_ID_FREE_NO_USER_REFCOUNT = 1 << 1,
-  /* Assume freed ID datablock memory is managed elsewhere, do not free it
+  /**
+   * Assume freed ID datablock memory is managed elsewhere, do not free it
    * (still calls relevant ID type's freeing function though) - USE WITH CAUTION!
-   * Implies LIB_ID_FREE_NO_MAIN. */
+   * Implies LIB_ID_FREE_NO_MAIN.
+   */
   LIB_ID_FREE_NOT_ALLOCATED = 1 << 2,
 
-  LIB_ID_FREE_NO_DEG_TAG = 1 << 8, /* Do not tag freed ID for update in depsgraph. */
-  LIB_ID_FREE_NO_UI_USER =
-      1 << 9, /* Do not attempt to remove freed ID from UI data/notifiers/... */
+  /** Do not tag freed ID for update in depsgraph. */
+  LIB_ID_FREE_NO_DEG_TAG = 1 << 8,
+  /** Do not attempt to remove freed ID from UI data/notifiers/... */
+  LIB_ID_FREE_NO_UI_USER = 1 << 9,
 };
 
 void BKE_libblock_free_datablock(struct ID *id, const int flag) ATTR_NONNULL();
@@ -218,13 +223,15 @@ void BKE_main_id_flag_all(struct Main *bmain, const int flag, const bool value);
 
 void BKE_main_id_clear_newpoins(struct Main *bmain);
 
+void BLE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_only);
+
 void BKE_main_lib_objects_recalc_all(struct Main *bmain);
 
 /* Only for repairing files via versioning, avoid for general use. */
 void BKE_main_id_repair_duplicate_names_listbase(struct ListBase *lb);
 
 #define MAX_ID_FULL_NAME (64 + 64 + 3 + 1)         /* 64 is MAX_ID_NAME - 2 */
-#define MAX_ID_FULL_NAME_UI (MAX_ID_FULL_NAME + 3) /* Adds 'keycode' two letters at begining. */
+#define MAX_ID_FULL_NAME_UI (MAX_ID_FULL_NAME + 3) /* Adds 'keycode' two letters at beginning. */
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const struct ID *id);
 void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI], const struct ID *id);
 

@@ -35,7 +35,7 @@
  *                     _ = 4 byte pointer, - = 8 byte pointer
  * </pre>
  *
- * datablocks: (also see struct #BHead).
+ * data-blocks: (also see struct #BHead).
  * <pre>
  *     <bh.code>           4 chars
  *     <bh.len>            int,  len data after BHead
@@ -553,10 +553,8 @@ static void writestruct_id(
   writestruct_at_address_id(wd, filecode, structname, nr, adr, adr);
 }
 
-static void writedata(WriteData *wd,
-                      int filecode,
-                      int len,
-                      const void *adr) /* do not use for structs */
+/* do not use for structs */
+static void writedata(WriteData *wd, int filecode, int len, const void *adr)
 {
   BHead bh;
 
@@ -708,15 +706,16 @@ static void write_iddata(void *wd, const ID *id)
     IDP_WriteProperty(id->properties, wd);
   }
 
-  if (id->override_static) {
-    writestruct(wd, DATA, IDOverrideStatic, 1, id->override_static);
+  if (id->override_library) {
+    writestruct(wd, DATA, IDOverrideLibrary, 1, id->override_library);
 
-    writelist(wd, DATA, IDOverrideStaticProperty, &id->override_static->properties);
-    for (IDOverrideStaticProperty *op = id->override_static->properties.first; op; op = op->next) {
+    writelist(wd, DATA, IDOverrideLibraryProperty, &id->override_library->properties);
+    for (IDOverrideLibraryProperty *op = id->override_library->properties.first; op;
+         op = op->next) {
       writedata(wd, DATA, strlen(op->rna_path) + 1, op->rna_path);
 
-      writelist(wd, DATA, IDOverrideStaticPropertyOperation, &op->operations);
-      for (IDOverrideStaticPropertyOperation *opop = op->operations.first; opop;
+      writelist(wd, DATA, IDOverrideLibraryPropertyOperation, &op->operations);
+      for (IDOverrideLibraryPropertyOperation *opop = op->operations.first; opop;
            opop = opop->next) {
         if (opop->subitem_reference_name) {
           writedata(
@@ -1039,7 +1038,7 @@ static void write_nodetree_nolib(WriteData *wd, bNodeTree *ntree)
         /* pass */
       }
       else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_GLARE)) {
-        /* Simple forward compat for fix for T50736.
+        /* Simple forward compatibility for fix for T50736.
          * Not ideal (there is no ideal solution here), but should do for now. */
         NodeGlare *ndg = node->storage;
         /* Not in undo case. */
@@ -2354,7 +2353,7 @@ static void write_light(WriteData *wd, Light *la)
 
 static void write_collection_nolib(WriteData *wd, Collection *collection)
 {
-  /* Shared function for collection datablocks and scene master collection. */
+  /* Shared function for collection data-blocks and scene master collection. */
   write_previews(wd, collection->preview);
 
   for (CollectionObject *cob = collection->gobject.first; cob; cob = cob->next) {
@@ -2580,13 +2579,13 @@ static void write_scene(WriteData *wd, Scene *sce)
 
         Strip *strip = seq->strip;
         writestruct(wd, DATA, Strip, 1, strip);
-        if (seq->flag & SEQ_USE_CROP && strip->crop) {
+        if (strip->crop) {
           writestruct(wd, DATA, StripCrop, 1, strip->crop);
         }
-        if (seq->flag & SEQ_USE_TRANSFORM && strip->transform) {
+        if (strip->transform) {
           writestruct(wd, DATA, StripTransform, 1, strip->transform);
         }
-        if (seq->flag & SEQ_USE_PROXY && strip->proxy) {
+        if (strip->proxy) {
           writestruct(wd, DATA, StripProxy, 1, strip->proxy);
         }
         if (seq->type == SEQ_TYPE_IMAGE) {
@@ -3775,11 +3774,10 @@ static bool write_file_handle(Main *mainvar,
    * avoid thumbnail detecting changes because of this. */
   mywrite_flush(wd);
 
-  OverrideStaticStorage *override_storage = wd->use_memfile ?
-                                                NULL :
-                                                BKE_override_static_operations_store_initialize();
+  OverrideLibraryStorage *override_storage =
+      wd->use_memfile ? NULL : BKE_override_library_operations_store_initialize();
 
-  /* This outer loop allows to save first datablocks from real mainvar,
+  /* This outer loop allows to save first data-blocks from real mainvar,
    * then the temp ones from override process,
    * if needed, without duplicating whole code. */
   Main *bmain = mainvar;
@@ -3799,10 +3797,10 @@ static bool write_file_handle(Main *mainvar,
         BLI_assert(
             (id->tag & (LIB_TAG_NO_MAIN | LIB_TAG_NO_USER_REFCOUNT | LIB_TAG_NOT_ALLOCATED)) == 0);
 
-        const bool do_override = !ELEM(override_storage, NULL, bmain) && id->override_static;
+        const bool do_override = !ELEM(override_storage, NULL, bmain) && id->override_library;
 
         if (do_override) {
-          BKE_override_static_operations_store_start(bmain, override_storage, id);
+          BKE_override_library_operations_store_start(bmain, override_storage, id);
         }
 
         switch ((ID_Type)GS(id->name)) {
@@ -3922,7 +3920,7 @@ static bool write_file_handle(Main *mainvar,
         }
 
         if (do_override) {
-          BKE_override_static_operations_store_end(override_storage, id);
+          BKE_override_library_operations_store_end(override_storage, id);
         }
       }
 
@@ -3931,7 +3929,7 @@ static bool write_file_handle(Main *mainvar,
   } while ((bmain != override_storage) && (bmain = override_storage));
 
   if (override_storage) {
-    BKE_override_static_operations_store_finalize(override_storage);
+    BKE_override_library_operations_store_finalize(override_storage);
     override_storage = NULL;
   }
 

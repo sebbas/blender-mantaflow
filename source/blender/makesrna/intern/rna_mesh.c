@@ -526,8 +526,9 @@ static void rna_MeshVertex_groups_begin(CollectionPropertyIterator *iter, Pointe
     rna_iterator_array_begin(
         iter, (void *)dvert->dw, sizeof(MDeformWeight), dvert->totweight, 0, NULL);
   }
-  else
+  else {
     rna_iterator_array_begin(iter, NULL, 0, 0, 0, NULL);
+  }
 }
 
 static void rna_MeshVertex_undeformed_co_get(PointerRNA *ptr, float values[3])
@@ -543,18 +544,21 @@ static void rna_MeshVertex_undeformed_co_get(PointerRNA *ptr, float values[3])
     BKE_mesh_texspace_get(me->texcomesh ? me->texcomesh : me, loc, NULL, size);
     madd_v3_v3v3v3(values, loc, orco[(mvert - me->mvert)], size);
   }
-  else
+  else {
     copy_v3_v3(values, mvert->co);
+  }
 }
 
 static int rna_CustomDataLayer_active_get(PointerRNA *ptr, CustomData *data, int type, bool render)
 {
   int n = ((CustomDataLayer *)ptr->data) - data->layers;
 
-  if (render)
+  if (render) {
     return (n == CustomData_get_render_layer_index(data, type));
-  else
+  }
+  else {
     return (n == CustomData_get_active_layer_index(data, type));
+  }
 }
 
 static int rna_CustomDataLayer_clone_get(PointerRNA *ptr, CustomData *data, int type)
@@ -570,13 +574,16 @@ static void rna_CustomDataLayer_active_set(
   Mesh *me = ptr->id.data;
   int n = (((CustomDataLayer *)ptr->data) - data->layers) - CustomData_get_layer_index(data, type);
 
-  if (value == 0)
+  if (value == 0) {
     return;
+  }
 
-  if (render)
+  if (render) {
     CustomData_set_layer_render(data, type, n);
-  else
+  }
+  else {
     CustomData_set_layer_active(data, type, n);
+  }
 
   BKE_mesh_update_customdata_pointers(me, true);
 }
@@ -585,8 +592,9 @@ static void rna_CustomDataLayer_clone_set(PointerRNA *ptr, CustomData *data, int
 {
   int n = ((CustomDataLayer *)ptr->data) - data->layers;
 
-  if (value == 0)
+  if (value == 0) {
     return;
+  }
 
   CustomData_set_layer_clone_index(data, type, n);
 }
@@ -1098,10 +1106,13 @@ static char *rna_VertexGroupElement_path(PointerRNA *ptr)
   MDeformVert *dvert;
   int a, b;
 
-  for (a = 0, dvert = me->dvert; a < me->totvert; a++, dvert++)
-    for (b = 0; b < dvert->totweight; b++)
-      if (dw == &dvert->dw[b])
+  for (a = 0, dvert = me->dvert; a < me->totvert; a++, dvert++) {
+    for (b = 0; b < dvert->totweight; b++) {
+      if (dw == &dvert->dw[b]) {
         return BLI_sprintfN("vertices[%d].groups[%d]", a, b);
+      }
+    }
+  }
 
   return NULL;
 }
@@ -3084,8 +3095,7 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_paint_mask_vertex", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "editflag", ME_EDIT_PAINT_VERT_SEL);
-  RNA_def_property_ui_text(
-      prop, "Vertex Selection", "Vertex selection masking for painting (weight paint only)");
+  RNA_def_property_ui_text(prop, "Vertex Selection", "Vertex selection masking for painting");
   RNA_def_property_ui_icon(prop, ICON_VERTEXSEL, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_Mesh_update_vertmask");
 

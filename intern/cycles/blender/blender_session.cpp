@@ -147,9 +147,9 @@ void BlenderSession::create_session()
   scene->image_manager->builtin_image_info_cb = function_bind(
       &BlenderSession::builtin_image_info, this, _1, _2, _3);
   scene->image_manager->builtin_image_pixels_cb = function_bind(
-      &BlenderSession::builtin_image_pixels, this, _1, _2, _3, _4, _5);
+      &BlenderSession::builtin_image_pixels, this, _1, _2, _3, _4, _5, _6);
   scene->image_manager->builtin_image_float_pixels_cb = function_bind(
-      &BlenderSession::builtin_image_float_pixels, this, _1, _2, _3, _4, _5);
+      &BlenderSession::builtin_image_float_pixels, this, _1, _2, _3, _4, _5, _6);
 
   session->scene = scene;
 
@@ -361,14 +361,14 @@ void BlenderSession::do_write_update_render_tile(RenderTile &rtile,
     bool merge = (rtile.sample != 0) && (rtile.task != RenderTile::DENOISE);
 
     if (merge) {
-      update_render_result(b_rr, b_rlay, rtile);
+      update_render_result(b_rlay, rtile);
     }
 
     end_render_result(b_engine, b_rr, true, highlight, merge);
   }
   else {
     /* Write final render result. */
-    write_render_result(b_rr, b_rlay, rtile);
+    write_render_result(b_rlay, rtile);
     end_render_result(b_engine, b_rr, false, false, true);
   }
 }
@@ -765,8 +765,7 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   sync = NULL;
 }
 
-void BlenderSession::do_write_update_render_result(BL::RenderResult &b_rr,
-                                                   BL::RenderLayer &b_rlay,
+void BlenderSession::do_write_update_render_result(BL::RenderLayer &b_rlay,
                                                    RenderTile &rtile,
                                                    bool do_update_only)
 {
@@ -825,23 +824,16 @@ void BlenderSession::do_write_update_render_result(BL::RenderResult &b_rr,
     if (buffers->get_pass_rect(PASS_COMBINED, exposure, sample, 4, &pixels[0], "Combined"))
       b_combined_pass.rect(&pixels[0]);
   }
-
-  /* tag result as updated */
-  b_engine.update_result(b_rr);
 }
 
-void BlenderSession::write_render_result(BL::RenderResult &b_rr,
-                                         BL::RenderLayer &b_rlay,
-                                         RenderTile &rtile)
+void BlenderSession::write_render_result(BL::RenderLayer &b_rlay, RenderTile &rtile)
 {
-  do_write_update_render_result(b_rr, b_rlay, rtile, false);
+  do_write_update_render_result(b_rlay, rtile, false);
 }
 
-void BlenderSession::update_render_result(BL::RenderResult &b_rr,
-                                          BL::RenderLayer &b_rlay,
-                                          RenderTile &rtile)
+void BlenderSession::update_render_result(BL::RenderLayer &b_rlay, RenderTile &rtile)
 {
-  do_write_update_render_result(b_rr, b_rlay, rtile, true);
+  do_write_update_render_result(b_rlay, rtile, true);
 }
 
 void BlenderSession::synchronize(BL::Depsgraph &b_depsgraph_)
@@ -894,20 +886,21 @@ void BlenderSession::synchronize(BL::Depsgraph &b_depsgraph_)
   else
     sync->sync_camera(b_render, b_camera_override, width, height, "");
 
-  builtin_images_load();
-
-  /* unlock */
-  session->scene->mutex.unlock();
-
   /* reset if needed */
   if (scene->need_reset()) {
     BufferParams buffer_params = BlenderSync::get_buffer_params(
         b_render, b_v3d, b_rv3d, scene->camera, width, height);
     session->reset(buffer_params, session_params.samples);
 
+    /* After session reset, so device is not accessing image data anymore. */
+    builtin_images_load();
+
     /* reset time */
     start_resize_time = 0.0;
   }
+
+  /* unlock */
+  session->scene->mutex.unlock();
 
   /* Start rendering thread, if it's not running already. Do this
    * after all scene data has been synced at least once. */
@@ -1223,6 +1216,7 @@ bool BlenderSession::builtin_image_pixels(const string &builtin_name,
                                           void *builtin_data,
                                           unsigned char *pixels,
                                           const size_t pixels_size,
+                                          const bool associate_alpha,
                                           const bool free_cache)
 {
   if (!builtin_data) {
@@ -1272,12 +1266,14 @@ bool BlenderSession::builtin_image_pixels(const string &builtin_name,
     b_image.buffers_free();
   }
 
-  /* Premultiply, byte images are always straight for Blender. */
-  unsigned char *cp = pixels;
-  for (size_t i = 0; i < num_pixels; i++, cp += channels) {
-    cp[0] = (cp[0] * cp[3]) >> 8;
-    cp[1] = (cp[1] * cp[3]) >> 8;
-    cp[2] = (cp[2] * cp[3]) >> 8;
+  if (associate_alpha) {
+    /* Premultiply, byte images are always straight for Blender. */
+    unsigned char *cp = pixels;
+    for (size_t i = 0; i < num_pixels; i++, cp += channels) {
+      cp[0] = (cp[0] * cp[3]) >> 8;
+      cp[1] = (cp[1] * cp[3]) >> 8;
+      cp[2] = (cp[2] * cp[3]) >> 8;
+    }
   }
   return true;
 }
@@ -1286,6 +1282,7 @@ bool BlenderSession::builtin_image_float_pixels(const string &builtin_name,
                                                 void *builtin_data,
                                                 float *pixels,
                                                 const size_t pixels_size,
+                                                const bool,
                                                 const bool free_cache)
 {
   if (!builtin_data) {

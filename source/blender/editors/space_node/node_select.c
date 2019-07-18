@@ -495,17 +495,7 @@ static int node_mouse_select(bContext *C,
     }
   }
 
-  /* In case we do two-steps selection, we do not want to select the node if some valid socket
-   * is below the mouse, as that would prevent draging from sockets (NODE_OT_link)
-   * to be properly triggered. See T64660. */
-  if (wait_to_deselect_others) {
-    if (node_find_indicated_socket(snode, &node, &sock, cursor, SOCK_IN) ||
-        node_find_indicated_socket(snode, &node, &sock, cursor, SOCK_OUT)) {
-      ret_value = OPERATOR_CANCELLED;
-    }
-  }
-
-  if (sock == NULL) {
+  if (!sock) {
     /* find the closest visible node */
     node = node_under_mouse_select(snode->edittree, (int)cursor[0], (int)cursor[1]);
 
@@ -621,13 +611,14 @@ static int node_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
     return ret_value | OPERATOR_PASS_THROUGH;
   }
   else if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-    const int dx = mval[0] - event->mval[0];
-    const int dy = mval[1] - event->mval[1];
-    const float tweak_threshold = U.tweak_threshold * U.dpi_fac;
+    const int drag_delta[2] = {
+        mval[0] - event->mval[0],
+        mval[1] - event->mval[1],
+    };
     /* If user moves mouse more than defined threshold, we consider select operator as
      * finished. Otherwise, it is still running until we get an 'release' event. In any
      * case, we pass through event, but select op is not finished yet. */
-    if (abs(dx) + abs(dy) > tweak_threshold) {
+    if (WM_event_drag_test_with_delta(event, drag_delta)) {
       return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
     }
     else {

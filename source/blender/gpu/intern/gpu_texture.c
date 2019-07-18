@@ -68,6 +68,7 @@ typedef enum eGPUTextureFormatFlag {
 /* GPUTexture */
 struct GPUTexture {
   int w, h, d;        /* width/height/depth */
+  int orig_w, orig_h; /* width/height (of source data), optional. */
   int number;         /* number for multitexture binding */
   int refcount;       /* reference count */
   GLenum target;      /* GL_TEXTURE_* */
@@ -504,7 +505,8 @@ static float *GPU_texture_rescale_3d(
 static bool gpu_texture_check_capacity(
     GPUTexture *tex, GLenum proxy, GLenum internalformat, GLenum data_format, GLenum data_type)
 {
-  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_WIN, GPU_DRIVER_ANY)) {
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_WIN, GPU_DRIVER_ANY) ||
+      GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OFFICIAL)) {
     /* Some AMD drivers have a faulty `GL_PROXY_TEXTURE_..` check.
      * (see T55888, T56185, T59351).
      * Checking with `GL_PROXY_TEXTURE_..` doesn't prevent `Out Of Memory` issue,
@@ -1458,7 +1460,9 @@ void *GPU_texture_read(GPUTexture *tex, eGPUDataFormat gpu_data_format, int mipl
       break;
   }
 
-  void *buf = MEM_mallocN(buf_size, "GPU_texture_read");
+  /* AMD Pro driver have a bug that write 8 bytes past buffer size
+   * if the texture is big. (see T66573) */
+  void *buf = MEM_mallocN(buf_size + 8, "GPU_texture_read");
 
   GLenum data_format = gpu_get_gl_dataformat(tex->format, &tex->format_flag);
   GLenum data_type = gpu_get_gl_datatype(gpu_data_format);
@@ -1482,40 +1486,6 @@ void *GPU_texture_read(GPUTexture *tex, eGPUDataFormat gpu_data_format, int mipl
   glBindTexture(tex->target, 0);
 
   return buf;
-}
-
-void GPU_texture_read_rect(GPUTexture *tex,
-                           eGPUDataFormat gpu_data_format,
-                           const rcti *rect,
-                           void *r_buf)
-{
-  gpu_validate_data_format(tex->format, gpu_data_format);
-
-  GPUFrameBuffer *cur_fb = GPU_framebuffer_active_get();
-  GPUFrameBuffer *tmp_fb = GPU_framebuffer_create();
-  GPU_framebuffer_texture_attach(tmp_fb, tex, 0, 0);
-
-  GPU_framebuffer_bind(tmp_fb);
-  glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-  GLenum data_format = gpu_get_gl_dataformat(tex->format, &tex->format_flag);
-  GLenum data_type = gpu_get_gl_datatype(gpu_data_format);
-
-  glReadPixels(rect->xmin,
-               rect->ymin,
-               BLI_rcti_size_x(rect),
-               BLI_rcti_size_y(rect),
-               data_format,
-               data_type,
-               r_buf);
-
-  if (cur_fb) {
-    GPU_framebuffer_bind(cur_fb);
-  }
-  else {
-    GPU_framebuffer_restore();
-  }
-  GPU_framebuffer_free(tmp_fb);
 }
 
 void GPU_texture_update(GPUTexture *tex, eGPUDataFormat data_format, const void *pixels)
@@ -1776,6 +1746,22 @@ int GPU_texture_width(const GPUTexture *tex)
 int GPU_texture_height(const GPUTexture *tex)
 {
   return tex->h;
+}
+
+int GPU_texture_orig_width(const GPUTexture *tex)
+{
+  return tex->orig_w;
+}
+
+int GPU_texture_orig_height(const GPUTexture *tex)
+{
+  return tex->orig_h;
+}
+
+void GPU_texture_orig_size_set(GPUTexture *tex, int w, int h)
+{
+  tex->orig_w = w;
+  tex->orig_h = h;
 }
 
 int GPU_texture_layers(const GPUTexture *tex)

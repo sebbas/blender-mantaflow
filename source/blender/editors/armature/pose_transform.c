@@ -101,8 +101,8 @@ static void applyarmature_set_edit_position(EditBone *curbone,
   copy_v3_v3(curbone->tail, new_tail);
 
   /* Fix roll:
-   *	1. find auto-calculated roll value for this bone now
-   *	2. remove this from the 'visual' y-rotation
+   * 1. find auto-calculated roll value for this bone now
+   * 2. remove this from the 'visual' y-rotation
    */
   {
     float premat[3][3], pmat[3][3];
@@ -209,8 +209,9 @@ static void applyarmature_process_selected_rec(bArmature *arm,
   bPoseChannel *pchan = BKE_pose_channel_find_name(pose, bone->name);
   const bPoseChannel *pchan_eval = BKE_pose_channel_find_name(pose_eval, bone->name);
 
-  if (!pchan || !pchan_eval)
+  if (!pchan || !pchan_eval) {
     return;
+  }
 
   ApplyArmature_ParentState new_pstate = {.bone = bone};
 
@@ -693,7 +694,9 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
    */
   Main *temp_bmain = BKE_main_new();
   Object ob_copy = *ob;
+  ob_copy.adt = NULL;
   bArmature arm_copy = *((bArmature *)ob->data);
+  arm_copy.adt = NULL;
   ob_copy.data = &arm_copy;
   BLI_addtail(&temp_bmain->objects, &ob_copy);
   BLI_addtail(&temp_bmain->armatures, &arm_copy);

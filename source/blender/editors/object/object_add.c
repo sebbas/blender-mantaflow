@@ -423,6 +423,8 @@ bool ED_object_add_generic_get_opts(bContext *C,
 
     if (RNA_struct_property_is_set(op->ptr, "rotation")) {
       *is_view_aligned = false;
+      RNA_property_enum_set(op->ptr, prop, ALIGN_WORLD);
+      alignment = ALIGN_WORLD;
     }
     else if (alignment_set) {
       *is_view_aligned = alignment == ALIGN_VIEW;
@@ -1417,6 +1419,7 @@ void OBJECT_OT_collection_instance_add(wmOperatorType *ot)
 
 static int object_speaker_add_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   Object *ob;
   ushort local_view_bits;
   float loc[3], rot[3];
@@ -1434,7 +1437,7 @@ static int object_speaker_add_exec(bContext *C, wmOperator *op)
     /* create new data for NLA hierarchy */
     AnimData *adt = BKE_animdata_add_id(&ob->id);
     NlaTrack *nlt = BKE_nlatrack_add(adt, NULL);
-    NlaStrip *strip = BKE_nla_add_soundstrip(scene, ob->data);
+    NlaStrip *strip = BKE_nla_add_soundstrip(bmain, scene, ob->data);
     strip->start = CFRA;
     strip->end += strip->start;
 
@@ -1655,59 +1658,55 @@ static void copy_object_set_idnew(bContext *C)
 /** \name Make Instanced Objects Real Operator
  * \{ */
 
+/* XXX TODO That whole hierarchy handling based on persistent_id tricks is
+ * very confusing and convoluted, and it will fail in many cases besides basic ones.
+ * Think this should be replaced by a proper tree-like representation of the instantiations,
+ * should help a lot in both readability, and precise consistent rebuilding of hierarchy.
+ */
+
+/**
+ * \note regarding hashing dupli-objects which come from OB_DUPLICOLLECTION,
+ * skip the first member of #DupliObject.persistent_id
+ * since its a unique index and we only want to know if the group objects are from the same
+ * dupli-group instance.
+ *
+ * \note regarding hashing dupli-objects which come from non-OB_DUPLICOLLECTION,
+ * include the first member of #DupliObject.persistent_id
+ * since its the index of the vertex/face the object is instantiated on and we want to identify
+ * objects on the same vertex/face.
+ * In other words, we consider each group of objects from a same item as being
+ * the 'local group' where to check for parents.
+ */
+static unsigned int dupliobject_hash(const void *ptr)
+{
+  const DupliObject *dob = ptr;
+  unsigned int hash = BLI_ghashutil_ptrhash(dob->ob);
+
+  if (dob->type == OB_DUPLICOLLECTION) {
+    for (int i = 1; (i < MAX_DUPLI_RECUR) && dob->persistent_id[i] != INT_MAX; i++) {
+      hash ^= (dob->persistent_id[i] ^ i);
+    }
+  }
+  else {
+    hash ^= (dob->persistent_id[0] ^ 0);
+  }
+  return hash;
+}
+
 /**
  * \note regarding hashing dupli-objects when using OB_DUPLICOLLECTION,
  * skip the first member of #DupliObject.persistent_id
  * since its a unique index and we only want to know if the group objects are from the same
  * dupli-group instance.
  */
-static unsigned int dupliobject_group_hash(const void *ptr)
+static unsigned int dupliobject_instancer_hash(const void *ptr)
 {
   const DupliObject *dob = ptr;
-  unsigned int hash = BLI_ghashutil_ptrhash(dob->ob);
-  unsigned int i;
-  for (i = 1; (i < MAX_DUPLI_RECUR) && dob->persistent_id[i] != INT_MAX; i++) {
+  unsigned int hash = BLI_ghashutil_inthash(dob->persistent_id[0]);
+  for (int i = 1; (i < MAX_DUPLI_RECUR) && dob->persistent_id[i] != INT_MAX; i++) {
     hash ^= (dob->persistent_id[i] ^ i);
   }
   return hash;
-}
-
-/**
- * \note regarding hashing dupli-objects when NOT using OB_DUPLICOLLECTION,
- * include the first member of #DupliObject.persistent_id
- * since its the index of the vertex/face the object is instantiated on and we want to identify
- * objects on the same vertex/face.
- */
-static unsigned int dupliobject_hash(const void *ptr)
-{
-  const DupliObject *dob = ptr;
-  unsigned int hash = BLI_ghashutil_ptrhash(dob->ob);
-  hash ^= (dob->persistent_id[0] ^ 0);
-  return hash;
-}
-
-/* Compare function that matches dupliobject_group_hash */
-static bool dupliobject_group_cmp(const void *a_, const void *b_)
-{
-  const DupliObject *a = a_;
-  const DupliObject *b = b_;
-  unsigned int i;
-
-  if (a->ob != b->ob) {
-    return true;
-  }
-
-  for (i = 1; (i < MAX_DUPLI_RECUR); i++) {
-    if (a->persistent_id[i] != b->persistent_id[i]) {
-      return true;
-    }
-    else if (a->persistent_id[i] == INT_MAX) {
-      break;
-    }
-  }
-
-  /* matching */
-  return false;
 }
 
 /* Compare function that matches dupliobject_hash */
@@ -1720,8 +1719,39 @@ static bool dupliobject_cmp(const void *a_, const void *b_)
     return true;
   }
 
-  if (a->persistent_id[0] != b->persistent_id[0]) {
-    return true;
+  if (ELEM(a->type, b->type, OB_DUPLICOLLECTION)) {
+    for (int i = 1; (i < MAX_DUPLI_RECUR); i++) {
+      if (a->persistent_id[i] != b->persistent_id[i]) {
+        return true;
+      }
+      else if (a->persistent_id[i] == INT_MAX) {
+        break;
+      }
+    }
+  }
+  else {
+    if (a->persistent_id[0] != b->persistent_id[0]) {
+      return true;
+    }
+  }
+
+  /* matching */
+  return false;
+}
+
+/* Compare function that matches dupliobject_instancer_hash. */
+static bool dupliobject_instancer_cmp(const void *a_, const void *b_)
+{
+  const DupliObject *a = a_;
+  const DupliObject *b = b_;
+
+  for (int i = 0; (i < MAX_DUPLI_RECUR); i++) {
+    if (a->persistent_id[i] != b->persistent_id[i]) {
+      return true;
+    }
+    else if (a->persistent_id[i] == INT_MAX) {
+      break;
+    }
   }
 
   /* matching */
@@ -1736,7 +1766,7 @@ static void make_object_duplilist_real(
   Depsgraph *depsgraph = CTX_data_depsgraph(C);
   ListBase *lb_duplis;
   DupliObject *dob;
-  GHash *dupli_gh, *parent_gh = NULL;
+  GHash *dupli_gh, *parent_gh = NULL, *instancer_gh = NULL;
 
   if (!(base->object->transflag & OB_DUPLI)) {
     return;
@@ -1747,11 +1777,11 @@ static void make_object_duplilist_real(
 
   dupli_gh = BLI_ghash_ptr_new(__func__);
   if (use_hierarchy) {
-    if (base->object->transflag & OB_DUPLICOLLECTION) {
-      parent_gh = BLI_ghash_new(dupliobject_group_hash, dupliobject_group_cmp, __func__);
-    }
-    else {
-      parent_gh = BLI_ghash_new(dupliobject_hash, dupliobject_cmp, __func__);
+    parent_gh = BLI_ghash_new(dupliobject_hash, dupliobject_cmp, __func__);
+
+    if (use_base_parent) {
+      instancer_gh = BLI_ghash_new(
+          dupliobject_instancer_hash, dupliobject_instancer_cmp, __func__);
     }
   }
 
@@ -1785,7 +1815,12 @@ static void make_object_duplilist_real(
     ob_dst->parent = NULL;
     BKE_constraints_free(&ob_dst->constraints);
     ob_dst->runtime.curve_cache = NULL;
+    const bool is_dupli_instancer = (ob_dst->transflag & OB_DUPLI) != 0;
     ob_dst->transflag &= ~OB_DUPLI;
+    /* Remove instantiated collection, it's annoying to keep it here
+     * (and get potentially a lot of usages of it then...). */
+    id_us_min((ID *)ob_dst->instance_collection);
+    ob_dst->instance_collection = NULL;
 
     copy_m4_m4(ob_dst->obmat, dob->mat);
     BKE_object_apply_mat4(ob_dst, ob_dst->obmat, false, false);
@@ -1798,6 +1833,13 @@ static void make_object_duplilist_real(
        * raise asserts in debug builds... */
       if (!BLI_ghash_ensure_p(parent_gh, dob, &val)) {
         *val = ob_dst;
+      }
+
+      if (is_dupli_instancer && instancer_gh) {
+        /* Same as above, we may have several 'hits'. */
+        if (!BLI_ghash_ensure_p(instancer_gh, dob, &val)) {
+          *val = ob_dst;
+        }
       }
     }
   }
@@ -1822,7 +1864,8 @@ static void make_object_duplilist_real(
          * they won't be read, this is simply for a hash lookup. */
         DupliObject dob_key;
         dob_key.ob = ob_src_par;
-        if (base->object->transflag & OB_DUPLICOLLECTION) {
+        dob_key.type = dob->type;
+        if (dob->type == OB_DUPLICOLLECTION) {
           memcpy(&dob_key.persistent_id[1],
                  &dob->persistent_id[1],
                  sizeof(dob->persistent_id[1]) * (MAX_DUPLI_RECUR - 1));
@@ -1845,15 +1888,30 @@ static void make_object_duplilist_real(
 
         ob_dst->parent = ob_dst_par;
       }
-      else if (use_base_parent) {
-        ob_dst->parent = base->object;
-        ob_dst->partype = PAROBJECT;
-      }
     }
-    else if (use_base_parent) {
-      /* since we are ignoring the internal hierarchy - parent all to the
-       * base object */
-      ob_dst->parent = base->object;
+    if (use_base_parent && ob_dst->parent == NULL) {
+      Object *ob_dst_par = NULL;
+
+      if (instancer_gh != NULL) {
+        /* OK to keep most of the members uninitialized,
+         * they won't be read, this is simply for a hash lookup. */
+        DupliObject dob_key;
+        /* We are looking one step upper in hierarchy, so we need to 'shift' the persitent_id,
+         * ignoring the first item.
+         * We only check on persistent_id here, since we have no idea what object it might be. */
+        memcpy(&dob_key.persistent_id[0],
+               &dob->persistent_id[1],
+               sizeof(dob_key.persistent_id[0]) * (MAX_DUPLI_RECUR - 1));
+        ob_dst_par = BLI_ghash_lookup(instancer_gh, &dob_key);
+      }
+
+      if (ob_dst_par == NULL) {
+        /* Default to parenting to root object...
+         * Always the case when use_hierarchy is false. */
+        ob_dst_par = base->object;
+      }
+
+      ob_dst->parent = ob_dst_par;
       ob_dst->partype = PAROBJECT;
     }
 
@@ -1875,11 +1933,15 @@ static void make_object_duplilist_real(
         DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
       }
     }
+    base->object->instance_collection = NULL;
   }
 
   BLI_ghash_free(dupli_gh, NULL, NULL);
   if (parent_gh) {
     BLI_ghash_free(parent_gh, NULL, NULL);
+  }
+  if (instancer_gh) {
+    BLI_ghash_free(instancer_gh, NULL, NULL);
   }
 
   free_object_duplilist(lb_duplis);
@@ -1918,8 +1980,8 @@ static int object_duplicates_make_real_exec(bContext *C, wmOperator *op)
 void OBJECT_OT_duplicates_make_real(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Make Duplicates Real";
-  ot->description = "Make dupli objects attached to this object real";
+  ot->name = "Make Instances Real";
+  ot->description = "Make instanced objects attached to this object real";
   ot->idname = "OBJECT_OT_duplicates_make_real";
 
   /* api callbacks */
@@ -1970,13 +2032,36 @@ static void convert_ensure_curve_cache(Depsgraph *depsgraph, Scene *scene, Objec
   }
 }
 
-static void curvetomesh(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
+static void curvetomesh(Main *bmain, Depsgraph *depsgraph, Object *ob)
 {
-  convert_ensure_curve_cache(depsgraph, scene, ob);
-  BKE_mesh_from_nurbs(bmain, ob); /* also does users */
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+  Curve *curve = ob->data;
 
-  if (ob->type == OB_MESH) {
-    BKE_object_free_modifiers(ob, 0);
+  Mesh *mesh = BKE_mesh_new_from_object_to_bmain(bmain, depsgraph, object_eval, true);
+  if (mesh == NULL) {
+    /* Unable to convert the curve to a mesh. */
+    return;
+  }
+
+  BKE_object_free_modifiers(ob, 0);
+  /* Replace curve used by the object itself. */
+  ob->data = mesh;
+  ob->type = OB_MESH;
+  id_us_min(&curve->id);
+  id_us_plus(&mesh->id);
+  /* Change objects which are using same curve.
+   * A bit annoying, but:
+   * - It's possible to have multiple curve objects selected which are sharing the same curve
+   *   datablock. We don't want mesh to be created for every of those objects.
+   * - This is how conversion worked for a long long time. */
+  LISTBASE_FOREACH (Object *, other_object, &bmain->objects) {
+    if (other_object->data == curve) {
+      other_object->type = OB_MESH;
+
+      id_us_min((ID *)other_object->data);
+      other_object->data = ob->data;
+      id_us_plus((ID *)other_object->data);
+    }
   }
 }
 
@@ -1992,7 +2077,7 @@ static bool convert_poll(bContext *C)
 
 /* Helper for convert_exec */
 static Base *duplibase_for_convert(
-    Main *bmain, Scene *scene, ViewLayer *view_layer, Base *base, Object *ob)
+    Main *bmain, Depsgraph *depsgraph, Scene *scene, ViewLayer *view_layer, Base *base, Object *ob)
 {
   Object *obn;
   Base *basen;
@@ -2002,19 +2087,51 @@ static Base *duplibase_for_convert(
   }
 
   obn = BKE_object_copy(bmain, ob);
-  DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+  DEG_id_tag_update(&obn->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
   BKE_collection_object_add_from(bmain, scene, ob, obn);
 
   basen = BKE_view_layer_base_find(view_layer, obn);
   ED_object_base_select(basen, BA_SELECT);
-  ED_object_base_select(basen, BA_DESELECT);
+  ED_object_base_select(base, BA_DESELECT);
+
+  /* XXX An ugly hack needed because if we re-run depsgraph with some new MBall objects
+   * having same 'family name' as orig ones, they will affect end result of MBall computation...
+   * For until we get rid of that name-based thingy in MBalls, that should do the trick
+   * (this is weak, but other solution (to change name of obn) is even worse imho).
+   * See T65996. */
+  const bool is_meta_ball = (obn->type == OB_MBALL);
+  void *obdata = obn->data;
+  if (is_meta_ball) {
+    obn->type = OB_EMPTY;
+    obn->data = NULL;
+  }
+
+  /* XXX Doing that here is stupid, it means we update and re-evaluate the whole depsgraph every
+   * time we need to duplicate an object to convert it. Even worse, this is not 100% correct, since
+   * we do not yet have duplicated obdata.
+   * However, that is a safe solution for now. Proper, longer-term solution is to refactor
+   * convert_exec to:
+   *  - duplicate all data it needs to in a first loop.
+   *  - do a single update.
+   *  - convert data in a second loop. */
+  DEG_graph_tag_relations_update(depsgraph);
+  CustomData_MeshMasks customdata_mask_prev = scene->customdata_mask;
+  CustomData_MeshMasks_update(&scene->customdata_mask, &CD_MASK_MESH);
+  BKE_scene_graph_update_tagged(depsgraph, bmain);
+  scene->customdata_mask = customdata_mask_prev;
+
+  if (is_meta_ball) {
+    obn->type = OB_MBALL;
+    obn->data = obdata;
+  }
+
   return basen;
 }
 
 static int convert_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Base *basen = NULL, *basact = NULL;
@@ -2052,7 +2169,8 @@ static int convert_exec(bContext *C, wmOperator *op)
     FOREACH_SCENE_OBJECT_END;
   }
 
-  ListBase selected_editable_bases = CTX_data_collection_get(C, "selected_editable_bases");
+  ListBase selected_editable_bases;
+  CTX_data_selected_editable_bases(C, &selected_editable_bases);
 
   /* Ensure we get all meshes calculated with a sufficient data-mask,
    * needed since re-evaluating single modifiers causes bugs if they depend
@@ -2113,7 +2231,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       if (keep_original) {
-        basen = duplibase_for_convert(bmain, scene, view_layer, base, NULL);
+        basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, NULL);
         newob = basen->object;
 
         /* decrement original mesh's usage count  */
@@ -2138,7 +2256,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       if (keep_original) {
-        basen = duplibase_for_convert(bmain, scene, view_layer, base, NULL);
+        basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, NULL);
         newob = basen->object;
 
         /* decrement original mesh's usage count  */
@@ -2168,7 +2286,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       if (keep_original) {
-        basen = duplibase_for_convert(bmain, scene, view_layer, base, NULL);
+        basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, NULL);
         newob = basen->object;
 
         /* decrement original curve's usage count  */
@@ -2232,8 +2350,9 @@ static int convert_exec(bContext *C, wmOperator *op)
       BKE_curve_curve_dimension_update(cu);
 
       if (target == OB_MESH) {
-        curvetomesh(bmain, depsgraph, scene, newob);
-
+        /* No assumption should be made that the resulting objects is a mesh, as conversion can
+         * fail. */
+        curvetomesh(bmain, depsgraph, newob);
         /* meshes doesn't use displist */
         BKE_object_free_curve_cache(newob);
       }
@@ -2243,7 +2362,7 @@ static int convert_exec(bContext *C, wmOperator *op)
 
       if (target == OB_MESH) {
         if (keep_original) {
-          basen = duplibase_for_convert(bmain, scene, view_layer, base, NULL);
+          basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, NULL);
           newob = basen->object;
 
           /* decrement original curve's usage count  */
@@ -2256,8 +2375,9 @@ static int convert_exec(bContext *C, wmOperator *op)
           newob = ob;
         }
 
-        curvetomesh(bmain, depsgraph, scene, newob);
-
+        /* No assumption should be made that the resulting objects is a mesh, as conversion can
+         * fail. */
+        curvetomesh(bmain, depsgraph, newob);
         /* meshes doesn't use displist */
         BKE_object_free_curve_cache(newob);
       }
@@ -2276,9 +2396,7 @@ static int convert_exec(bContext *C, wmOperator *op)
       }
 
       if (!(baseob->flag & OB_DONE)) {
-        baseob->flag |= OB_DONE;
-
-        basen = duplibase_for_convert(bmain, scene, view_layer, base, baseob);
+        basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, baseob);
         newob = basen->object;
 
         mb = newob->data;
@@ -2303,6 +2421,7 @@ static int convert_exec(bContext *C, wmOperator *op)
           basact = basen;
         }
 
+        baseob->flag |= OB_DONE;
         mballConverted = 1;
       }
     }
@@ -2336,13 +2455,22 @@ static int convert_exec(bContext *C, wmOperator *op)
 
   if (!keep_original) {
     if (mballConverted) {
+      /* We need to remove non-basis MBalls first, otherwise we won't be able to detect them if
+       * their basis happens to be removed first. */
+      FOREACH_SCENE_OBJECT_BEGIN (scene, ob_mball) {
+        if (ob_mball->type == OB_MBALL) {
+          Object *ob_basis = NULL;
+          if (!BKE_mball_is_basis(ob_mball) &&
+              ((ob_basis = BKE_mball_basis_find(scene, ob_mball)) && (ob_basis->flag & OB_DONE))) {
+            ED_object_base_free_and_unlink(bmain, scene, ob_mball);
+          }
+        }
+      }
+      FOREACH_SCENE_OBJECT_END;
       FOREACH_SCENE_OBJECT_BEGIN (scene, ob_mball) {
         if (ob_mball->type == OB_MBALL) {
           if (ob_mball->flag & OB_DONE) {
-            Object *ob_basis = NULL;
-            if (BKE_mball_is_basis(ob_mball) ||
-                ((ob_basis = BKE_mball_basis_find(scene, ob_mball)) &&
-                 (ob_basis->flag & OB_DONE))) {
+            if (BKE_mball_is_basis(ob_mball)) {
               ED_object_base_free_and_unlink(bmain, scene, ob_mball);
             }
           }
@@ -2548,11 +2676,13 @@ void OBJECT_OT_duplicate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* to give to transform */
-  RNA_def_boolean(ot->srna,
-                  "linked",
-                  0,
-                  "Linked",
-                  "Duplicate object but not object data, linking to the original data");
+  prop = RNA_def_boolean(ot->srna,
+                         "linked",
+                         0,
+                         "Linked",
+                         "Duplicate object but not object data, linking to the original data");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
   prop = RNA_def_enum(
       ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
@@ -2763,7 +2893,7 @@ void OBJECT_OT_join_shapes(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Join as Shapes";
-  ot->description = "Merge selected objects to shapes of active object";
+  ot->description = "Copy the current resulting shape of another selected object to this one";
   ot->idname = "OBJECT_OT_join_shapes";
 
   /* api callbacks */

@@ -265,29 +265,17 @@ GHOST_TSuccess GHOST_SetCursorShape(GHOST_WindowHandle windowhandle,
 }
 
 GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle,
-                                          GHOST_TUns8 bitmap[16][2],
-                                          GHOST_TUns8 mask[16][2],
+                                          GHOST_TUns8 *bitmap,
+                                          GHOST_TUns8 *mask,
+                                          int sizex,
+                                          int sizey,
                                           int hotX,
-                                          int hotY)
+                                          int hotY,
+                                          GHOST_TUns8 canInvertColor)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
 
-  return window->setCustomCursorShape(bitmap, mask, hotX, hotY);
-}
-
-GHOST_TSuccess GHOST_SetCustomCursorShapeEx(GHOST_WindowHandle windowhandle,
-                                            GHOST_TUns8 *bitmap,
-                                            GHOST_TUns8 *mask,
-                                            int sizex,
-                                            int sizey,
-                                            int hotX,
-                                            int hotY,
-                                            int fg_color,
-                                            int bg_color)
-{
-  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-
-  return window->setCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, fg_color, bg_color);
+  return window->setCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor);
 }
 
 int GHOST_GetCursorVisibility(GHOST_WindowHandle windowhandle)
@@ -324,6 +312,7 @@ GHOST_TSuccess GHOST_SetCursorPosition(GHOST_SystemHandle systemhandle,
 
 GHOST_TSuccess GHOST_SetCursorGrab(GHOST_WindowHandle windowhandle,
                                    GHOST_TGrabCursorMode mode,
+                                   GHOST_TAxisFlag wrap_axis,
                                    int bounds[4],
                                    const int mouse_ungrab_xy[2])
 {
@@ -340,7 +329,7 @@ GHOST_TSuccess GHOST_SetCursorGrab(GHOST_WindowHandle windowhandle,
   }
 
   return window->setCursorGrab(
-      mode, bounds ? &bounds_rect : NULL, mouse_ungrab_xy ? mouse_xy : NULL);
+      mode, wrap_axis, bounds ? &bounds_rect : NULL, mouse_ungrab_xy ? mouse_xy : NULL);
 }
 
 GHOST_TSuccess GHOST_GetModifierKeyState(GHOST_SystemHandle systemhandle,
@@ -630,6 +619,13 @@ GHOST_TSuccess GHOST_ReleaseOpenGLContext(GHOST_ContextHandle contexthandle)
   GHOST_IContext *context = (GHOST_IContext *)contexthandle;
 
   return context->releaseDrawingContext();
+}
+
+unsigned int GHOST_GetDefaultOpenGLFramebuffer(GHOST_WindowHandle windowhandle)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+
+  return window->getDefaultFramebuffer();
 }
 
 GHOST_TSuccess GHOST_InvalidateWindow(GHOST_WindowHandle windowhandle)

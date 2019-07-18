@@ -149,10 +149,12 @@ static int StrokeVertex_init(BPy_StrokeVertex *self, PyObject *args, PyObject *k
                                        &obj1,
                                        &StrokeAttribute_Type,
                                        &obj2)) {
-    if (!obj2)
+    if (!obj2) {
       self->sv = new StrokeVertex(((BPy_SVertex *)obj1)->sv);
-    else
+    }
+    else {
       self->sv = new StrokeVertex(((BPy_SVertex *)obj1)->sv, *(((BPy_StrokeAttribute *)obj2)->sa));
+    }
   }
   else {
     PyErr_SetString(PyExc_TypeError, "invalid argument(s)");
@@ -171,8 +173,9 @@ static int StrokeVertex_init(BPy_StrokeVertex *self, PyObject *args, PyObject *k
 
 static int StrokeVertex_mathutils_check(BaseMathObject *bmo)
 {
-  if (!BPy_StrokeVertex_Check(bmo->cb_user))
+  if (!BPy_StrokeVertex_Check(bmo->cb_user)) {
     return -1;
+  }
   return 0;
 }
 
@@ -279,8 +282,8 @@ static int StrokeVertex_curvilinear_abscissa_set(BPy_StrokeVertex *self,
                                                  void *UNUSED(closure))
 {
   float scalar;
-  if ((scalar = PyFloat_AsDouble(value)) == -1.0f &&
-      PyErr_Occurred()) { /* parsed item not a number */
+  if ((scalar = PyFloat_AsDouble(value)) == -1.0f && PyErr_Occurred()) {
+    /* parsed item not a number */
     PyErr_SetString(PyExc_TypeError, "value must be a number");
     return -1;
   }
@@ -325,8 +328,8 @@ static int StrokeVertex_stroke_length_set(BPy_StrokeVertex *self,
                                           void *UNUSED(closure))
 {
   float scalar;
-  if ((scalar = PyFloat_AsDouble(value)) == -1.0f &&
-      PyErr_Occurred()) { /* parsed item not a number */
+  if ((scalar = PyFloat_AsDouble(value)) == -1.0f && PyErr_Occurred()) {
+    /* parsed item not a number */
     PyErr_SetString(PyExc_TypeError, "value must be a number");
     return -1;
   }

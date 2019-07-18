@@ -116,7 +116,7 @@ class AnnotationDrawingToolsPanel:
         col.separator()
         col.separator()
 
-        if context.space_data.type in {'CLIP_EDITOR'}:
+        if context.space_data.type == 'CLIP_EDITOR':
             col.separator()
             col.label(text="Data Source:")
             row = col.row(align=True)
@@ -241,7 +241,7 @@ class GreasePencilStrokeSculptPanel:
         layout.template_icon_view(settings, "sculpt_tool", show_labels=True)
 
         if not self.is_popover:
-            from .properties_paint_common import (
+            from bl_ui.properties_paint_common import (
                 brush_basic_gpencil_sculpt_settings,
             )
             brush_basic_gpencil_sculpt_settings(layout, context, brush)
@@ -794,8 +794,6 @@ class GreasePencilToolsPanel:
     def draw(self, context):
         layout = self.layout
 
-        gpd = context.gpencil_data
-
         gpencil_active_brush_settings_simple(context, layout)
 
         layout.separator()
@@ -904,8 +902,8 @@ class GPENCIL_UL_layer(UIList):
             row.prop(gpl, "info", text="", emboss=False)
 
             row = layout.row(align=True)
-            row.prop(gpl, "clamp_layer", text="",
-                     icon='MOD_MASK' if gpl.clamp_layer else 'LAYER_ACTIVE',
+            row.prop(gpl, "mask_layer", text="",
+                     icon='MOD_MASK' if gpl.mask_layer else 'LAYER_ACTIVE',
                      emboss=False)
 
             row.prop(gpl, "lock", text="", emboss=False)

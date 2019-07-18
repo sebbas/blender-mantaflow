@@ -19,6 +19,7 @@ uniform int drawmode;
 uniform float layer_opacity;
 
 uniform sampler2D myTexture;
+uniform bool myTexturePremultiplied;
 uniform int texture_clamp;
 
 uniform int viewport_xray;
@@ -29,7 +30,7 @@ uniform vec4 wire_color;
 #define SOLID 0
 #define GRADIENT 1
 #define RADIAL 2
-#define CHESS 3
+#define CHECKER 3
 #define TEXTURE 4
 #define PATTERN 5
 
@@ -89,27 +90,6 @@ void set_color(in vec4 color,
   ocolor.a *= layer_opacity;
 }
 
-float linearrgb_to_srgb(float c)
-{
-  if (c < 0.0031308) {
-    return (c < 0.0) ? 0.0 : c * 12.92;
-  }
-  else {
-    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
-  }
-}
-
-vec4 texture_read_as_srgb(sampler2D tex, vec2 co)
-{
-  /* By convention image textures return scene linear colors, but
-   * grease pencil still works in srgb. */
-  vec4 color = texture(tex, co);
-  color.r = linearrgb_to_srgb(color.r);
-  color.g = linearrgb_to_srgb(color.g);
-  color.b = linearrgb_to_srgb(color.b);
-  return color;
-}
-
 void main()
 {
   vec2 t_center = vec2(0.5, 0.5);
@@ -118,10 +98,12 @@ void main()
   vec2 rot_tex = (matrot_tex * (texCoord_interp - t_center)) + t_center + texture_offset;
   vec4 tmp_color;
   tmp_color = (texture_clamp == 0) ?
-                  texture_read_as_srgb(myTexture, rot_tex * texture_scale) :
-                  texture_read_as_srgb(myTexture, clamp(rot_tex * texture_scale, 0.0, 1.0));
+                  texture_read_as_srgb(
+                      myTexture, myTexturePremultiplied, rot_tex * texture_scale) :
+                  texture_read_as_srgb(
+                      myTexture, myTexturePremultiplied, clamp(rot_tex * texture_scale, 0.0, 1.0));
   vec4 text_color = vec4(tmp_color[0], tmp_color[1], tmp_color[2], tmp_color[3] * texture_opacity);
-  vec4 chesscolor;
+  vec4 checker_color;
 
   /* wireframe with x-ray discard */
   if ((viewport_xray == 1) && (shading_type[0] == OB_WIRE)) {
@@ -170,18 +152,18 @@ void main()
                 texture_flip,
                 fragColor);
     }
-    /* chessboard */
-    if (fill_type == CHESS) {
+    /* Checkerboard */
+    if (fill_type == CHECKER) {
       vec2 pos = rot / pattern_gridsize;
       if ((fract(pos.x) < 0.5 && fract(pos.y) < 0.5) ||
           (fract(pos.x) > 0.5 && fract(pos.y) > 0.5)) {
-        chesscolor = (texture_flip == 0) ? finalColor : color2;
+        checker_color = (texture_flip == 0) ? finalColor : color2;
       }
       else {
-        chesscolor = (texture_flip == 0) ? color2 : finalColor;
+        checker_color = (texture_flip == 0) ? color2 : finalColor;
       }
       /* mix with texture */
-      fragColor = (texture_mix == 1) ? mix(chesscolor, text_color, mix_factor) : chesscolor;
+      fragColor = (texture_mix == 1) ? mix(checker_color, text_color, mix_factor) : checker_color;
       fragColor.a *= layer_opacity;
     }
     /* texture */

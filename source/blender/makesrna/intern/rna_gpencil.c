@@ -76,7 +76,7 @@ static EnumPropertyItem rna_enum_gpencil_onion_modes_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
+static const EnumPropertyItem rna_enum_onion_keyframe_type_items[] = {
     {-1, "ALL", ICON_ACTION, "All Types", "Include all Keyframe types"},
     {BEZT_KEYTYPE_KEYFRAME,
      "KEYFRAME",
@@ -113,7 +113,7 @@ static const EnumPropertyItem rna_enum_gplayer_move_type_items[] = {
 };
 
 static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
-    {eGplBlendMode_Normal, "NORMAL", 0, "Regular", ""},
+    {eGplBlendMode_Regular, "REGULAR", 0, "Regular", ""},
     {eGplBlendMode_Overlay, "OVERLAY", 0, "Overlay", ""},
     {eGplBlendMode_Add, "ADD", 0, "Add", ""},
     {eGplBlendMode_Subtract, "SUBTRACT", 0, "Subtract", ""},
@@ -198,7 +198,7 @@ static void UNUSED_FUNCTION(rna_GPencil_onion_skinning_update)(Main *bmain,
   bGPDlayer *gpl;
   bool enabled = false;
 
-  /* Ensure that the datablock's onionskinning toggle flag
+  /* Ensure that the data-block's onion-skinning toggle flag
    * stays in sync with the status of the actual layers
    */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -207,10 +207,12 @@ static void UNUSED_FUNCTION(rna_GPencil_onion_skinning_update)(Main *bmain,
     }
   }
 
-  if (enabled)
+  if (enabled) {
     gpd->flag |= GP_DATA_SHOW_ONIONSKINS;
-  else
+  }
+  else {
     gpd->flag &= ~GP_DATA_SHOW_ONIONSKINS;
+  }
 
   /* Now do standard updates... */
   rna_GPencil_update(bmain, scene, ptr);
@@ -245,10 +247,12 @@ static int rna_GPencilLayer_active_frame_editable(PointerRNA *ptr, const char **
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
 
   /* surely there must be other criteria too... */
-  if (gpl->flag & GP_LAYER_LOCKED)
+  if (gpl->flag & GP_LAYER_LOCKED) {
     return 0;
-  else
+  }
+  else {
     return PROP_EDITABLE;
+  }
 }
 
 /* set parent */
@@ -503,10 +507,12 @@ static bGPDstroke *rna_GPencil_stroke_point_find_stroke(const bGPdata *gpd,
     return NULL;
   }
 
-  if (r_gpl)
+  if (r_gpl) {
     *r_gpl = NULL;
-  if (r_gpf)
+  }
+  if (r_gpf) {
     *r_gpf = NULL;
+  }
 
   /* there's no faster alternative than just looping over everything... */
   for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
@@ -514,10 +520,12 @@ static bGPDstroke *rna_GPencil_stroke_point_find_stroke(const bGPdata *gpd,
       for (gps = gpl->actframe->strokes.first; gps; gps = gps->next) {
         if ((pt >= gps->points) && (pt < &gps->points[gps->totpoints])) {
           /* found it */
-          if (r_gpl)
+          if (r_gpl) {
             *r_gpl = gpl;
-          if (r_gpf)
+          }
+          if (r_gpf) {
             *r_gpf = gpl->actframe;
+          }
 
           return gps;
         }
@@ -543,10 +551,12 @@ static void rna_GPencil_stroke_point_select_set(PointerRNA *ptr, const bool valu
   gps = rna_GPencil_stroke_point_find_stroke(gpd, pt, NULL, NULL);
   if (gps) {
     /* Set the new selection state for the point */
-    if (value)
+    if (value) {
       pt->flag |= GP_SPOINT_SELECT;
-    else
+    }
+    else {
       pt->flag &= ~GP_SPOINT_SELECT;
+    }
 
     /* Check if the stroke should be selected or not... */
     BKE_gpencil_stroke_sync_selection(gps);
@@ -652,6 +662,8 @@ static void rna_GPencil_stroke_point_pop(ID *id,
 static bGPDstroke *rna_GPencil_stroke_new(bGPDframe *frame)
 {
   bGPDstroke *stroke = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");
+  stroke->gradient_f = 1.0f;
+  ARRAY_SET_ITEMS(stroke->gradient_s, 1.0f, 1.0f);
   BLI_addtail(&frame->strokes, stroke);
 
   return stroke;
@@ -673,6 +685,24 @@ static void rna_GPencil_stroke_remove(bGPDframe *frame,
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 }
 
+static void rna_GPencil_stroke_close(ID *id,
+                                     bGPDframe *frame,
+                                     ReportList *reports,
+                                     PointerRNA *stroke_ptr)
+{
+  bGPdata *gpd = (bGPdata *)id;
+  bGPDstroke *stroke = stroke_ptr->data;
+  if (BLI_findindex(&frame->strokes, stroke) == -1) {
+    BKE_report(reports, RPT_ERROR, "Stroke not found in grease pencil frame");
+    return;
+  }
+
+  BKE_gpencil_close_stroke(stroke);
+
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+}
+
 static void rna_GPencil_stroke_select_set(PointerRNA *ptr, const bool value)
 {
   bGPDstroke *gps = ptr->data;
@@ -680,21 +710,28 @@ static void rna_GPencil_stroke_select_set(PointerRNA *ptr, const bool value)
   int i;
 
   /* set new value */
-  if (value)
+  if (value) {
     gps->flag |= GP_STROKE_SELECT;
-  else
+  }
+  else {
     gps->flag &= ~GP_STROKE_SELECT;
+  }
 
   /* ensure that the stroke's points are selected in the same way */
   for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-    if (value)
+    if (value) {
       pt->flag |= GP_SPOINT_SELECT;
-    else
+    }
+    else {
       pt->flag &= ~GP_SPOINT_SELECT;
+    }
   }
 }
 
-static bGPDframe *rna_GPencil_frame_new(bGPDlayer *layer, ReportList *reports, int frame_number)
+static bGPDframe *rna_GPencil_frame_new(bGPDlayer *layer,
+                                        ReportList *reports,
+                                        int frame_number,
+                                        bool active)
 {
   bGPDframe *frame;
 
@@ -704,7 +741,9 @@ static bGPDframe *rna_GPencil_frame_new(bGPDlayer *layer, ReportList *reports, i
   }
 
   frame = BKE_gpencil_frame_addnew(layer, frame_number);
-
+  if (active) {
+    layer->actframe = BKE_gpencil_layer_getframe(layer, frame_number, GP_GETFRAME_USE_PREV);
+  }
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
 
   return frame;
@@ -815,8 +854,9 @@ static void rna_GpencilVertex_groups_begin(CollectionPropertyIterator *iter, Poi
     rna_iterator_array_begin(
         iter, (void *)dvert->dw, sizeof(MDeformWeight), dvert->totweight, 0, NULL);
   }
-  else
+  else {
     rna_iterator_array_begin(iter, NULL, 0, 0, 0, NULL);
+  }
 }
 
 static char *rna_GreasePencilGrid_path(PointerRNA *UNUSED(ptr))
@@ -1137,6 +1177,13 @@ static void rna_def_gpencil_strokes_api(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_pointer(func, "stroke", "GPencilStroke", "Stroke", "The stroke to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+
+  func = RNA_def_function(srna, "close", "rna_GPencil_stroke_close");
+  RNA_def_function_ui_description(func, "Close a grease pencil stroke adding geometry");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_pointer(func, "stroke", "GPencilStroke", "Stroke", "The stroke to close");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
 static void rna_def_gpencil_frame(BlenderRNA *brna)
@@ -1205,6 +1252,7 @@ static void rna_def_gpencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
                      MINAFRAME,
                      MAXFRAME);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_boolean(func, "active", 0, "Active", "");
   parm = RNA_def_pointer(func, "frame", "GPencilFrame", "", "The newly created frame");
   RNA_def_function_return(func, parm);
 
@@ -1414,15 +1462,16 @@ static void rna_def_gpencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "lock_material", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", GP_LAYER_UNLOCK_COLOR);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Lock Material", "Disable Material editing");
+  RNA_def_property_ui_text(
+      prop, "Disallow Locked Materials Editing", "Avoids editing locked materials in the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
-  prop = RNA_def_property(srna, "clamp_layer", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "mask_layer", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_LAYER_USE_MASK);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
-      prop, "Clamp Layer", "Clamp any pixel outside underlying layers drawing");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
+      prop, "Mask Layer", "Remove any pixel outside underlying layers drawing");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   /* solo mode: Only display frames with keyframe */
   prop = RNA_def_property(srna, "use_solo_mode", PROP_BOOLEAN, PROP_NONE);
@@ -1636,7 +1685,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "GreasePencil", "ID");
   RNA_def_struct_sdna(srna, "bGPdata");
   RNA_def_struct_ui_text(srna, "Grease Pencil", "Freehand annotation sketchbook");
-  RNA_def_struct_ui_icon(srna, ICON_GREASEPENCIL);
+  RNA_def_struct_ui_icon(srna, ICON_OUTLINER_DATA_GREASEPENCIL);
 
   /* Layers */
   prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);

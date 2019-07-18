@@ -532,7 +532,7 @@ int insert_vert_fcurve(
    *                 introduced discontinuities in how the param worked. */
   beztr.back = 1.70158f;
 
-  /* "elastic" easing - values here were hand-optimised for a default duration of
+  /* "elastic" easing - values here were hand-optimized for a default duration of
    *                    ~10 frames (typical mograph motion length) */
   beztr.amplitude = 0.8f;
   beztr.period = 4.1f;
@@ -1956,7 +1956,7 @@ static int insert_key_menu_invoke(bContext *C, wmOperator *op, const wmEvent *UN
     uiLayout *layout;
 
     /* call the menu, which will call this operator again, hence the canceled */
-    pup = UI_popup_menu_begin(C, RNA_struct_ui_name(op->type->srna), ICON_NONE);
+    pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
     layout = UI_popup_menu_layout(pup);
     uiItemsEnumO(layout, "ANIM_OT_keyframe_insert_menu", "type");
     UI_popup_menu_end(C, pup);
@@ -2034,7 +2034,7 @@ static int delete_key_exec(bContext *C, wmOperator *op)
     int type = RNA_property_enum_get(op->ptr, op->type->prop);
     ks = ANIM_keyingset_get_from_enum_type(scene, type);
     if (ks == NULL) {
-      BKE_report(op->reports, RPT_ERROR, "No active keying set");
+      BKE_report(op->reports, RPT_ERROR, "No active Keying Set");
       return OPERATOR_CANCELLED;
     }
   }
@@ -2044,7 +2044,7 @@ static int delete_key_exec(bContext *C, wmOperator *op)
     ks = ANIM_keyingset_get_from_idname(scene, type_id);
 
     if (ks == NULL) {
-      BKE_reportf(op->reports, RPT_ERROR, "No active keying set '%s' not found", type_id);
+      BKE_reportf(op->reports, RPT_ERROR, "Active Keying Set '%s' not found", type_id);
       return OPERATOR_CANCELLED;
     }
   }
@@ -3000,7 +3000,7 @@ static KeyingSet *keyingset_get_from_op_with_error(wmOperator *op, PropertyRNA *
     int type = RNA_property_enum_get(op->ptr, prop);
     ks = ANIM_keyingset_get_from_enum_type(scene, type);
     if (ks == NULL) {
-      BKE_report(op->reports, RPT_ERROR, "No active keying set");
+      BKE_report(op->reports, RPT_ERROR, "No active Keying Set");
     }
   }
   else if (prop_type == PROP_STRING) {

@@ -31,6 +31,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
+#include "BLI_threads.h"
 #include "BLI_math.h"
 
 #include "BKE_animsys.h"
@@ -139,7 +140,7 @@ void BKE_object_eval_transform_final(Depsgraph *depsgraph, Object *ob)
 {
   DEG_debug_print_eval(depsgraph, __func__, ob->id.name, ob);
   /* Make sure inverse matrix is always up to date. This way users of it
-   * do not need to worry about relcalculating it. */
+   * do not need to worry about recalculating it. */
   invert_m4_m4(ob->imat, ob->obmat);
   /* Set negative scale flag in object. */
   if (is_negative_m4(ob->obmat)) {
@@ -168,13 +169,16 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 
       CustomData_MeshMasks cddata_masks = scene->customdata_mask;
       CustomData_MeshMasks_update(&cddata_masks, &CD_MASK_BAREMESH);
+      if (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER) {
+        /* Make sure Freestyle edge/face marks appear in DM for render (see T40315). */
 #ifdef WITH_FREESTYLE
-      /* make sure Freestyle edge/face marks appear in DM for render (see T40315) */
-      if (DEG_get_mode(depsgraph) != DAG_EVAL_VIEWPORT) {
         cddata_masks.emask |= CD_MASK_FREESTYLE_EDGE;
         cddata_masks.pmask |= CD_MASK_FREESTYLE_FACE;
-      }
 #endif
+        /* Always compute UVs, vertex colors as orcos for render. */
+        cddata_masks.lmask |= CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL;
+        cddata_masks.vmask |= CD_MASK_ORCO;
+      }
       if (em) {
         makeDerivedMesh(depsgraph, scene, ob, em, &cddata_masks); /* was CD_MASK_BAREMESH */
       }
@@ -387,6 +391,21 @@ void BKE_object_data_select_update(Depsgraph *depsgraph, ID *object_data)
       break;
     default:
       break;
+  }
+}
+
+void BKE_object_select_update(Depsgraph *depsgraph, Object *object)
+{
+  DEG_debug_print_eval(depsgraph, __func__, object->id.name, object);
+  if (object->type == OB_MESH && !object->runtime.is_mesh_eval_owned) {
+    Mesh *mesh_input = object->runtime.mesh_orig;
+    Mesh_Runtime *mesh_runtime = &mesh_input->runtime;
+    BLI_mutex_lock(mesh_runtime->eval_mutex);
+    BKE_object_data_select_update(depsgraph, object->data);
+    BLI_mutex_unlock(mesh_runtime->eval_mutex);
+  }
+  else {
+    BKE_object_data_select_update(depsgraph, object->data);
   }
 }
 

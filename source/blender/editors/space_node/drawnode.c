@@ -135,8 +135,9 @@ static void node_buts_time(uiLayout *layout, bContext *UNUSED(C), PointerRNA *pt
 
   if (cumap) {
     cumap->flag |= CUMA_DRAW_CFRA;
-    if (node->custom1 < node->custom2)
+    if (node->custom1 < node->custom2) {
       cumap->sample[0] = (float)(CFRA - node->custom1) / (float)(node->custom2 - node->custom1);
+    }
   }
 #endif
 
@@ -205,8 +206,9 @@ static void node_browse_tex_cb(bContext *C, void *ntree_v, void *node_v)
   bNode *node = node_v;
   Tex *tex;
 
-  if (node->menunr < 1)
+  if (node->menunr < 1) {
     return;
+  }
 
   if (node->id) {
     id_us_min(node->id);
@@ -220,8 +222,9 @@ static void node_browse_tex_cb(bContext *C, void *ntree_v, void *node_v)
 
   nodeSetActive(ntree, node);
 
-  if (ntree->type == NTREE_TEXTURE)
+  if (ntree->type == NTREE_TEXTURE) {
     ntreeTexCheckCyclics(ntree);
+  }
 
   // allqueue(REDRAWBUTSSHADING, 0);
   // allqueue(REDRAWNODE, 0);
@@ -713,6 +716,11 @@ static void node_buts_image_user(uiLayout *layout,
   PointerRNA colorspace_settings_ptr = RNA_pointer_get(imaptr, "colorspace_settings");
   uiItemL(split, IFACE_("Color Space"), ICON_NONE);
   uiItemR(split, &colorspace_settings_ptr, "name", 0, "", ICON_NONE);
+
+  /* Avoid losing changes image is painted. */
+  if (BKE_image_is_dirty(imaptr->data)) {
+    uiLayoutSetEnabled(split, false);
+  }
 }
 
 static void node_shader_buts_mapping(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
@@ -1138,8 +1146,9 @@ static void node_shader_buts_script_ex(uiLayout *layout, bContext *C, PointerRNA
   node_shader_buts_script(layout, C, ptr);
 
 #if 0 /* not implemented yet */
-  if (RNA_enum_get(ptr, "mode") == NODE_SCRIPT_EXTERNAL)
+  if (RNA_enum_get(ptr, "mode") == NODE_SCRIPT_EXTERNAL) {
     uiItemR(layout, ptr, "use_auto_update", 0, NULL, ICON_NONE);
+  }
 #endif
 }
 

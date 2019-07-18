@@ -385,12 +385,20 @@ static void multires_ccg_mark_as_modified(SubdivCCG *subdiv_ccg, MultiresModifie
   }
 }
 
-void multires_mark_as_modified(Object *ob, MultiresModifiedFlags flags)
+void multires_mark_as_modified(Depsgraph *depsgraph, Object *object, MultiresModifiedFlags flags)
 {
-  if (ob == NULL) {
+  if (object == NULL) {
     return;
   }
-  Mesh *mesh = ob->data;
+  /* NOTE: CCG live inside of evaluated object.
+   *
+   * While this is a bit weird to tag the only one, this is how other areas were built
+   * historically: they are tagging multires for update and then rely on object re-evaluation to
+   * do an actual update.
+   *
+   * In a longer term maybe special dependency graph tag can help sanitizing this a bit. */
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, object);
+  Mesh *mesh = object_eval->data;
   SubdivCCG *subdiv_ccg = mesh->runtime.subdiv_ccg;
   if (subdiv_ccg == NULL) {
     return;
@@ -634,20 +642,20 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
 
           disps = MEM_calloc_arrayN(totdisp, 3 * sizeof(float), "multires disps");
 
-          ndisps = disps;
-          hdisps = mdisp->disps;
+          if (mdisp->disps != NULL) {
+            ndisps = disps;
+            hdisps = mdisp->disps;
 
-          multires_copy_grid(ndisps, hdisps, nsize, hsize);
-          if (mdisp->hidden) {
-            BLI_bitmap *gh = multires_mdisps_downsample_hidden(mdisp->hidden, mdisp->level, lvl);
-            MEM_freeN(mdisp->hidden);
-            mdisp->hidden = gh;
+            multires_copy_grid(ndisps, hdisps, nsize, hsize);
+            if (mdisp->hidden) {
+              BLI_bitmap *gh = multires_mdisps_downsample_hidden(mdisp->hidden, mdisp->level, lvl);
+              MEM_freeN(mdisp->hidden);
+              mdisp->hidden = gh;
+            }
+
+            MEM_freeN(mdisp->disps);
           }
 
-          ndisps += nsize * nsize;
-          hdisps += hsize * hsize;
-
-          MEM_freeN(mdisp->disps);
           mdisp->disps = disps;
           mdisp->totdisp = totdisp;
           mdisp->level = lvl;
@@ -2314,7 +2322,7 @@ static void multires_sync_levels(Scene *scene, Object *ob_src, Object *ob_dst)
   if (!mmd_src) {
     /* object could have MDISP even when there is no multires modifier
      * this could lead to troubles due to i've got no idea how mdisp could be
-     * upsampled correct without modifier data.
+     * up-sampled correct without modifier data.
      * just remove mdisps if no multires present (nazgul) */
 
     multires_customdata_delete(ob_src->data);

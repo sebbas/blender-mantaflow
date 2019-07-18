@@ -63,6 +63,21 @@ enum ePickerType {
 /** \name Color Conversion
  * \{ */
 
+static void ui_color_picker_rgb_round(float rgb[3])
+{
+  /* Handle small rounding errors in color space conversions. Doing these for
+   * all color space conversions would be expensive, but for the color picker
+   * we can do the extra work. */
+  for (int i = 0; i < 3; i++) {
+    if (fabsf(rgb[i]) < 1e-6f) {
+      rgb[i] = 0.0f;
+    }
+    else if (fabsf(1.0f - rgb[i]) < 1e-6f) {
+      rgb[i] = 1.0f;
+    }
+  }
+}
+
 void ui_rgb_to_color_picker_compat_v(const float rgb[3], float r_cp[3])
 {
   switch (U.color_picker_type) {
@@ -131,6 +146,7 @@ void ui_scene_linear_to_color_picker_space(uiBut *but, float rgb[3])
    * space for intuitive color picking. */
   if (!ui_but_is_color_gamma(but)) {
     IMB_colormanagement_scene_linear_to_color_picking_v3(rgb);
+    ui_color_picker_rgb_round(rgb);
   }
 }
 
@@ -138,6 +154,7 @@ void ui_color_picker_to_scene_linear_space(uiBut *but, float rgb[3])
 {
   if (!ui_but_is_color_gamma(but)) {
     IMB_colormanagement_color_picking_to_scene_linear_v3(rgb);
+    ui_color_picker_rgb_round(rgb);
   }
 }
 
@@ -194,7 +211,6 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
     else if (STREQ(bt->str, "Hex: ")) {
       float rgb_hex[3];
       uchar rgb_hex_uchar[3];
-      double intpart;
       char col[16];
 
       /* Hex code is assumed to be in sRGB space
@@ -202,16 +218,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
       copy_v3_v3(rgb_hex, rgb);
       if (from_but && !ui_but_is_color_gamma(from_but)) {
         IMB_colormanagement_scene_linear_to_srgb_v3(rgb_hex);
-      }
-
-      if (rgb_hex[0] > 1.0f) {
-        rgb_hex[0] = modf(rgb_hex[0], &intpart);
-      }
-      if (rgb_hex[1] > 1.0f) {
-        rgb_hex[1] = modf(rgb_hex[1], &intpart);
-      }
-      if (rgb_hex[2] > 1.0f) {
-        rgb_hex[2] = modf(rgb_hex[2], &intpart);
+        ui_color_picker_rgb_round(rgb_hex);
       }
 
       rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
@@ -298,6 +305,7 @@ static void ui_colorpicker_hex_rna_cb(bContext *UNUSED(C), void *bt1, void *hexc
   /* Hex code is assumed to be in sRGB space (coming from other applications, web, etc) */
   if (!ui_but_is_color_gamma(but)) {
     IMB_colormanagement_srgb_to_scene_linear_v3(rgb);
+    ui_color_picker_rgb_round(rgb);
   }
 
   ui_update_color_picker_buts_rgb(but, but->block, cpicker, rgb);
@@ -776,6 +784,7 @@ static void ui_block_colorpicker(uiBlock *block, uiBut *from_but, float rgba[4],
 
   if (!ui_but_is_color_gamma(from_but)) {
     IMB_colormanagement_scene_linear_to_srgb_v3(rgb_hex);
+    ui_color_picker_rgb_round(rgb_hex);
   }
 
   rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);

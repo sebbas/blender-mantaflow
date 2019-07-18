@@ -133,7 +133,7 @@ enum {
 enum {
   /** This IDProp may be statically overridden.
    * Should only be used/be relevant for custom properties. */
-  IDP_FLAG_OVERRIDABLE_STATIC = 1 << 0,
+  IDP_FLAG_OVERRIDABLE_LIBRARY = 1 << 0,
 
   /** This means the property is set but RNA will return false when checking
    * 'RNA_property_is_set', currently this is a runtime flag */
@@ -144,8 +144,8 @@ enum {
 
 /* Static ID override structs. */
 
-typedef struct IDOverrideStaticPropertyOperation {
-  struct IDOverrideStaticPropertyOperation *next, *prev;
+typedef struct IDOverrideLibraryPropertyOperation {
+  struct IDOverrideLibraryPropertyOperation *next, *prev;
 
   /* Type of override. */
   short operation;
@@ -162,39 +162,39 @@ typedef struct IDOverrideStaticPropertyOperation {
   char *subitem_local_name;
   int subitem_reference_index;
   int subitem_local_index;
-} IDOverrideStaticPropertyOperation;
+} IDOverrideLibraryPropertyOperation;
 
 /* IDOverridePropertyOperation->operation. */
 enum {
   /* Basic operations. */
-  IDOVERRIDESTATIC_OP_NOOP = 0, /* Special value, forbids any overriding. */
+  IDOVERRIDE_LIBRARY_OP_NOOP = 0, /* Special value, forbids any overriding. */
 
-  IDOVERRIDESTATIC_OP_REPLACE = 1, /* Fully replace local value by reference one. */
+  IDOVERRIDE_LIBRARY_OP_REPLACE = 1, /* Fully replace local value by reference one. */
 
   /* Numeric-only operations. */
-  IDOVERRIDESTATIC_OP_ADD = 101, /* Add local value to reference one. */
+  IDOVERRIDE_LIBRARY_OP_ADD = 101, /* Add local value to reference one. */
   /* Subtract local value from reference one (needed due to unsigned values etc.). */
-  IDOVERRIDESTATIC_OP_SUBTRACT = 102,
+  IDOVERRIDE_LIBRARY_OP_SUBTRACT = 102,
   /* Multiply reference value by local one (more useful than diff for scales and the like). */
-  IDOVERRIDESTATIC_OP_MULTIPLY = 103,
+  IDOVERRIDE_LIBRARY_OP_MULTIPLY = 103,
 
   /* Collection-only operations. */
-  IDOVERRIDESTATIC_OP_INSERT_AFTER = 201,  /* Insert after given reference's subitem. */
-  IDOVERRIDESTATIC_OP_INSERT_BEFORE = 202, /* Insert before given reference's subitem. */
+  IDOVERRIDE_LIBRARY_OP_INSERT_AFTER = 201,  /* Insert after given reference's subitem. */
+  IDOVERRIDE_LIBRARY_OP_INSERT_BEFORE = 202, /* Insert before given reference's subitem. */
   /* We can add more if needed (move, delete, ...). */
 };
 
 /* IDOverridePropertyOperation->flag. */
 enum {
   /** User cannot remove that override operation. */
-  IDOVERRIDESTATIC_FLAG_MANDATORY = 1 << 0,
+  IDOVERRIDE_LIBRARY_FLAG_MANDATORY = 1 << 0,
   /** User cannot change that override operation. */
-  IDOVERRIDESTATIC_FLAG_LOCKED = 1 << 1,
+  IDOVERRIDE_LIBRARY_FLAG_LOCKED = 1 << 1,
 };
 
 /** A single overridden property, contain all operations on this one. */
-typedef struct IDOverrideStaticProperty {
-  struct IDOverrideStaticProperty *next, *prev;
+typedef struct IDOverrideLibraryProperty {
+  struct IDOverrideLibraryProperty *next, *prev;
 
   /**
    * Path from ID to overridden property.
@@ -204,10 +204,10 @@ typedef struct IDOverrideStaticProperty {
 
   /** List of overriding operations (IDOverridePropertyOperation) applied to this property. */
   ListBase operations;
-} IDOverrideStaticProperty;
+} IDOverrideLibraryProperty;
 
 /* Main container for all overriding data info of a data-block. */
-typedef struct IDOverrideStatic {
+typedef struct IDOverrideLibrary {
   /** Reference linked ID which this one overrides. */
   struct ID *reference;
   /** List of IDOverrideProperty structs. */
@@ -220,10 +220,10 @@ typedef struct IDOverrideStatic {
   /* Temp ID storing extra override data (used for differential operations only currently).
    * Always NULL outside of read/write context. */
   struct ID *storage;
-} IDOverrideStatic;
+} IDOverrideLibrary;
 
-enum eStaticOverride_Flag {
-  STATICOVERRIDE_AUTO = 1 << 0, /* Allow automatic generation of overriding rules. */
+enum eOverrideLibrary_Flag {
+  OVERRIDE_LIBRARY_AUTO = 1 << 0, /* Allow automatic generation of overriding rules. */
 };
 
 /* watch it: Sequence has identical beginning. */
@@ -244,7 +244,7 @@ typedef struct ID {
   /** MAX_ID_NAME. */
   char name[66];
   /**
-   * LIB_... flags report on status of the datablock this ID belongs to
+   * LIB_... flags report on status of the data-block this ID belongs to
    * (persistent, saved to and read from .blend).
    */
   short flag;
@@ -259,10 +259,10 @@ typedef struct ID {
   IDProperty *properties;
 
   /** Reference linked ID which this one overrides. */
-  IDOverrideStatic *override_static;
+  IDOverrideLibrary *override_library;
 
   /**
-   * Only set for datablocks which are coming from copy-on-write, points to
+   * Only set for data-blocks which are coming from copy-on-write, points to
    * the original version of it.
    */
   struct ID *orig_id;
@@ -403,7 +403,7 @@ typedef enum ID_Type {
   ID_LP = MAKE_ID2('L', 'P'),  /* LightProbe */
 } ID_Type;
 
-/* Only used as 'placeholder' in .blend files for directly linked datablocks. */
+/* Only used as 'placeholder' in .blend files for directly linked data-blocks. */
 #define ID_LINK_PLACEHOLDER MAKE_ID2('I', 'D') /* (internal use only) */
 
 /* Deprecated. */
@@ -436,21 +436,19 @@ typedef enum ID_Type {
 
 #define ID_IS_LINKED(_id) (((ID *)(_id))->lib != NULL)
 
-#define ID_IS_STATIC_OVERRIDE(_id) \
-  (((ID *)(_id))->override_static != NULL && ((ID *)(_id))->override_static->reference != NULL)
+#define ID_IS_OVERRIDE_LIBRARY(_id) \
+  (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference != NULL)
 
-#define ID_IS_STATIC_OVERRIDE_TEMPLATE(_id) \
-  (((ID *)(_id))->override_static != NULL && ((ID *)(_id))->override_static->reference == NULL)
+#define ID_IS_OVERRIDE_LIBRARY_TEMPLATE(_id) \
+  (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference == NULL)
 
-#define ID_IS_STATIC_OVERRIDE_AUTO(_id) \
-  (!ID_IS_LINKED((_id)) && ID_IS_STATIC_OVERRIDE((_id)) && \
-   (((ID *)(_id))->override_static->flag & STATICOVERRIDE_AUTO))
+#define ID_IS_OVERRIDE_LIBRARY_AUTO(_id) \
+  (!ID_IS_LINKED((_id)) && ID_IS_OVERRIDE_LIBRARY((_id)) && \
+   (((ID *)(_id))->override_library->flag & OVERRIDE_LIBRARY_AUTO))
 
 /* No copy-on-write for these types.
  * Keep in sync with check_datablocks_copy_on_writable and deg_copy_on_write_is_needed */
-/* TODO(sergey): Make Sound copyable. It is here only because the code for dependency graph is
- * being work in progress. */
-#define ID_TYPE_IS_COW(_id_type) (!ELEM(_id_type, ID_BR, ID_LS, ID_PAL, ID_IM, ID_SO))
+#define ID_TYPE_IS_COW(_id_type) (!ELEM(_id_type, ID_BR, ID_LS, ID_PAL, ID_IM))
 
 #ifdef GS
 #  undef GS
@@ -494,34 +492,34 @@ enum {
    * but is used (linked) directly by current .blend file. */
   LIB_TAG_EXTERN = 1 << 0,
   /* RESET_NEVER Datablock is from a library,
-   * and is only used (linked) inderectly through other libraries. */
+   * and is only used (linked) indirectly through other libraries. */
   LIB_TAG_INDIRECT = 1 << 1,
 
   /* RESET_AFTER_USE Flag used internally in readfile.c,
    * to mark IDs needing to be expanded (only done once). */
   LIB_TAG_NEED_EXPAND = 1 << 3,
   /* RESET_AFTER_USE Flag used internally in readfile.c to mark ID
-   * placeholders for linked datablocks needing to be read. */
+   * placeholders for linked data-blocks needing to be read. */
   LIB_TAG_ID_LINK_PLACEHOLDER = 1 << 4,
   /* RESET_AFTER_USE */
   LIB_TAG_NEED_LINK = 1 << 5,
 
-  /* RESET_NEVER tag datablock as a place-holder
+  /* RESET_NEVER tag data-block as a place-holder
    * (because the real one could not be linked from its library e.g.). */
   LIB_TAG_MISSING = 1 << 6,
 
-  /* RESET_NEVER tag datablock as being up-to-date regarding its reference. */
-  LIB_TAG_OVERRIDESTATIC_REFOK = 1 << 9,
-  /* RESET_NEVER tag datablock as needing an auto-override execution, if enabled. */
-  LIB_TAG_OVERRIDESTATIC_AUTOREFRESH = 1 << 17,
+  /* RESET_NEVER tag data-block as being up-to-date regarding its reference. */
+  LIB_TAG_OVERRIDE_LIBRARY_REFOK = 1 << 9,
+  /* RESET_NEVER tag data-block as needing an auto-override execution, if enabled. */
+  LIB_TAG_OVERRIDE_LIBRARY_AUTOREFRESH = 1 << 17,
 
-  /* tag datablock has having an extra user. */
+  /* tag data-block has having an extra user. */
   LIB_TAG_EXTRAUSER = 1 << 2,
-  /* tag datablock has having actually increased usercount for the extra virtual user. */
+  /* tag data-block has having actually increased usercount for the extra virtual user. */
   LIB_TAG_EXTRAUSER_SET = 1 << 7,
 
   /* RESET_AFTER_USE tag newly duplicated/copied IDs.
-   * Also used internally in readfile.c to mark datablocks needing do_versions. */
+   * Also used internally in readfile.c to mark data-blocks needing do_versions. */
   LIB_TAG_NEW = 1 << 8,
   /* RESET_BEFORE_USE free test flag.
    * TODO make it a RESET_AFTER_USE too. */
@@ -529,12 +527,12 @@ enum {
   /* RESET_AFTER_USE tag existing data before linking so we know what is new. */
   LIB_TAG_PRE_EXISTING = 1 << 11,
 
-  /* The datablock is a copy-on-write/localized version. */
+  /* The data-block is a copy-on-write/localized version. */
   LIB_TAG_COPIED_ON_WRITE = 1 << 12,
   LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT = 1 << 13,
   LIB_TAG_LOCALIZED = 1 << 14,
 
-  /* RESET_NEVER tag datablock for freeing etc. behavior
+  /* RESET_NEVER tag data-block for freeing etc. behavior
    * (usually set when copying real one into temp/runtime one). */
   LIB_TAG_NO_MAIN = 1 << 15,          /* Datablock is not listed in Main database. */
   LIB_TAG_NO_USER_REFCOUNT = 1 << 16, /* Datablock does not refcount usages of other IDs. */
@@ -558,7 +556,7 @@ typedef enum IDRecalcFlag {
    * When object of other type is tagged with this flag it makes the modifier
    * stack to be re-evaluated.
    * When object data type (mesh, curve, ...) gets tagged with this flag it
-   * makes all objects which shares this datablock to be updated. */
+   * makes all objects which shares this data-block to be updated. */
   ID_RECALC_GEOMETRY = (1 << 1),
 
   /* ** Animation or time changed and animation is to be re-evaluated. ** */
@@ -587,12 +585,12 @@ typedef enum IDRecalcFlag {
   /* Selection of the ID itself or its components (for example, vertices) did
    * change, and all the drawing data is to eb updated. */
   ID_RECALC_SELECT = (1 << 9),
-  /* Flags on the base did change, and is to be compied onto all the copies of
+  /* Flags on the base did change, and is to be copied onto all the copies of
    * corresponding objects. */
   ID_RECALC_BASE_FLAGS = (1 << 10),
   ID_RECALC_POINT_CACHE = (1 << 11),
   /* Only inform editors about the change. Is used to force update of editors
-   * when datablock which is not a part of dependency graph did change.
+   * when data-block which is not a part of dependency graph did change.
    *
    * For example, brush texture did change and the preview is to be
    * re-rendered. */
@@ -604,11 +602,25 @@ typedef enum IDRecalcFlag {
    */
   ID_RECALC_COPY_ON_WRITE = (1 << 13),
 
+  /* Sequences in the sequencer did change.
+   * Use this tag with a scene ID which owns the sequences. */
+  ID_RECALC_SEQUENCER_STRIPS = (1 << 14),
+
+  ID_RECALC_AUDIO_SEEK = (1 << 15),
+  ID_RECALC_AUDIO_FPS = (1 << 16),
+  ID_RECALC_AUDIO_VOLUME = (1 << 17),
+  ID_RECALC_AUDIO_MUTE = (1 << 18),
+  ID_RECALC_AUDIO_LISTENER = (1 << 19),
+
+  ID_RECALC_AUDIO = (1 << 20),
+
+  ID_RECALC_PARAMETERS = (1 << 21),
+
   /***************************************************************************
    * Pseudonyms, to have more semantic meaning in the actual code without
    * using too much low-level and implementation specific tags. */
 
-  /* Update animation datablock itself, without doing full re-evaluation of
+  /* Update animation data-block itself, without doing full re-evaluation of
    * all dependent objects. */
   ID_RECALC_ANIMATION_NO_FLUSH = ID_RECALC_COPY_ON_WRITE,
 

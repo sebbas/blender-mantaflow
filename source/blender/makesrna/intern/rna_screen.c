@@ -277,10 +277,12 @@ static void rna_View2D_region_to_view(struct View2D *v2d, int x, int y, float re
 static void rna_View2D_view_to_region(
     struct View2D *v2d, float x, float y, bool clip, int result[2])
 {
-  if (clip)
+  if (clip) {
     UI_view2d_view_to_region_clip(v2d, x, y, &result[0], &result[1]);
-  else
+  }
+  else {
     UI_view2d_view_to_region(v2d, x, y, &result[0], &result[1]);
+  }
 }
 
 #else
@@ -551,6 +553,11 @@ static void rna_def_screen(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_Screen_is_animation_playing_get", NULL);
   RNA_def_property_ui_text(prop, "Animation Playing", "Animation playback is active");
 
+  prop = RNA_def_property(srna, "is_temporary", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_sdna(prop, NULL, "temp", 1);
+  RNA_def_property_ui_text(prop, "Temporary", "");
+
   prop = RNA_def_property(srna, "show_fullscreen", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_Screen_fullscreen_get", NULL);
@@ -569,7 +576,7 @@ static void rna_def_screen(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_play_3d_editors", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "redraws_flag", TIME_ALL_3D_WIN);
-  RNA_def_property_ui_text(prop, "All 3D View Editors", "");
+  RNA_def_property_ui_text(prop, "All 3D Viewports", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_TIME, "rna_Screen_redraw_update");
 
   prop = RNA_def_property(srna, "use_follow", PROP_BOOLEAN, PROP_NONE);

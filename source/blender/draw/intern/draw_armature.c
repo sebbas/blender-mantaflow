@@ -80,6 +80,8 @@ static struct {
   DRWCallBuffer *lines_ik_no_target;
   DRWCallBuffer *lines_ik_spline;
 
+  DRWEmptiesBufferList empties;
+
   DRWArmaturePasses passes;
 
   bool transparent;
@@ -432,6 +434,50 @@ static void drw_shgroup_bone_custom_wire(const float (*bone_mat)[4],
     float final_bonemat[4][4];
     mul_m4_m4m4(final_bonemat, g_data.ob->obmat, bone_mat);
     DRW_buffer_add_entry(buf_geom_wire, final_bonemat, final_color);
+  }
+}
+
+static void drw_shgroup_bone_custom_empty(const float (*bone_mat)[4],
+                                          const float color[4],
+                                          const eGPUShaderConfig sh_cfg,
+                                          Object *custom)
+{
+  DRWEmptiesBufferList *buffers = &g_data.empties;
+  const float *draw_size = &custom->empty_drawsize;
+
+  if (g_data.empties.plain_axes == NULL) {
+    empties_callbuffers_create(g_data.passes.bone_wire, buffers, sh_cfg);
+  }
+
+  float final_color[4] = {color[0], color[1], color[2], 1.0f};
+  float final_bonemat[4][4];
+  mul_m4_m4m4(final_bonemat, g_data.ob->obmat, bone_mat);
+
+  switch (custom->empty_drawtype) {
+    case OB_PLAINAXES:
+      DRW_buffer_add_entry(buffers->plain_axes, final_color, draw_size, final_bonemat);
+      break;
+    case OB_SINGLE_ARROW:
+      DRW_buffer_add_entry(buffers->single_arrow, final_color, draw_size, final_bonemat);
+      DRW_buffer_add_entry(buffers->single_arrow_line, final_color, draw_size, final_bonemat);
+      break;
+    case OB_CUBE:
+      DRW_buffer_add_entry(buffers->cube, final_color, draw_size, final_bonemat);
+      break;
+    case OB_CIRCLE:
+      DRW_buffer_add_entry(buffers->circle, final_color, draw_size, final_bonemat);
+      break;
+    case OB_EMPTY_SPHERE:
+      DRW_buffer_add_entry(buffers->sphere, final_color, draw_size, final_bonemat);
+      break;
+    case OB_EMPTY_CONE:
+      DRW_buffer_add_entry(buffers->cone, final_color, draw_size, final_bonemat);
+      break;
+    case OB_ARROWS:
+      DRW_buffer_add_entry(buffers->empty_axes, final_color, draw_size, final_bonemat);
+      break;
+    case OB_EMPTY_IMAGE:
+      break;
   }
 }
 
@@ -837,7 +883,7 @@ static void update_color(const Object *ob, const float const_color[4])
 #define NO_ALPHA(c) (((c)[3] = 1.0f), (c))
 
   UI_GetThemeColor3fv(TH_SELECT, NO_ALPHA(g_theme.select_color));
-  UI_GetThemeColor3fv(TH_EDGE_SELECT, NO_ALPHA(g_theme.edge_select_color));
+  UI_GetThemeColorShade3fv(TH_EDGE_SELECT, 60, NO_ALPHA(g_theme.edge_select_color));
   UI_GetThemeColorShade3fv(TH_EDGE_SELECT, -20, NO_ALPHA(g_theme.bone_select_color));
   UI_GetThemeColor3fv(TH_WIRE, NO_ALPHA(g_theme.wire_color));
   UI_GetThemeColor3fv(TH_WIRE_EDIT, NO_ALPHA(g_theme.wire_edit_color));
@@ -1394,6 +1440,12 @@ static void draw_bone_custom_shape(EditBone *eBone,
     DRW_select_load_id(select_id | BONESEL_BONE);
   }
 
+  if (pchan->custom->type == OB_EMPTY) {
+    Object *ob = pchan->custom;
+    if (ob->empty_drawtype != OB_EMPTY_IMAGE) {
+      drw_shgroup_bone_custom_empty(disp_mat, col_wire, sh_cfg, pchan->custom);
+    }
+  }
   if ((boneflag & BONE_DRAWWIRE) == 0) {
     drw_shgroup_bone_custom_solid(disp_mat, col_solid, col_hint, col_wire, sh_cfg, pchan->custom);
   }
@@ -1834,19 +1886,23 @@ static void draw_armature_edit(Object *ob)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   EditBone *eBone;
-  bArmature *arm = ob->data;
   int index;
   const bool is_select = DRW_state_is_select();
-
-  update_color(ob, NULL);
-  edbo_compute_bbone_child(arm);
 
   const bool show_text = DRW_state_show_text();
   const bool show_relations = ((draw_ctx->v3d->flag & V3D_HIDE_HELPLINES) == 0);
 
-  const Object *orig_object = DEG_get_original_object(ob);
+  const Object *ob_orig = DEG_get_original_object(ob);
+  /* FIXME(campbell): We should be able to use the CoW object,
+   * however the active bone isn't updated. Long term solution is an 'EditArmature' struct.
+   * for now we can draw from the original armature. See: T66773. */
+  // bArmature *arm = ob->data;
+  bArmature *arm = ob_orig->data;
 
-  for (eBone = arm->edbo->first, index = orig_object->runtime.select_id; eBone;
+  update_color(ob, NULL);
+  edbo_compute_bbone_child(arm);
+
+  for (eBone = arm->edbo->first, index = ob_orig->runtime.select_id; eBone;
        eBone = eBone->next, index += 0x10000) {
     if (eBone->layer & arm->layer) {
       if ((eBone->flag & BONE_HIDDEN_A) == 0) {
@@ -1922,6 +1978,7 @@ static void draw_armature_edit(Object *ob)
 static void draw_armature_pose(Object *ob, const float const_color[4])
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Scene *scene = draw_ctx->scene;
   bArmature *arm = ob->data;
   bPoseChannel *pchan;
   int index = -1;
@@ -1934,19 +1991,35 @@ static void draw_armature_pose(Object *ob, const float const_color[4])
     return;
   }
 
-  // if (!(base->flag & OB_FROMDUPLI)) // TODO
-  {
+  bool is_pose_select = false;
+  /* Object can be edited in the scene. */
+  if ((ob->base_flag & (BASE_FROM_SET | BASE_FROM_DUPLI)) == 0) {
     if ((draw_ctx->object_mode & OB_MODE_POSE) || (ob == draw_ctx->object_pose)) {
       arm->flag |= ARM_POSEMODE;
     }
+    is_pose_select =
+        /* If we're in pose-mode or object-mode with the ability to enter pose mode. */
+        (
+            /* Draw as if in pose mode (when selection is possible). */
+            (arm->flag & ARM_POSEMODE) ||
+            /* When we're in object mode, which may select bones. */
+            ((ob->mode & OB_MODE_POSE) &&
+             (
+                 /* Switch from object mode when object lock is disabled. */
+                 ((draw_ctx->object_mode == OB_MODE_OBJECT) &&
+                  (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) == 0) ||
+                 /* Allow selection when in weight-paint mode
+                  * (selection code ensures this wont become active). */
+                 ((draw_ctx->object_mode == OB_MODE_WEIGHT_PAINT) &&
+                  (draw_ctx->object_pose != NULL))))) &&
+        DRW_state_is_select();
 
-    if (arm->flag & ARM_POSEMODE) {
-      const Object *orig_object = DEG_get_original_object(ob);
-      index = orig_object->runtime.select_id;
+    if (is_pose_select) {
+      const Object *ob_orig = DEG_get_original_object(ob);
+      index = ob_orig->runtime.select_id;
     }
   }
 
-  const bool is_pose_select = (arm->flag & ARM_POSEMODE) && DRW_state_is_select();
   const bool show_text = DRW_state_show_text();
   const bool show_relations = ((draw_ctx->v3d->flag & V3D_HIDE_HELPLINES) == 0);
 

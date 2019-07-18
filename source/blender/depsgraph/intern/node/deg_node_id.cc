@@ -112,6 +112,7 @@ void IDNode::init(const ID *id, const char *UNUSED(subdata))
   is_directly_visible = true;
   is_collection_fully_expanded = false;
   has_base = false;
+  is_user_modified = false;
 
   visible_components_mask = 0;
   previously_visible_components_mask = 0;
@@ -205,6 +206,11 @@ ComponentNode *IDNode::add_component(NodeType type, const char *name)
 void IDNode::tag_update(Depsgraph *graph, eUpdateSource source)
 {
   GHASH_FOREACH_BEGIN (ComponentNode *, comp_node, components) {
+    /* Relations update does explicit animation update when needed. Here we ignore animation
+     * component to avoid loss of possible unkeyed changes. */
+    if (comp_node->type == NodeType::ANIMATION && source == DEG_UPDATE_SOURCE_RELATIONS) {
+      continue;
+    }
     comp_node->tag_update(graph, source);
   }
   GHASH_FOREACH_END();

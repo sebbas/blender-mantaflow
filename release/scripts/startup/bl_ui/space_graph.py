@@ -19,7 +19,7 @@
 # <pep8 compliant>
 
 from bpy.types import Header, Menu, Panel
-from .space_dopesheet import (
+from bl_ui.space_dopesheet import (
     DopesheetFilterPopoverBase,
     dopesheet_filter,
 )
@@ -207,7 +207,7 @@ class GRAPH_MT_marker(Menu):
     def draw(self, context):
         layout = self.layout
 
-        from .space_time import marker_menu_generic
+        from bl_ui.space_time import marker_menu_generic
         marker_menu_generic(layout, context)
 
         # TODO: pose markers for action edit mode only?
@@ -328,12 +328,15 @@ class GRAPH_MT_context_menu(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator_context = 'INVOKE_DEFAULT'
+
         layout.operator("graph.copy", text="Copy", icon='COPYDOWN')
         layout.operator("graph.paste", text="Paste", icon='PASTEDOWN')
         layout.operator("graph.paste", text="Paste Flipped", icon='PASTEFLIPDOWN').flipped = True
 
         layout.separator()
 
+        layout.operator_menu_enum("graph.keyframe_type", "type", text="Keyframe Type")
         layout.operator_menu_enum("graph.handle_type", "type", text="Handle Type")
         layout.operator_menu_enum("graph.interpolation_type", "type", text="Interpolation Mode")
         layout.operator_menu_enum("graph.easing_type", "type", text="Easing Type")
@@ -342,6 +345,7 @@ class GRAPH_MT_context_menu(Menu):
 
         layout.operator("graph.keyframe_insert").type = 'SEL'
         layout.operator("graph.duplicate_move")
+        layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("graph.delete")
 
         layout.separator()

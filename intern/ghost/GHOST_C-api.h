@@ -325,20 +325,6 @@ extern GHOST_TSuccess GHOST_SetCursorShape(GHOST_WindowHandle windowhandle,
                                            GHOST_TStandardCursor cursorshape);
 
 /**
- * Set the shape of the cursor to a custom cursor.
- * \param windowhandle The handle to the window
- * \param bitmap The bitmap data for the cursor.
- * \param  mask The mask data for the cursor.
- * \param hotX The X coordinate of the cursor hotspot.
- * \param hotY The Y coordinate of the cursor hotspot.
- * \return Indication of success.
- */
-extern GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle,
-                                                 GHOST_TUns8 bitmap[16][2],
-                                                 GHOST_TUns8 mask[16][2],
-                                                 int hotX,
-                                                 int hotY);
-/**
  * Set the shape of the cursor to a custom cursor of specified size.
  * \param windowhandle The handle to the window
  * \param bitmap The bitmap data for the cursor.
@@ -347,18 +333,17 @@ extern GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle
  * \param sizey The height of the cursor
  * \param hotX The X coordinate of the cursor hotspot.
  * \param hotY The Y coordinate of the cursor hotspot.
- * \param   fg_color, bg_color  Colors of the cursor
+ * \param canInvertColor Let macOS invert cursor color to match platform convention.
  * \return Indication of success.
  */
-extern GHOST_TSuccess GHOST_SetCustomCursorShapeEx(GHOST_WindowHandle windowhandle,
-                                                   GHOST_TUns8 *bitmap,
-                                                   GHOST_TUns8 *mask,
-                                                   int sizex,
-                                                   int sizey,
-                                                   int hotX,
-                                                   int hotY,
-                                                   int fg_color,
-                                                   int bg_color);
+extern GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle,
+                                                 GHOST_TUns8 *bitmap,
+                                                 GHOST_TUns8 *mask,
+                                                 int sizex,
+                                                 int sizey,
+                                                 int hotX,
+                                                 int hotY,
+                                                 GHOST_TUns8 canInvertColor);
 
 /**
  * Returns the visibility state of the cursor.
@@ -410,6 +395,7 @@ extern GHOST_TSuccess GHOST_SetCursorPosition(GHOST_SystemHandle systemhandle,
  */
 extern GHOST_TSuccess GHOST_SetCursorGrab(GHOST_WindowHandle windowhandle,
                                           GHOST_TGrabCursorMode mode,
+                                          GHOST_TAxisFlag warp_axis,
                                           int bounds[4],
                                           const int mouse_ungrab_xy[2]);
 
@@ -445,8 +431,8 @@ extern GHOST_TSuccess GHOST_GetButtonState(GHOST_SystemHandle systemhandle,
  ***************************************************************************************/
 
 /**
- * Sets 3D mouse deadzone
- * \param deadzone Deadzone of the 3D mouse (both for rotation and pan) relative to full range
+ * Sets 3D mouse dead-zone.
+ * \param deadzone: Dead-zone of the 3D mouse (both for rotation and pan) relative to full range.
  */
 extern void GHOST_setNDOFDeadZone(float deadzone);
 #endif
@@ -719,6 +705,11 @@ extern GHOST_TSuccess GHOST_ActivateOpenGLContext(GHOST_ContextHandle contexthan
  * \return A success indicator.
  */
 extern GHOST_TSuccess GHOST_ReleaseOpenGLContext(GHOST_ContextHandle contexthandle);
+
+/**
+ * Get the OpenGL framebuffer handle that serves as a default framebuffer.
+ */
+extern unsigned int GHOST_GetDefaultOpenGLFramebuffer(GHOST_WindowHandle windwHandle);
 
 /**
  * Set which tablet API to use. Only affects Windows, other platforms have a single API.

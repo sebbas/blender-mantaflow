@@ -31,6 +31,7 @@
  * This file is admittedly a bit confusticated,
  * in quite few areas speed was chosen over readability,
  * though it is commented - so shouldn't be so hard to see what's going on.
+ *
  * Implementation:
  *
  * To rasterize the mask its converted into geometry that use a ray-cast for each pixel lookup.
@@ -720,7 +721,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
         }
 
         if (is_fill) {
-          /* applt intersections depending on fill settings */
+          /* Apply intersections depending on fill settings. */
           if (spline->flag & MASK_SPLINE_NOINTERSECT) {
             BKE_mask_spline_feather_collapse_inner_loops(
                 spline, diff_feather_points, tot_diff_feather_points);
@@ -729,8 +730,10 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
           copy_v2_v2(co, diff_points[0]);
           sf_vert_prev = BLI_scanfill_vert_add(&sf_ctx, co);
           sf_vert_prev->tmp.u = sf_vert_tot;
-          sf_vert_prev->keyindex = sf_vert_tot +
-                                   tot_diff_point; /* absolute index of feather vert */
+
+          /* Absolute index of feather vert. */
+          sf_vert_prev->keyindex = sf_vert_tot + tot_diff_point;
+
           sf_vert_tot++;
 
           /* TODO, an alternate functions so we can avoid double vector copy! */
@@ -964,8 +967,8 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
       }
 
       /* --- inefficient self-intersect case --- */
-      /* if self intersections are found, its too trickty to attempt to map vertices
-       * so just realloc and add entirely new vertices - the result of the self-intersect check
+      /* if self intersections are found, its too tricky to attempt to map vertices
+       * so just realloc and add entirely new vertices - the result of the self-intersect check.
        */
       if ((masklay->flag & MASK_LAYERFLAG_FILL_OVERLAP) &&
           (is_isect = BLI_scanfill_calc_self_isect(

@@ -77,25 +77,9 @@ struct GPUMaterial {
   ListBase inputs; /* GPUInput */
   GPUVertAttrLayers attrs;
   int builtins;
-  int alpha, obcolalpha;
-  int dynproperty;
-
-  /* for passing uniforms */
-  int viewmatloc, invviewmatloc;
-  int obmatloc, invobmatloc;
-  int localtoviewmatloc, invlocaltoviewmatloc;
-  int obcolloc, obautobumpscaleloc;
-  int cameratexcofacloc;
-
-  int partscalarpropsloc;
-  int partcoloc;
-  int partvel;
-  int partangvel;
-
-  int objectinfoloc;
 
   /* XXX: Should be in Material. But it depends on the output node
-   * used and since the output selection is difference for GPUMaterial...
+   * used and since the output selection is different for GPUMaterial...
    */
   int domain;
 
@@ -262,7 +246,10 @@ typedef struct GPUSssKernelData {
   float kernel[SSS_SAMPLES][4];
   float param[3], max_radius;
   int samples;
+  int pad[3];
 } GPUSssKernelData;
+
+BLI_STATIC_ASSERT_ALIGN(GPUSssKernelData, 16)
 
 static void sss_calculate_offsets(GPUSssKernelData *kd, int count, float exponent)
 {
@@ -620,7 +607,7 @@ void GPU_material_flag_set(GPUMaterial *mat, eGPUMatFlag flag)
 
 bool GPU_material_flag_get(GPUMaterial *mat, eGPUMatFlag flag)
 {
-  return (mat->flag & flag);
+  return (mat->flag & flag) != 0;
 }
 
 GPUMaterial *GPU_material_from_nodetree_find(ListBase *gpumaterials,
@@ -684,7 +671,10 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   if (mat->outlink) {
     /* HACK: this is only for eevee. We add the define here after the nodetree evaluation. */
     if (GPU_material_flag_get(mat, GPU_MATFLAG_SSS)) {
-      defines = BLI_string_joinN(defines, "#define USE_SSS\n");
+      defines = BLI_string_joinN(defines,
+                                 "#ifndef USE_ALPHA_BLEND\n"
+                                 "#  define USE_SSS\n"
+                                 "#endif\n");
     }
     /* Prune the unused nodes and extract attributes before compiling so the
      * generated VBOs are ready to accept the future shader. */
@@ -743,23 +733,25 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
 
 void GPU_material_compile(GPUMaterial *mat)
 {
-  /* Only run once! */
+  bool sucess;
+
   BLI_assert(mat->status == GPU_MAT_QUEUED);
   BLI_assert(mat->pass);
 
   /* NOTE: The shader may have already been compiled here since we are
    * sharing GPUShader across GPUMaterials. In this case it's a no-op. */
 #ifndef NDEBUG
-  GPU_pass_compile(mat->pass, mat->name);
+  sucess = GPU_pass_compile(mat->pass, mat->name);
 #else
-  GPU_pass_compile(mat->pass, __func__);
+  sucess = GPU_pass_compile(mat->pass, __func__);
 #endif
 
-  GPUShader *sh = GPU_pass_shader_get(mat->pass);
-
-  if (sh != NULL) {
-    mat->status = GPU_MAT_SUCCESS;
-    GPU_nodes_extract_dynamic_inputs(sh, &mat->inputs, &mat->nodes);
+  if (sucess) {
+    GPUShader *sh = GPU_pass_shader_get(mat->pass);
+    if (sh != NULL) {
+      mat->status = GPU_MAT_SUCCESS;
+      GPU_nodes_extract_dynamic_inputs(sh, &mat->inputs, &mat->nodes);
+    }
   }
   else {
     mat->status = GPU_MAT_FAILED;

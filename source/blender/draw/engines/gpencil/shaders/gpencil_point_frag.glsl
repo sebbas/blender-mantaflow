@@ -1,6 +1,7 @@
 uniform int color_type;
 uniform int mode;
 uniform sampler2D myTexture;
+uniform bool myTexturePremultiplied;
 
 uniform float gradient_f;
 uniform vec2 gradient_s;
@@ -47,27 +48,6 @@ vec2 check_box_point(vec2 pt, vec2 radius)
   return rtn;
 }
 
-float linearrgb_to_srgb(float c)
-{
-  if (c < 0.0031308) {
-    return (c < 0.0) ? 0.0 : c * 12.92;
-  }
-  else {
-    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
-  }
-}
-
-vec4 texture_read_as_srgb(sampler2D tex, vec2 co)
-{
-  /* By convention image textures return scene linear colors, but
-   * grease pencil still works in srgb. */
-  vec4 color = texture(tex, co);
-  color.r = linearrgb_to_srgb(color.r);
-  color.g = linearrgb_to_srgb(color.g);
-  color.b = linearrgb_to_srgb(color.b);
-  return color;
-}
-
 void main()
 {
   vec2 centered = mTexCoord - vec2(0.5);
@@ -86,15 +66,13 @@ void main()
     }
   }
 
-  vec4 tmp_color = texture_read_as_srgb(myTexture, mTexCoord);
-
   /* Solid */
   if ((color_type == GPENCIL_COLOR_SOLID) || (no_texture)) {
     fragColor = mColor;
   }
   /* texture */
   if ((color_type == GPENCIL_COLOR_TEXTURE) && (!no_texture)) {
-    vec4 text_color = texture_read_as_srgb(myTexture, mTexCoord);
+    vec4 text_color = texture_read_as_srgb(myTexture, myTexturePremultiplied, mTexCoord);
     if (mix_stroke_factor > 0.0) {
       fragColor.rgb = mix(text_color.rgb, colormix.rgb, mix_stroke_factor);
       fragColor.a = text_color.a;
@@ -108,7 +86,7 @@ void main()
   }
   /* pattern */
   if ((color_type == GPENCIL_COLOR_PATTERN) && (!no_texture)) {
-    vec4 text_color = texture_read_as_srgb(myTexture, mTexCoord);
+    vec4 text_color = texture_read_as_srgb(myTexture, myTexturePremultiplied, mTexCoord);
     fragColor = mColor;
     /* mult both alpha factor to use strength factor with color alpha limit */
     fragColor.a = min(text_color.a * mColor.a, mColor.a);

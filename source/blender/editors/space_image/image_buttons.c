@@ -798,7 +798,7 @@ void uiTemplateImage(uiLayout *layout,
   ImageUser *iuser = userptr->data;
 
   Scene *scene = CTX_data_scene(C);
-  BKE_image_user_frame_calc(iuser, (int)scene->r.cfra);
+  BKE_image_user_frame_calc(ima, iuser, (int)scene->r.cfra);
 
   uiLayoutSetContextPointer(layout, "edit_image", &imaptr);
   uiLayoutSetContextPointer(layout, "edit_image_user", userptr);
@@ -894,13 +894,7 @@ void uiTemplateImage(uiLayout *layout,
   }
 
   /* Image layers and Info */
-  if (ima->type == IMA_TYPE_MULTILAYER && ima->rr) {
-    uiItemS(layout);
-
-    const float dpi_fac = UI_DPI_FAC;
-    uiblock_layer_pass_buttons(layout, ima, ima->rr, iuser, 230 * dpi_fac, NULL);
-  }
-  else if (ima->source == IMA_SRC_GENERATED) {
+  if (ima->source == IMA_SRC_GENERATED) {
     uiItemS(layout);
 
     /* Generated */
@@ -922,6 +916,12 @@ void uiTemplateImage(uiLayout *layout,
   }
   else if (compact == 0) {
     uiTemplateImageInfo(layout, C, ima, iuser);
+  }
+  if (ima->type == IMA_TYPE_MULTILAYER && ima->rr) {
+    uiItemS(layout);
+
+    const float dpi_fac = UI_DPI_FAC;
+    uiblock_layer_pass_buttons(layout, ima, ima->rr, iuser, 230 * dpi_fac, NULL);
   }
 
   if (BKE_image_is_animated(ima)) {
@@ -1155,25 +1155,24 @@ void uiTemplateImageFormatViews(uiLayout *layout, PointerRNA *imfptr, PointerRNA
 {
   ImageFormatData *imf = imfptr->data;
 
-  if (ptr == NULL) {
-    return;
+  if (ptr != NULL) {
+    uiItemR(layout, ptr, "use_multiview", 0, NULL, ICON_NONE);
+    if (!RNA_boolean_get(ptr, "use_multiview")) {
+      return;
+    }
   }
 
-  uiItemR(layout, ptr, "use_multiview", 0, NULL, ICON_NONE);
+  if (imf->imtype != R_IMF_IMTYPE_MULTILAYER) {
+    PropertyRNA *prop;
+    PointerRNA stereo3d_format_ptr;
 
-  if (RNA_boolean_get(ptr, "use_multiview")) {
-    if (imf->imtype != R_IMF_IMTYPE_MULTILAYER) {
-      PropertyRNA *prop;
-      PointerRNA stereo3d_format_ptr;
+    prop = RNA_struct_find_property(imfptr, "stereo_3d_format");
+    stereo3d_format_ptr = RNA_property_pointer_get(imfptr, prop);
 
-      prop = RNA_struct_find_property(imfptr, "stereo_3d_format");
-      stereo3d_format_ptr = RNA_property_pointer_get(imfptr, prop);
-
-      uiTemplateViewsFormat(layout, imfptr, &stereo3d_format_ptr);
-    }
-    else {
-      uiTemplateViewsFormat(layout, imfptr, NULL);
-    }
+    uiTemplateViewsFormat(layout, imfptr, &stereo3d_format_ptr);
+  }
+  else {
+    uiTemplateViewsFormat(layout, imfptr, NULL);
   }
 }
 
@@ -1210,36 +1209,36 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
   uiLayoutSetAlignment(col, UI_LAYOUT_ALIGN_RIGHT);
 
   if (ibuf == NULL) {
-    uiItemL(col, IFACE_("Can't Load Image"), ICON_NONE);
+    uiItemL(col, TIP_("Can't Load Image"), ICON_NONE);
   }
   else {
     char str[MAX_IMAGE_INFO_LEN] = {0};
     const int len = MAX_IMAGE_INFO_LEN;
     int ofs = 0;
 
-    ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_("%d x %d, "), ibuf->x, ibuf->y);
+    ofs += BLI_snprintf(str + ofs, len - ofs, TIP_("%d x %d, "), ibuf->x, ibuf->y);
 
     if (ibuf->rect_float) {
       if (ibuf->channels != 4) {
-        ofs += BLI_snprintf(str + ofs, len - ofs, IFACE_("%d float channel(s)"), ibuf->channels);
+        ofs += BLI_snprintf(str + ofs, len - ofs, TIP_("%d float channel(s)"), ibuf->channels);
       }
       else if (ibuf->planes == R_IMF_PLANES_RGBA) {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGBA float"), len - ofs);
+        ofs += BLI_strncpy_rlen(str + ofs, TIP_(" RGBA float"), len - ofs);
       }
       else {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGB float"), len - ofs);
+        ofs += BLI_strncpy_rlen(str + ofs, TIP_(" RGB float"), len - ofs);
       }
     }
     else {
       if (ibuf->planes == R_IMF_PLANES_RGBA) {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGBA byte"), len - ofs);
+        ofs += BLI_strncpy_rlen(str + ofs, TIP_(" RGBA byte"), len - ofs);
       }
       else {
-        ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" RGB byte"), len - ofs);
+        ofs += BLI_strncpy_rlen(str + ofs, TIP_(" RGB byte"), len - ofs);
       }
     }
     if (ibuf->zbuf || ibuf->zbuf_float) {
-      ofs += BLI_strncpy_rlen(str + ofs, IFACE_(" + Z"), len - ofs);
+      ofs += BLI_strncpy_rlen(str + ofs, TIP_(" + Z"), len - ofs);
     }
 
     uiItemL(col, str, ICON_NONE);
@@ -1262,17 +1261,17 @@ void uiTemplateImageInfo(uiLayout *layout, bContext *C, Image *ima, ImageUser *i
 
     if (duration > 0) {
       /* Movie duration */
-      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, IFACE_("Frame %d / %d"), framenr, duration);
+      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, TIP_("Frame %d / %d"), framenr, duration);
     }
     else if (ima->source == IMA_SRC_SEQUENCE && ibuf) {
       /* Image sequence frame number + filename */
       const char *filename = BLI_last_slash(ibuf->name);
       filename = (filename == NULL) ? ibuf->name : filename + 1;
-      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, IFACE_("Frame %d: %s"), framenr, filename);
+      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, TIP_("Frame %d: %s"), framenr, filename);
     }
     else {
       /* Frame number */
-      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, IFACE_("Frame %d"), framenr);
+      BLI_snprintf(str, MAX_IMAGE_INFO_LEN, TIP_("Frame %d"), framenr);
     }
 
     uiItemL(col, str, ICON_NONE);

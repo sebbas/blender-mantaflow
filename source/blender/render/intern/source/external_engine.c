@@ -240,6 +240,7 @@ void RE_engine_update_result(RenderEngine *engine, RenderResult *result)
   Render *re = engine->re;
 
   if (result) {
+    render_result_merge(re->result, result);
     result->renlay = result->layers.first; /* weak, draws first layer always */
     re->display_update(re->duh, result, NULL);
   }
@@ -288,6 +289,7 @@ void RE_engine_end_result(
     if (re->result->do_exr_tile) {
       if (!cancel && merge_results) {
         render_result_exr_file_merge(re->result, result, re->viewname);
+        render_result_merge(re->result, result);
       }
     }
     else if (!(re->test_break(re->tbh) && (re->r.scemode & R_BUTS_PREVIEW))) {
@@ -510,7 +512,16 @@ static void engine_depsgraph_init(RenderEngine *engine, ViewLayer *view_layer)
   engine->depsgraph = DEG_graph_new(scene, view_layer, DAG_EVAL_RENDER);
   DEG_debug_name_set(engine->depsgraph, "RENDER");
 
-  BKE_scene_graph_update_for_newframe(engine->depsgraph, bmain);
+  if (engine->re->r.scemode & R_BUTS_PREVIEW) {
+    Depsgraph *depsgraph = engine->depsgraph;
+    DEG_graph_relations_update(depsgraph, bmain, scene, view_layer);
+    DEG_evaluate_on_framechange(bmain, depsgraph, CFRA);
+    DEG_ids_check_recalc(bmain, depsgraph, scene, view_layer, true);
+    DEG_ids_clear_recalc(bmain, depsgraph);
+  }
+  else {
+    BKE_scene_graph_update_for_newframe(engine->depsgraph, bmain);
+  }
 }
 
 static void engine_depsgraph_free(RenderEngine *engine)
@@ -867,8 +878,6 @@ void RE_engine_free_blender_memory(RenderEngine *engine)
   /* Weak way to save memory, but not crash grease pencil.
    *
    * TODO(sergey): Find better solution for this.
-   * TODO(sergey): Try to find solution which does not involve looping over
-   * all the objects.
    */
   if (DRW_render_check_grease_pencil(engine->depsgraph)) {
     return;

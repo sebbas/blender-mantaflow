@@ -644,19 +644,19 @@ vec3 F_schlick(vec3 f0, float cos_theta)
 }
 
 /* Fresnel approximation for LTC area lights (not MRP) */
-vec3 F_area(vec3 f0, vec2 lut)
+vec3 F_area(vec3 f0, vec3 f90, vec2 lut)
 {
   /* Unreal specular matching : if specular color is below 2% intensity,
    * treat as shadowning */
-  return saturate(50.0 * dot(f0, vec3(0.3, 0.6, 0.1))) * lut.y + lut.x * f0;
+  return saturate(50.0 * dot(f0, vec3(0.3, 0.6, 0.1))) * lut.y * f90 + lut.x * f0;
 }
 
 /* Fresnel approximation for IBL */
-vec3 F_ibl(vec3 f0, vec2 lut)
+vec3 F_ibl(vec3 f0, vec3 f90, vec2 lut)
 {
   /* Unreal specular matching : if specular color is below 2% intensity,
    * treat as shadowning */
-  return saturate(50.0 * dot(f0, vec3(0.3, 0.6, 0.1))) * lut.y + lut.x * f0;
+  return saturate(50.0 * dot(f0, vec3(0.3, 0.6, 0.1))) * lut.y * f90 + lut.x * f0;
 }
 
 /* GGX */
@@ -793,9 +793,9 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
   Closure cl;
 
   if (cl1.ssr_id == TRANSPARENT_CLOSURE_FLAG) {
-    cl1.ssr_normal = cl2.ssr_normal;
-    cl1.ssr_data = cl2.ssr_data;
-    cl1.ssr_id = cl2.ssr_id;
+    cl.ssr_normal = cl2.ssr_normal;
+    cl.ssr_data = cl2.ssr_data;
+    cl.ssr_id = cl2.ssr_id;
 #  ifdef USE_SSS
     cl1.sss_data = cl2.sss_data;
 #    ifdef USE_SSS_ALBEDO
@@ -803,10 +803,10 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 #    endif
 #  endif
   }
-  if (cl2.ssr_id == TRANSPARENT_CLOSURE_FLAG) {
-    cl2.ssr_normal = cl1.ssr_normal;
-    cl2.ssr_data = cl1.ssr_data;
-    cl2.ssr_id = cl1.ssr_id;
+  else if (cl2.ssr_id == TRANSPARENT_CLOSURE_FLAG) {
+    cl.ssr_normal = cl1.ssr_normal;
+    cl.ssr_data = cl1.ssr_data;
+    cl.ssr_id = cl1.ssr_id;
 #  ifdef USE_SSS
     cl2.sss_data = cl1.sss_data;
 #    ifdef USE_SSS_ALBEDO
@@ -814,13 +814,12 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 #    endif
 #  endif
   }
-
-  /* When mixing SSR don't blend roughness.
-   *
-   * It makes no sense to mix them really, so we take either one of them and
-   * tone down its specularity (ssr_data.xyz) while keeping its roughness (ssr_data.w).
-   */
-  if (cl1.ssr_id == outputSsrId) {
+  else if (cl1.ssr_id == outputSsrId) {
+    /* When mixing SSR don't blend roughness.
+     *
+     * It makes no sense to mix them really, so we take either one of them and
+     * tone down its specularity (ssr_data.xyz) while keeping its roughness (ssr_data.w).
+     */
     cl.ssr_data = mix(cl1.ssr_data.xyzw, vec4(vec3(0.0), cl1.ssr_data.w), fac);
     cl.ssr_normal = cl1.ssr_normal;
     cl.ssr_id = cl1.ssr_id;
@@ -900,7 +899,10 @@ Closure nodetree_exec(void); /* Prototype */
 
 #    if defined(USE_ALPHA_BLEND)
 /* Prototype because this file is included before volumetric_lib.glsl */
-vec4 volumetric_resolve(vec4 scene_color, vec2 frag_uvs, float frag_depth);
+void volumetric_resolve(vec2 frag_uvs,
+                        float frag_depth,
+                        out vec3 transmittance,
+                        out vec3 scattering);
 #    endif
 
 #    define NODETREE_EXEC
@@ -913,9 +915,10 @@ void main()
 #    endif
 
 #    if defined(USE_ALPHA_BLEND)
-  /* XXX fragile, better use real viewport resolution */
-  vec2 uvs = gl_FragCoord.xy / vec2(2 * textureSize(maxzBuffer, 0).xy);
-  fragColor.rgb = volumetric_resolve(vec4(cl.radiance, cl.opacity), uvs, gl_FragCoord.z).rgb;
+  vec2 uvs = gl_FragCoord.xy * volCoordScale.zw;
+  vec3 transmittance, scattering;
+  volumetric_resolve(uvs, gl_FragCoord.z, transmittance, scattering);
+  fragColor.rgb = cl.radiance * transmittance + scattering;
   fragColor.a = cl.opacity;
 #    else
   fragColor = vec4(cl.radiance, cl.opacity);

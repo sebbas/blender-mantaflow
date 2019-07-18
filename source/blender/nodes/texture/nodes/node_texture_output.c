@@ -132,12 +132,14 @@ static void assign_index(struct bNode *node)
   }
 
 check_index:
-  for (; tnode; tnode = tnode->next)
-    if (tnode->type == TEX_NODE_OUTPUT && tnode != node)
+  for (; tnode; tnode = tnode->next) {
+    if (tnode->type == TEX_NODE_OUTPUT && tnode != node) {
       if (tnode->custom1 == index) {
         index++;
         goto check_index;
       }
+    }
+  }
 
   node->custom1 = index;
 }
@@ -152,7 +154,7 @@ static void init(bNodeTree *UNUSED(ntree), bNode *node)
   assign_index(node);
 }
 
-static void copy(bNodeTree *dest_ntree, bNode *dest_node, bNode *src_node)
+static void copy(bNodeTree *dest_ntree, bNode *dest_node, const bNode *src_node)
 {
   node_copy_standard_storage(dest_ntree, dest_node, src_node);
   unique_name(dest_node);

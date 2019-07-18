@@ -762,22 +762,7 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const STR_String &title,
  */
 GHOST_IContext *GHOST_SystemCocoa::createOffscreenContext()
 {
-  GHOST_Context *context = new GHOST_ContextCGL(false,
-                                                NULL,
-                                                NULL,
-
-#if defined(WITH_GL_PROFILE_CORE)
-                                                GL_CONTEXT_CORE_PROFILE_BIT,
-                                                3,
-                                                3,
-#else
-                                                0,  // no profile bit
-                                                2,
-                                                1,
-#endif
-                                                GHOST_OPENGL_CGL_CONTEXT_FLAGS,
-                                                GHOST_OPENGL_CGL_RESET_NOTIFICATION_STRATEGY);
-
+  GHOST_Context *context = new GHOST_ContextCGL(false, NULL, NULL, NULL);
   if (context->initializeDrawingContext())
     return context;
   else
@@ -1356,7 +1341,7 @@ void GHOST_SystemCocoa::handleQuitRequest()
 bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
 {
   NSString *filepath = (NSString *)filepathStr;
-  int confirmOpen = NSAlertAlternateReturn;
+  bool confirmOpen = true;
   NSArray *windowsList;
   char *temp_buff;
   size_t filenameTextSize;
@@ -1373,12 +1358,17 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
 
   // Check open windows if some changes are not saved
   if (m_windowManager->getAnyModifiedState()) {
-    confirmOpen = NSRunAlertPanel(
-        [NSString stringWithFormat:@"Opening %@", [filepath lastPathComponent]],
-        @"Current document has not been saved.\nDo you really want to proceed?",
-        @"Cancel",
-        @"Open",
-        nil);
+    @autoreleasepool {
+      NSAlert *alert = [[NSAlert alloc] init];
+      NSString *title = [NSString stringWithFormat:@"Opening %@", [filepath lastPathComponent]];
+      NSString *text = @"Current document has not been saved.\nDo you really want to proceed?";
+      [alert addButtonWithTitle:@"Open"];
+      [alert addButtonWithTitle:@"Cancel"];
+      [alert setMessageText:title];
+      [alert setInformativeText:text];
+      [alert setAlertStyle:NSAlertStyleInformational];
+      confirmOpen = [alert runModal] == NSAlertFirstButtonReturn;
+    }
   }
 
   // Give back focus to the blender window
@@ -1387,7 +1377,7 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
     [[windowsList objectAtIndex:0] makeKeyAndOrderFront:nil];
   }
 
-  if (confirmOpen == NSAlertAlternateReturn) {
+  if (confirmOpen) {
     filenameTextSize = [filepath lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
     temp_buff = (char *)malloc(filenameTextSize + 1);
@@ -1605,7 +1595,9 @@ GHOST_TSuccess GHOST_SystemCocoa::handleMouseEvent(void *eventPtr)
           // Warp mouse cursor if needed
           GHOST_TInt32 warped_x_mouse = x_mouse;
           GHOST_TInt32 warped_y_mouse = y_mouse;
-          correctedBounds.wrapPoint(warped_x_mouse, warped_y_mouse, 4);
+
+          correctedBounds.wrapPoint(
+              warped_x_mouse, warped_y_mouse, 4, window->getCursorGrabAxis());
 
           // Set new cursor position
           if (x_mouse != warped_x_mouse || y_mouse != warped_y_mouse) {

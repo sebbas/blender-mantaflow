@@ -203,10 +203,12 @@ class SVertex : public Interface0D {
     _FEdges = iBrother.fedges();
     _Shape = iBrother.shape();
     _pViewVertex = iBrother._pViewVertex;
-    if (!(iBrother._curvature_info))
+    if (!(iBrother._curvature_info)) {
       _curvature_info = 0;
-    else
+    }
+    else {
       _curvature_info = new CurvatureInfo(*(iBrother._curvature_info));
+    }
     iBrother.userdata = this;
     userdata = 0;
   }
@@ -214,8 +216,9 @@ class SVertex : public Interface0D {
   /*! Destructor. */
   virtual ~SVertex()
   {
-    if (_curvature_info)
+    if (_curvature_info) {
       delete _curvature_info;
+    }
   }
 
   /*! Cloning method. */
@@ -312,8 +315,9 @@ class SVertex : public Interface0D {
 
   void setCurvatureInfo(CurvatureInfo *ci)
   {
-    if (_curvature_info)  // Q. is this an error condition? (T.K. 02-May-2011)
+    if (_curvature_info) {  // Q. is this an error condition? (T.K. 02-May-2011)
       delete _curvature_info;
+    }
     _curvature_info = ci;
   }
 
@@ -415,8 +419,9 @@ class SVertex : public Interface0D {
 
   inline Vec3r normal() const
   {
-    if (_Normals.size() == 1)
+    if (_Normals.size() == 1) {
       return (*(_Normals.begin()));
+    }
     Exception::raiseException();
     return *(_Normals.begin());
   }
@@ -466,7 +471,7 @@ class ViewEdge;
  *  This FEdge can represent a silhouette, a crease, a ridge/valley, a border or a suggestive
  * contour. For silhouettes,  the FEdge is oriented such as, the visible face lies on the left of
  * the edge. For borders, the FEdge is oriented such as, the face lies on the left of the edge. An
- * FEdge can represent an initial edge of the mesh or runs accross a face of the initial mesh
+ * FEdge can represent an initial edge of the mesh or runs across a face of the initial mesh
  * depending on the smoothness or sharpness of the mesh. This class is specialized into a smooth
  * and a sharp version since their properties slightly vary from one to the other.
  */
@@ -483,8 +488,9 @@ class FEdge : public Interface1D {
   /*! Returns the 2D length of the FEdge. */
   virtual real getLength2D() const
   {
-    if (!_VertexA || !_VertexB)
+    if (!_VertexA || !_VertexB) {
       return 0;
+    }
     return (_VertexB->getPoint2D() - _VertexA->getPoint2D()).norm();
   }
 
@@ -832,8 +838,9 @@ class FEdge : public Interface1D {
    */
   static inline SVertex *CommonVertex(FEdge *iEdge1, FEdge *iEdge2)
   {
-    if ((NULL == iEdge1) || (NULL == iEdge2))
+    if ((NULL == iEdge1) || (NULL == iEdge2)) {
       return NULL;
+    }
 
     SVertex *sv1 = iEdge1->vertexA();
     SVertex *sv2 = iEdge1->vertexB();
@@ -852,18 +859,22 @@ class FEdge : public Interface1D {
 
   inline const SVertex *min2d() const
   {
-    if (_VertexA->point2D() < _VertexB->point2D())
+    if (_VertexA->point2D() < _VertexB->point2D()) {
       return _VertexA;
-    else
+    }
+    else {
       return _VertexB;
+    }
   }
 
   inline const SVertex *max2d() const
   {
-    if (_VertexA->point2D() < _VertexB->point2D())
+    if (_VertexA->point2D() < _VertexB->point2D()) {
       return _VertexB;
-    else
+    }
+    else {
       return _VertexA;
+    }
   }
 
   /* Information access interface */
@@ -1071,8 +1082,9 @@ class SVertexIterator : public Interface0DIteratorNested {
   virtual bool operator==(const Interface0DIteratorNested &it) const
   {
     const SVertexIterator *it_exact = dynamic_cast<const SVertexIterator *>(&it);
-    if (!it_exact)
+    if (!it_exact) {
       return false;
+    }
     return ((_vertex == it_exact->_vertex) && (_edge == it_exact->_edge));
   }
 
@@ -1351,19 +1363,19 @@ class FEdgeSmooth : public FEdge {
     return _FaceMark;
   }
 
-  /*! Returns the normal to the Face it is running accross. */
+  /*! Returns the normal to the Face it is running across. */
   inline const Vec3r &normal()
   {
     return _Normal;
   }
 
-  /*! Returns the index of the material of the face it is running accross. */
+  /*! Returns the index of the material of the face it is running across. */
   inline unsigned frs_materialIndex() const
   {
     return _FrsMaterialIndex;
   }
 
-  /*! Returns the material of the face it is running accross. */
+  /*! Returns the material of the face it is running across. */
   const FrsMaterial &frs_material() const;
 
   inline void setFace(void *iFace)
@@ -1377,13 +1389,13 @@ class FEdgeSmooth : public FEdge {
     _FaceMark = iFaceMark;
   }
 
-  /*! Sets the normal to the Face it is running accross. */
+  /*! Sets the normal to the Face it is running across. */
   inline void setNormal(const Vec3r &iNormal)
   {
     _Normal = iNormal;
   }
 
-  /*! Sets the index of the material of the face it is running accross. */
+  /*! Sets the index of the material of the face it is running across. */
   inline void setFrsMaterialIndex(unsigned i)
   {
     _FrsMaterialIndex = i;
@@ -1614,9 +1626,10 @@ class SShape {
       T = (*p)[0];
       t = (*p)[1];
 
-      if ((t < 0) || (t > 1))
+      if ((t < 0) || (t > 1)) {
         cerr << "Warning: Intersection out of range for edge " << ioA->getId() << " - "
              << ioB->getId() << endl;
+      }
 
       // compute the 3D and 2D coordinates for the intersections points:
       newpoint3d = Vec3r(A + T * (B - A));
@@ -1725,8 +1738,9 @@ class SShape {
     }
     newEdge->setNature(ioEdge->getNature());
 
-    if (ioEdge->nextEdge() != 0)
+    if (ioEdge->nextEdge() != 0) {
       ioEdge->nextEdge()->setPreviousEdge(newEdge);
+    }
 
     // update edge A'B for the next pointing edge
     newEdge->setNextEdge(ioEdge->nextEdge());
@@ -1769,8 +1783,9 @@ class SShape {
   /*! Compute the bbox of the sshape */
   inline void ComputeBBox()
   {
-    if (0 == _verticesList.size())
+    if (0 == _verticesList.size()) {
       return;
+    }
 
     Vec3r firstVertex = _verticesList[0]->point3D();
     real XMax = firstVertex[0];
@@ -1787,24 +1802,30 @@ class SShape {
       Vec3r vertex = (*v)->point3D();
       // X
       real x = vertex[0];
-      if (x > XMax)
+      if (x > XMax) {
         XMax = x;
-      else if (x < XMin)
+      }
+      else if (x < XMin) {
         XMin = x;
+      }
 
       // Y
       real y = vertex[1];
-      if (y > YMax)
+      if (y > YMax) {
         YMax = y;
-      else if (y < YMin)
+      }
+      else if (y < YMin) {
         YMin = y;
+      }
 
       // Z
       real z = vertex[2];
-      if (z > ZMax)
+      if (z > ZMax) {
         ZMax = z;
-      else if (z < ZMin)
+      }
+      else if (z < ZMin) {
         ZMin = z;
+      }
     }
 
     setBBox(BBox<Vec3r>(Vec3r(XMin, YMin, ZMin), Vec3r(XMax, YMax, ZMax)));

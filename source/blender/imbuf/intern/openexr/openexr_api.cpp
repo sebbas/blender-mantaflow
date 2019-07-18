@@ -969,8 +969,8 @@ int IMB_exr_begin_read(void *handle, const char *filename, int *width, int *heig
   ExrHandle *data = (ExrHandle *)handle;
   ExrChannel *echan;
 
-  if (BLI_exists(filename) &&
-      BLI_file_size(filename) > 32) { /* 32 is arbitrary, but zero length files crashes exr */
+  /* 32 is arbitrary, but zero length files crashes exr. */
+  if (BLI_exists(filename) && BLI_file_size(filename) > 32) {
     /* avoid crash/abort when we don't have permission to write here */
     try {
       data->ifile_stream = new IFileStream(filename);
@@ -1254,14 +1254,14 @@ void IMB_exr_read_channels(void *handle)
         size_t ystride = echan->ystride * sizeof(float);
 
         if (!flip) {
-          /* inverse correct first pixel for datawindow coordinates */
+          /* Inverse correct first pixel for data-window coordinates. */
           rect -= echan->xstride * (dw.min.x - dw.min.y * data->width);
           /* move to last scanline to flip to Blender convention */
           rect += echan->xstride * (data->height - 1) * data->width;
           ystride = -ystride;
         }
         else {
-          /* inverse correct first pixel for datawindow coordinates */
+          /* Inverse correct first pixel for data-window coordinates. */
           rect -= echan->xstride * (dw.min.x + dw.min.y * data->width);
         }
 
@@ -1762,32 +1762,11 @@ static bool imb_exr_is_multilayer_file(MultiPartInputFile &file)
   const ChannelList &channels = file.header(0).channels();
   std::set<std::string> layerNames;
 
-  /* will not include empty layer names */
+  /* This will not include empty layer names, so files with just R/G/B/A
+   * channels without a layer name will be single layer. */
   channels.layers(layerNames);
 
-  if (layerNames.size() > 1) {
-    return true;
-  }
-
-  if (layerNames.size()) {
-    /* if layerNames is not empty, it means at least one layer is non-empty,
-     * but it also could be layers without names in the file and such case
-     * shall be considered a multilayer exr
-     *
-     * that's what we do here: test whether there're empty layer names together
-     * with non-empty ones in the file
-     */
-    for (ChannelList::ConstIterator i = channels.begin(); i != channels.end(); i++) {
-      std::string layerName = i.name();
-      size_t pos = layerName.rfind('.');
-
-      if (pos == std::string::npos) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  return (layerNames.size() > 0);
 }
 
 static void imb_exr_type_by_channels(ChannelList &channels,
@@ -1957,8 +1936,8 @@ struct ImBuf *imb_load_openexr(const unsigned char *mem,
           }
         }
 
-        if (is_multi &&
-            ((flags & IB_thumbnail) == 0)) { /* only enters with IB_multilayer flag set */
+        /* Only enters with IB_multilayer flag set. */
+        if (is_multi && ((flags & IB_thumbnail) == 0)) {
           /* constructs channels for reading, allocates memory in channels */
           ExrHandle *handle = imb_exr_begin_read_mem(*membuf, *file, width, height);
           if (handle) {
@@ -1976,7 +1955,7 @@ struct ImBuf *imb_load_openexr(const unsigned char *mem,
 
           imb_addrectfloatImBuf(ibuf);
 
-          /* Inverse correct first pixel for datawindow
+          /* Inverse correct first pixel for data-window
            * coordinates (- dw.min.y because of y flip). */
           first = ibuf->rect_float - 4 * (dw.min.x - dw.min.y * width);
           /* but, since we read y-flipped (negative y stride) we move to last scanline */

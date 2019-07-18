@@ -284,7 +284,7 @@ void NODE_OT_backimage_move(wmOperatorType *ot)
   ot->cancel = snode_bg_viewmove_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
 }
 
 static int backimage_zoom_exec(bContext *C, wmOperator *op)
@@ -347,7 +347,7 @@ static int backimage_fit_exec(bContext *C, wmOperator *UNUSED(op))
 
   BKE_image_release_ibuf(ima, ibuf, lock);
 
-  snode->zoom *= min_ff(facx, facy);
+  snode->zoom *= min_ff(facx, facy) * U.dpi_fac;
 
   snode->xof = 0;
   snode->yof = 0;

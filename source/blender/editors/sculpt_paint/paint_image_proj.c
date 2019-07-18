@@ -40,6 +40,7 @@
 #include "BLI_math_bits.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_memarena.h"
+#include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -1553,9 +1554,8 @@ static void screen_px_from_persp(const float uv[2],
     w_int[2] *= wtot_inv;
   }
   else {
-    w[0] = w[1] = w[2] =
-        /* dummy values for zero area face */
-        w_int[0] = w_int[1] = w_int[2] = 1.0f / 3.0f;
+    /* Dummy values for zero area face. */
+    w[0] = w[1] = w[2] = w_int[0] = w_int[1] = w_int[2] = 1.0f / 3.0f;
   }
   /* done re-weighting */
 
@@ -2255,8 +2255,9 @@ static bool project_bucket_isect_circle(const float cent[2],
    * this is even less work then an intersection test.
    */
 #if 0
-  if (BLI_rctf_isect_pt_v(bucket_bounds, cent))
+  if (BLI_rctf_isect_pt_v(bucket_bounds, cent)) {
     return 1;
+  }
 #endif
 
   if ((bucket_bounds->xmin <= cent[0] && bucket_bounds->xmax >= cent[0]) ||
@@ -3910,7 +3911,7 @@ static void proj_paint_state_thread_init(ProjPaintState *ps, const bool reset_th
 
   /* Thread stuff
    *
-   * very small brushes run a lot slower multithreaded since the advantage with
+   * very small brushes run a lot slower multi-threaded since the advantage with
    * threads is being able to fill in multiple buckets at once.
    * Only use threads for bigger brushes. */
 
@@ -5102,8 +5103,10 @@ static void image_paint_partial_redraw_expand(ImagePaintPartialRedraw *cell,
   cell->y2 = max_ii(cell->y2, (int)projPixel->y_px + 1);
 }
 
-/* run this for single and multithreaded painting */
-static void *do_projectpaint_thread(void *ph_v)
+/* Run this for single and multi-threaded painting. */
+static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
+                                   void *ph_v,
+                                   int UNUSED(threadid))
 {
   /* First unpack args from the struct */
   ProjPaintState *ps = ((ProjectHandle *)ph_v)->ps;
@@ -5535,8 +5538,6 @@ static void *do_projectpaint_thread(void *ph_v)
 
     BLI_memarena_free(softenArena);
   }
-
-  return NULL;
 }
 
 static bool project_paint_op(void *state, const float lastpos[2], const float pos[2])
@@ -5546,20 +5547,22 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
   bool touch_any = false;
 
   ProjectHandle handles[BLENDER_MAX_THREADS];
-  ListBase threads;
+  TaskScheduler *scheduler = NULL;
+  TaskPool *task_pool = NULL;
   int a, i;
 
-  struct ImagePool *pool;
+  struct ImagePool *image_pool;
 
   if (!project_bucket_iter_init(ps, pos)) {
     return touch_any;
   }
 
   if (ps->thread_tot > 1) {
-    BLI_threadpool_init(&threads, do_projectpaint_thread, ps->thread_tot);
+    scheduler = BLI_task_scheduler_get();
+    task_pool = BLI_task_pool_create_suspended(scheduler, NULL);
   }
 
-  pool = BKE_image_pool_new();
+  image_pool = BKE_image_pool_new();
 
   /* get the threads running */
   for (a = 0; a < ps->thread_tot; a++) {
@@ -5588,21 +5591,23 @@ static bool project_paint_op(void *state, const float lastpos[2], const float po
              sizeof(ImagePaintPartialRedraw) * PROJ_BOUNDBOX_SQUARED);
     }
 
-    handles[a].pool = pool;
+    handles[a].pool = image_pool;
 
-    if (ps->thread_tot > 1) {
-      BLI_threadpool_insert(&threads, &handles[a]);
+    if (task_pool != NULL) {
+      BLI_task_pool_push(
+          task_pool, do_projectpaint_thread, &handles[a], false, TASK_PRIORITY_HIGH);
     }
   }
 
-  if (ps->thread_tot > 1) { /* wait for everything to be done */
-    BLI_threadpool_end(&threads);
+  if (task_pool != NULL) { /* wait for everything to be done */
+    BLI_task_pool_work_and_wait(task_pool);
+    BLI_task_pool_free(task_pool);
   }
   else {
-    do_projectpaint_thread(&handles[0]);
+    do_projectpaint_thread(NULL, &handles[0], 0);
   }
 
-  BKE_image_pool_free(pool);
+  BKE_image_pool_free(image_pool);
 
   /* move threaded bounds back into ps->projectPartialRedraws */
   for (i = 0; i < ps->image_tot; i++) {
@@ -6161,7 +6166,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No 3D viewport found to create image from");
     return OPERATOR_CANCELLED;
   }
-  View3D *v3d = sa->spacedata.first;
+
   ARegion *ar = BKE_area_find_region_active_win(sa);
   if (!ar) {
     BKE_report(op->reports, RPT_ERROR, "No 3D viewport found to create image from");
@@ -6180,10 +6185,25 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
     h = maxsize;
   }
 
+  /* Create a copy of the overlays where they are all turned off, except the
+   * texture paint overlay opacity */
+  View3D *v3d = sa->spacedata.first;
+  View3D v3d_copy = *v3d;
+  v3d_copy.gridflag = 0;
+  v3d_copy.flag2 = 0;
+  v3d_copy.flag = V3D_HIDE_HELPLINES;
+  v3d_copy.gizmo_flag = V3D_GIZMO_HIDE;
+
+  memset(&v3d_copy.overlay, 0, sizeof(View3DOverlay));
+  v3d_copy.overlay.flag = V3D_OVERLAY_HIDE_CURSOR | V3D_OVERLAY_HIDE_TEXT |
+                          V3D_OVERLAY_HIDE_MOTION_PATHS | V3D_OVERLAY_HIDE_BONES |
+                          V3D_OVERLAY_HIDE_OBJECT_XTRAS | V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
+  v3d_copy.overlay.texture_paint_mode_opacity = v3d->overlay.texture_paint_mode_opacity;
+
   ibuf = ED_view3d_draw_offscreen_imbuf(depsgraph,
                                         scene,
-                                        v3d->shading.type,
-                                        v3d,
+                                        v3d_copy.shading.type,
+                                        &v3d_copy,
                                         ar,
                                         w,
                                         h,
@@ -6193,6 +6213,7 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
                                         NULL,
                                         NULL,
                                         err_out);
+
   if (!ibuf) {
     /* Mostly happens when OpenGL offscreen buffer was failed to create, */
     /* but could be other reasons. Should be handled in the future. nazgul */
@@ -6413,13 +6434,16 @@ static Image *proj_paint_image_create(wmOperator *op, Main *bmain, bool is_data)
     alpha = RNA_boolean_get(op->ptr, "alpha");
     RNA_string_get(op->ptr, "name", imagename);
   }
-  ima = BKE_image_add_generated(
-      bmain, width, height, imagename, alpha ? 32 : 24, use_float, gen_type, color, false);
-
-  if (is_data) {
-    STRNCPY(ima->colorspace_settings.name,
-            IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DATA));
-  }
+  ima = BKE_image_add_generated(bmain,
+                                width,
+                                height,
+                                imagename,
+                                alpha ? 32 : 24,
+                                use_float,
+                                gen_type,
+                                color,
+                                false,
+                                is_data);
 
   return ima;
 }

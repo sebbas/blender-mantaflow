@@ -51,6 +51,7 @@
 #include "BKE_writeavi.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "DRW_engine.h"
 
@@ -330,8 +331,9 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
       GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
       GPU_clear(GPU_COLOR_BIT | GPU_DEPTH_BIT);
 
-      wmOrtho2(0, sizex, 0, sizey);
-      GPU_matrix_translate_2f(sizex / 2, sizey / 2);
+      GPU_matrix_reset();
+      wmOrtho2(0, scene->r.xsch, 0, scene->r.ysch);
+      GPU_matrix_translate_2f(scene->r.xsch / 2, scene->r.ysch / 2);
 
       G.f |= G_FLAG_RENDER_VIEWPORT;
       ED_annotation_draw_ex(scene, gpd, sizex, sizey, scene->r.cfra, SPACE_SEQ);
@@ -798,11 +800,12 @@ static bool screen_opengl_render_anim_initialize(bContext *C, wmOperator *op)
     oglrender->movie_ctx_arr = MEM_mallocN(sizeof(void *) * oglrender->totvideos, "Movies");
 
     for (i = 0; i < oglrender->totvideos; i++) {
+      Scene *scene_eval = DEG_get_evaluated_scene(oglrender->depsgraph);
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
 
       oglrender->movie_ctx_arr[i] = oglrender->mh->context_create();
       if (!oglrender->mh->start_movie(oglrender->movie_ctx_arr[i],
-                                      scene,
+                                      scene_eval,
                                       &scene->r,
                                       oglrender->sizex,
                                       oglrender->sizey,

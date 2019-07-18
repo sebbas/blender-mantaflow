@@ -2363,7 +2363,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
 
     /* The target is a B-Bone:
      * FIRST: find the segment (see b_bone_deform in armature.c)
-     * Need to transform co back to bonespace, only need y. */
+     * Need to transform co back to bone-space, only need y. */
     float y = iamat[0][1] * co[0] + iamat[1][1] * co[1] + iamat[2][1] * co[2] + iamat[3][1];
 
     /* Blend the matrix. */
@@ -3329,7 +3329,6 @@ static void minmax_new_data(void *cdata)
 
   data->minmaxflag = TRACK_Z;
   data->offset = 0.0f;
-  zero_v3(data->cache);
   data->flag = 0;
 }
 
@@ -3426,15 +3425,6 @@ static void minmax_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targ
 
     if (val1 > val2) {
       obmat[3][index] = tarmat[3][index] + data->offset;
-      if (data->flag & MINMAX_STICKY) {
-        if (data->flag & MINMAX_STUCK) {
-          copy_v3_v3(obmat[3], data->cache);
-        }
-        else {
-          copy_v3_v3(data->cache, obmat[3]);
-          data->flag |= MINMAX_STUCK;
-        }
-      }
       if (data->flag & MINMAX_USEROT) {
         /* get out of localspace */
         mul_m4_m4m4(tmat, ct->matrix, obmat);
@@ -3443,9 +3433,6 @@ static void minmax_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targ
       else {
         copy_v3_v3(cob->matrix[3], obmat[3]);
       }
-    }
-    else {
-      data->flag &= ~MINMAX_STUCK;
     }
   }
 }
@@ -5098,9 +5085,9 @@ static bConstraint *add_new_constraint_internal(const char *name, short type)
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_from_type(type);
   const char *newName;
 
-  /* Set up a generic constraint datablock */
+  /* Set up a generic constraint data-block. */
   con->type = type;
-  con->flag |= CONSTRAINT_EXPAND | CONSTRAINT_STATICOVERRIDE_LOCAL;
+  con->flag |= CONSTRAINT_EXPAND | CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
   con->enforce = 1.0f;
 
   /* Determine a basic name, and info */
@@ -5238,14 +5225,16 @@ static void con_extern_cb(bConstraint *UNUSED(con),
   }
 }
 
-/* helper for BKE_constraints_copy(),
- * to be used for making sure that usercounts of copied ID's are fixed up */
+/**
+ * Helper for #BKE_constraints_copy(),
+ * to be used for making sure that user-counts of copied ID's are fixed up.
+ */
 static void con_fix_copied_refs_cb(bConstraint *UNUSED(con),
                                    ID **idpoin,
                                    bool is_reference,
                                    void *UNUSED(userData))
 {
-  /* increment usercount if this is a reference type */
+  /* Increment user-count if this is a reference type. */
   if ((*idpoin) && (is_reference)) {
     id_us_plus(*idpoin);
   }

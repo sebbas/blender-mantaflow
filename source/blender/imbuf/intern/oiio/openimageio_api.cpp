@@ -25,6 +25,7 @@
 
 #if defined(WIN32)
 #  include "utfconv.h"
+#  define _USE_MATH_DEFINES
 #endif
 
 // NOTE: Keep first, BLI_path_util conflicts with OIIO's format.
@@ -196,6 +197,7 @@ struct ImBuf *imb_load_photoshop(const char *filename, int flags, char colorspac
   bool is_float, is_alpha;
   int basesize;
   char file_colorspace[IM_MAX_SPACE];
+  const bool is_colorspace_manually_set = (colorspace[0] != '\0');
 
   /* load image from file through OIIO */
   if (imb_is_a_photoshop(filename) == 0) {
@@ -220,17 +222,19 @@ struct ImBuf *imb_load_photoshop(const char *filename, int flags, char colorspac
     return NULL;
   }
 
-  string ics = spec.get_string_attribute("oiio:ColorSpace");
-  BLI_strncpy(file_colorspace, ics.c_str(), IM_MAX_SPACE);
+  if (!is_colorspace_manually_set) {
+    string ics = spec.get_string_attribute("oiio:ColorSpace");
+    BLI_strncpy(file_colorspace, ics.c_str(), IM_MAX_SPACE);
 
-  /* only use colorspaces exis */
-  if (colormanage_colorspace_get_named(file_colorspace)) {
-    strcpy(colorspace, file_colorspace);
-  }
-  else {
-    std::cerr << __func__ << ": The embed colorspace (\"" << file_colorspace
-              << "\") not supported in existent OCIO configuration file. Fallback "
-              << "to system default colorspace (\"" << colorspace << "\")." << std::endl;
+    /* only use colorspaces exis */
+    if (colormanage_colorspace_get_named(file_colorspace)) {
+      strcpy(colorspace, file_colorspace);
+    }
+    else {
+      std::cerr << __func__ << ": The embed colorspace (\"" << file_colorspace
+                << "\") not supported in existent OCIO configuration file. Fallback "
+                << "to system default colorspace (\"" << colorspace << "\")." << std::endl;
+    }
   }
 
   width = spec.width;

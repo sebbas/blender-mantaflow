@@ -1232,6 +1232,8 @@ void dynamicPaint_Modifier_copy(const struct DynamicPaintModifierData *pmd,
       dynamicPaint_freeSurface(tpmd, tpmd->canvas->surfaces.first);
     }
 
+    tpmd->canvas->active_sur = pmd->canvas->active_sur;
+
     /* copy existing surfaces */
     for (surface = pmd->canvas->surfaces.first; surface; surface = surface->next) {
       DynamicPaintSurface *t_surface = dynamicPaint_createNewSurface(tpmd->canvas, NULL);
@@ -1298,7 +1300,7 @@ void dynamicPaint_Modifier_copy(const struct DynamicPaintModifierData *pmd,
       BLI_strncpy(t_surface->output_name2, surface->output_name2, sizeof(t_surface->output_name2));
     }
   }
-  else if (tpmd->brush) {
+  if (tpmd->brush) {
     DynamicPaintBrushSettings *brush = pmd->brush, *t_brush = tpmd->brush;
     t_brush->pmd = tpmd;
 
@@ -1930,7 +1932,8 @@ static Mesh *dynamicPaint_Modifier_apply(DynamicPaintModifierData *pmd, Object *
 {
   Mesh *result = BKE_mesh_copy_for_eval(mesh, false);
 
-  if (pmd->canvas && !(pmd->canvas->flags & MOD_DPAINT_BAKING)) {
+  if (pmd->canvas && !(pmd->canvas->flags & MOD_DPAINT_BAKING) &&
+      pmd->type == MOD_DYNAMICPAINT_TYPE_CANVAS) {
 
     DynamicPaintSurface *surface;
     bool update_normals = false;
@@ -2020,6 +2023,8 @@ static Mesh *dynamicPaint_Modifier_apply(DynamicPaintModifierData *pmd, Object *
             if (defgrp_index != -1 && !dvert && (surface->output_name[0] != '\0')) {
               dvert = CustomData_add_layer(
                   &result->vdata, CD_MDEFORMVERT, CD_CALLOC, NULL, sData->total_points);
+              /* Make the dvert layer easily accessible from the mesh data. */
+              result->dvert = dvert;
             }
             if (defgrp_index != -1 && dvert) {
               int i;
@@ -2070,7 +2075,7 @@ static Mesh *dynamicPaint_Modifier_apply(DynamicPaintModifierData *pmd, Object *
     }
   }
   /* make a copy of mesh to use as brush data */
-  if (pmd->brush) {
+  else if (pmd->brush && pmd->type == MOD_DYNAMICPAINT_TYPE_BRUSH) {
     DynamicPaintRuntime *runtime_data = dynamicPaint_Modifier_runtime_ensure(pmd);
     if (runtime_data->brush_mesh != NULL) {
       BKE_id_free(NULL, runtime_data->brush_mesh);
@@ -2198,24 +2203,11 @@ Mesh *dynamicPaint_Modifier_do(DynamicPaintModifierData *pmd,
                                Object *ob,
                                Mesh *mesh)
 {
-  if (pmd->canvas) {
-    Mesh *ret;
+  /* Update canvas data for a new frame */
+  dynamicPaint_frameUpdate(pmd, depsgraph, scene, ob, mesh);
 
-    /* Update canvas data for a new frame */
-    dynamicPaint_frameUpdate(pmd, depsgraph, scene, ob, mesh);
-
-    /* Return output mesh */
-    ret = dynamicPaint_Modifier_apply(pmd, ob, mesh);
-
-    return ret;
-  }
-  else {
-    /* Update canvas data for a new frame */
-    dynamicPaint_frameUpdate(pmd, depsgraph, scene, ob, mesh);
-
-    /* Return output mesh */
-    return dynamicPaint_Modifier_apply(pmd, ob, mesh);
-  }
+  /* Return output mesh */
+  return dynamicPaint_Modifier_apply(pmd, ob, mesh);
 }
 
 /* -------------------------------------------------------------------- */
@@ -3081,8 +3073,9 @@ int dynamicPaint_createUVSurface(Scene *scene,
         for (int ty = 0; ty < h; ty++) {
           for (int tx = 0; tx < w; tx++) {
             const int index = tx + w * ty;
-            if (tempPoints[index].tri_index != -1)
+            if (tempPoints[index].tri_index != -1) {
               tmp[final_index[index]] = index;
+            }
           }
         }
         for (int ty = 0; ty < h; ty++) {
@@ -3193,8 +3186,9 @@ int dynamicPaint_createUVSurface(Scene *scene,
       pPoint->alpha = 1.0f;
 
       /* Every pixel that is assigned as "edge pixel" gets blue color */
-      if (uvPoint->neighbour_pixel != -1)
+      if (uvPoint->neighbour_pixel != -1) {
         pPoint->color[2] = 1.0f;
+      }
       /* and every pixel that finally got an polygon gets red color */
       /* green color shows pixel face index hash */
       if (uvPoint->tri_index != -1) {
@@ -6250,7 +6244,7 @@ static int dynamicPaint_doStep(Depsgraph *depsgraph,
       if (md && md->mode & (eModifierMode_Realtime | eModifierMode_Render)) {
         DynamicPaintModifierData *pmd2 = (DynamicPaintModifierData *)md;
         /* make sure we're dealing with a brush */
-        if (pmd2->brush) {
+        if (pmd2->brush && pmd2->type == MOD_DYNAMICPAINT_TYPE_BRUSH) {
           DynamicPaintBrushSettings *brush = pmd2->brush;
 
           /* calculate brush speed vectors if required */

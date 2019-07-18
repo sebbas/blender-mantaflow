@@ -39,6 +39,10 @@
 #include "BLI_mempool.h"
 #include "BLI_memblock.h"
 
+#ifdef DRW_DEBUG_CULLING
+#  include "BLI_math_bits.h"
+#endif
+
 #include "GPU_buffers.h"
 
 #include "intern/gpu_codegen.h"
@@ -389,36 +393,34 @@ static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obm
 {
   DRWCallState *state = BLI_memblock_alloc(DST.vmempool->states);
   state->flag = 0;
-  state->cache_id = 0;
-  state->visibility_cb = NULL;
   state->matflag = 0;
 
   /* Matrices */
-  if (obmat != NULL) {
-    copy_m4_m4(state->model, obmat);
+  copy_m4_m4(state->model, obmat);
 
-    if (ob && (ob->transflag & OB_NEG_SCALE)) {
-      state->flag |= DRW_CALL_NEGSCALE;
-    }
-  }
-  else {
-    unit_m4(state->model);
+  if (ob && (ob->transflag & OB_NEG_SCALE)) {
+    state->flag |= DRW_CALL_NEGSCALE;
   }
 
   drw_call_state_update_matflag(state, shgroup, ob);
 
-  if (ob != NULL) {
+  DRWCullingState *cull = BLI_memblock_alloc(DST.vmempool->cullstates);
+  state->culling = cull;
+
+  BoundBox *bbox;
+  if (ob != NULL && (bbox = BKE_object_boundbox_get(ob))) {
     float corner[3];
-    BoundBox *bbox = BKE_object_boundbox_get(ob);
     /* Get BoundSphere center and radius from the BoundBox. */
-    mid_v3_v3v3(state->bsphere.center, bbox->vec[0], bbox->vec[6]);
+    mid_v3_v3v3(cull->bsphere.center, bbox->vec[0], bbox->vec[6]);
     mul_v3_m4v3(corner, obmat, bbox->vec[0]);
-    mul_m4_v3(obmat, state->bsphere.center);
-    state->bsphere.radius = len_v3v3(state->bsphere.center, corner);
+    mul_m4_v3(obmat, cull->bsphere.center);
+    cull->bsphere.radius = len_v3v3(cull->bsphere.center, corner);
   }
   else {
+    /* TODO(fclem) Bypass alloc if we can (see if eevee's
+     * probe visibility collection still works). */
     /* Bypass test. */
-    state->bsphere.radius = -1.0f;
+    cull->bsphere.radius = -1.0f;
   }
 
   return state;
@@ -426,65 +428,70 @@ static DRWCallState *drw_call_state_create(DRWShadingGroup *shgroup, float (*obm
 
 static DRWCallState *drw_call_state_object(DRWShadingGroup *shgroup, float (*obmat)[4], Object *ob)
 {
-  if (DST.ob_state == NULL) {
-    DST.ob_state = drw_call_state_create(shgroup, obmat, ob);
+  if (ob == NULL) {
+    if (obmat == NULL) {
+      BLI_assert(DST.unit_state);
+      return DST.unit_state;
+    }
+    else {
+      return drw_call_state_create(shgroup, obmat, ob);
+    }
   }
   else {
-    /* If the DRWCallState is reused, add necessary matrices. */
-    drw_call_state_update_matflag(DST.ob_state, shgroup, ob);
+    if (DST.ob_state == NULL) {
+      DST.ob_state = drw_call_state_create(shgroup, obmat, ob);
+    }
+    else {
+      /* If the DRWCallState is reused, add necessary matrices. */
+      drw_call_state_update_matflag(DST.ob_state, shgroup, ob);
+    }
+
+    return DST.ob_state;
   }
-
-  return DST.ob_state;
 }
 
-void DRW_shgroup_call(DRWShadingGroup *shgroup, GPUBatch *geom, float (*obmat)[4])
+void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
+                         Object *ob,
+                         float (*obmat)[4],
+                         struct GPUBatch *geom,
+                         uint v_sta,
+                         uint v_ct,
+                         bool bypass_culling,
+                         void *user_data)
 {
   BLI_assert(geom != NULL);
 
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_create(shgroup, obmat, NULL);
-  call->batch = geom;
-  call->vert_first = 0;
-  call->vert_count = 0; /* Auto from batch. */
-  call->inst_count = 0;
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
-}
-
-void DRW_shgroup_call_range(
-    DRWShadingGroup *shgroup, GPUBatch *geom, float (*obmat)[4], uint v_sta, uint v_count)
-{
-  BLI_assert(geom != NULL);
-  BLI_assert(v_count);
-
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
-  call->state = drw_call_state_create(shgroup, obmat, NULL);
+  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : obmat, ob);
   call->batch = geom;
   call->vert_first = v_sta;
-  call->vert_count = v_count;
+  call->vert_count = v_ct; /* 0 means auto from batch. */
   call->inst_count = 0;
 #ifdef USE_GPU_SELECT
   call->select_id = DST.select_id;
   call->inst_selectid = NULL;
 #endif
+  if (call->state->culling) {
+    call->state->culling->user_data = user_data;
+    if (bypass_culling) {
+      /* NOTE this will disable culling for the whole object. */
+      call->state->culling->bsphere.radius = -1.0f;
+    }
+  }
 }
 
 static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
                                                GPUBatch *geom,
-                                               uint vert_count,
-                                               float (*obmat)[4])
+                                               Object *ob,
+                                               uint vert_count)
 {
 
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_object(shgroup, obmat, NULL);
+  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
   call->vert_first = 0;
   call->vert_count = vert_count;
@@ -495,81 +502,27 @@ static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
 #endif
 }
 
-void DRW_shgroup_call_procedural_points(DRWShadingGroup *shgroup,
-                                        uint point_len,
-                                        float (*obmat)[4])
+void DRW_shgroup_call_procedural_points(DRWShadingGroup *shgroup, Object *ob, uint point_len)
 {
   struct GPUBatch *geom = drw_cache_procedural_points_get();
-  drw_shgroup_call_procedural_add_ex(shgroup, geom, point_len, obmat);
+  drw_shgroup_call_procedural_add_ex(shgroup, geom, ob, point_len);
 }
 
-void DRW_shgroup_call_procedural_lines(DRWShadingGroup *shgroup,
-                                       uint line_count,
-                                       float (*obmat)[4])
+void DRW_shgroup_call_procedural_lines(DRWShadingGroup *shgroup, Object *ob, uint line_count)
 {
   struct GPUBatch *geom = drw_cache_procedural_lines_get();
-  drw_shgroup_call_procedural_add_ex(shgroup, geom, line_count * 2, obmat);
+  drw_shgroup_call_procedural_add_ex(shgroup, geom, ob, line_count * 2);
 }
 
-void DRW_shgroup_call_procedural_triangles(DRWShadingGroup *shgroup,
-                                           uint tria_count,
-                                           float (*obmat)[4])
+void DRW_shgroup_call_procedural_triangles(DRWShadingGroup *shgroup, Object *ob, uint tria_count)
 {
   struct GPUBatch *geom = drw_cache_procedural_triangles_get();
-  drw_shgroup_call_procedural_add_ex(shgroup, geom, tria_count * 3, obmat);
-}
-
-/* These calls can be culled and are optimized for redraw */
-void DRW_shgroup_call_object_ex(DRWShadingGroup *shgroup,
-                                GPUBatch *geom,
-                                Object *ob,
-                                bool bypass_culling)
-{
-  BLI_assert(geom != NULL);
-
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
-  call->state = drw_call_state_object(shgroup, ob->obmat, ob);
-  /* NOTE this will disable culling for the whole object. */
-  call->state->flag |= (bypass_culling) ? DRW_CALL_BYPASS_CULLING : 0;
-  call->batch = geom;
-  call->vert_first = 0;
-  call->vert_count = 0; /* Auto from batch. */
-  call->inst_count = 0;
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
-}
-
-void DRW_shgroup_call_object_with_callback(DRWShadingGroup *shgroup,
-                                           GPUBatch *geom,
-                                           Object *ob,
-                                           DRWCallVisibilityFn *callback,
-                                           void *user_data)
-{
-  BLI_assert(geom != NULL);
-
-  DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
-  BLI_LINKS_APPEND(&shgroup->calls, call);
-
-  call->state = drw_call_state_object(shgroup, ob->obmat, ob);
-  call->state->visibility_cb = callback;
-  call->state->user_data = user_data;
-  call->batch = geom;
-  call->vert_first = 0;
-  call->vert_count = 0; /* Auto from batch. */
-  call->inst_count = 0;
-#ifdef USE_GPU_SELECT
-  call->select_id = DST.select_id;
-  call->inst_selectid = NULL;
-#endif
+  drw_shgroup_call_procedural_add_ex(shgroup, geom, ob, tria_count * 3);
 }
 
 void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
-                                GPUBatch *geom,
-                                float (*obmat)[4],
+                                Object *ob,
+                                struct GPUBatch *geom,
                                 uint count)
 {
   BLI_assert(geom != NULL);
@@ -577,7 +530,7 @@ void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_create(shgroup, obmat, NULL);
+  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = geom;
   call->vert_first = 0;
   call->vert_count = 0; /* Auto from batch. */
@@ -589,8 +542,8 @@ void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
 }
 
 void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
+                                             Object *ob,
                                              struct GPUBatch *geom,
-                                             float (*obmat)[4],
                                              struct GPUBatch *inst_attributes)
 {
   BLI_assert(geom != NULL);
@@ -601,7 +554,7 @@ void DRW_shgroup_call_instances_with_attribs(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_create(shgroup, obmat, NULL);
+  call->state = drw_call_state_object(shgroup, ob ? ob->obmat : NULL, ob);
   call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf_inst, geom);
   call->vert_first = 0;
   call->vert_count = 0; /* Auto from batch. */
@@ -662,9 +615,9 @@ static void sculpt_draw_cb(DRWSculptCallbackData *scd, GPU_PBVH_Buffers *buffers
     shgrp = DRW_shgroup_create_sub(shgrp);
     DRW_shgroup_uniform_vec3(shgrp, "materialDiffuseColor", SCULPT_DEBUG_COLOR(scd->node_nr++), 1);
 #endif
-    /* DRW_shgroup_call_object_ex reuses matrices calculations for all the drawcalls of this
+    /* DRW_shgroup_call_no_cull reuses matrices calculations for all the drawcalls of this
      * object. */
-    DRW_shgroup_call_object_ex(shgrp, geom, scd->ob, true);
+    DRW_shgroup_call_no_cull(shgrp, geom, scd->ob);
   }
 }
 
@@ -695,8 +648,8 @@ static void sculpt_debug_cb(void *user_data,
 
 static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd, bool use_vcol)
 {
-  /* XXX should be ensured before but sometime it's not... go figure (see T57040). */
-  PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(DST.draw_ctx.depsgraph, scd->ob);
+  /* PBVH should always exist for non-empty meshes, created by depsgrah eval. */
+  PBVH *pbvh = (scd->ob->sculpt) ? scd->ob->sculpt->pbvh : NULL;
   if (!pbvh) {
     return;
   }
@@ -712,8 +665,11 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd, bool use_vcol)
     }
   }
 
-  BKE_pbvh_draw_cb(
-      pbvh, planes, NULL, use_vcol, (void (*)(void *, GPU_PBVH_Buffers *))sculpt_draw_cb, scd);
+  Mesh *mesh = scd->ob->data;
+  BKE_pbvh_update_normals(pbvh, mesh->runtime.subdiv_ccg);
+  BKE_pbvh_update_draw_buffers(pbvh, use_vcol);
+
+  BKE_pbvh_draw_cb(pbvh, planes, (void (*)(void *, GPU_PBVH_Buffers *))sculpt_draw_cb, scd);
 
 #ifdef SCULPT_DEBUG_BUFFERS
   int node_nr = 0;
@@ -762,7 +718,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_create(shgroup, NULL, NULL);
+  call->state = drw_call_state_object(shgroup, NULL, NULL);
   GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->vert_count);
   call->batch = DRW_temp_batch_request(DST.idatalist, buf, prim_type);
   call->vert_first = 0;
@@ -792,7 +748,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
   DRWCall *call = BLI_memblock_alloc(DST.vmempool->calls);
   BLI_LINKS_APPEND(&shgroup->calls, call);
 
-  call->state = drw_call_state_create(shgroup, NULL, NULL);
+  call->state = drw_call_state_object(shgroup, NULL, NULL);
   GPUVertBuf *buf = DRW_temp_buffer_request(DST.idatalist, format, &call->inst_count);
   call->batch = DRW_temp_batch_instance_request(DST.idatalist, buf, geom);
   call->vert_first = 0;
@@ -859,23 +815,15 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
   }
   else {
     /* Only here to support builtin shaders. This should not be used by engines. */
-    drw_shgroup_builtin_uniform(
-        shgroup, GPU_UNIFORM_VIEW, DST.view_data.matstate.mat[DRW_MAT_VIEW], 16, 1);
-    drw_shgroup_builtin_uniform(
-        shgroup, GPU_UNIFORM_VIEW_INV, DST.view_data.matstate.mat[DRW_MAT_VIEWINV], 16, 1);
-    drw_shgroup_builtin_uniform(
-        shgroup, GPU_UNIFORM_VIEWPROJECTION, DST.view_data.matstate.mat[DRW_MAT_PERS], 16, 1);
-    drw_shgroup_builtin_uniform(shgroup,
-                                GPU_UNIFORM_VIEWPROJECTION_INV,
-                                DST.view_data.matstate.mat[DRW_MAT_PERSINV],
-                                16,
-                                1);
-    drw_shgroup_builtin_uniform(
-        shgroup, GPU_UNIFORM_PROJECTION, DST.view_data.matstate.mat[DRW_MAT_WIN], 16, 1);
-    drw_shgroup_builtin_uniform(
-        shgroup, GPU_UNIFORM_PROJECTION_INV, DST.view_data.matstate.mat[DRW_MAT_WININV], 16, 1);
-    drw_shgroup_builtin_uniform(
-        shgroup, GPU_UNIFORM_CAMERATEXCO, DST.view_data.viewcamtexcofac, 3, 2);
+    /* TODO remove. */
+    DRWViewUboStorage *storage = &DST.view_storage_cpy;
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_VIEW, storage->viewmat, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_VIEW_INV, storage->viewinv, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_VIEWPROJECTION, storage->persmat, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_VIEWPROJECTION_INV, storage->persinv, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_PROJECTION, storage->winmat, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_PROJECTION_INV, storage->wininv, 16, 1);
+    drw_shgroup_builtin_uniform(shgroup, GPU_UNIFORM_CLIPPLANES, storage->clipplanes, 4, 6);
   }
 
   /* Not supported. */
@@ -1048,9 +996,22 @@ bool DRW_shgroup_is_empty(DRWShadingGroup *shgroup)
   return shgroup->calls.first == NULL;
 }
 
+/* This is a workaround function waiting for the clearing operation to be available inside the
+ * shgroups. */
+DRWShadingGroup *DRW_shgroup_get_next(DRWShadingGroup *shgroup)
+{
+  return shgroup->next;
+}
+
+/* This is a workaround function waiting for the clearing operation to be available inside the
+ * shgroups. */
+uint DRW_shgroup_stencil_mask_get(DRWShadingGroup *shgroup)
+{
+  return shgroup->stencil_mask;
+}
+
 DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
 {
-  /* Remove this assertion if needed but implement the other cases first! */
   DRWShadingGroup *shgroup_new = BLI_memblock_alloc(DST.vmempool->shgroups);
 
   *shgroup_new = *shgroup;
@@ -1066,13 +1027,487 @@ DRWShadingGroup *DRW_shgroup_create_sub(DRWShadingGroup *shgroup)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name View (DRW_view)
+ * \{ */
+
+/* Extract the 8 corners from a Projection Matrix.
+ * Although less accurate, this solution can be simplified as follows:
+ * BKE_boundbox_init_from_minmax(&bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const
+ * float[3]){1.0f, 1.0f, 1.0f}); for (int i = 0; i < 8; i++) {mul_project_m4_v3(projinv,
+ * bbox.vec[i]);}
+ */
+static void draw_frustum_boundbox_calc(const float (*viewinv)[4],
+                                       const float (*projmat)[4],
+                                       BoundBox *r_bbox)
+{
+  float left, right, bottom, top, near, far;
+  bool is_persp = projmat[3][3] == 0.0f;
+
+#if 0 /* Equivalent to this but it has accuracy problems. */
+  BKE_boundbox_init_from_minmax(
+      &bbox, (const float[3]){-1.0f, -1.0f, -1.0f}, (const float[3]){1.0f, 1.0f, 1.0f});
+  for (int i = 0; i < 8; i++) {
+    mul_project_m4_v3(projinv, bbox.vec[i]);
+  }
+#endif
+
+  projmat_dimensions(projmat, &left, &right, &bottom, &top, &near, &far);
+
+  if (is_persp) {
+    left *= near;
+    right *= near;
+    bottom *= near;
+    top *= near;
+  }
+
+  r_bbox->vec[0][2] = r_bbox->vec[3][2] = r_bbox->vec[7][2] = r_bbox->vec[4][2] = -near;
+  r_bbox->vec[0][0] = r_bbox->vec[3][0] = left;
+  r_bbox->vec[4][0] = r_bbox->vec[7][0] = right;
+  r_bbox->vec[0][1] = r_bbox->vec[4][1] = bottom;
+  r_bbox->vec[7][1] = r_bbox->vec[3][1] = top;
+
+  /* Get the coordinates of the far plane. */
+  if (is_persp) {
+    float sca_far = far / near;
+    left *= sca_far;
+    right *= sca_far;
+    bottom *= sca_far;
+    top *= sca_far;
+  }
+
+  r_bbox->vec[1][2] = r_bbox->vec[2][2] = r_bbox->vec[6][2] = r_bbox->vec[5][2] = -far;
+  r_bbox->vec[1][0] = r_bbox->vec[2][0] = left;
+  r_bbox->vec[6][0] = r_bbox->vec[5][0] = right;
+  r_bbox->vec[1][1] = r_bbox->vec[5][1] = bottom;
+  r_bbox->vec[2][1] = r_bbox->vec[6][1] = top;
+
+  /* Transform into world space. */
+  for (int i = 0; i < 8; i++) {
+    mul_m4_v3(viewinv, r_bbox->vec[i]);
+  }
+}
+
+static void draw_frustum_culling_planes_calc(const BoundBox *bbox, float (*frustum_planes)[4])
+{
+  /* TODO See if planes_from_projmat cannot do the job. */
+
+  /* Compute clip planes using the world space frustum corners. */
+  for (int p = 0; p < 6; p++) {
+    int q, r, s;
+    switch (p) {
+      case 0:
+        q = 1;
+        r = 2;
+        s = 3;
+        break; /* -X */
+      case 1:
+        q = 0;
+        r = 4;
+        s = 5;
+        break; /* -Y */
+      case 2:
+        q = 1;
+        r = 5;
+        s = 6;
+        break; /* +Z (far) */
+      case 3:
+        q = 2;
+        r = 6;
+        s = 7;
+        break; /* +Y */
+      case 4:
+        q = 0;
+        r = 3;
+        s = 7;
+        break; /* -Z (near) */
+      default:
+        q = 4;
+        r = 7;
+        s = 6;
+        break; /* +X */
+    }
+
+    normal_quad_v3(frustum_planes[p], bbox->vec[p], bbox->vec[q], bbox->vec[r], bbox->vec[s]);
+    /* Increase precision and use the mean of all 4 corners. */
+    frustum_planes[p][3] = -dot_v3v3(frustum_planes[p], bbox->vec[p]);
+    frustum_planes[p][3] += -dot_v3v3(frustum_planes[p], bbox->vec[q]);
+    frustum_planes[p][3] += -dot_v3v3(frustum_planes[p], bbox->vec[r]);
+    frustum_planes[p][3] += -dot_v3v3(frustum_planes[p], bbox->vec[s]);
+    frustum_planes[p][3] *= 0.25f;
+  }
+}
+
+static void draw_frustum_bound_sphere_calc(const BoundBox *bbox,
+                                           const float (*viewinv)[4],
+                                           const float (*projmat)[4],
+                                           const float (*projinv)[4],
+                                           BoundSphere *bsphere)
+{
+  /* Extract Bounding Sphere */
+  if (projmat[3][3] != 0.0f) {
+    /* Orthographic */
+    /* The most extreme points on the near and far plane. (normalized device coords). */
+    const float *nearpoint = bbox->vec[0];
+    const float *farpoint = bbox->vec[6];
+
+    /* just use median point */
+    mid_v3_v3v3(bsphere->center, farpoint, nearpoint);
+    bsphere->radius = len_v3v3(bsphere->center, farpoint);
+  }
+  else if (projmat[2][0] == 0.0f && projmat[2][1] == 0.0f) {
+    /* Perspective with symmetrical frustum. */
+
+    /* We obtain the center and radius of the circumscribed circle of the
+     * isosceles trapezoid composed by the diagonals of the near and far clipping plane */
+
+    /* center of each clipping plane */
+    float mid_min[3], mid_max[3];
+    mid_v3_v3v3(mid_min, bbox->vec[3], bbox->vec[4]);
+    mid_v3_v3v3(mid_max, bbox->vec[2], bbox->vec[5]);
+
+    /* square length of the diagonals of each clipping plane */
+    float a_sq = len_squared_v3v3(bbox->vec[3], bbox->vec[4]);
+    float b_sq = len_squared_v3v3(bbox->vec[2], bbox->vec[5]);
+
+    /* distance squared between clipping planes */
+    float h_sq = len_squared_v3v3(mid_min, mid_max);
+
+    float fac = (4 * h_sq + b_sq - a_sq) / (8 * h_sq);
+
+    /* The goal is to get the smallest sphere,
+     * not the sphere that passes through each corner */
+    CLAMP(fac, 0.0f, 1.0f);
+
+    interp_v3_v3v3(bsphere->center, mid_min, mid_max, fac);
+
+    /* distance from the center to one of the points of the far plane (1, 2, 5, 6) */
+    bsphere->radius = len_v3v3(bsphere->center, bbox->vec[1]);
+  }
+  else {
+    /* Perspective with asymmetrical frustum. */
+
+    /* We put the sphere center on the line that goes from origin
+     * to the center of the far clipping plane. */
+
+    /* Detect which of the corner of the far clipping plane is the farthest to the origin */
+    float nfar[4];               /* most extreme far point in NDC space */
+    float farxy[2];              /* farpoint projection onto the near plane */
+    float farpoint[3] = {0.0f};  /* most extreme far point in camera coordinate */
+    float nearpoint[3];          /* most extreme near point in camera coordinate */
+    float farcenter[3] = {0.0f}; /* center of far cliping plane in camera coordinate */
+    float F = -1.0f, N;          /* square distance of far and near point to origin */
+    float f, n; /* distance of far and near point to z axis. f is always > 0 but n can be < 0 */
+    float e, s; /* far and near clipping distance (<0) */
+    float c;    /* slope of center line = distance of far clipping center
+                 * to z axis / far clipping distance. */
+    float z;    /* projection of sphere center on z axis (<0) */
+
+    /* Find farthest corner and center of far clip plane. */
+    float corner[3] = {1.0f, 1.0f, 1.0f}; /* in clip space */
+    for (int i = 0; i < 4; i++) {
+      float point[3];
+      mul_v3_project_m4_v3(point, projinv, corner);
+      float len = len_squared_v3(point);
+      if (len > F) {
+        copy_v3_v3(nfar, corner);
+        copy_v3_v3(farpoint, point);
+        F = len;
+      }
+      add_v3_v3(farcenter, point);
+      /* rotate by 90 degree to walk through the 4 points of the far clip plane */
+      float tmp = corner[0];
+      corner[0] = -corner[1];
+      corner[1] = tmp;
+    }
+
+    /* the far center is the average of the far clipping points */
+    mul_v3_fl(farcenter, 0.25f);
+    /* the extreme near point is the opposite point on the near clipping plane */
+    copy_v3_fl3(nfar, -nfar[0], -nfar[1], -1.0f);
+    mul_v3_project_m4_v3(nearpoint, projinv, nfar);
+    /* this is a frustum projection */
+    N = len_squared_v3(nearpoint);
+    e = farpoint[2];
+    s = nearpoint[2];
+    /* distance to view Z axis */
+    f = len_v2(farpoint);
+    /* get corresponding point on the near plane */
+    mul_v2_v2fl(farxy, farpoint, s / e);
+    /* this formula preserve the sign of n */
+    sub_v2_v2(nearpoint, farxy);
+    n = f * s / e - len_v2(nearpoint);
+    c = len_v2(farcenter) / e;
+    /* the big formula, it simplifies to (F-N)/(2(e-s)) for the symmetric case */
+    z = (F - N) / (2.0f * (e - s + c * (f - n)));
+
+    bsphere->center[0] = farcenter[0] * z / e;
+    bsphere->center[1] = farcenter[1] * z / e;
+    bsphere->center[2] = z;
+    bsphere->radius = len_v3v3(bsphere->center, farpoint);
+
+    /* Transform to world space. */
+    mul_m4_v3(viewinv, bsphere->center);
+  }
+}
+
+static void draw_view_matrix_state_update(DRWViewUboStorage *storage,
+                                          const float viewmat[4][4],
+                                          const float winmat[4][4])
+{
+  /* If only one the matrices is negative, then the
+   * polygon winding changes and we don't want that.
+   * By convention, the winmat is negative because
+   * looking through the -Z axis. So this inverse the
+   * changes the test for the winmat. */
+  BLI_assert(is_negative_m4(viewmat) == !is_negative_m4(winmat));
+
+  copy_m4_m4(storage->viewmat, viewmat);
+  invert_m4_m4(storage->viewinv, storage->viewmat);
+
+  copy_m4_m4(storage->winmat, winmat);
+  invert_m4_m4(storage->wininv, storage->winmat);
+
+  mul_m4_m4m4(storage->persmat, winmat, viewmat);
+  invert_m4_m4(storage->persinv, storage->persmat);
+}
+
+/* Create a view with culling. */
+DRWView *DRW_view_create(const float viewmat[4][4],
+                         const float winmat[4][4],
+                         const float (*culling_viewmat)[4],
+                         const float (*culling_winmat)[4],
+                         DRWCallVisibilityFn *visibility_fn)
+{
+  DRWView *view = BLI_memblock_alloc(DST.vmempool->views);
+
+  if (DST.primary_view_ct < MAX_CULLED_VIEWS) {
+    view->culling_mask = 1u << DST.primary_view_ct++;
+  }
+  else {
+    BLI_assert(0);
+    view->culling_mask = 0u;
+  }
+  view->clip_planes_len = 0;
+  view->visibility_fn = visibility_fn;
+  view->parent = NULL;
+
+  copy_v4_fl4(view->storage.viewcamtexcofac, 1.0f, 1.0f, 0.0f, 0.0f);
+
+  DRW_view_update(view, viewmat, winmat, culling_viewmat, culling_winmat);
+
+  return view;
+}
+
+/* Create a view with culling done by another view. */
+DRWView *DRW_view_create_sub(const DRWView *parent_view,
+                             const float viewmat[4][4],
+                             const float winmat[4][4])
+{
+  BLI_assert(parent_view && parent_view->parent == NULL);
+
+  DRWView *view = BLI_memblock_alloc(DST.vmempool->views);
+
+  /* Perform copy. */
+  *view = *parent_view;
+  view->parent = (DRWView *)parent_view;
+
+  DRW_view_update_sub(view, viewmat, winmat);
+
+  return view;
+}
+
+/**
+ * DRWView Update:
+ * This is meant to be done on existing views when rendering in a loop and there is no
+ * need to allocate more DRWViews.
+ **/
+
+/* Update matrices of a view created with DRW_view_create_sub. */
+void DRW_view_update_sub(DRWView *view, const float viewmat[4][4], const float winmat[4][4])
+{
+  BLI_assert(view->parent != NULL);
+
+  view->is_dirty = true;
+
+  draw_view_matrix_state_update(&view->storage, viewmat, winmat);
+}
+
+/* Update matrices of a view created with DRW_view_create. */
+void DRW_view_update(DRWView *view,
+                     const float viewmat[4][4],
+                     const float winmat[4][4],
+                     const float (*culling_viewmat)[4],
+                     const float (*culling_winmat)[4])
+{
+  /* DO NOT UPDATE THE DEFAULT VIEW.
+   * Create subviews instead, or a copy. */
+  BLI_assert(view != DST.view_default);
+  BLI_assert(view->parent == NULL);
+
+  view->is_dirty = true;
+
+  draw_view_matrix_state_update(&view->storage, viewmat, winmat);
+
+  /* Prepare frustum culling. */
+
+#ifdef DRW_DEBUG_CULLING
+  static float mv[MAX_CULLED_VIEWS][4][4], mw[MAX_CULLED_VIEWS][4][4];
+
+  /* Select view here. */
+  if (view->culling_mask != 0) {
+    uint index = bitscan_forward_uint(view->culling_mask);
+
+    if (G.debug_value == 0) {
+      copy_m4_m4(mv[index], culling_viewmat ? culling_viewmat : viewmat);
+      copy_m4_m4(mw[index], culling_winmat ? culling_winmat : winmat);
+    }
+    else {
+      culling_winmat = mw[index];
+      culling_viewmat = mv[index];
+    }
+  }
+#endif
+
+  float wininv[4][4];
+  if (culling_winmat) {
+    winmat = culling_winmat;
+    invert_m4_m4(wininv, winmat);
+  }
+  else {
+    copy_m4_m4(wininv, view->storage.wininv);
+  }
+
+  float viewinv[4][4];
+  if (culling_viewmat) {
+    viewmat = culling_viewmat;
+    invert_m4_m4(viewinv, viewmat);
+  }
+  else {
+    copy_m4_m4(viewinv, view->storage.viewinv);
+  }
+
+  draw_frustum_boundbox_calc(viewinv, winmat, &view->frustum_corners);
+  draw_frustum_culling_planes_calc(&view->frustum_corners, view->frustum_planes);
+  draw_frustum_bound_sphere_calc(
+      &view->frustum_corners, viewinv, winmat, wininv, &view->frustum_bsphere);
+
+#ifdef DRW_DEBUG_CULLING
+  if (G.debug_value != 0) {
+    DRW_debug_sphere(
+        view->frustum_bsphere.center, view->frustum_bsphere.radius, (const float[4]){1, 1, 0, 1});
+    DRW_debug_bbox(&view->frustum_corners, (const float[4]){1, 1, 0, 1});
+  }
+#endif
+}
+
+/* Return default view if it is a viewport render. */
+const DRWView *DRW_view_default_get(void)
+{
+  return DST.view_default;
+}
+
+/* MUST only be called once per render and only in render mode. Sets default view. */
+void DRW_view_default_set(DRWView *view)
+{
+  BLI_assert(DST.view_default == NULL);
+  DST.view_default = view;
+}
+
+/**
+ * This only works if DRWPasses have been tagged with DRW_STATE_CLIP_PLANES,
+ * and if the shaders have support for it (see usage of gl_ClipDistance).
+ * NOTE: planes must be in world space.
+ */
+void DRW_view_clip_planes_set(DRWView *view, float (*planes)[4], int plane_len)
+{
+  BLI_assert(plane_len <= MAX_CLIP_PLANES);
+  view->clip_planes_len = plane_len;
+  if (plane_len > 0) {
+    memcpy(view->storage.clipplanes, planes, sizeof(float) * 4 * plane_len);
+  }
+}
+
+void DRW_view_camtexco_set(DRWView *view, float texco[4])
+{
+  copy_v4_v4(view->storage.viewcamtexcofac, texco);
+}
+
+/* Return world space frustum corners. */
+void DRW_view_frustum_corners_get(const DRWView *view, BoundBox *corners)
+{
+  memcpy(corners, &view->frustum_corners, sizeof(view->frustum_corners));
+}
+
+/* Return world space frustum sides as planes.
+ * See draw_frustum_culling_planes_calc() for the plane order. */
+void DRW_view_frustum_planes_get(const DRWView *view, float planes[6][4])
+{
+  memcpy(planes, &view->frustum_planes, sizeof(view->frustum_planes));
+}
+
+bool DRW_view_is_persp_get(const DRWView *view)
+{
+  view = (view) ? view : DST.view_default;
+  return view->storage.winmat[3][3] == 0.0f;
+}
+
+float DRW_view_near_distance_get(const DRWView *view)
+{
+  view = (view) ? view : DST.view_default;
+  const float(*projmat)[4] = view->storage.winmat;
+
+  if (DRW_view_is_persp_get(view)) {
+    return -projmat[3][2] / (projmat[2][2] - 1.0f);
+  }
+  else {
+    return -(projmat[3][2] + 1.0f) / projmat[2][2];
+  }
+}
+
+float DRW_view_far_distance_get(const DRWView *view)
+{
+  view = (view) ? view : DST.view_default;
+  const float(*projmat)[4] = view->storage.winmat;
+
+  if (DRW_view_is_persp_get(view)) {
+    return -projmat[3][2] / (projmat[2][2] + 1.0f);
+  }
+  else {
+    return -(projmat[3][2] - 1.0f) / projmat[2][2];
+  }
+}
+
+void DRW_view_viewmat_get(const DRWView *view, float mat[4][4], bool inverse)
+{
+  view = (view) ? view : DST.view_default;
+  const DRWViewUboStorage *storage = &view->storage;
+  copy_m4_m4(mat, (inverse) ? storage->viewinv : storage->viewmat);
+}
+
+void DRW_view_winmat_get(const DRWView *view, float mat[4][4], bool inverse)
+{
+  view = (view) ? view : DST.view_default;
+  const DRWViewUboStorage *storage = &view->storage;
+  copy_m4_m4(mat, (inverse) ? storage->wininv : storage->winmat);
+}
+
+void DRW_view_persmat_get(const DRWView *view, float mat[4][4], bool inverse)
+{
+  view = (view) ? view : DST.view_default;
+  const DRWViewUboStorage *storage = &view->storage;
+  copy_m4_m4(mat, (inverse) ? storage->persinv : storage->persmat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Passes (DRW_pass)
  * \{ */
 
 DRWPass *DRW_pass_create(const char *name, DRWState state)
 {
   DRWPass *pass = BLI_memblock_alloc(DST.vmempool->passes);
-  pass->state = state;
+  pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
   if (((G.debug_value > 20) && (G.debug_value < 30)) || (G.debug & G_DEBUG)) {
     BLI_strncpy(pass->name, name, MAX_PASS_NAME);
   }
@@ -1095,7 +1530,7 @@ bool DRW_pass_is_empty(DRWPass *pass)
 
 void DRW_pass_state_set(DRWPass *pass, DRWState state)
 {
-  pass->state = state;
+  pass->state = state | DRW_STATE_PROGRAM_POINT_SIZE;
 }
 
 void DRW_pass_state_add(DRWPass *pass, DRWState state)
@@ -1118,8 +1553,8 @@ void DRW_pass_foreach_shgroup(DRWPass *pass,
 }
 
 typedef struct ZSortData {
-  float *axis;
-  float *origin;
+  const float *axis;
+  const float *origin;
 } ZSortData;
 
 static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
@@ -1182,8 +1617,7 @@ static int pass_shgroup_dist_sort(void *thunk, const void *a, const void *b)
  */
 void DRW_pass_sort_shgroup_z(DRWPass *pass)
 {
-  float(*viewinv)[4];
-  viewinv = DST.view_data.matstate.mat[DRW_MAT_VIEWINV];
+  const float(*viewinv)[4] = DST.view_active->storage.viewinv;
 
   ZSortData zsortdata = {viewinv[2], viewinv[3]};
 

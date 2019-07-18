@@ -43,8 +43,6 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "BIF_gl.h"
-
 #include "RNA_access.h"
 #include "RNA_define.h"
 
@@ -63,59 +61,25 @@ typedef struct ScreenshotData {
   ImageFormatData im_format;
 } ScreenshotData;
 
-static void screenshot_read_pixels(int x, int y, int w, int h, unsigned char *rect)
-{
-  int i;
-
-  glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rect);
-  glFinish();
-
-  /* clear alpha, it is not set to a meaningful value in opengl */
-  for (i = 0, rect += 3; i < w * h; i++, rect += 4) {
-    *rect = 255;
-  }
-}
-
-/* get shot from frontbuffer */
-static unsigned int *screenshot(bContext *C, int *dumpsx, int *dumpsy)
-{
-  wmWindow *win = CTX_wm_window(C);
-  int x = 0, y = 0;
-  unsigned int *dumprect = NULL;
-
-  x = 0;
-  y = 0;
-  *dumpsx = WM_window_pixels_x(win);
-  *dumpsy = WM_window_pixels_y(win);
-
-  if (*dumpsx && *dumpsy) {
-
-    dumprect = MEM_mallocN(sizeof(int) * (*dumpsx) * (*dumpsy), "dumprect");
-    glReadBuffer(GL_FRONT);
-    screenshot_read_pixels(x, y, *dumpsx, *dumpsy, (unsigned char *)dumprect);
-    glReadBuffer(GL_BACK);
-  }
-
-  return dumprect;
-}
-
 /* call from both exec and invoke */
 static int screenshot_data_create(bContext *C, wmOperator *op)
 {
-  unsigned int *dumprect;
-  int dumpsx, dumpsy;
+  int dumprect_size[2];
+
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *win = CTX_wm_window(C);
 
   /* do redraw so we don't show popups/menus */
   WM_redraw_windows(C);
 
-  dumprect = screenshot(C, &dumpsx, &dumpsy);
+  uint *dumprect = WM_window_pixels_read(wm, win, dumprect_size);
 
   if (dumprect) {
     ScreenshotData *scd = MEM_callocN(sizeof(ScreenshotData), "screenshot");
     ScrArea *sa = CTX_wm_area(C);
 
-    scd->dumpsx = dumpsx;
-    scd->dumpsy = dumpsy;
+    scd->dumpsx = dumprect_size[0];
+    scd->dumpsy = dumprect_size[1];
     scd->dumprect = dumprect;
     if (sa) {
       scd->crop = sa->totrct;
@@ -146,24 +110,6 @@ static void screenshot_data_free(wmOperator *op)
   }
 }
 
-static void screenshot_crop(ImBuf *ibuf, rcti crop)
-{
-  unsigned int *to = ibuf->rect;
-  unsigned int *from = ibuf->rect + crop.ymin * ibuf->x + crop.xmin;
-  int crop_x = BLI_rcti_size_x(&crop);
-  int crop_y = BLI_rcti_size_y(&crop);
-  int y;
-
-  if (crop_x > 0 && crop_y > 0) {
-    for (y = 0; y < crop_y; y++, to += crop_x, from += ibuf->x) {
-      memmove(to, from, sizeof(unsigned int) * crop_x);
-    }
-
-    ibuf->x = crop_x;
-    ibuf->y = crop_y;
-  }
-}
-
 static int screenshot_exec(bContext *C, wmOperator *op)
 {
   ScreenshotData *scd = op->customdata;
@@ -189,7 +135,8 @@ static int screenshot_exec(bContext *C, wmOperator *op)
 
       /* crop to show only single editor */
       if (!RNA_boolean_get(op->ptr, "full")) {
-        screenshot_crop(ibuf, scd->crop);
+        IMB_rect_crop(ibuf, &scd->crop);
+        scd->dumprect = ibuf->rect;
       }
 
       if (scd->im_format.planes == R_IMF_PLANES_BW) {

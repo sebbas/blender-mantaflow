@@ -60,15 +60,18 @@ enum eView2D_CommonViewTypes {
 
 /* ------ Defines for Scrollers ----- */
 
-/* scroller area */
+/** Scroll bar area. */
 #define V2D_SCROLL_HEIGHT (0.45f * U.widget_unit)
 #define V2D_SCROLL_WIDTH (0.45f * U.widget_unit)
-/* For scrollers with scale handlers */
-#define V2D_SCROLL_HEIGHT_HANDLES (0.6f * U.widget_unit)
-#define V2D_SCROLL_WIDTH_HANDLES (0.6f * U.widget_unit)
+/** Scroll bars with 'handles' used for scale (zoom). */
+#define V2D_SCROLL_HANDLE_HEIGHT (0.6f * U.widget_unit)
+#define V2D_SCROLL_HANDLE_WIDTH (0.6f * U.widget_unit)
 
-/* scroller 'handles' hotspot radius for mouse */
-#define V2D_SCROLLER_HANDLE_SIZE (0.6f * U.widget_unit)
+/** Scroll bar with 'handles' hot-spot radius for cursor proximity. */
+#define V2D_SCROLL_HANDLE_SIZE_HOTSPOT (0.6f * U.widget_unit)
+
+/** Don't allow scroll thumb to show below this size (so it's never too small to click on). */
+#define V2D_SCROLL_THUMB_SIZE_MIN (30.0 * UI_DPI_FAC)
 
 /* ------ Define for UI_view2d_sync ----- */
 
@@ -99,6 +102,7 @@ struct ScrArea;
 struct bContext;
 struct bScreen;
 struct rctf;
+struct wmGizmoGroupType;
 struct wmKeyConfig;
 
 typedef struct View2DScrollers View2DScrollers;
@@ -260,6 +264,12 @@ void UI_view2d_smooth_view(struct bContext *C,
                            const int smooth_viewtx);
 
 #define UI_MARKER_MARGIN_Y (42 * UI_DPI_FAC)
-#define UI_SCRUBBING_MARGIN_Y (23 * UI_DPI_FAC)
+#define UI_TIME_SCRUB_MARGIN_Y (23 * UI_DPI_FAC)
+
+/* Gizmo Types */
+
+/* view2d_gizmo_navigate.c */
+/* Caller passes in own idname.  */
+void VIEW2D_GGT_navigate_impl(struct wmGizmoGroupType *gzgt, const char *idname);
 
 #endif /* __UI_VIEW2D_H__ */

@@ -31,6 +31,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_buffer.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_math.h"
@@ -58,10 +59,6 @@
 #  include "BPY_extern.h"
 #endif
 
-/* Allow gizmo part's to be single click only,
- * dragging falls back to activating their 'drag_part' action. */
-#define USE_DRAG_DETECT
-
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoGroup
  *
@@ -73,7 +70,9 @@
 wmGizmoGroup *wm_gizmogroup_new_from_type(wmGizmoMap *gzmap, wmGizmoGroupType *gzgt)
 {
   wmGizmoGroup *gzgroup = MEM_callocN(sizeof(*gzgroup), "gizmo-group");
+
   gzgroup->type = gzgt;
+  gzgroup->type->users += 1;
 
   /* keep back-link */
   gzgroup->parent_gzmap = gzmap;
@@ -81,6 +80,11 @@ wmGizmoGroup *wm_gizmogroup_new_from_type(wmGizmoMap *gzmap, wmGizmoGroupType *g
   BLI_addtail(&gzmap->groups, gzgroup);
 
   return gzgroup;
+}
+
+wmGizmoGroup *wm_gizmogroup_find_by_type(const wmGizmoMap *gzmap, const wmGizmoGroupType *gzgt)
+{
+  return BLI_findptr(&gzmap->groups, gzgt, offsetof(wmGizmoGroup, type));
 }
 
 void wm_gizmogroup_free(bContext *C, wmGizmoGroup *gzgroup)
@@ -128,7 +132,21 @@ void wm_gizmogroup_free(bContext *C, wmGizmoGroup *gzgroup)
 
   BLI_remlink(&gzmap->groups, gzgroup);
 
+  if (gzgroup->tag_remove == false) {
+    gzgroup->type->users -= 1;
+  }
+
   MEM_freeN(gzgroup);
+}
+
+void WM_gizmo_group_tag_remove(wmGizmoGroup *gzgroup)
+{
+  if (gzgroup->tag_remove == false) {
+    gzgroup->tag_remove = true;
+    gzgroup->type->users -= 1;
+    BLI_assert(gzgroup->type->users >= 0);
+    WM_gizmoconfig_update_tag_group_remove(gzgroup->parent_gzmap);
+  }
 }
 
 /**
@@ -171,14 +189,48 @@ int WM_gizmo_cmp_temp_fl_reverse(const void *gz_a_ptr, const void *gz_b_ptr)
   }
 }
 
-wmGizmo *wm_gizmogroup_find_intersected_gizmo(const wmGizmoGroup *gzgroup,
+static bool wm_gizmo_keymap_uses_event_modifier(wmWindowManager *wm,
+                                                const wmGizmoGroup *gzgroup,
+                                                wmGizmo *gz,
+                                                const int event_modifier,
+                                                int *r_gzgroup_keymap_uses_modifier)
+{
+  if (gz->keymap) {
+    wmKeyMap *keymap = WM_keymap_active(wm, gz->keymap);
+    if (!WM_keymap_uses_event_modifier(keymap, event_modifier)) {
+      return false;
+    }
+  }
+  else if (gzgroup->type->keymap) {
+    if (*r_gzgroup_keymap_uses_modifier == -1) {
+      wmKeyMap *keymap = WM_keymap_active(wm, gzgroup->type->keymap);
+      *r_gzgroup_keymap_uses_modifier = WM_keymap_uses_event_modifier(keymap, event_modifier);
+    }
+    if (*r_gzgroup_keymap_uses_modifier == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+wmGizmo *wm_gizmogroup_find_intersected_gizmo(wmWindowManager *wm,
+                                              const wmGizmoGroup *gzgroup,
                                               bContext *C,
-                                              const wmEvent *event,
+                                              const int event_modifier,
+                                              const int mval[2],
                                               int *r_part)
 {
+  int gzgroup_keymap_uses_modifier = -1;
+
   for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
     if (gz->type->test_select && (gz->flag & (WM_GIZMO_HIDDEN | WM_GIZMO_HIDDEN_SELECT)) == 0) {
-      if ((*r_part = gz->type->test_select(C, gz, event->mval)) != -1) {
+
+      if (!wm_gizmo_keymap_uses_event_modifier(
+              wm, gzgroup, gz, event_modifier, &gzgroup_keymap_uses_modifier)) {
+        continue;
+      }
+
+      if ((*r_part = gz->type->test_select(C, gz, mval)) != -1) {
         return gz;
       }
     }
@@ -191,14 +243,24 @@ wmGizmo *wm_gizmogroup_find_intersected_gizmo(const wmGizmoGroup *gzgroup,
  * Adds all gizmos of \a gzgroup that can be selected to the head of \a listbase.
  * Added items need freeing!
  */
-void wm_gizmogroup_intersectable_gizmos_to_list(const wmGizmoGroup *gzgroup, ListBase *listbase)
+void wm_gizmogroup_intersectable_gizmos_to_list(wmWindowManager *wm,
+                                                const wmGizmoGroup *gzgroup,
+                                                const int event_modifier,
+                                                BLI_Buffer *visible_gizmos)
 {
-  for (wmGizmo *gz = gzgroup->gizmos.first; gz; gz = gz->next) {
+  int gzgroup_keymap_uses_modifier = -1;
+  for (wmGizmo *gz = gzgroup->gizmos.last; gz; gz = gz->prev) {
     if ((gz->flag & (WM_GIZMO_HIDDEN | WM_GIZMO_HIDDEN_SELECT)) == 0) {
       if (((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) &&
            (gz->type->draw_select || gz->type->test_select)) ||
           ((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) == 0 && gz->type->test_select)) {
-        BLI_addhead(listbase, BLI_genericNodeN(gz));
+
+        if (!wm_gizmo_keymap_uses_event_modifier(
+                wm, gzgroup, gz, event_modifier, &gzgroup_keymap_uses_modifier)) {
+          continue;
+        }
+
+        BLI_buffer_append(visible_gizmos, wmGizmo *, gz);
       }
     }
   }
@@ -242,6 +304,34 @@ bool WM_gizmo_group_type_poll(const bContext *C, const struct wmGizmoGroupType *
   /* Check for poll function, if gizmo-group belongs to an operator,
    * also check if the operator is running. */
   return (!gzgt->poll || gzgt->poll(C, (wmGizmoGroupType *)gzgt));
+}
+
+void WM_gizmo_group_remove_by_tool(bContext *C,
+                                   Main *bmain,
+                                   const wmGizmoGroupType *gzgt,
+                                   const bToolRef *tref)
+{
+  wmGizmoMapType *gzmap_type = WM_gizmomaptype_find(&gzgt->gzmap_params);
+  for (bScreen *sc = bmain->screens.first; sc; sc = sc->id.next) {
+    for (ScrArea *sa = sc->areabase.first; sa; sa = sa->next) {
+      if (sa->runtime.tool == tref) {
+        for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
+          wmGizmoMap *gzmap = ar->gizmo_map;
+          if (gzmap && gzmap->type == gzmap_type) {
+            wmGizmoGroup *gzgroup, *gzgroup_next;
+            for (gzgroup = gzmap->groups.first; gzgroup; gzgroup = gzgroup_next) {
+              gzgroup_next = gzgroup->next;
+              if (gzgroup->type == gzgt) {
+                BLI_assert(gzgroup->parent_gzmap == gzmap);
+                wm_gizmogroup_free(C, gzgroup);
+                ED_region_tag_redraw(ar);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 bool wm_gizmogroup_is_visible_in_drawstep(const wmGizmoGroup *gzgroup,
@@ -349,22 +439,6 @@ typedef struct GizmoTweakData {
   int init_event; /* initial event type */
   int flag;       /* tweak flags */
 
-#ifdef USE_DRAG_DETECT
-  /* True until the mouse is moved (only use when the operator has no modal).
-   * this allows some gizmos to be click-only. */
-  enum {
-    /* Don't detect dragging. */
-    DRAG_NOP = 0,
-    /* Detect dragging (wait until a drag or click is detected). */
-    DRAG_DETECT,
-    /* Drag has started, idle until there is no active modal operator.
-     * This is needed because finishing the modal operator also exits
-     * the modal gizmo state (un-grabbs the cursor).
-     * Ideally this workaround could be removed later. */
-    DRAG_IDLE,
-  } drag_state;
-#endif
-
 } GizmoTweakData;
 
 static bool gizmo_tweak_start(bContext *C, wmGizmoMap *gzmap, wmGizmo *gz, const wmEvent *event)
@@ -409,7 +483,7 @@ static bool gizmo_tweak_start_and_finish(
     }
     else {
       if (gz->parent_gzgroup->type->invoke_prepare) {
-        gz->parent_gzgroup->type->invoke_prepare(C, gz->parent_gzgroup, gz);
+        gz->parent_gzgroup->type->invoke_prepare(C, gz->parent_gzgroup, gz, event);
       }
       /* Allow for 'button' gizmos, single click to run an action. */
       WM_gizmo_operator_invoke(C, gz, gzop);
@@ -448,47 +522,6 @@ static int gizmo_tweak_modal(bContext *C, wmOperator *op, const wmEvent *event)
     BLI_assert(0);
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
-
-#ifdef USE_DRAG_DETECT
-  wmGizmoMap *gzmap = mtweak->gzmap;
-  if (mtweak->drag_state == DRAG_DETECT) {
-    if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
-      if (len_manhattan_v2v2_int(&event->x, gzmap->gzmap_context.event_xy) >=
-          WM_EVENT_CURSOR_CLICK_DRAG_THRESHOLD) {
-        mtweak->drag_state = DRAG_IDLE;
-        gz->highlight_part = gz->drag_part;
-      }
-    }
-    else if (event->type == mtweak->init_event && event->val == KM_RELEASE) {
-      mtweak->drag_state = DRAG_NOP;
-      retval = OPERATOR_FINISHED;
-    }
-
-    if (mtweak->drag_state != DRAG_DETECT) {
-      /* Follow logic in 'gizmo_tweak_invoke' */
-      bool is_modal = false;
-      if (gizmo_tweak_start_and_finish(C, gzmap, gz, event, &is_modal)) {
-        if (is_modal) {
-          clear_modal = false;
-        }
-      }
-      else {
-        if (!gizmo_tweak_start(C, gzmap, gz, event)) {
-          retval = OPERATOR_FINISHED;
-        }
-      }
-    }
-  }
-  if (mtweak->drag_state == DRAG_IDLE) {
-    if (gzmap->gzmap_context.modal != NULL) {
-      return OPERATOR_PASS_THROUGH;
-    }
-    else {
-      gizmo_tweak_finish(C, op, false, false);
-      return OPERATOR_FINISHED;
-    }
-  }
-#endif /* USE_DRAG_DETECT */
 
   if (retval == OPERATOR_FINISHED) {
     /* pass */
@@ -560,35 +593,22 @@ static int gizmo_tweak_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
 
-  bool use_drag_fallback = false;
+  const int highlight_part_init = gz->highlight_part;
 
-#ifdef USE_DRAG_DETECT
-  use_drag_fallback = !ELEM(gz->drag_part, -1, gz->highlight_part);
-#endif
-
-  if (use_drag_fallback == false) {
-    if (gizmo_tweak_start_and_finish(C, gzmap, gz, event, NULL)) {
-      return OPERATOR_FINISHED;
+  if (gz->drag_part != -1) {
+    if (ISTWEAK(event->type) || (event->val == KM_CLICK_DRAG)) {
+      gz->highlight_part = gz->drag_part;
     }
   }
 
-  bool use_drag_detect = false;
-#ifdef USE_DRAG_DETECT
-  if (use_drag_fallback) {
-    wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, gz->highlight_part);
-    if (gzop && gzop->type) {
-      if (gzop->type->modal == NULL) {
-        use_drag_detect = true;
-      }
-    }
+  if (gizmo_tweak_start_and_finish(C, gzmap, gz, event, NULL)) {
+    return OPERATOR_FINISHED;
   }
-#endif
 
-  if (use_drag_detect == false) {
-    if (!gizmo_tweak_start(C, gzmap, gz, event)) {
-      /* failed to start */
-      return OPERATOR_PASS_THROUGH;
-    }
+  if (!gizmo_tweak_start(C, gzmap, gz, event)) {
+    /* failed to start */
+    gz->highlight_part = highlight_part_init;
+    return OPERATOR_PASS_THROUGH;
   }
 
   GizmoTweakData *mtweak = MEM_mallocN(sizeof(GizmoTweakData), __func__);
@@ -598,10 +618,6 @@ static int gizmo_tweak_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   mtweak->gzgroup = mtweak->gz_modal->parent_gzgroup;
   mtweak->gzmap = gzmap;
   mtweak->flag = 0;
-
-#ifdef USE_DRAG_DETECT
-  mtweak->drag_state = use_drag_detect ? DRAG_DETECT : DRAG_NOP;
-#endif
 
   op->customdata = mtweak;
 
@@ -630,7 +646,7 @@ void GIZMOGROUP_OT_gizmo_tweak(wmOperatorType *ot)
 
 /** \} */
 
-static wmKeyMap *gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf, const char *gzgroupname)
+wmKeyMap *wm_gizmogroup_tweak_modal_keymap(wmKeyConfig *kc)
 {
   wmKeyMap *keymap;
   char name[KMAP_MAX_NAME];
@@ -645,15 +661,15 @@ static wmKeyMap *gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf, const char 
       {0, NULL, 0, NULL, NULL},
   };
 
-  BLI_snprintf(name, sizeof(name), "%s Tweak Modal Map", gzgroupname);
-  keymap = WM_modalkeymap_get(keyconf, name);
+  STRNCPY(name, "Generic Gizmo Tweak Modal Map");
+  keymap = WM_modalkeymap_get(kc, name);
 
   /* this function is called for each spacetype, only needs to add map once */
   if (keymap && keymap->modal_items) {
     return NULL;
   }
 
-  keymap = WM_modalkeymap_add(keyconf, name, modal_items);
+  keymap = WM_modalkeymap_add(kc, name, modal_items);
 
   /* items for modal map */
   WM_modalkeymap_add_item(keymap, ESCKEY, KM_PRESS, KM_ANY, 0, TWEAK_MODAL_CANCEL);
@@ -677,31 +693,46 @@ static wmKeyMap *gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf, const char 
   return keymap;
 }
 
-/**
- * Common default keymap for gizmo groups
- */
-wmKeyMap *WM_gizmogroup_keymap_common(const wmGizmoGroupType *gzgt, wmKeyConfig *config)
+/** \} */ /* wmGizmoGroup */
+
+/* -------------------------------------------------------------------- */
+/** \name wmGizmoGroup (Key-map callbacks)
+ *
+ * \{ */
+
+wmKeyMap *WM_gizmogroup_setup_keymap_generic(const wmGizmoGroupType *UNUSED(gzgt), wmKeyConfig *kc)
 {
-  /* Use area and region id since we might have multiple gizmos
-   * with the same name in different areas/regions. */
-  wmKeyMap *km = WM_keymap_ensure(
-      config, gzgt->name, gzgt->gzmap_params.spaceid, gzgt->gzmap_params.regionid);
+  return WM_gizmo_keymap_generic_with_keyconfig(kc);
+}
 
-  WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", LEFTMOUSE, KM_PRESS, KM_ANY, 0);
-  gizmogroup_tweak_modal_keymap(config, gzgt->name);
+wmKeyMap *WM_gizmogroup_setup_keymap_generic_drag(const wmGizmoGroupType *UNUSED(gzgt),
+                                                  wmKeyConfig *kc)
+{
+  return WM_gizmo_keymap_generic_drag_with_keyconfig(kc);
+}
 
-  return km;
+wmKeyMap *WM_gizmogroup_setup_keymap_generic_maybe_drag(const wmGizmoGroupType *UNUSED(gzgt),
+                                                        wmKeyConfig *kc)
+{
+  return WM_gizmo_keymap_generic_maybe_drag_with_keyconfig(kc);
 }
 
 /**
  * Variation of #WM_gizmogroup_keymap_common but with keymap items for selection
+ *
+ * TODO(campbell): move to Python.
+ *
+ * \param name: Typically #wmGizmoGroupType.name
+ * \param params: Typically #wmGizmoGroupType.gzmap_params
  */
-wmKeyMap *WM_gizmogroup_keymap_common_select(const wmGizmoGroupType *gzgt, wmKeyConfig *config)
+static wmKeyMap *WM_gizmogroup_keymap_template_select_ex(
+    wmKeyConfig *kc, const char *name, const struct wmGizmoMapType_Params *params)
 {
   /* Use area and region id since we might have multiple gizmos
    * with the same name in different areas/regions. */
-  wmKeyMap *km = WM_keymap_ensure(
-      config, gzgt->name, gzgt->gzmap_params.spaceid, gzgt->gzmap_params.regionid);
+  wmKeyMap *km = WM_keymap_ensure(kc, name, params->spaceid, params->regionid);
+  const bool do_init = BLI_listbase_is_empty(&km->items);
+
   /* FIXME(campbell) */
 #if 0
   const int select_mouse = (U.flag & USER_LMOUSESELECT) ? LEFTMOUSE : RIGHTMOUSE;
@@ -713,24 +744,96 @@ wmKeyMap *WM_gizmogroup_keymap_common_select(const wmGizmoGroupType *gzgt, wmKey
   const int action_mouse = LEFTMOUSE;
 #endif
 
-  WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", action_mouse, KM_PRESS, KM_ANY, 0);
-  WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", select_tweak, KM_ANY, 0, 0);
-  gizmogroup_tweak_modal_keymap(config, gzgt->name);
+  if (do_init) {
+    WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", action_mouse, KM_PRESS, KM_ANY, 0);
+    WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_tweak", select_tweak, KM_ANY, 0, 0);
+  }
 
-  wmKeyMapItem *kmi = WM_keymap_add_item(
-      km, "GIZMOGROUP_OT_gizmo_select", select_mouse, KM_PRESS, 0, 0);
-  RNA_boolean_set(kmi->ptr, "extend", false);
-  RNA_boolean_set(kmi->ptr, "deselect", false);
-  RNA_boolean_set(kmi->ptr, "toggle", false);
-  kmi = WM_keymap_add_item(km, "GIZMOGROUP_OT_gizmo_select", select_mouse, KM_PRESS, KM_SHIFT, 0);
-  RNA_boolean_set(kmi->ptr, "extend", false);
-  RNA_boolean_set(kmi->ptr, "deselect", false);
-  RNA_boolean_set(kmi->ptr, "toggle", true);
+  if (do_init) {
+    wmKeyMapItem *kmi = WM_keymap_add_item(
+        km, "GIZMOGROUP_OT_gizmo_select", select_mouse, KM_PRESS, 0, 0);
+    RNA_boolean_set(kmi->ptr, "extend", false);
+    RNA_boolean_set(kmi->ptr, "deselect", false);
+    RNA_boolean_set(kmi->ptr, "toggle", false);
+    kmi = WM_keymap_add_item(
+        km, "GIZMOGROUP_OT_gizmo_select", select_mouse, KM_PRESS, KM_SHIFT, 0);
+    RNA_boolean_set(kmi->ptr, "extend", false);
+    RNA_boolean_set(kmi->ptr, "deselect", false);
+    RNA_boolean_set(kmi->ptr, "toggle", true);
+  }
 
   return km;
 }
 
-/** \} */ /* wmGizmoGroup */
+wmKeyMap *WM_gizmogroup_setup_keymap_generic_select(const wmGizmoGroupType *UNUSED(gzgt),
+                                                    wmKeyConfig *kc)
+{
+  struct wmGizmoMapType_Params params = {
+      .spaceid = SPACE_EMPTY,
+      .regionid = RGN_TYPE_WINDOW,
+  };
+  return WM_gizmogroup_keymap_template_select_ex(kc, "Generic Gizmo Select", &params);
+}
+
+/* -------------------------------------------------------------------- */
+/** \name wmGizmo (Key-map access)
+ *
+ * Key config version so these can be called from #wmGizmoGroupFnSetupKeymap.
+ *
+ * \{ */
+
+struct wmKeyMap *WM_gizmo_keymap_generic_with_keyconfig(wmKeyConfig *kc)
+{
+  const char *idname = "Generic Gizmo";
+  return WM_keymap_ensure(kc, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
+}
+struct wmKeyMap *WM_gizmo_keymap_generic(wmWindowManager *wm)
+{
+  return WM_gizmo_keymap_generic_with_keyconfig(wm->defaultconf);
+}
+
+struct wmKeyMap *WM_gizmo_keymap_generic_select_with_keyconfig(wmKeyConfig *kc)
+{
+  const char *idname = "Generic Gizmo Select";
+  return WM_keymap_ensure(kc, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
+}
+struct wmKeyMap *WM_gizmo_keymap_generic_select(wmWindowManager *wm)
+{
+  return WM_gizmo_keymap_generic_select_with_keyconfig(wm->defaultconf);
+}
+
+struct wmKeyMap *WM_gizmo_keymap_generic_drag_with_keyconfig(wmKeyConfig *kc)
+{
+  const char *idname = "Generic Gizmo Drag";
+  return WM_keymap_ensure(kc, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
+}
+struct wmKeyMap *WM_gizmo_keymap_generic_drag(wmWindowManager *wm)
+{
+  return WM_gizmo_keymap_generic_drag_with_keyconfig(wm->defaultconf);
+}
+
+struct wmKeyMap *WM_gizmo_keymap_generic_click_drag_with_keyconfig(wmKeyConfig *kc)
+{
+  const char *idname = "Generic Gizmo Click Drag";
+  return WM_keymap_ensure(kc, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
+}
+struct wmKeyMap *WM_gizmo_keymap_generic_click_drag(wmWindowManager *wm)
+{
+  return WM_gizmo_keymap_generic_click_drag_with_keyconfig(wm->defaultconf);
+}
+
+/** Drag or press depending on preference. */
+struct wmKeyMap *WM_gizmo_keymap_generic_maybe_drag_with_keyconfig(wmKeyConfig *kc)
+{
+  const char *idname = "Generic Gizmo Maybe Drag";
+  return WM_keymap_ensure(kc, idname, SPACE_EMPTY, RGN_TYPE_WINDOW);
+}
+struct wmKeyMap *WM_gizmo_keymap_generic_maybe_drag(wmWindowManager *wm)
+{
+  return WM_gizmo_keymap_generic_maybe_drag_with_keyconfig(wm->defaultconf);
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoGroupType
@@ -824,6 +927,15 @@ wmGizmoGroup *WM_gizmomaptype_group_init_runtime_with_region(wmGizmoMapType *gzm
 
   wmGizmoGroup *gzgroup = wm_gizmogroup_new_from_type(gzmap, gzgt);
 
+  /* Don't allow duplicates when switching modes for e.g. see: T66229. */
+  LISTBASE_FOREACH (wmGizmoGroup *, gzgroup_iter, &gzmap->groups) {
+    if (gzgroup_iter->type == gzgt) {
+      if (gzgroup_iter != gzgroup) {
+        WM_gizmo_group_tag_remove(gzgroup_iter);
+      }
+    }
+  }
+
   wm_gizmomap_highlight_set(gzmap, NULL, NULL, 0);
 
   ED_region_tag_redraw(ar);
@@ -874,8 +986,12 @@ void WM_gizmomaptype_group_unlink(bContext *C,
     WM_gizmomaptype_group_free(gzgt_ref);
   }
 
+  /* TODO(campbell): Gizmos may share keymaps, for now don't
+   * remove however we could flag them as temporary/owned by the gizmo. */
+#if 0
   /* Note, we may want to keep this keymap for editing */
   WM_keymap_remove(gzgt->keyconf, gzgt->keymap);
+#endif
 
   BLI_assert(WM_gizmomaptype_group_find_ptr(gzmap_type, gzgt) == NULL);
 }
@@ -912,7 +1028,7 @@ void WM_gizmo_group_type_add_ptr_ex(wmGizmoGroupType *gzgt, wmGizmoMapType *gzma
 {
   WM_gizmomaptype_group_link_ptr(gzmap_type, gzgt);
 
-  WM_gizmoconfig_update_tag_init(gzmap_type, gzgt);
+  WM_gizmoconfig_update_tag_group_type_init(gzmap_type, gzgt);
 }
 void WM_gizmo_group_type_add_ptr(wmGizmoGroupType *gzgt)
 {
@@ -992,7 +1108,7 @@ void WM_gizmo_group_type_reinit(struct Main *bmain, const char *idname)
 
 void WM_gizmo_group_type_unlink_delayed_ptr_ex(wmGizmoGroupType *gzgt, wmGizmoMapType *gzmap_type)
 {
-  WM_gizmoconfig_update_tag_remove(gzmap_type, gzgt);
+  WM_gizmoconfig_update_tag_group_type_remove(gzmap_type, gzgt);
 }
 
 void WM_gizmo_group_type_unlink_delayed_ptr(wmGizmoGroupType *gzgt)
@@ -1006,6 +1122,22 @@ void WM_gizmo_group_type_unlink_delayed(const char *idname)
   wmGizmoGroupType *gzgt = WM_gizmogrouptype_find(idname, false);
   BLI_assert(gzgt != NULL);
   WM_gizmo_group_type_unlink_delayed_ptr(gzgt);
+}
+
+void WM_gizmo_group_unlink_delayed_ptr_from_space(wmGizmoGroupType *gzgt,
+                                                  wmGizmoMapType *gzmap_type,
+                                                  ScrArea *sa)
+{
+  for (ARegion *ar = sa->regionbase.first; ar; ar = ar->next) {
+    wmGizmoMap *gzmap = ar->gizmo_map;
+    if (gzmap && gzmap->type == gzmap_type) {
+      for (wmGizmoGroup *gzgroup = gzmap->groups.first; gzgroup; gzgroup = gzgroup->next) {
+        if (gzgroup->type == gzgt) {
+          WM_gizmo_group_tag_remove(gzgroup);
+        }
+      }
+    }
+  }
 }
 
 /** \} */

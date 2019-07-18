@@ -95,7 +95,7 @@ class MESH_UL_fmaps(UIList):
         fmap = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.prop(fmap, "name", text="", emboss=False, icon='FACE_MAPS')
-        elif self.layout_type in {'GRID'}:
+        elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
 
@@ -483,7 +483,7 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
 
         col = layout.column()
 
-        col.enabled = (obj.mode != 'EDIT')
+        col.enabled = obj is not None and obj.mode != 'EDIT'
         col.prop(me, "use_customdata_vertex_bevel")
         col.prop(me, "use_customdata_edge_bevel")
         col.prop(me, "use_customdata_edge_crease")

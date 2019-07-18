@@ -19,7 +19,7 @@
 
 # <pep8 compliant>
 from bpy.types import Panel
-from .space_view3d import (
+from bl_ui.space_view3d import (
     VIEW3D_PT_shading_lighting,
     VIEW3D_PT_shading_color,
     VIEW3D_PT_shading_options,
@@ -228,7 +228,7 @@ class RENDER_PT_eevee_bloom(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_eevee_volumetric(RenderButtonsPanel, Panel):
-    bl_label = "Volumetric"
+    bl_label = "Volumetrics"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_EEVEE'}
 

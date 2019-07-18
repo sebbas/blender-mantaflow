@@ -22,7 +22,7 @@
  */
 
 /* Enable special; trickery to treat nested owned IDs (such as nodetree of
- * material) to be handled in same way as "real" datablocks, even tho some
+ * material) to be handled in same way as "real" data-blocks, even tho some
  * internal BKE routines doesn't treat them like that.
  *
  * TODO(sergey): Re-evaluate that after new ID handling is in place. */
@@ -59,8 +59,11 @@ extern "C" {
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_sequence_types.h"
+#include "DNA_sound_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_rigidbody_types.h"
 
 #include "DRW_engine.h"
 
@@ -84,6 +87,9 @@ extern "C" {
 #include "BKE_library_query.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
+#include "BKE_pointcache.h"
+#include "BKE_sequencer.h"
+#include "BKE_sound.h"
 }
 
 #include "intern/depsgraph.h"
@@ -327,7 +333,7 @@ ViewLayer *get_original_view_layer(const Depsgraph *depsgraph, const IDNode *id_
     return BKE_view_layer_default_render(scene_orig);
   }
   /* Is possible to have scene linked indirectly (i.e. via the driver) which
-   * we need to support. Currently there aer issues somewhere else, which
+   * we need to support. Currently there are issues somewhere else, which
    * makes testing hard. This is a reported problem, so will eventually be
    * properly fixed.
    *
@@ -340,7 +346,30 @@ void scene_remove_unused_view_layers(const Depsgraph *depsgraph,
                                      const IDNode *id_node,
                                      Scene *scene_cow)
 {
-  const ViewLayer *view_layer_input = get_original_view_layer(depsgraph, id_node);
+  const ViewLayer *view_layer_input;
+  if (depsgraph->is_render_pipeline_depsgraph) {
+    /* If the dependency graph is used for post-processing (such as compositor) we do need to
+     * have access to its view layer names so can not remove any view layers.
+     * On a more positive side we can remove all the bases from all the view layers.
+     *
+     * NOTE: Need to clear pointers which might be pointing to original on freed (due to being
+     * unused) data.
+     *
+     * NOTE: Need to keep view layers for all scenes, even indirect ones. This is because of
+     * render layer node possibly pointing to another scene. */
+    LISTBASE_FOREACH (ViewLayer *, view_layer, &scene_cow->view_layers) {
+      view_layer->basact = NULL;
+    }
+    return;
+  }
+  else if (id_node->linked_state == DEG_ID_LINKED_INDIRECTLY) {
+    /* Indirectly linked scenes means it's not an input scene and not a set scene, and is pulled
+     * via some driver. Such scenes should not have view layers after copy. */
+    view_layer_input = NULL;
+  }
+  else {
+    view_layer_input = get_original_view_layer(depsgraph, id_node);
+  }
   ViewLayer *view_layer_eval = NULL;
   /* Find evaluated view layer. At the same time we free memory used by
    * all other of the view layers. */
@@ -349,24 +378,35 @@ void scene_remove_unused_view_layers(const Depsgraph *depsgraph,
        view_layer_cow != NULL;
        view_layer_cow = view_layer_next) {
     view_layer_next = view_layer_cow->next;
-    if (STREQ(view_layer_input->name, view_layer_cow->name)) {
+    if (view_layer_input != NULL && STREQ(view_layer_input->name, view_layer_cow->name)) {
       view_layer_eval = view_layer_cow;
     }
     else {
       BKE_view_layer_free_ex(view_layer_cow, false);
     }
   }
-  BLI_assert(view_layer_eval != NULL);
-  /* Make evaluated view layer the only one in the evaluated scene. */
-  view_layer_eval->prev = view_layer_eval->next = NULL;
+  /* Make evaluated view layer the only one in the evaluated scene (if it exists). */
+  if (view_layer_eval != NULL) {
+    view_layer_eval->prev = view_layer_eval->next = NULL;
+  }
   scene_cow->view_layers.first = view_layer_eval;
   scene_cow->view_layers.last = view_layer_eval;
+}
+
+void scene_remove_all_bases(Scene *scene_cow)
+{
+  LISTBASE_FOREACH (ViewLayer *, view_layer, &scene_cow->view_layers) {
+    BLI_freelistN(&view_layer->object_bases);
+  }
 }
 
 /* Makes it so given view layer only has bases corresponding to enabled
  * objects. */
 void view_layer_remove_disabled_bases(const Depsgraph *depsgraph, ViewLayer *view_layer)
 {
+  if (view_layer == NULL) {
+    return;
+  }
   ListBase enabled_bases = {NULL, NULL};
   LISTBASE_FOREACH_MUTABLE (Base *, base, &view_layer->object_bases) {
     /* TODO(sergey): Would be cool to optimize this somehow, or make it so
@@ -397,6 +437,10 @@ void view_layer_remove_disabled_bases(const Depsgraph *depsgraph, ViewLayer *vie
 void view_layer_update_orig_base_pointers(const ViewLayer *view_layer_orig,
                                           ViewLayer *view_layer_eval)
 {
+  if (view_layer_orig == NULL || view_layer_eval == NULL) {
+    /* Happens when scene is only used for parameters or compositor/sequencer. */
+    return;
+  }
   Base *base_orig = reinterpret_cast<Base *>(view_layer_orig->object_bases.first);
   LISTBASE_FOREACH (Base *, base_eval, &view_layer_eval->object_bases) {
     base_eval->base_orig = base_orig;
@@ -409,6 +453,11 @@ void scene_setup_view_layers_before_remap(const Depsgraph *depsgraph,
                                           Scene *scene_cow)
 {
   scene_remove_unused_view_layers(depsgraph, id_node, scene_cow);
+  /* If dependency graph is used for post-processing we don't need any bases and can free of them.
+   * Do it before re-mapping to make that process faster. */
+  if (depsgraph->is_render_pipeline_depsgraph) {
+    scene_remove_all_bases(scene_cow);
+  }
 }
 
 void scene_setup_view_layers_after_remap(const Depsgraph *depsgraph,
@@ -424,13 +473,32 @@ void scene_setup_view_layers_after_remap(const Depsgraph *depsgraph,
    * Still not an excuse to have those. */
 }
 
+void update_sequence_orig_pointers(const ListBase *sequences_orig, ListBase *sequences_cow)
+{
+  Sequence *sequence_orig = reinterpret_cast<Sequence *>(sequences_orig->first);
+  Sequence *sequence_cow = reinterpret_cast<Sequence *>(sequences_cow->first);
+  while (sequence_orig != NULL) {
+    update_sequence_orig_pointers(&sequence_orig->seqbase, &sequence_cow->seqbase);
+    sequence_cow->orig_sequence = sequence_orig;
+    sequence_cow = sequence_cow->next;
+    sequence_orig = sequence_orig->next;
+  }
+}
+
+void update_scene_orig_pointers(const Scene *scene_orig, Scene *scene_cow)
+{
+  if (scene_orig->ed != NULL) {
+    update_sequence_orig_pointers(&scene_orig->ed->seqbase, &scene_cow->ed->seqbase);
+  }
+}
+
 /* Check whether given ID is expanded or still a shallow copy. */
 BLI_INLINE bool check_datablock_expanded(const ID *id_cow)
 {
   return (id_cow->name[0] != '\0');
 }
 
-/* Those are datablocks which are not covered by dependency graph and hence
+/* Those are data-blocks which are not covered by dependency graph and hence
  * does not need any remapping or anything.
  *
  * TODO(sergey): How to make it more robust for the future, so we don't have
@@ -510,6 +578,7 @@ void update_armature_edit_mode_pointers(const Depsgraph * /*depsgraph*/,
   const bArmature *armature_orig = (const bArmature *)id_orig;
   bArmature *armature_cow = (bArmature *)id_cow;
   armature_cow->edbo = armature_orig->edbo;
+  armature_cow->act_edbone = armature_orig->act_edbone;
 }
 
 void update_curve_edit_mode_pointers(const Depsgraph * /*depsgraph*/,
@@ -616,10 +685,29 @@ void set_particle_system_modifiers_loaded(Object *object_cow)
   }
 }
 
-void update_particles_after_copy(const Object *object_orig, Object *object_cow)
+void reset_particle_system_edit_eval(const Depsgraph *depsgraph, Object *object_cow)
+{
+  /* Inactive (and render) dependency graphs are living in own little bubble, should not care about
+   * edit mode at all. */
+  if (!DEG_is_active(reinterpret_cast<const ::Depsgraph *>(depsgraph))) {
+    return;
+  }
+  LISTBASE_FOREACH (ParticleSystem *, psys, &object_cow->particlesystem) {
+    ParticleSystem *orig_psys = psys->orig_psys;
+    if (orig_psys->edit != NULL) {
+      orig_psys->edit->psys_eval = NULL;
+      orig_psys->edit->psmd_eval = NULL;
+    }
+  }
+}
+
+void update_particles_after_copy(const Depsgraph *depsgraph,
+                                 const Object *object_orig,
+                                 Object *object_cow)
 {
   update_particle_system_orig_pointers(object_orig, object_cow);
   set_particle_system_modifiers_loaded(object_cow);
+  reset_particle_system_edit_eval(depsgraph, object_cow);
 }
 
 void update_pose_orig_pointers(const bPose *pose_orig, bPose *pose_cow)
@@ -670,7 +758,7 @@ void update_animation_data_after_copy(const ID *id_orig, ID *id_cow)
 /* Do some special treatment of data transfer from original ID to it's
  * CoW complementary part.
  *
- * Only use for the newly created CoW datablocks. */
+ * Only use for the newly created CoW data-blocks. */
 void update_id_after_copy(const Depsgraph *depsgraph,
                           const IDNode *id_node,
                           const ID *id_orig,
@@ -698,7 +786,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
         }
         BKE_pose_pchan_index_rebuild(object_cow->pose);
       }
-      update_particles_after_copy(object_orig, object_cow);
+      update_particles_after_copy(depsgraph, object_orig, object_cow);
       update_modifiers_orig_pointers(object_orig, object_cow);
       break;
     }
@@ -708,6 +796,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       scene_cow->toolsettings = scene_orig->toolsettings;
       scene_cow->eevee.light_cache = scene_orig->eevee.light_cache;
       scene_setup_view_layers_after_remap(depsgraph, id_node, reinterpret_cast<Scene *>(id_cow));
+      update_scene_orig_pointers(scene_orig, scene_cow);
       break;
     }
     default:
@@ -717,7 +806,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
   BKE_animsys_update_driver_array(id_cow);
 }
 
-/* This callback is used to validate that all nested ID datablocks are
+/* This callback is used to validate that all nested ID data-blocks are
  * properly expanded. */
 int foreach_libblock_validate_callback(void *user_data,
                                        ID * /*id_self*/,
@@ -821,7 +910,7 @@ ID *deg_expand_copy_on_write_datablock(const Depsgraph *depsgraph,
   /* Correct or tweak some pointers which are not taken care by foreach
    * from above. */
   update_id_after_copy(depsgraph, id_node, id_orig, id_cow);
-  id_cow->recalc = id_orig->recalc | id_cow_recalc;
+  id_cow->recalc = id_cow_recalc;
   return id_cow;
 }
 
@@ -837,6 +926,215 @@ ID *deg_expand_copy_on_write_datablock(const Depsgraph *depsgraph,
 }
 
 namespace {
+
+/* Backup of sequencer strips runtime data. */
+
+/* Backup of a single strip. */
+class SequenceBackup {
+ public:
+  SequenceBackup()
+  {
+    reset();
+  }
+
+  inline void reset()
+  {
+    scene_sound = NULL;
+  }
+
+  void init_from_sequence(Sequence *sequence)
+  {
+    scene_sound = sequence->scene_sound;
+
+    sequence->scene_sound = NULL;
+  }
+
+  void restore_to_sequence(Sequence *sequence)
+  {
+    sequence->scene_sound = scene_sound;
+    reset();
+  }
+
+  inline bool isEmpty() const
+  {
+    return (scene_sound == NULL);
+  }
+
+  void *scene_sound;
+};
+
+class SequencerBackup {
+ public:
+  SequencerBackup();
+
+  void init_from_scene(Scene *scene);
+  void restore_to_scene(Scene *scene);
+
+  typedef map<Sequence *, SequenceBackup> SequencesBackupMap;
+  SequencesBackupMap sequences_backup;
+};
+
+SequencerBackup::SequencerBackup()
+{
+}
+
+void SequencerBackup::init_from_scene(Scene *scene)
+{
+  Sequence *sequence;
+  SEQ_BEGIN (scene->ed, sequence) {
+    SequenceBackup sequence_backup;
+    sequence_backup.init_from_sequence(sequence);
+    if (!sequence_backup.isEmpty()) {
+      sequences_backup.insert(make_pair(sequence->orig_sequence, sequence_backup));
+    }
+  }
+  SEQ_END;
+}
+
+void SequencerBackup::restore_to_scene(Scene *scene)
+{
+  Sequence *sequence;
+  SEQ_BEGIN (scene->ed, sequence) {
+    SequencesBackupMap::iterator it = sequences_backup.find(sequence->orig_sequence);
+    if (it == sequences_backup.end()) {
+      continue;
+    }
+    SequenceBackup &sequence_backup = it->second;
+    sequence_backup.restore_to_sequence(sequence);
+  }
+  SEQ_END;
+  /* Cleanup audio while the scene is still known. */
+  for (SequencesBackupMap::value_type &it : sequences_backup) {
+    SequenceBackup &sequence_backup = it.second;
+    if (sequence_backup.scene_sound != NULL) {
+      BKE_sound_remove_scene_sound(scene, sequence_backup.scene_sound);
+    }
+  }
+}
+
+/* Backup of scene runtime data. */
+
+class SceneBackup {
+ public:
+  SceneBackup();
+
+  void reset();
+
+  void init_from_scene(Scene *scene);
+  void restore_to_scene(Scene *scene);
+
+  /* Sound/audio related pointers of the scene itself.
+   *
+   * NOTE: Scene can not disappear after relations update, because otherwise the entire dependency
+   * graph will be gone. This means we don't need to compare original scene pointer, or worry about
+   * freeing those if they cant' be restorted: we just copy them over to a new scene. */
+  void *sound_scene;
+  void *playback_handle;
+  void *sound_scrub_handle;
+  void *speaker_handles;
+  float rigidbody_last_time;
+
+  SequencerBackup sequencer_backup;
+};
+
+SceneBackup::SceneBackup()
+{
+  reset();
+}
+
+void SceneBackup::reset()
+{
+  sound_scene = NULL;
+  playback_handle = NULL;
+  sound_scrub_handle = NULL;
+  speaker_handles = NULL;
+  rigidbody_last_time = -1;
+}
+
+void SceneBackup::init_from_scene(Scene *scene)
+{
+  sound_scene = scene->sound_scene;
+  playback_handle = scene->playback_handle;
+  sound_scrub_handle = scene->sound_scrub_handle;
+  speaker_handles = scene->speaker_handles;
+
+  if (scene->rigidbody_world != NULL) {
+    rigidbody_last_time = scene->rigidbody_world->ltime;
+  }
+
+  /* Clear pointers stored in the scene, so they are not freed when copied-on-written datablock
+   * is freed for re-allocation. */
+  scene->sound_scene = NULL;
+  scene->playback_handle = NULL;
+  scene->sound_scrub_handle = NULL;
+  scene->speaker_handles = NULL;
+
+  sequencer_backup.init_from_scene(scene);
+}
+
+void SceneBackup::restore_to_scene(Scene *scene)
+{
+  scene->sound_scene = sound_scene;
+  scene->playback_handle = playback_handle;
+  scene->sound_scrub_handle = sound_scrub_handle;
+  scene->speaker_handles = speaker_handles;
+
+  if (scene->rigidbody_world != NULL) {
+    scene->rigidbody_world->ltime = rigidbody_last_time;
+  }
+
+  sequencer_backup.restore_to_scene(scene);
+
+  reset();
+}
+
+/* Backup of sound datablocks runtime data. */
+
+class SoundBackup {
+ public:
+  SoundBackup();
+
+  void reset();
+
+  void init_from_sound(bSound *sound);
+  void restore_to_sound(bSound *sound);
+
+  void *cache;
+  void *waveform;
+  void *playback_handle;
+};
+
+SoundBackup::SoundBackup()
+{
+  reset();
+}
+
+void SoundBackup::reset()
+{
+  cache = NULL;
+  waveform = NULL;
+  playback_handle = NULL;
+}
+
+void SoundBackup::init_from_sound(bSound *sound)
+{
+  cache = sound->cache;
+  waveform = sound->waveform;
+  playback_handle = sound->playback_handle;
+
+  sound->cache = NULL;
+  sound->waveform = NULL;
+  sound->playback_handle = NULL;
+}
+
+void SoundBackup::restore_to_sound(bSound *sound)
+{
+  sound->cache = cache;
+  sound->waveform = waveform;
+  sound->playback_handle = playback_handle;
+
+  reset();
+}
 
 /* Identifier used to match modifiers to backup/restore their runtime data.
  * Identification is happening using original modifier data pointer and the
@@ -878,7 +1176,8 @@ typedef map<ModifierDataBackupID, void *> ModifierRuntimeDataBackup;
 /* Storage for backed up pose channel runtime data. */
 typedef map<bPoseChannel *, bPoseChannel_Runtime> PoseChannelRuntimeDataBackup;
 
-struct ObjectRuntimeBackup {
+class ObjectRuntimeBackup {
+ public:
   ObjectRuntimeBackup() : base_flag(0), base_local_view_bits(0)
   {
     /* TODO(sergey): Use something like BKE_object_runtime_reset(). */
@@ -1043,6 +1342,50 @@ void ObjectRuntimeBackup::restore_pose_channel_runtime_data(Object *object)
   }
 }
 
+/* Backup of movie clip runtime data. */
+
+class MovieClipBackup {
+ public:
+  MovieClipBackup();
+
+  void reset();
+
+  void init_from_movieclip(MovieClip *movieclip);
+  void restore_to_movieclip(MovieClip *movieclip);
+
+  struct anim *anim;
+  struct MovieClipCache *cache;
+};
+
+MovieClipBackup::MovieClipBackup()
+{
+  reset();
+}
+
+void MovieClipBackup::reset()
+{
+  anim = NULL;
+  cache = NULL;
+}
+
+void MovieClipBackup::init_from_movieclip(MovieClip *movieclip)
+{
+  anim = movieclip->anim;
+  cache = movieclip->cache;
+  /* Clear pointers stored in the movie clip, so they are not freed when copied-on-written
+   * datablock is freed for re-allocation. */
+  movieclip->anim = NULL;
+  movieclip->cache = NULL;
+}
+
+void MovieClipBackup::restore_to_movieclip(MovieClip *movieclip)
+{
+  movieclip->anim = anim;
+  movieclip->cache = cache;
+
+  reset();
+}
+
 class RuntimeBackup {
  public:
   RuntimeBackup() : drawdata_ptr(NULL)
@@ -1056,9 +1399,12 @@ class RuntimeBackup {
   /* Restore fields to the given ID. */
   void restore_to_id(ID *id);
 
+  SceneBackup scene_backup;
+  SoundBackup sound_backup;
   ObjectRuntimeBackup object_backup;
   DrawDataList drawdata_backup;
   DrawDataList *drawdata_ptr;
+  MovieClipBackup movieclip_backup;
 };
 
 void RuntimeBackup::init_from_id(ID *id)
@@ -1070,6 +1416,15 @@ void RuntimeBackup::init_from_id(ID *id)
   switch (id_type) {
     case ID_OB:
       object_backup.init_from_object(reinterpret_cast<Object *>(id));
+      break;
+    case ID_SCE:
+      scene_backup.init_from_scene(reinterpret_cast<Scene *>(id));
+      break;
+    case ID_SO:
+      sound_backup.init_from_sound(reinterpret_cast<bSound *>(id));
+      break;
+    case ID_MC:
+      movieclip_backup.init_from_movieclip(reinterpret_cast<MovieClip *>(id));
       break;
     default:
       break;
@@ -1089,6 +1444,15 @@ void RuntimeBackup::restore_to_id(ID *id)
   switch (id_type) {
     case ID_OB:
       object_backup.restore_to_object(reinterpret_cast<Object *>(id));
+      break;
+    case ID_SCE:
+      scene_backup.restore_to_scene(reinterpret_cast<Scene *>(id));
+      break;
+    case ID_SO:
+      sound_backup.restore_to_sound(reinterpret_cast<bSound *>(id));
+      break;
+    case ID_MC:
+      movieclip_backup.restore_to_movieclip(reinterpret_cast<MovieClip *>(id));
       break;
     default:
       break;
@@ -1202,10 +1566,10 @@ void discard_edit_mode_pointers(ID *id_cow)
 
 }  // namespace
 
-/* Free content of the CoW datablock
+/* Free content of the CoW data-block
  * Notes:
- * - Does not recurs into nested ID datablocks.
- * - Does not free datablock itself. */
+ * - Does not recurs into nested ID data-blocks.
+ * - Does not free data-block itself. */
 void deg_free_copy_on_write_datablock(ID *id_cow)
 {
   if (!check_datablock_expanded(id_cow)) {
@@ -1278,9 +1642,7 @@ bool deg_copy_on_write_is_expanded(const ID *id_cow)
 bool deg_copy_on_write_is_needed(const ID *id_orig)
 {
   const ID_Type id_type = GS(id_orig->name);
-  /* TODO(sergey): Make Sound copyable. It is here only because the code for dependency graph is
-   * being work in progress. */
-  return !ELEM(id_type, ID_IM, ID_SO);
+  return !ELEM(id_type, ID_IM);
 }
 
 }  // namespace DEG

@@ -109,6 +109,11 @@ GHOST_TSuccess GHOST_Window::getSwapInterval(int &intervalOut)
   return m_context->getSwapInterval(intervalOut);
 }
 
+unsigned int GHOST_Window::getDefaultFramebuffer()
+{
+  return (m_context) ? m_context->getDefaultFramebuffer() : 0;
+}
+
 GHOST_TSuccess GHOST_Window::activateDrawingContext()
 {
   return m_context->activateDrawingContext();
@@ -136,6 +141,7 @@ GHOST_TSuccess GHOST_Window::setCursorVisibility(bool visible)
 }
 
 GHOST_TSuccess GHOST_Window::setCursorGrab(GHOST_TGrabCursorMode mode,
+                                           GHOST_TAxisFlag wrap_axis,
                                            GHOST_Rect *bounds,
                                            GHOST_TInt32 mouse_ungrab_xy[2])
 {
@@ -151,8 +157,9 @@ GHOST_TSuccess GHOST_Window::setCursorGrab(GHOST_TGrabCursorMode mode,
 
   if (setWindowCursorGrab(mode)) {
 
-    if (mode == GHOST_kGrabDisable)
+    if (mode == GHOST_kGrabDisable) {
       m_cursorGrabBounds.m_l = m_cursorGrabBounds.m_r = -1;
+    }
     else if (bounds) {
       m_cursorGrabBounds = *bounds;
     }
@@ -160,6 +167,7 @@ GHOST_TSuccess GHOST_Window::setCursorGrab(GHOST_TGrabCursorMode mode,
       getClientBounds(m_cursorGrabBounds);
     }
     m_cursorGrab = mode;
+    m_cursorGrabAxis = wrap_axis;
     return GHOST_kSuccess;
   }
   else {
@@ -184,25 +192,15 @@ GHOST_TSuccess GHOST_Window::setCursorShape(GHOST_TStandardCursor cursorShape)
   }
 }
 
-GHOST_TSuccess GHOST_Window::setCustomCursorShape(GHOST_TUns8 bitmap[16][2],
-                                                  GHOST_TUns8 mask[16][2],
-                                                  int hotX,
-                                                  int hotY)
-{
-  return setCustomCursorShape(
-      (GHOST_TUns8 *)bitmap, (GHOST_TUns8 *)mask, 16, 16, hotX, hotY, 0, 1);
-}
-
 GHOST_TSuccess GHOST_Window::setCustomCursorShape(GHOST_TUns8 *bitmap,
                                                   GHOST_TUns8 *mask,
                                                   int sizex,
                                                   int sizey,
                                                   int hotX,
                                                   int hotY,
-                                                  int fg_color,
-                                                  int bg_color)
+                                                  bool canInvertColor)
 {
-  if (setWindowCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, fg_color, bg_color)) {
+  if (setWindowCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor)) {
     m_cursorShape = GHOST_kStandardCursorCustom;
     return GHOST_kSuccess;
   }

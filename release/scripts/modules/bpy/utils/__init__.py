@@ -254,12 +254,10 @@ def load_scripts(reload_scripts=False, refresh_scripts=False):
                 if _os.path.isdir(path):
                     _sys_path_ensure(path)
 
-                    # only add this to sys.modules, don't run
-                    if path_subdir == "modules":
-                        continue
-
-                    for mod in modules_from_path(path, loaded_modules):
-                        test_register(mod)
+                    # Only add to 'sys.modules' unless this is 'startup'.
+                    if path_subdir == "startup":
+                        for mod in modules_from_path(path, loaded_modules):
+                            test_register(mod)
 
     # load template (if set)
     if any(_bpy.utils.app_template_paths()):
@@ -452,12 +450,12 @@ def preset_paths(subdir):
     return dirs
 
 
-def smpte_from_seconds(time, fps=None):
+def smpte_from_seconds(time, fps=None, fps_base=None):
     """
     Returns an SMPTE formatted string from the *time*:
     ``HH:MM:SS:FF``.
 
-    If the *fps* is not given the current scene is used.
+    If *fps* and *fps_base* are not given the current scene is used.
 
     :arg time: time in seconds.
     :type time: int, float or ``datetime.timedelta``.
@@ -465,7 +463,11 @@ def smpte_from_seconds(time, fps=None):
     :rtype: string
     """
 
-    return smpte_from_frame(time_to_frame(time, fps=fps), fps)
+    return smpte_from_frame(
+        time_to_frame(time, fps=fps, fps_base=fps_base),
+        fps=fps,
+        fps_base=fps_base
+    )
 
 
 def smpte_from_frame(frame, fps=None, fps_base=None):
@@ -487,8 +489,9 @@ def smpte_from_frame(frame, fps=None, fps_base=None):
     if fps_base is None:
         fps_base = _bpy.context.scene.render.fps_base
 
+    fps = fps / fps_base
     sign = "-" if frame < 0 else ""
-    frame = abs(frame * fps_base)
+    frame = abs(frame)
 
     return (
         "%s%02d:%02d:%02d:%02d" % (
@@ -518,9 +521,11 @@ def time_from_frame(frame, fps=None, fps_base=None):
     if fps_base is None:
         fps_base = _bpy.context.scene.render.fps_base
 
+    fps = fps / fps_base
+
     from datetime import timedelta
 
-    return timedelta(0, (frame * fps_base) / fps)
+    return timedelta(0, frame / fps)
 
 
 def time_to_frame(time, fps=None, fps_base=None):
@@ -542,12 +547,14 @@ def time_to_frame(time, fps=None, fps_base=None):
     if fps_base is None:
         fps_base = _bpy.context.scene.render.fps_base
 
+    fps = fps / fps_base
+
     from datetime import timedelta
 
     if isinstance(time, timedelta):
         time = time.total_seconds()
 
-    return (time / fps_base) * fps
+    return time * fps
 
 
 def preset_find(name, preset_path, display_name=False, ext=".py"):

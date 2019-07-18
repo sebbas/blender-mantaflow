@@ -213,7 +213,7 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
   if (lcache != NULL) {
     if (lcache->flag & LIGHTCACHE_BAKING) {
       BLI_strncpy(
-          eevee->light_cache_info, IFACE_("Baking light cache"), sizeof(eevee->light_cache_info));
+          eevee->light_cache_info, TIP_("Baking light cache"), sizeof(eevee->light_cache_info));
       return;
     }
 
@@ -224,14 +224,14 @@ void EEVEE_lightcache_info_update(SceneEEVEE *eevee)
 
     BLI_snprintf(eevee->light_cache_info,
                  sizeof(eevee->light_cache_info),
-                 IFACE_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
+                 TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
                  lcache->cube_len - 1,
                  irr_samples,
                  formatted_mem);
   }
   else {
     BLI_strncpy(eevee->light_cache_info,
-                IFACE_("No light cache in this scene"),
+                TIP_("No light cache in this scene"),
                 sizeof(eevee->light_cache_info));
   }
 }
@@ -409,7 +409,7 @@ static void eevee_lightbake_context_enable(EEVEE_LightBake *lbake)
   if (lbake->gl_context) {
     DRW_opengl_render_context_enable(lbake->gl_context);
     if (lbake->gpu_context == NULL) {
-      lbake->gpu_context = GPU_context_create();
+      lbake->gpu_context = GPU_context_create(0);
     }
     DRW_gawain_render_context_enable(lbake->gpu_context);
   }
@@ -717,15 +717,19 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
   stl->g_data->background_alpha = 1.0f;
 
   /* XXX TODO remove this. This is in order to make the init functions work. */
-  DRWMatrixState dummy_mats = {{{{{0}}}}};
-  DRW_viewport_matrix_override_set_all(&dummy_mats);
+  if (DRW_view_default_get() == NULL) {
+    float winmat[4][4], viewmat[4][4];
+    unit_m4(viewmat);
+    unit_m4(winmat);
+    negate_v3(winmat[2]);
+    DRWView *view = DRW_view_create(viewmat, winmat, NULL, NULL, NULL);
+    DRW_view_default_set(view);
+    DRW_view_set_active(view);
+  }
 
   if (sldata->common_ubo == NULL) {
     sldata->common_ubo = DRW_uniformbuffer_create(sizeof(sldata->common_data),
                                                   &sldata->common_data);
-  }
-  if (sldata->clip_ubo == NULL) {
-    sldata->clip_ubo = DRW_uniformbuffer_create(sizeof(sldata->clip_data), &sldata->clip_data);
   }
 
   /* HACK: set txl->color but unset it before Draw Manager frees it. */
@@ -743,6 +747,8 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
 
   EEVEE_effects_cache_init(sldata, vedata);
   EEVEE_materials_cache_init(sldata, vedata);
+  EEVEE_subsurface_cache_init(sldata, vedata);
+  EEVEE_volumes_cache_init(sldata, vedata);
   EEVEE_lights_cache_init(sldata, vedata);
   EEVEE_lightprobes_cache_init(sldata, vedata);
 
@@ -761,6 +767,9 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
   EEVEE_materials_cache_finish(sldata, vedata);
   EEVEE_lights_cache_finish(sldata, vedata);
   EEVEE_lightprobes_cache_finish(sldata, vedata);
+
+  /* Disable volumetrics when baking. */
+  stl->effects->enabled_effects &= ~EFFECT_VOLUMETRIC;
 
   EEVEE_effects_draw_init(sldata, vedata);
   EEVEE_volumes_draw_init(sldata, vedata);
@@ -1239,7 +1248,7 @@ void EEVEE_lightbake_job(void *custom_data, short *stop, short *do_update, float
 
   /* Assume that if lbake->gl_context is NULL
    * we are not running in this in a job, so update
-   * the scene lightcache pointer before deleting it. */
+   * the scene light-cache pointer before deleting it. */
   if (lbake->gl_context == NULL) {
     BLI_assert(BLI_thread_is_main());
     EEVEE_lightbake_update(lbake);

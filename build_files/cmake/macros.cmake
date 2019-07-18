@@ -173,21 +173,38 @@ function(blender_source_group
   sources
   )
 
-  # Group by location on disk
-  source_group("Source Files" FILES CMakeLists.txt)
+  #if enabled, use the sources directories as filters.
+  if(WINDOWS_USE_VISUAL_STUDIO_SOURCE_FOLDERS)
+    foreach(_SRC ${sources})
+      # remove ../'s
+      get_filename_component(_SRC_DIR ${_SRC} REALPATH)
+      get_filename_component(_SRC_DIR ${_SRC_DIR} DIRECTORY)
+      string(FIND ${_SRC_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/" _pos)
+      if(NOT _pos EQUAL -1)
+        string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/" "" GROUP_ID ${_SRC_DIR})
+        string(REPLACE "/" "\\" GROUP_ID ${GROUP_ID})
+        source_group("${GROUP_ID}" FILES ${_SRC})
+      endif()
+      unset(_pos)
+    endforeach()
+  else()
+    # Group by location on disk
+    source_group("Source Files" FILES CMakeLists.txt)
+    foreach(_SRC ${sources})
+      get_filename_component(_SRC_EXT ${_SRC} EXT)
+      if((${_SRC_EXT} MATCHES ".h") OR
+         (${_SRC_EXT} MATCHES ".hpp") OR
+         (${_SRC_EXT} MATCHES ".hh"))
 
-  foreach(_SRC ${sources})
-    get_filename_component(_SRC_EXT ${_SRC} EXT)
-    if((${_SRC_EXT} MATCHES ".h") OR
-       (${_SRC_EXT} MATCHES ".hpp") OR
-       (${_SRC_EXT} MATCHES ".hh"))
-
-      set(GROUP_ID "Header Files")
-    else()
-      set(GROUP_ID "Source Files")
-    endif()
-    source_group("${GROUP_ID}" FILES ${_SRC})
-  endforeach()
+        set(GROUP_ID "Header Files")
+      elseif(${_SRC_EXT} MATCHES ".glsl$")
+        set(GROUP_ID "Shaders")
+      else()
+        set(GROUP_ID "Source Files")
+      endif()
+      source_group("${GROUP_ID}" FILES ${_SRC})
+    endforeach()
+  endif()
 endfunction()
 
 
@@ -234,8 +251,8 @@ function(blender_add_lib__impl
 
   add_library(${name} ${sources})
 
-  if (NOT "${library_deps}" STREQUAL "")
-    target_link_libraries(${name} "${library_deps}")
+  if(NOT "${library_deps}" STREQUAL "")
+    target_link_libraries(${name} INTERFACE "${library_deps}")
   endif()
 
   # works fine without having the includes
@@ -243,7 +260,7 @@ function(blender_add_lib__impl
   blender_source_group("${sources}")
 
   #if enabled, set the FOLDER property for visual studio projects
-  if(WINDOWS_USE_VISUAL_STUDIO_FOLDERS)
+  if(WINDOWS_USE_VISUAL_STUDIO_PROJECT_FOLDERS)
     get_filename_component(FolderDir ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
     string(REPLACE ${CMAKE_SOURCE_DIR} "" FolderDir ${FolderDir})
     set_target_properties(${name} PROPERTIES FOLDER ${FolderDir})
@@ -699,7 +716,7 @@ macro(remove_strict_flags)
   endif()
 
   if(MSVC)
-    # TODO
+    remove_cc_flag(/w34189) # Restore warn C4189 (unused variable) back to w4 
   endif()
 
 endmacro()
@@ -941,6 +958,7 @@ function(delayed_install
     endif()
     set_property(GLOBAL APPEND PROPERTY DELAYED_INSTALL_DESTINATIONS ${destination})
   endforeach()
+  unset(f)
 endfunction()
 
 # note this is a function instead of a macro so that ${BUILD_TYPE} in targetdir
@@ -1221,5 +1239,28 @@ macro(WINDOWS_SIGN_TARGET target)
         VERBATIM
       )
     endif()
+  endif()
+endmacro()
+
+macro(blender_precompile_headers target cpp header)
+  if(MSVC)
+    # get the name for the pch output file
+    get_filename_component( pchbase ${cpp} NAME_WE )
+    set( pchfinal "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${pchbase}.pch" )
+
+    # mark the cpp as the one outputting the pch
+    set_property(SOURCE ${cpp} APPEND PROPERTY OBJECT_OUTPUTS "${pchfinal}")
+
+    # get all sources for the target
+    get_target_property(sources ${target} SOURCES)
+
+    # make all sources depend on the pch to enforce the build order
+    foreach(src ${sources})
+      set_property(SOURCE ${src} APPEND PROPERTY OBJECT_DEPENDS "${pchfinal}")
+    endforeach()
+
+    target_sources(${target} PRIVATE ${cpp} ${header})
+    set_target_properties(${target} PROPERTIES COMPILE_FLAGS "/Yu${header} /Fp${pchfinal} /FI${header}")
+    set_source_files_properties(${cpp} PROPERTIES COMPILE_FLAGS "/Yc${header} /Fp${pchfinal}")
   endif()
 endmacro()

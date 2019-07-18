@@ -1165,23 +1165,14 @@ static void poselib_preview_apply(bContext *C, wmOperator *op)
       RNA_int_set(op->ptr, "pose_index", -2); /* -2 means don't apply any pose */
     }
 
-    /* old optimize trick... this enforces to bypass the depsgraph
-     * - note: code copied from transform_generics.c -> recalcData()
-     */
-    // FIXME: shouldn't this use the builtin stuff?
-    if ((pld->arm->flag & ARM_DELAYDEFORM) == 0) {
-      DEG_id_tag_update(&pld->ob->id, ID_RECALC_GEOMETRY); /* sets recalc flags */
-    }
-    else {
-      BKE_pose_where_is(CTX_data_depsgraph(C), pld->scene, pld->ob);
-    }
+    DEG_id_tag_update(&pld->ob->id, ID_RECALC_GEOMETRY);
   }
 
   /* do header print - if interactively previewing */
   if (pld->state == PL_PREVIEW_RUNNING) {
     if (pld->flag & PL_PREVIEW_SHOWORIGINAL) {
-      ED_area_status_text(pld->sa, IFACE_("PoseLib Previewing Pose: [Showing Original Pose]"));
-      ED_workspace_status_text(C, IFACE_("Use Tab to start previewing poses again"));
+      ED_area_status_text(pld->sa, TIP_("PoseLib Previewing Pose: [Showing Original Pose]"));
+      ED_workspace_status_text(C, TIP_("Use Tab to start previewing poses again"));
     }
     else if (pld->searchstr[0]) {
       char tempstr[65];
@@ -1205,17 +1196,17 @@ static void poselib_preview_apply(bContext *C, wmOperator *op)
 
       BLI_snprintf(pld->headerstr,
                    sizeof(pld->headerstr),
-                   IFACE_("PoseLib Previewing Pose: Filter - [%s] | "
-                          "Current Pose - \"%s\""),
+                   TIP_("PoseLib Previewing Pose: Filter - [%s] | "
+                        "Current Pose - \"%s\""),
                    tempstr,
                    markern);
       ED_area_status_text(pld->sa, pld->headerstr);
-      ED_workspace_status_text(C, IFACE_("Use ScrollWheel or PageUp/Down to change pose"));
+      ED_workspace_status_text(C, TIP_("Use ScrollWheel or PageUp/Down to change pose"));
     }
     else {
       BLI_snprintf(pld->headerstr,
                    sizeof(pld->headerstr),
-                   IFACE_("PoseLib Previewing Pose: \"%s\""),
+                   TIP_("PoseLib Previewing Pose: \"%s\""),
                    pld->marker->name);
       ED_area_status_text(pld->sa, pld->headerstr);
       ED_workspace_status_text(C, NULL);
@@ -1709,7 +1700,6 @@ static void poselib_preview_cleanup(bContext *C, wmOperator *op)
   Scene *scene = pld->scene;
   Object *ob = pld->ob;
   bPose *pose = pld->pose;
-  bArmature *arm = pld->arm;
   bAction *act = pld->act;
   TimeMarker *marker = pld->marker;
 
@@ -1724,15 +1714,7 @@ static void poselib_preview_cleanup(bContext *C, wmOperator *op)
   if (pld->state == PL_PREVIEW_CANCEL) {
     poselib_backup_restore(pld);
 
-    /* old optimize trick... this enforces to bypass the depgraph
-     * - note: code copied from transform_generics.c -> recalcData()
-     */
-    if ((arm->flag & ARM_DELAYDEFORM) == 0) {
-      DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY); /* sets recalc flags */
-    }
-    else {
-      BKE_pose_where_is(CTX_data_depsgraph(C), scene, ob);
-    }
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
   else if (pld->state == PL_PREVIEW_CONFIRM) {
     /* tag poses as appropriate */

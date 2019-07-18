@@ -25,6 +25,8 @@
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 
+#include "BLI_assert.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -112,8 +114,7 @@ enum {
 };
 
 /* ------- Eevee LightProbes ------- */
-/* Needs to be there because written to file
- * with the lightcache. */
+/* Needs to be there because written to file with the light-cache. */
 
 /* IMPORTANT Padding in these structs is essential. It must match
  * GLSL struct definition in lightprobe_lib.glsl. */
@@ -140,6 +141,10 @@ typedef struct LightGridCache {
   float increment_z[3], _pad4;
   float visibility_bias, visibility_bleed, visibility_range, _pad5;
 } LightGridCache;
+
+/* Theses are used as ubo data. They need to be aligned to size of vec4. */
+BLI_STATIC_ASSERT_ALIGN(LightProbeCache, 16)
+BLI_STATIC_ASSERT_ALIGN(LightGridCache, 16)
 
 /* ------ Eevee Lightcache ------- */
 
