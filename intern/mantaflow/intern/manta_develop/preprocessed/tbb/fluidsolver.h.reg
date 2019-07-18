@@ -14,3 +14,4 @@
 +FluidSolver^ static const Pb::Register _R_$IDX$ ("FluidSolver","timestepMin",FluidSolver::_GET_mDtMin,FluidSolver::_SET_mDtMin); 
 +FluidSolver^ static const Pb::Register _R_$IDX$ ("FluidSolver","timestepMax",FluidSolver::_GET_mDtMax,FluidSolver::_SET_mDtMax); 
 +FluidSolver^ static const Pb::Register _R_$IDX$ ("FluidSolver","frameLength",FluidSolver::_GET_mFrameLength,FluidSolver::_SET_mFrameLength); 
++FluidSolver^ static const Pb::Register _R_$IDX$ ("FluidSolver","timePerFrame",FluidSolver::_GET_mTimePerFrame,FluidSolver::_SET_mTimePerFrame); 

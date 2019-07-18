@@ -26,6 +26,7 @@ namespace Manta {
  static const Pb::Register _R_17 ("FluidSolver","timestepMin",FluidSolver::_GET_mDtMin,FluidSolver::_SET_mDtMin); 
  static const Pb::Register _R_18 ("FluidSolver","timestepMax",FluidSolver::_GET_mDtMax,FluidSolver::_SET_mDtMax); 
  static const Pb::Register _R_19 ("FluidSolver","frameLength",FluidSolver::_GET_mFrameLength,FluidSolver::_SET_mFrameLength); 
+ static const Pb::Register _R_20 ("FluidSolver","timePerFrame",FluidSolver::_GET_mTimePerFrame,FluidSolver::_SET_mTimePerFrame); 
 #endif
 extern "C" {
 void PbRegister_file_6()
@@ -44,5 +45,6 @@ void PbRegister_file_6()
 	KEEP_UNUSED(_R_17);
 	KEEP_UNUSED(_R_18);
 	KEEP_UNUSED(_R_19);
+	KEEP_UNUSED(_R_20);
 }
 }}

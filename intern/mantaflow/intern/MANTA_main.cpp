@@ -274,7 +274,7 @@ void MANTA::initDomain(MantaModifierData *mmd)
                           fluid_bake_mesh + fluid_bake_particles + fluid_bake_guiding +
                           fluid_file_import + fluid_file_export + fluid_save_data +
                           fluid_load_data + fluid_pre_step + fluid_post_step +
-                          fluid_adapt_time_step + fluid_adaptive_time_stepping;
+                          fluid_adapt_time_step + fluid_time_stepping;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
   runPythonString(pythonCommands);
@@ -284,7 +284,7 @@ void MANTA::initNoise(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = fluid_variables_noise + fluid_solver_noise +
-                          fluid_adapt_time_step_noise + fluid_adaptive_time_stepping_noise;
+                          fluid_time_stepping_noise;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
 
@@ -294,7 +294,7 @@ void MANTA::initNoise(MantaModifierData *mmd)
 void MANTA::initSmoke(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
-  std::string tmpString = smoke_alloc + smoke_variables + smoke_adaptive_step + smoke_save_data +
+  std::string tmpString = smoke_variables + smoke_alloc + smoke_adaptive_step + smoke_save_data +
                           smoke_load_data + smoke_step;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
@@ -305,9 +305,8 @@ void MANTA::initSmoke(MantaModifierData *mmd)
 void MANTA::initSmokeNoise(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
-  std::string tmpString = smoke_alloc_noise + smoke_variables_noise + smoke_wavelet_noise +
-                          smoke_adaptive_step_noise + smoke_save_noise + smoke_load_noise +
-                          smoke_pre_step_noise + smoke_step_noise + smoke_post_step_noise;
+  std::string tmpString = smoke_variables_noise + smoke_alloc_noise + smoke_wavelet_noise +
+                          smoke_save_noise + smoke_load_noise + smoke_step_noise;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
 
@@ -384,7 +383,7 @@ void MANTA::initLiquid(MantaModifierData *mmd)
 {
   if (!mPhiIn) {
     std::vector<std::string> pythonCommands;
-    std::string tmpString = liquid_alloc + liquid_variables + liquid_init_phi + liquid_save_data +
+    std::string tmpString = liquid_variables + liquid_alloc + liquid_init_phi + liquid_save_data +
                             liquid_save_flip + liquid_load_data + liquid_load_flip +
                             liquid_adaptive_step + liquid_step;
     std::string finalString = parseScript(tmpString, mmd);
@@ -569,6 +568,7 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
   std::ostringstream ss;
   bool is2D = false;
   int tmpVar;
+  float tmpFloat;
 
   if (varName == "ID") {
     ss << mCurrentID;
@@ -615,7 +615,7 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
               FLUID_DOMAIN_BORDER_RIGHT | FLUID_DOMAIN_BORDER_BOTTOM | FLUID_DOMAIN_BORDER_TOP);
     ss << (((mmd->domain->border_collisions & tmpVar) == tmpVar) ? "False" : "True");
   }
-  else if (varName == "BOUNDCONDITIONS") {
+  else if (varName == "BOUND_CONDITIONS") {
     if (mmd->domain->solver_res == 2) {
       if ((mmd->domain->border_collisions & FLUID_DOMAIN_BORDER_LEFT) == 0)
         ss << "x";
@@ -641,6 +641,8 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
         ss << "Z";
     }
   }
+  else if (varName == "BOUNDARY_WIDTH")
+    ss << mmd->domain->boundary_width;
   else if (varName == "RES")
     ss << mMaxRes;
   else if (varName == "RESX")
@@ -660,12 +662,16 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
       ss << mResZ;
     }
   }
-  else if (varName == "DT_FACTOR")
-    ss << mmd->domain->time_scale;
+  else if (varName == "FRAME_LENGTH")
+    ss << mmd->domain->frame_length;
   else if (varName == "CFL")
     ss << mmd->domain->cfl_condition;
   else if (varName == "DT")
     ss << mmd->domain->dt;
+  else if (varName == "TIME_TOTAL")
+    ss << mmd->domain->time_total;
+  else if (varName == "TIME_PER_FRAME")
+    ss << mmd->domain->time_per_frame;
   else if (varName == "VORTICITY")
     ss << mmd->domain->vorticity / mConstantScaling;
   else if (varName == "NOISE_SCALE")
@@ -746,6 +752,18 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
       ss << mResGuiding[2];
     }
   }
+  else if (varName == "MIN_RESX")
+    ss << mmd->domain->res_min[0];
+  else if (varName == "MIN_RESY")
+    ss << mmd->domain->res_min[1];
+  else if (varName == "MIN_RESZ")
+    ss << mmd->domain->res_min[2];
+  else if (varName == "BASE_RESX")
+    ss << mmd->domain->base_res[0];
+  else if (varName == "BASE_RESY")
+    ss << mmd->domain->base_res[1];
+  else if (varName == "BASE_RESZ")
+    ss << mmd->domain->base_res[2];
   else if (varName == "WLT_STR")
     ss << mmd->domain->noise_strength;
   else if (varName == "NOISE_POSSCALE")
@@ -842,9 +860,10 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
     ss << mmd->domain->surface_tension;
   else if (varName == "FLUID_VISCOSITY")
     ss << mmd->domain->viscosity_base * pow(10.0f, -mmd->domain->viscosity_exponent);
-  else if (varName == "FLUID_DOMAIN_SIZE")
-    ss << mmd->domain->domain_size;
-  else if (varName == "SNDPARTICLE_TYPES") {
+  else if (varName == "FLUID_DOMAIN_SIZE") {
+    tmpFloat = MAX3(mmd->domain->global_size[0], mmd->domain->global_size[1], mmd->domain->global_size[2]);
+    ss << tmpFloat;
+  } else if (varName == "SNDPARTICLE_TYPES") {
     if (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) {
       ss << "PtypeSpray";
     }
@@ -1221,6 +1240,7 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
   char cacheDir[FILE_MAX], targetFile[FILE_MAX];;
   cacheDir[0] = '\0';
   targetFile[0] = '\0';
+  float dummy;
 
   std::string dformat = getCacheFileEnding(mmd->domain->cache_data_format);
 
@@ -1245,7 +1265,7 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
   gzread(gzf, &mds->active_fields, sizeof(int));
   gzread(gzf, &mds->res, 3*sizeof(int));
   gzread(gzf, &mds->dx, sizeof(float));
-  gzread(gzf, &mds->dt, sizeof(float));
+  gzread(gzf, &dummy, sizeof(float)); // dt not needed right now
   gzread(gzf, &mds->p0, 3*sizeof(float));
   gzread(gzf, &mds->p1, 3*sizeof(float));
   gzread(gzf, &mds->dp0, 3*sizeof(float));
@@ -1678,7 +1698,7 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
   // Variables
   manta_script += header_variables + fluid_variables + smoke_variables;
   if (noise) {
-    manta_script += fluid_variables_noise;
+    manta_script += fluid_variables_noise + smoke_variables_noise;
   }
   if (guiding)
     manta_script += fluid_variables_guiding;
@@ -1717,9 +1737,9 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
     manta_script += smoke_wavelet_noise;
 
   // Time
-  manta_script += header_time + fluid_adaptive_time_stepping + fluid_adapt_time_step;
+  manta_script += header_time + fluid_time_stepping + fluid_adapt_time_step;
   if (noise) {
-    manta_script += fluid_adaptive_time_stepping_noise + fluid_adapt_time_step_noise;
+    manta_script += fluid_time_stepping_noise;
   }
 
   // Import
@@ -1732,14 +1752,11 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
 
   // Pre/Post Steps
   manta_script += header_prepost + fluid_pre_step + fluid_post_step;
-  if (noise) {
-    manta_script += smoke_pre_step_noise + smoke_post_step_noise;
-  }
 
   // Steps
   manta_script += header_steps + smoke_adaptive_step + smoke_step;
   if (noise) {
-    manta_script += smoke_adaptive_step_noise + smoke_step_noise;
+    manta_script += smoke_step_noise;
   }
 
   // Main
@@ -1821,7 +1838,7 @@ void MANTA::exportLiquidScript(MantaModifierData *mmd)
   manta_script += header_gridinit + liquid_init_phi;
 
   // Time
-  manta_script += header_time + fluid_adaptive_time_stepping + fluid_adapt_time_step;
+  manta_script += header_time + fluid_time_stepping + fluid_adapt_time_step;
 
   // Import
   manta_script += header_import + fluid_file_import + fluid_cache_helper + fluid_load_data +

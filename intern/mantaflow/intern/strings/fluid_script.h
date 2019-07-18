@@ -102,8 +102,8 @@ gs_s$ID$      = vec3($RESX$, $RESY$, $RESZ$)\n\
 maxVel_s$ID$  = 0\n\
 \n\
 doOpen_s$ID$          = $DO_OPEN$\n\
-boundConditions_s$ID$ = '$BOUNDCONDITIONS$'\n\
-boundaryWidth_s$ID$   = 1\n\
+boundConditions_s$ID$ = '$BOUND_CONDITIONS$'\n\
+boundaryWidth_s$ID$   = $BOUNDARY_WIDTH$\n\
 \n\
 using_smoke_s$ID$        = $USING_SMOKE$\n\
 using_liquid_s$ID$       = $USING_LIQUID$\n\
@@ -117,9 +117,11 @@ using_sndparts_s$ID$     = $USING_SNDPARTS$\n\
 using_speedvectors_s$ID$ = $USING_SPEEDVECTORS$\n\
 \n\
 # Fluid time params\n\
-dt_factor_s$ID$  = $DT_FACTOR$\n\
-dt0_s$ID$        = $DT$ * dt_factor_s$ID$\n\
-cfl_cond_s$ID$   = $CFL$\n\
+timeTotal_s$ID$    = $TIME_TOTAL$\n\
+timePerFrame_s$ID$ = $TIME_PER_FRAME$\n\
+frameLength_s$ID$  = $FRAME_LENGTH$\n\
+dt0_s$ID$          = $DT$\n\
+cflCond_s$ID$      = $CFL$\n\
 \n\
 # Fluid diffusion / viscosity\n\
 domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in meters\n\
@@ -182,22 +184,28 @@ using_sndparts_s$ID$ = True\n";
 // ADAPTIVE TIME STEPPING
 //////////////////////////////////////////////////////////////////////
 
-const std::string fluid_adaptive_time_stepping =
+const std::string fluid_time_stepping =
     "\n\
 mantaMsg('Fluid adaptive time stepping')\n\
-s$ID$.frameLength = dt0_s$ID$ \n\
-s$ID$.timestepMin = s$ID$.frameLength / 10.\n\
-s$ID$.timestepMax = s$ID$.frameLength\n\
-s$ID$.cfl         = cfl_cond_s$ID$\n\
-s$ID$.timestep    = s$ID$.frameLength\n";
+s$ID$.frameLength  = frameLength_s$ID$\n\
+s$ID$.timestepMin  = s$ID$.frameLength / 10.\n\
+s$ID$.timestepMax  = s$ID$.frameLength\n\
+s$ID$.cfl          = cflCond_s$ID$\n\
+s$ID$.timePerFrame = timePerFrame_s$ID$\n\
+s$ID$.timestep     = dt0_s$ID$\n\
+s$ID$.timeTotal    = timeTotal_s$ID$\n\
+#mantaMsg('timestep: ' + str(s$ID$.timestep) + ' // timPerFrame: ' + str(s$ID$.timePerFrame) + ' // frameLength: ' + str(s$ID$.frameLength) + ' // timeTotal: ' + str(s$ID$.timeTotal) )\n";
 
-const std::string fluid_adaptive_time_stepping_noise =
+const std::string fluid_time_stepping_noise =
     "\n\
-mantaMsg('Fluid adaptive time stepping high')\n\
-sn$ID$.frameLength = s$ID$.frameLength\n\
-sn$ID$.timestepMin = s$ID$.timestepMin\n\
-sn$ID$.timestepMax = s$ID$.timestepMax\n\
-sn$ID$.cfl         = s$ID$.cfl\n";
+mantaMsg('Fluid adaptive time stepping noise')\n\
+sn$ID$.frameLength = frameLength_s$ID$\n\
+sn$ID$.timestepMin = sn$ID$.frameLength / 10.\n\
+sn$ID$.timestepMax = sn$ID$.frameLength\n\
+sn$ID$.cfl         = cflCond_s$ID$\n\
+sn$ID$.timestep    = dt0_s$ID$\n\
+sn$ID$.timeTotal   = timeTotal_s$ID$\n\
+#mantaMsg('noise timestep: ' + str(sn$ID$.timestep) + ' // timPerFrame: ' + str(sn$ID$.timePerFrame) + ' // frameLength: ' + str(sn$ID$.frameLength) + ' // timeTotal: ' + str(sn$ID$.timeTotal) )\n";
 
 const std::string fluid_adapt_time_step =
     "\n\
@@ -205,20 +213,15 @@ def fluid_adapt_time_step_$ID$():\n\
     mantaMsg('Fluid adapt time step')\n\
     \n\
     # time params are animatable\n\
-    s$ID$.frameLength = dt0_s$ID$ \n\
-    s$ID$.cfl = cfl_cond_s$ID$\n\
+    s$ID$.frameLength = frameLength_s$ID$\n\
+    s$ID$.cfl         = cflCond_s$ID$\n\
     \n\
+    # ensure that vel grid is full (remember: adaptive domain can reallocate solver)\n\
+    copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
     maxVel_s$ID$ = vel_s$ID$.getMax() if vel_s$ID$ else 0\n\
     if using_adaptTime_s$ID$:\n\
         mantaMsg('Adapt timestep, maxvel: ' + str(maxVel_s$ID$))\n\
         s$ID$.adaptTimestep(maxVel_s$ID$)\n";
-
-const std::string fluid_adapt_time_step_noise =
-    "\n\
-def fluid_adapt_time_step_noise_$ID$():\n\
-    sn$ID$.timestep    = s$ID$.timestep\n\
-    sn$ID$.frameLength = dt0_s$ID$ \n\
-    sn$ID$.cfl         = cfl_cond_s$ID$\n";
 
 //////////////////////////////////////////////////////////////////////
 // GRIDS
@@ -317,11 +320,8 @@ const std::string fluid_pre_step =
     "\n\
 def fluid_pre_step_$ID$():\n\
     mantaMsg('Fluid pre step')\n\
-    # TODO (sebbas): Not sure if copying into vel grid could have any weird side effects - long term will show\n\
-    #x_vel_s$ID$.clear()\n\
-    #y_vel_s$ID$.clear()\n\
-    #z_vel_s$ID$.clear()\n\
-    copyRealToVec3(sourceX=x_vel_s$ID$, sourceY=y_vel_s$ID$, sourceZ=z_vel_s$ID$, target=vel_s$ID$)\n\
+    \n\
+    # Main vel grid is copied in adapt time step function\n\
     \n\
     # translate obvels (world space) to grid space\n\
     if using_obstacle_s$ID$:\n\
@@ -478,6 +478,7 @@ def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_
     mantaMsg('Bake fluid data')\n\
     \n\
     s$ID$.frame = framenr\n\
+    # Must not set 'timeTotal' here. Remember, this function is called from manta.c while-loop\n\
     \n\
     start_time = time.time()\n\
     if using_guiding_s$ID$:\n\
@@ -500,10 +501,12 @@ def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_
     mantaMsg('Bake fluid noise')\n\
     \n\
     sn$ID$.frame = framenr\n\
+    sn$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
+    mantaMsg('sn$ID$.timeTotal: ' + str(sn$ID$.timeTotal))\n\
     \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     smoke_load_data_$ID$(path_data, framenr, format_data)\n\
-    smoke_adaptive_step_noise_$ID$(framenr)\n\
+    smoke_step_noise_$ID$(framenr)\n\
     smoke_save_noise_$ID$(path_noise, framenr, format_noise)\n\
 \n\
 def bake_noise_$ID$(path_data, path_noise, framenr, format_data, format_noise):\n\
@@ -518,6 +521,7 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
     mantaMsg('Bake fluid mesh')\n\
     \n\
     sm$ID$.frame = framenr\n\
+    sm$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
     \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
@@ -542,6 +546,7 @@ def bake_particles_process_$ID$(framenr, format_data, format_particles, path_dat
     mantaMsg('Bake secondary particles')\n\
     \n\
     sp$ID$.frame = framenr\n\
+    sp$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
     \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
@@ -619,7 +624,10 @@ const std::string fluid_load_data =
     "\n\
 def fluid_load_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid load data, frame ' + str(framenr))\n\
-    fluid_file_import_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    fluid_file_import_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    \n\
+    # When adaptive domain bake is resumed we need correct values in xyz vel grids\n\
+    copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
 
 const std::string fluid_load_guiding =
     "\n\

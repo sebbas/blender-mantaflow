@@ -240,8 +240,8 @@ typedef struct MantaDomainSettings {
   int res[3];              /* data resolution (res_max-res_min) */
   int total_cells;
   float dx; /* 1.0f / res */
-  float dt;
   float scale; /* largest domain size */
+  int boundary_width; /* usually this is just 1 */
 
   /* adaptive domain options */
   int adapt_margin;
@@ -352,6 +352,10 @@ typedef struct MantaDomainSettings {
   char _pad7[4];  /* unused */
 
   /* time options */
+  float dt;
+  float time_total;
+  float time_per_frame;
+  float frame_length;
   float time_scale;
   float cfl_condition;
 

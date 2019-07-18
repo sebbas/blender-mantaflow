@@ -407,7 +407,6 @@ extern "C" {
  KnSetWallBcs(const FlagGrid& flags, MACGrid& vel, const MACGrid* obvel) :  KernelBase(&flags,0) ,flags(flags),vel(vel),obvel(obvel)   {
  runMessage(); run(); }
   inline void op(int i, int j, int k, const FlagGrid& flags, MACGrid& vel, const MACGrid* obvel )  {
-
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
 	Vec3 bcsVel(0.,0.,0.);
@@ -465,7 +464,6 @@ extern "C" {
 ;
 
 //! set wall BCs for fill fraction mode, note - only needs obstacle SDF
-
 
  struct KnSetWallBcsFrac : public KernelBase {
  KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGrid& velTarget, const MACGrid* obvel, const Grid<Real>* phiObs, const int &boundaryWidth=0) :  KernelBase(&flags,0) ,flags(flags),vel(vel),velTarget(velTarget),obvel(obvel),phiObs(phiObs),boundaryWidth(boundaryWidth)   {
@@ -829,10 +827,10 @@ void dissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat=
 				else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
 				else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
 			}
-			if (red && d) {
-				(*red)(i,j,k) *= (density(i,j,k)/d);
+			if (red && notZero(d) ) {
+				(*red)(i,j,k)   *= (density(i,j,k)/d);
 				(*green)(i,j,k) *= (density(i,j,k)/d);
-				(*blue)(i,j,k) *= (density(i,j,k)/d);
+				(*blue)(i,j,k)  *= (density(i,j,k)/d);
 			}
 		}
 	}

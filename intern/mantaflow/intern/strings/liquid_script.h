@@ -148,10 +148,7 @@ const std::string liquid_adaptive_step =
     "\n\
 def liquid_adaptive_step_$ID$(framenr):\n\
     mantaMsg('Manta step, frame ' + str(framenr))\n\
-    \n\
-    # time params are animatable\n\
-    s$ID$.frameLength = dt0_s$ID$ \n\
-    s$ID$.cfl = cfl_cond_s$ID$\n\
+    s$ID$.frame = framenr\n\
     \n\
     fluid_pre_step_$ID$()\n\
     \n\
@@ -258,10 +255,10 @@ def liquid_step_$ID$():\n\
         mantaMsg('Viscosity')\n\
         # diffusion param for solve = const * dt / dx^2\n\
         alphaV = viscosity_s$ID$ * s$ID$.timestep * float(res_s$ID$*res_s$ID$)\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
         cgSolveDiffusion(flags_s$ID$, vel_s$ID$, alphaV)\n\
     \n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     mantaMsg('Calculating curvature')\n\
     getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
@@ -274,7 +271,7 @@ def liquid_step_$ID$():\n\
         solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4) #, intoObs=True) # TODO (sebbas): uncomment for fraction support\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else 0, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
     # set source grids for resampling, used in adjustNumber!\n\

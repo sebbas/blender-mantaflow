@@ -357,8 +357,7 @@ extern "C" void manta_smoke_export(MANTA *smoke,
                              float **g,
                              float **b,
                              int **obstacle,
-                             float **shadow,
-                             float **phiin)
+                             float **shadow)
 {
   if (dens)
     *dens = smoke->getDensity();
@@ -381,8 +380,6 @@ extern "C" void manta_smoke_export(MANTA *smoke,
     *b = smoke->getColorB();
   *obstacle = smoke->getObstacle();
   *shadow = smoke->getShadow();
-  if (phiin)
-    *phiin = smoke->getPhiIn();
   *dt = 1;  //dummy value, not needed for smoke
   *dx = 1;  //dummy value, not needed for smoke
 }

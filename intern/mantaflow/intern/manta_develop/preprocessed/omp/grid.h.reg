@@ -1,31 +1,47 @@
 #include "grid.h"
 +GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","GridBase","PbClass"); template<> const char* Namify<GridBase >::S = "GridBase"; 
 >GridBase^
+&static const Pb::Register _R_$IDX$ ("GridType_TypeNone",0);
+&static const Pb::Register _R_$IDX$ ("GridType_TypeReal",1);
+&static const Pb::Register _R_$IDX$ ("GridType_TypeInt",2);
+&static const Pb::Register _R_$IDX$ ("GridType_TypeVec3",4);
+&static const Pb::Register _R_$IDX$ ("GridType_TypeMAC",8);
+&static const Pb::Register _R_$IDX$ ("GridType_TypeLevelset",16);
+&static const Pb::Register _R_$IDX$ ("GridType_TypeFlags",32);
 +GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","GridBase",GridBase::_W_0); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","getSizeX",GridBase::_W_1); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","getSizeY",GridBase::_W_2); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","getSizeZ",GridBase::_W_3); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","getSize",GridBase::_W_4); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","is3D",GridBase::_W_5); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","is4D",GridBase::_W_6); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","getSizeT",GridBase::_W_7); 
++GridBase^ static const Pb::Register _R_$IDX$ ("GridBase","getStrideT",GridBase::_W_8); 
 +Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","Grid<$CT$>","GridBase"); template<> const char* Namify<Grid<$CT$> >::S = "Grid<$CT$>"; 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","Grid",Grid<$CT$>::_W_1); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","save",Grid<$CT$>::_W_2); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","load",Grid<$CT$>::_W_3); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","clear",Grid<$CT$>::_W_4); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","copyFrom",Grid<$CT$>::_W_5); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","add",Grid<$CT$>::_W_6); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","sub",Grid<$CT$>::_W_7); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setConst",Grid<$CT$>::_W_8); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","addConst",Grid<$CT$>::_W_9); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","addScaled",Grid<$CT$>::_W_10); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","mult",Grid<$CT$>::_W_11); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","multConst",Grid<$CT$>::_W_12); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","clamp",Grid<$CT$>::_W_13); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","stomp",Grid<$CT$>::_W_14); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMaxAbs",Grid<$CT$>::_W_15); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMax",Grid<$CT$>::_W_16); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMin",Grid<$CT$>::_W_17); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getL1",Grid<$CT$>::_W_18); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getL2",Grid<$CT$>::_W_19); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBound",Grid<$CT$>::_W_20); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBoundNeumann",Grid<$CT$>::_W_21); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getDataPointer",Grid<$CT$>::_W_22); 
-+Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","printGrid",Grid<$CT$>::_W_23); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","Grid",Grid<$CT$>::_W_9); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","save",Grid<$CT$>::_W_10); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","load",Grid<$CT$>::_W_11); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","clear",Grid<$CT$>::_W_12); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","copyFrom",Grid<$CT$>::_W_13); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getGridType",Grid<$CT$>::_W_14); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","add",Grid<$CT$>::_W_15); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","sub",Grid<$CT$>::_W_16); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setConst",Grid<$CT$>::_W_17); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","addConst",Grid<$CT$>::_W_18); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","addScaled",Grid<$CT$>::_W_19); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","mult",Grid<$CT$>::_W_20); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","multConst",Grid<$CT$>::_W_21); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","clamp",Grid<$CT$>::_W_22); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","stomp",Grid<$CT$>::_W_23); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMaxAbs",Grid<$CT$>::_W_24); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMax",Grid<$CT$>::_W_25); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getMin",Grid<$CT$>::_W_26); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getL1",Grid<$CT$>::_W_27); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getL2",Grid<$CT$>::_W_28); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBound",Grid<$CT$>::_W_29); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","setBoundNeumann",Grid<$CT$>::_W_30); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","getDataPointer",Grid<$CT$>::_W_31); 
++Grid^ static const Pb::Register _R_$IDX$ ("Grid<$CT$>","printGrid",Grid<$CT$>::_W_32); 
 >Grid^int
 &static const Pb::Register _R_$IDX$ ("Grid<int>","IntGrid","");
 >Grid^Real
@@ -35,13 +51,22 @@
 +MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid","Grid<$BT$>"); template<> const char* Namify<MACGrid >::S = "MACGrid"; 
 >MACGrid^
 @MACGrid^^Grid^Vec3
-+MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid",MACGrid::_W_24); 
-+MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","setBoundMAC",MACGrid::_W_25); 
++MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","MACGrid",MACGrid::_W_33); 
++MACGrid^ static const Pb::Register _R_$IDX$ ("MACGrid","setBoundMAC",MACGrid::_W_34); 
 +FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid","Grid<$BT$>"); template<> const char* Namify<FlagGrid >::S = "FlagGrid"; 
 >FlagGrid^
 @FlagGrid^^Grid^int
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid",FlagGrid::_W_26); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_27); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_28); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_29); 
-+FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","countCells",FlagGrid::_W_30); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","FlagGrid",FlagGrid::_W_35); 
+&static const Pb::Register _R_$IDX$ ("CellType_TypeNone",0);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeFluid",1);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeObstacle",2);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeEmpty",4);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeInflow",8);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeOutflow",16);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeOpen",32);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeStick",64);
+&static const Pb::Register _R_$IDX$ ("CellType_TypeReserved",256);
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","initDomain",FlagGrid::_W_36); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","updateFromLevelset",FlagGrid::_W_37); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","fillGrid",FlagGrid::_W_38); 
++FlagGrid^ static const Pb::Register _R_$IDX$ ("FlagGrid","countCells",FlagGrid::_W_39); 

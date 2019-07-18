@@ -30,6 +30,9 @@
 #include <sstream>
 #include <cstring>
 
+#include "commonkernels.h"
+
+
 using namespace std;
 namespace Manta {
 
@@ -452,6 +455,10 @@ template <class T>  struct knGridStomp : public KernelBase {
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	knGridSafeDiv<T> (*this, a);
 	return *this;
+}
+
+template<class T> int Grid<T>::getGridType() {
+	return static_cast<int>(mType);
 }
 
 template<class T> void Grid<T>::add(const Grid<T>& a) {
@@ -920,18 +927,24 @@ static inline Real computeUvRamp(Real t) {
 }
 
  struct knResetUvGrid : public KernelBase {
- knResetUvGrid(Grid<Vec3>& target) :  KernelBase(&target,0) ,target(target)   {
+ knResetUvGrid(Grid<Vec3>& target, const Vec3* offset) :  KernelBase(&target,0) ,target(target),offset(offset)   {
  runMessage(); run(); }
-  inline void op(int i, int j, int k, Grid<Vec3>& target )  { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }   inline Grid<Vec3>& getArg0() {
+  inline void op(int i, int j, int k, Grid<Vec3>& target, const Vec3* offset )  {
+	Vec3 coord = Vec3((Real)i,(Real)j,(Real)k);
+	if (offset) coord += (*offset);
+	target(i,j,k) = coord;
+}   inline Grid<Vec3>& getArg0() {
  return target; }
- typedef Grid<Vec3> type0; void runMessage() { debMsg("Executing kernel knResetUvGrid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {
+ typedef Grid<Vec3> type0;inline const Vec3* getArg1() {
+ return offset; }
+ typedef Vec3 type1; void runMessage() { debMsg("Executing kernel knResetUvGrid ", 3); debMsg("Kernel range" <<  " x "<<  maxX  << " y "<< maxY  << " z "<< minZ<<" - "<< maxZ  << " "   , 4); }; void run() {
   const int _maxX = maxX; const int _maxY = maxY; if (maxZ > 1) {
  
 #pragma omp parallel 
  {
   
 #pragma omp for  
-  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  }
+  for (int k=minZ; k < maxZ; k++) for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target,offset);  }
  }
  else {
  const int k=0; 
@@ -939,19 +952,19 @@ static inline Real computeUvRamp(Real t) {
  {
   
 #pragma omp for  
-  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target);  }
+  for (int j=0; j < _maxY; j++) for (int i=0; i < _maxX; i++) op(i,j,k,target,offset);  }
  }
   }
- Grid<Vec3>& target;   }
+ Grid<Vec3>& target; const Vec3* offset;   }
 ;
 
 
-void resetUvGrid(Grid<Vec3> &target) {
-	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
+void resetUvGrid(Grid<Vec3> &target, const Vec3* offset=NULL) {
+	knResetUvGrid reset(target, offset); // note, llvm complains about anonymous declaration here... ?
 } static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "resetUvGrid" , !noTiming ); PyObject *_retval = 0; {
- ArgLocker _lock; Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",0,&_lock);   _retval = getPyNone(); resetUvGrid(target);  _args.check(); }
+ ArgLocker _lock; Grid<Vec3> & target = *_args.getPtr<Grid<Vec3>  >("target",0,&_lock); const Vec3* offset = _args.getPtrOpt<Vec3 >("offset",1,NULL,&_lock);   _retval = getPyNone(); resetUvGrid(target,offset);  _args.check(); }
  pbFinalizePlugin(parent,"resetUvGrid", !noTiming ); return _retval; }
  catch(std::exception& e) {
  pbSetError("resetUvGrid",e.what()); return 0; }
@@ -964,7 +977,7 @@ extern "C" {
 
 
 
-void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv) {
+void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv, const Vec3* offset=NULL) {
 	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
 
@@ -981,8 +994,8 @@ void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv) {
 	else                           uvWeight /= uvWTotal;
 
 	// check for reset
-	if( currt < lastt ) 
-		knResetUvGrid reset( uv );
+	if( currt < lastt )
+		knResetUvGrid reset(uv, offset);
 
 	// write new weight value to grid
 	uv[0] = Vec3( uvWeight, 0.,0.);
@@ -992,7 +1005,7 @@ void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv) {
 } static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "updateUvWeight" , !noTiming ); PyObject *_retval = 0; {
- ArgLocker _lock; Real resetTime = _args.get<Real >("resetTime",0,&_lock); int index = _args.get<int >("index",1,&_lock); int numUvs = _args.get<int >("numUvs",2,&_lock); Grid<Vec3> & uv = *_args.getPtr<Grid<Vec3>  >("uv",3,&_lock);   _retval = getPyNone(); updateUvWeight(resetTime,index,numUvs,uv);  _args.check(); }
+ ArgLocker _lock; Real resetTime = _args.get<Real >("resetTime",0,&_lock); int index = _args.get<int >("index",1,&_lock); int numUvs = _args.get<int >("numUvs",2,&_lock); Grid<Vec3> & uv = *_args.getPtr<Grid<Vec3>  >("uv",3,&_lock); const Vec3* offset = _args.getPtrOpt<Vec3 >("offset",4,NULL,&_lock);   _retval = getPyNone(); updateUvWeight(resetTime,index,numUvs,uv,offset);  _args.check(); }
  pbFinalizePlugin(parent,"updateUvWeight", !noTiming ); return _retval; }
  catch(std::exception& e) {
  pbSetError("updateUvWeight",e.what()); return 0; }
@@ -1494,7 +1507,7 @@ void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
 	}
 }
 
-void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
+void FlagGrid::updateFromLevelset(LevelsetGrid& levelset, LevelsetGrid* obsLevelset) {
 	FOR_IDX(*this) {
 		if (!isObstacle(idx) && !isOutflow(idx)) {
 			const Real phi = levelset[idx];
@@ -1503,8 +1516,12 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
 			mData[idx] &= ~(TypeEmpty | TypeFluid); // clear empty/fluid flags
 			mData[idx] |= (phi <= 0) ? TypeFluid : TypeEmpty; // set resepctive flag
 		}
+		if (obsLevelset && isOutflow(idx)) {
+			const Real phiObs = (*obsLevelset)[idx];
+			if (phiObs <= 0) mData[idx] = TypeObstacle; // enforce obstacle flag
+		}
 	}
-}   
+}
 
 void FlagGrid::fillGrid(int type) {
 	FOR_IDX(*this) {
@@ -1567,6 +1584,43 @@ extern "C" {
  void PbRegister_markIsolatedFluidCell() {
  KEEP_UNUSED(_RP_markIsolatedFluidCell); }
  }
+
+
+
+
+
+void copyMACData(const MACGrid &source, MACGrid &target, const FlagGrid& flags, const int flag, const int bnd) {
+	assertMsg (source.getSize().x == target.getSize().x && source.getSize().y == target.getSize().y && source.getSize().z == target.getSize().z, "different grid resolutions " << source.getSize() << " vs " << target.getSize() );
+
+	// Grid<Real> divGrid(target.getParent());
+	// DivergenceOpMAC(divGrid, target);
+	// Real fDivOrig = GridSumSqr(divGrid);
+
+	FOR_IJK_BND(target, bnd)
+	{
+		if(flags.get(i,j,k) & flag)
+		{
+			target(i,j,k) = source(i,j,k);
+		}
+	}
+
+	// DivergenceOpMAC(divGrid, target);
+	// Real fDivTransfer = GridSumSqr(divGrid);
+	// std::cout << "Divergence: " << fDivOrig << " -> " << fDivTransfer << std::endl;
+} static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "copyMACData" , !noTiming ); PyObject *_retval = 0; {
+ ArgLocker _lock; const MACGrid& source = *_args.getPtr<MACGrid >("source",0,&_lock); MACGrid& target = *_args.getPtr<MACGrid >("target",1,&_lock); const FlagGrid& flags = *_args.getPtr<FlagGrid >("flags",2,&_lock); const int flag = _args.get<int >("flag",3,&_lock); const int bnd = _args.get<int >("bnd",4,&_lock);   _retval = getPyNone(); copyMACData(source,target,flags,flag,bnd);  _args.check(); }
+ pbFinalizePlugin(parent,"copyMACData", !noTiming ); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("copyMACData",e.what()); return 0; }
+ }
+ static const Pb::Register _RP_copyMACData ("","copyMACData",_W_19); 
+extern "C" {
+ void PbRegister_copyMACData() {
+ KEEP_UNUSED(_RP_copyMACData); }
+ }
+
 
 
 

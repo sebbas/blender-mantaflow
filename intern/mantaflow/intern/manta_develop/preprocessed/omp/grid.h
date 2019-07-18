@@ -33,10 +33,11 @@
 
 namespace Manta {
 class LevelsetGrid;
-	
+
 //! Base class for all grids
 class GridBase : public PbClass {public:
-	enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
+	enum GridType {TypeNone=0,TypeReal=1,TypeInt=2,TypeVec3=4,TypeMAC=8,TypeLevelset=16,TypeFlags=32}
+;
 		
 	GridBase(FluidSolver* parent); static int _W_0 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try {
@@ -49,13 +50,45 @@ class GridBase : public PbClass {public:
 
 	
 	//! Get the grids X dimension
-	inline int getSizeX() const { return mSize.x; }
+	inline int getSizeX() const { return mSize.x; } static PyObject* _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::getSizeX" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getSizeX());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::getSizeX" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::getSizeX",e.what()); return 0; }
+ }
+
 	//! Get the grids Y dimension
-	inline int getSizeY() const { return mSize.y; }
+	inline int getSizeY() const { return mSize.y; } static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::getSizeY" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getSizeY());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::getSizeY" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::getSizeY",e.what()); return 0; }
+ }
+
 	//! Get the grids Z dimension
-	inline int getSizeZ() const { return mSize.z; }
+	inline int getSizeZ() const { return mSize.z; } static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::getSizeZ" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getSizeZ());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::getSizeZ" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::getSizeZ",e.what()); return 0; }
+ }
+
 	//! Get the grids dimensions
-	inline Vec3i getSize() const { return mSize; }
+	inline Vec3i getSize() const { return mSize; } static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::getSize" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getSize());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::getSize" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::getSize",e.what()); return 0; }
+ }
+
 	
 	//! Get Stride in X dimension
 	inline IndexInt getStrideX() const { return 1; }
@@ -82,7 +115,15 @@ class GridBase : public PbClass {public:
 	//! Get the type of grid
 	inline GridType getType() const { return mType; }
 	//! Check dimensionality
-	inline bool is3D() const { return m3D; }
+	inline bool is3D() const { return m3D; } static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::is3D" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->is3D());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::is3D" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::is3D",e.what()); return 0; }
+ }
+
 	
 	//! Get index into the data
 	inline IndexInt index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return (IndexInt)i + (IndexInt)mSize.x * j + (IndexInt)mStrideZ * k; }
@@ -90,9 +131,33 @@ class GridBase : public PbClass {public:
 	inline IndexInt index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return (IndexInt)pos.x + (IndexInt)mSize.x * pos.y + (IndexInt)mStrideZ * pos.z; }
 
 	//! grid4d compatibility functions 
-	inline bool is4D() const { return false; }
-	inline int getSizeT() const { return 1; }
-	inline int getStrideT() const { return 0; }
+	inline bool is4D() const { return false; } static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::is4D" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->is4D());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::is4D" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::is4D",e.what()); return 0; }
+ }
+
+	inline int getSizeT() const { return 1; } static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::getSizeT" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getSizeT());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::getSizeT" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::getSizeT",e.what()); return 0; }
+ }
+
+	inline int getStrideT() const { return 0; } static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); GridBase* pbo = dynamic_cast<GridBase*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "GridBase::getStrideT" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getStrideT());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"GridBase::getStrideT" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("GridBase::getStrideT",e.what()); return 0; }
+ }
+
 	inline int index(int i, int j, int k, int unused) const { return index(i,j,k); }
 	inline bool isInBounds(int i,int j, int k, int t, int bnd) const { if(t!=0) return false; return isInBounds( Vec3i(i,j,k), bnd ); }
 
@@ -110,7 +175,7 @@ protected:
 
 template<class T> class Grid : public GridBase {public:
 	//! init new grid, values are set to zero
-	Grid(FluidSolver* parent, bool show = true); static int _W_1 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Grid(FluidSolver* parent, bool show = true); static int _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try {
  PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "Grid::Grid" , !noTiming ); {
  ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); bool show = _args.getOpt<bool >("show",1,true,&_lock);  obj = new Grid(parent,show); obj->registerObject(_self, &_args); _args.check(); }
@@ -129,7 +194,7 @@ template<class T> class Grid : public GridBase {public:
 	typedef T BASETYPE;
 	typedef GridBase BASETYPE_GRID;
 	
-	void save(std::string name); static PyObject* _W_2 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void save(std::string name); static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::save" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->save(name);  pbo->_args.check(); }
@@ -138,7 +203,7 @@ template<class T> class Grid : public GridBase {public:
  pbSetError("Grid::save",e.what()); return 0; }
  }
 
-	void load(std::string name); static PyObject* _W_3 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void load(std::string name); static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::load" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; std::string name = _args.get<std::string >("name",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->load(name);  pbo->_args.check(); }
@@ -149,7 +214,7 @@ template<class T> class Grid : public GridBase {public:
 
 	
 	//! set all cells to zero
-	void clear(); static PyObject* _W_4 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void clear(); static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::clear" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock;  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clear();  pbo->_args.check(); }
@@ -202,7 +267,7 @@ template<class T> class Grid : public GridBase {public:
 	//! warning - do not use "=" for grids in python, this copies the reference! not the grid content...
 	//Grid<T>& operator=(const Grid<T>& a);
 	//! copy content from other grid (use this one instead of operator= !)
-	Grid<T>& copyFrom(const Grid<T>& a, bool copyType=true ); static PyObject* _W_5 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Grid<T>& copyFrom(const Grid<T>& a, bool copyType=true ); static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::copyFrom" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const Grid<T>& a = *_args.getPtr<Grid<T> >("a",0,&_lock); bool copyType = _args.getOpt<bool >("copyType",1,true ,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->copyFrom(a,copyType));  pbo->_args.check(); }
@@ -214,8 +279,19 @@ template<class T> class Grid : public GridBase {public:
 
 	// helper functions to work with grids in scene files 
 
+	//! get grid type
+	int getGridType(); static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+ try {
+ PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getGridType" , !noTiming); PyObject *_retval = 0; {
+ ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getGridType());  pbo->_args.check(); }
+ pbFinalizePlugin(pbo->getParent(),"Grid::getGridType" , !noTiming); return _retval; }
+ catch(std::exception& e) {
+ pbSetError("Grid::getGridType",e.what()); return 0; }
+ }
+
+
 	//! add/subtract other grid
-	void add(const Grid<T>& a); static PyObject* _W_6 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void add(const Grid<T>& a); static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::add" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const Grid<T>& a = *_args.getPtr<Grid<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->add(a);  pbo->_args.check(); }
@@ -224,7 +300,7 @@ template<class T> class Grid : public GridBase {public:
  pbSetError("Grid::add",e.what()); return 0; }
  }
 
-	void sub(const Grid<T>& a); static PyObject* _W_7 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void sub(const Grid<T>& a); static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::sub" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const Grid<T>& a = *_args.getPtr<Grid<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->sub(a);  pbo->_args.check(); }
@@ -234,7 +310,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! set all cells to constant value
-	void setConst(T s); static PyObject* _W_8 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void setConst(T s); static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::setConst" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setConst(s);  pbo->_args.check(); }
@@ -244,7 +320,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! add constant to all grid cells
-	void addConst(T s); static PyObject* _W_9 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void addConst(T s); static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::addConst" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addConst(s);  pbo->_args.check(); }
@@ -254,7 +330,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
-	void addScaled(const Grid<T>& a, const T& factor); static PyObject* _W_10 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void addScaled(const Grid<T>& a, const T& factor); static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::addScaled" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const Grid<T>& a = *_args.getPtr<Grid<T> >("a",0,&_lock); const T& factor = *_args.getPtr<T >("factor",1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->addScaled(a,factor);  pbo->_args.check(); }
@@ -264,7 +340,7 @@ template<class T> class Grid : public GridBase {public:
  }
  
 	//! multiply contents of grid
-	void mult( const Grid<T>& a); static PyObject* _W_11 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void mult( const Grid<T>& a); static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::mult" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const Grid<T>& a = *_args.getPtr<Grid<T> >("a",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->mult(a);  pbo->_args.check(); }
@@ -274,7 +350,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! multiply each cell by a constant scalar value
-	void multConst(T s); static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void multConst(T s); static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::multConst" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; T s = _args.get<T >("s",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->multConst(s);  pbo->_args.check(); }
@@ -284,7 +360,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! clamp content to range (for vec3, clamps each component separately)
-	void clamp(Real min, Real max); static PyObject* _W_13 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void clamp(Real min, Real max); static PyObject* _W_22 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::clamp" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; Real min = _args.get<Real >("min",0,&_lock); Real max = _args.get<Real >("max",1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->clamp(min,max);  pbo->_args.check(); }
@@ -294,7 +370,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! reduce small values to zero
-	void stomp(const T& threshold); static PyObject* _W_14 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void stomp(const T& threshold); static PyObject* _W_23 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::stomp" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const T& threshold = *_args.getPtr<T >("threshold",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->stomp(threshold);  pbo->_args.check(); }
@@ -306,7 +382,7 @@ template<class T> class Grid : public GridBase {public:
 	
 	// common compound operators
 	//! get absolute max value in grid 
-	Real getMaxAbs() const ; static PyObject* _W_15 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Real getMaxAbs() const ; static PyObject* _W_24 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getMaxAbs" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMaxAbs());  pbo->_args.check(); }
@@ -316,7 +392,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! get max value in grid 
-	Real getMax() const ; static PyObject* _W_16 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Real getMax() const ; static PyObject* _W_25 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getMax" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMax());  pbo->_args.check(); }
@@ -326,7 +402,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! get min value in grid 
-	Real getMin() const ; static PyObject* _W_17 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Real getMin() const ; static PyObject* _W_26 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getMin" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getMin());  pbo->_args.check(); }
@@ -336,7 +412,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! calculate L1 norm of grid content
-	Real getL1(int bnd=0); static PyObject* _W_18 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Real getL1(int bnd=0); static PyObject* _W_27 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getL1" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; int bnd = _args.getOpt<int >("bnd",0,0,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->getL1(bnd));  pbo->_args.check(); }
@@ -346,7 +422,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! calculate L2 norm of grid content
-	Real getL2(int bnd=0); static PyObject* _W_19 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	Real getL2(int bnd=0); static PyObject* _W_28 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getL2" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; int bnd = _args.getOpt<int >("bnd",0,0,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->getL2(bnd));  pbo->_args.check(); }
@@ -357,7 +433,7 @@ template<class T> class Grid : public GridBase {public:
 
 
 	//! set all boundary cells to constant value (Dirichlet)
-	void setBound(T value, int boundaryWidth=1); static PyObject* _W_20 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void setBound(T value, int boundaryWidth=1); static PyObject* _W_29 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::setBound" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; T value = _args.get<T >("value",0,&_lock); int boundaryWidth = _args.getOpt<int >("boundaryWidth",1,1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setBound(value,boundaryWidth);  pbo->_args.check(); }
@@ -367,7 +443,7 @@ template<class T> class Grid : public GridBase {public:
  }
 
 	//! set all boundary cells to last inner value (Neumann)
-	void setBoundNeumann(int boundaryWidth=1); static PyObject* _W_21 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void setBoundNeumann(int boundaryWidth=1); static PyObject* _W_30 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::setBoundNeumann" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; int boundaryWidth = _args.getOpt<int >("boundaryWidth",0,1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setBoundNeumann(boundaryWidth);  pbo->_args.check(); }
@@ -378,7 +454,7 @@ template<class T> class Grid : public GridBase {public:
 
 
 	//! get data pointer of grid
-	std::string getDataPointer(); static PyObject* _W_22 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	std::string getDataPointer(); static PyObject* _W_31 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::getDataPointer" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock;  pbo->_args.copy(_args);  _retval = toPy(pbo->getDataPointer());  pbo->_args.check(); }
@@ -389,7 +465,7 @@ template<class T> class Grid : public GridBase {public:
 
 	
 	//! debugging helper, print grid from python. skip boundary of width bnd
-	void printGrid(int zSlice=-1, bool printIndex=false, int bnd=1); static PyObject* _W_23 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void printGrid(int zSlice=-1, bool printIndex=false, int bnd=1); static PyObject* _W_32 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); Grid* pbo = dynamic_cast<Grid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "Grid::printGrid" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; int zSlice = _args.getOpt<int >("zSlice",0,-1,&_lock); bool printIndex = _args.getOpt<bool >("printIndex",1,false,&_lock); int bnd = _args.getOpt<int >("bnd",2,1,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->printGrid(zSlice,printIndex,bnd);  pbo->_args.check(); }
@@ -430,7 +506,7 @@ public: PbArgs _args; }
 //! Special function for staggered grids
 class MACGrid : public Grid<Vec3> {public:
 	MACGrid(FluidSolver* parent, bool show=true) :Grid<Vec3>(parent,show){ 
-		mType = (GridType)(TypeMAC | TypeVec3); } static int _W_24 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+		mType = (GridType)(TypeMAC | TypeVec3); } static int _W_33 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try {
  PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "MACGrid::MACGrid" , !noTiming ); {
  ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); bool show = _args.getOpt<bool >("show",1,true,&_lock);  obj = new MACGrid(parent,show); obj->registerObject(_self, &_args); _args.check(); }
@@ -470,7 +546,7 @@ class MACGrid : public Grid<Vec3> {public:
 
 	//! set all boundary cells of a MAC grid to certain value (Dirchlet). Respects staggered grid locations
 	//! optionally, only set normal components
-	void setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly=false); static PyObject* _W_25 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly=false); static PyObject* _W_34 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); MACGrid* pbo = dynamic_cast<MACGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "MACGrid::setBoundMAC" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; Vec3 value = _args.get<Vec3 >("value",0,&_lock); int boundaryWidth = _args.get<int >("boundaryWidth",1,&_lock); bool normalOnly = _args.getOpt<bool >("normalOnly",2,false,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->setBoundMAC(value,boundaryWidth,normalOnly);  pbo->_args.check(); }
@@ -486,7 +562,7 @@ class MACGrid : public Grid<Vec3> {public:
 //! Special functions for FlagGrid
 class FlagGrid : public Grid<int> {public:
 	FlagGrid(FluidSolver* parent, int dim=3, bool show=true) :Grid<int>(parent,show){ 
-		mType = (GridType)(TypeFlags | TypeInt); } static int _W_26 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+		mType = (GridType)(TypeFlags | TypeInt); } static int _W_35 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  PbClass* obj = Pb::objFromPy(_self); if (obj) delete obj; try {
  PbArgs _args(_linargs, _kwds); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(0, "FlagGrid::FlagGrid" , !noTiming ); {
  ArgLocker _lock; FluidSolver* parent = _args.getPtr<FluidSolver >("parent",0,&_lock); int dim = _args.getOpt<int >("dim",1,3,&_lock); bool show = _args.getOpt<bool >("show",2,true,&_lock);  obj = new FlagGrid(parent,dim,show); obj->registerObject(_self, &_args); _args.check(); }
@@ -499,19 +575,8 @@ class FlagGrid : public Grid<int> {public:
             mType = (GridType)(TypeFlags | TypeInt); }	
 
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
-	enum CellType { 
-		TypeNone     = 0,
-		TypeFluid    = 1,
-		TypeObstacle = 2,
-		TypeEmpty    = 4,
-		TypeInflow   = 8,
-		TypeOutflow  = 16,
-		TypeOpen     = 32,
-		TypeStick    = 64,
-		// internal use only, for fast marching
-		TypeReserved = 256,
-		// 2^10 - 2^14 reserved for moving obstacles
-	};
+	enum CellType {TypeNone=0,TypeFluid=1,TypeObstacle=2,TypeEmpty=4,TypeInflow=8,TypeOutflow=16,TypeOpen=32,TypeStick=64,TypeReserved=256}
+;
 		
 	//! access for particles
 	inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
@@ -559,7 +624,7 @@ class FlagGrid : public Grid<int> {public:
 
 
 
-void initDomain( const int &boundaryWidth = 0 , const std::string &wall = "xXyYzZ" , const std::string &open = "      " , const std::string &inflow = "      " , const std::string &outflow = "      " , Grid<Real>* phiWalls = 0x00 ); static PyObject* _W_27 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+void initDomain( const int &boundaryWidth = 0 , const std::string &wall = "xXyYzZ" , const std::string &open = "      " , const std::string &inflow = "      " , const std::string &outflow = "      " , Grid<Real>* phiWalls = 0x00 ); static PyObject* _W_36 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FlagGrid* pbo = dynamic_cast<FlagGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "FlagGrid::initDomain" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; const int& boundaryWidth = _args.getOpt<int >("boundaryWidth",0,0 ,&_lock); const std::string& wall = _args.getOpt<std::string >("wall",1,"xXyYzZ" ,&_lock); const std::string& open = _args.getOpt<std::string >("open",2,"      " ,&_lock); const std::string& inflow = _args.getOpt<std::string >("inflow",3,"      " ,&_lock); const std::string& outflow = _args.getOpt<std::string >("outflow",4,"      " ,&_lock); Grid<Real>* phiWalls = _args.getPtrOpt<Grid<Real> >("phiWalls",5,0x00 ,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->initDomain(boundaryWidth,wall,open,inflow,outflow,phiWalls);  pbo->_args.check(); }
@@ -572,17 +637,17 @@ void initDomain( const int &boundaryWidth = 0 , const std::string &wall = "xXyYz
 	void initBoundaries( const int &boundaryWidth, const int *types );
 
 	//! set fluid flags inside levelset (liquids)
-	void updateFromLevelset(LevelsetGrid& levelset); static PyObject* _W_28 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void updateFromLevelset(LevelsetGrid& levelset, LevelsetGrid* obsLevelset=NULL); static PyObject* _W_37 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FlagGrid* pbo = dynamic_cast<FlagGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "FlagGrid::updateFromLevelset" , !noTiming); PyObject *_retval = 0; {
- ArgLocker _lock; LevelsetGrid& levelset = *_args.getPtr<LevelsetGrid >("levelset",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->updateFromLevelset(levelset);  pbo->_args.check(); }
+ ArgLocker _lock; LevelsetGrid& levelset = *_args.getPtr<LevelsetGrid >("levelset",0,&_lock); LevelsetGrid* obsLevelset = _args.getPtrOpt<LevelsetGrid >("obsLevelset",1,NULL,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->updateFromLevelset(levelset,obsLevelset);  pbo->_args.check(); }
  pbFinalizePlugin(pbo->getParent(),"FlagGrid::updateFromLevelset" , !noTiming); return _retval; }
  catch(std::exception& e) {
  pbSetError("FlagGrid::updateFromLevelset",e.what()); return 0; }
  }
-    
+
 	//! set all cells (except obs/in/outflow) to type (fluid by default)
-	void fillGrid(int type=TypeFluid); static PyObject* _W_29 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void fillGrid(int type=TypeFluid); static PyObject* _W_38 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FlagGrid* pbo = dynamic_cast<FlagGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "FlagGrid::fillGrid" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; int type = _args.getOpt<int >("type",0,TypeFluid,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->fillGrid(type);  pbo->_args.check(); }
@@ -594,7 +659,7 @@ void initDomain( const int &boundaryWidth = 0 , const std::string &wall = "xXyYz
  	//! count no. of cells matching flags via "AND"
 	//! warning for large grids! only regular int returned (due to python interface)
 	//! optionally creates mask in RealGrid (1 where flag matches, 0 otherwise)
-	int countCells(int flag, int bnd=0, Grid<Real>* mask=NULL); static PyObject* _W_30 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	int countCells(int flag, int bnd=0, Grid<Real>* mask=NULL); static PyObject* _W_39 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FlagGrid* pbo = dynamic_cast<FlagGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "FlagGrid::countCells" , !noTiming); PyObject *_retval = 0; {
  ArgLocker _lock; int flag = _args.get<int >("flag",0,&_lock); int bnd = _args.getOpt<int >("bnd",1,0,&_lock); Grid<Real>* mask = _args.getPtrOpt<Grid<Real> >("mask",2,NULL,&_lock);  pbo->_args.copy(_args);  _retval = toPy(pbo->countCells(flag,bnd,mask));  pbo->_args.check(); }

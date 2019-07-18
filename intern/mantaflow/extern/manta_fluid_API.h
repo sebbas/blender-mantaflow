@@ -117,8 +117,7 @@ void manta_smoke_export(struct MANTA *smoke,
                   float **g,
                   float **b,
                   int **obstacles,
-                  float **shadow,
-                  float **phiin);
+                  float **shadow);
 void manta_smoke_turbulence_export(struct MANTA *smoke,
                              float **dens,
                              float **react,

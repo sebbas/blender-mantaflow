@@ -87,16 +87,18 @@ PyArrayContainer::ExtractData(void *_pParentPyArray)
 // ------------------------------------------------------------------------
 // Conversion Functions
 // ------------------------------------------------------------------------
+
 template<>
 PyArrayContainer
 fromPy<PyArrayContainer>(PyObject *obj)
 {
 	if(PyArray_API == NULL) {
-#if PY_VERSION_HEX >= 0x03000000
-		import_array(); // python 3 uses the return value
-#else
+		// python 3 uses the return value
+#		if PY_VERSION_HEX >= 0x03000000
+		import_array();
+#		else
 		initNumpy();
-#endif
+#		endif
 	}
 
 	if(!PyArray_Check(obj)) {
