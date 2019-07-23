@@ -637,15 +637,15 @@ void initDomain( const int &boundaryWidth = 0 , const std::string &wall = "xXyYz
 	void initBoundaries( const int &boundaryWidth, const int *types );
 
 	//! set fluid flags inside levelset (liquids)
-	void updateFromLevelset(LevelsetGrid& levelset, LevelsetGrid* obsLevelset=NULL); static PyObject* _W_37 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+	void updateFromLevelset(LevelsetGrid& levelset); static PyObject* _W_37 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FlagGrid* pbo = dynamic_cast<FlagGrid*>(Pb::objFromPy(_self)); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(pbo->getParent(), "FlagGrid::updateFromLevelset" , !noTiming); PyObject *_retval = 0; {
- ArgLocker _lock; LevelsetGrid& levelset = *_args.getPtr<LevelsetGrid >("levelset",0,&_lock); LevelsetGrid* obsLevelset = _args.getPtrOpt<LevelsetGrid >("obsLevelset",1,NULL,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->updateFromLevelset(levelset,obsLevelset);  pbo->_args.check(); }
+ ArgLocker _lock; LevelsetGrid& levelset = *_args.getPtr<LevelsetGrid >("levelset",0,&_lock);  pbo->_args.copy(_args);  _retval = getPyNone(); pbo->updateFromLevelset(levelset);  pbo->_args.check(); }
  pbFinalizePlugin(pbo->getParent(),"FlagGrid::updateFromLevelset" , !noTiming); return _retval; }
  catch(std::exception& e) {
  pbSetError("FlagGrid::updateFromLevelset",e.what()); return 0; }
  }
-
+    
 	//! set all cells (except obs/in/outflow) to type (fluid by default)
 	void fillGrid(int type=TypeFluid); static PyObject* _W_38 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {

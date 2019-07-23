@@ -61,7 +61,6 @@ const std::string smoke_wavelet_noise =
     "\n\
 # wavelet noise params\n\
 wltnoise_sn$ID$.posScale = vec3(int($BASE_RESX$), int($BASE_RESY$), int($BASE_RESZ$)) * (1. / $NOISE_POSSCALE$)\n\
-mantaMsg('wltnoise_sn$ID$.posScale: (' + str(wltnoise_sn$ID$.posScale.x) + ', ' + str(wltnoise_sn$ID$.posScale.y) + ', ' + str(wltnoise_sn$ID$.posScale.z) + ')')\n\
 wltnoise_sn$ID$.timeAnim = $NOISE_TIMEANIM$\n";
 
 const std::string smoke_with_heat =

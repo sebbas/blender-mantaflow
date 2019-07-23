@@ -1399,7 +1399,7 @@ void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
 	}
 }
 
-void FlagGrid::updateFromLevelset(LevelsetGrid& levelset, LevelsetGrid* obsLevelset) {
+void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
 	FOR_IDX(*this) {
 		if (!isObstacle(idx) && !isOutflow(idx)) {
 			const Real phi = levelset[idx];
@@ -1408,12 +1408,8 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset, LevelsetGrid* obsLevel
 			mData[idx] &= ~(TypeEmpty | TypeFluid); // clear empty/fluid flags
 			mData[idx] |= (phi <= 0) ? TypeFluid : TypeEmpty; // set resepctive flag
 		}
-		if (obsLevelset && isOutflow(idx)) {
-			const Real phiObs = (*obsLevelset)[idx];
-			if (phiObs <= 0) mData[idx] = TypeObstacle; // enforce obstacle flag
-		}
 	}
-}
+}   
 
 void FlagGrid::fillGrid(int type) {
 	FOR_IDX(*this) {

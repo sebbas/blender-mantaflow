@@ -27,12 +27,8 @@
 #include "commonkernels.h"
 #include "particle.h"
 #include "noisefield.h"
-#include "mesh.h"
-
-// disable saving projected images as ppms in blender
-#if BLENDER!=1
 #include "simpleimage.h"
-#endif
+#include "mesh.h"
 
 using namespace std;
 
@@ -592,20 +588,17 @@ extern "C" {
 
 
 
-#if BLENDER!=1
+
 // from simpleimage.cpp
-void projectImg(SimpleImage& img, const Grid<Real>& val, int shadeMode = 0, Real scale = 1.);
-#endif
+void projectImg( SimpleImage& img, const Grid<Real>& val, int shadeMode=0, Real scale=1.);
 
 //! output shaded (all 3 axes at once for 3D)
 //! shading modes: 0 smoke, 1 surfaces
 
 void projectPpmFull( const Grid<Real>& val, string name, int shadeMode=0, Real scale=1.) {
-	#if BLENDER!=1
 	SimpleImage img;
 	projectImg( img, val, shadeMode, scale );
 	img.writePpm( name );
-	#endif
 } static PyObject* _W_12 (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
  try {
  PbArgs _args(_linargs, _kwds); FluidSolver *parent = _args.obtainParent(); bool noTiming = _args.getOpt<bool>("notiming", -1, 0); pbPreparePlugin(parent, "projectPpmFull" , !noTiming ); PyObject *_retval = 0; {

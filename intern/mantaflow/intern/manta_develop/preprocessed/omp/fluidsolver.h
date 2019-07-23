@@ -57,10 +57,9 @@ class FluidSolver : public PbClass {public:
  pbSetError("FluidSolver::getGridSize",e.what()); return 0; }
  }
 
-	inline Real  getDt()       { return mDt; }
-	inline Real  getDx()       { return 1.0 / mGridSize.max(); }
-	inline Real  getTime()     { return mTimeTotal; }
-	inline Real  getFrameLength() { return mFrameLength; }
+	inline Real  getDt() const      { return mDt; }
+	inline Real  getDx() const      { return 1.0 / mGridSize.max(); }
+	inline Real  getTime() const    { return mTimeTotal; }
 
 	//! Check dimensionality
 	inline bool is2D() const { return mDim==2; }
@@ -151,23 +150,18 @@ class FluidSolver : public PbClass {public:
  static int _SET_mFrameLength(PyObject* self, PyObject* val, void* cl) {
  FluidSolver* pbo = dynamic_cast<FluidSolver*>(Pb::objFromPy(self)); pbo->mFrameLength = fromPy<Real  >(val); return 0; }
 
-#ifdef BLENDER
-	//! Blender needs access in order to restore value in new solver object
+
+	//! Per frame duration. Blender needs access in order to restore value in new solver object
 	Real mTimePerFrame;static PyObject* _GET_mTimePerFrame(PyObject* self, void* cl) {
  FluidSolver* pbo = dynamic_cast<FluidSolver*>(Pb::objFromPy(self)); return toPy(pbo->mTimePerFrame); }
  static int _SET_mTimePerFrame(PyObject* self, PyObject* val, void* cl) {
  FluidSolver* pbo = dynamic_cast<FluidSolver*>(Pb::objFromPy(self)); pbo->mTimePerFrame = fromPy<Real  >(val); return 0; }
 
-#endif
 
 protected:
 	Vec3i     mGridSize;
 	const int mDim;
 	bool      mLockDt;
-#ifndef BLENDER
-	//! Blender needs public access to this field, see above
-	Real      mTimePerFrame;
-#endif
 
 	//! subclass for managing grid memory
 	//! stored as a stack to allow fast allocation
