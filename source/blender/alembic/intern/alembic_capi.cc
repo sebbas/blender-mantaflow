@@ -19,7 +19,6 @@
  */
 
 #include "../ABC_alembic.h"
-#include <boost/foreach.hpp>
 
 #include <Alembic/AbcMaterial/IMaterial.h>
 
@@ -567,11 +566,10 @@ static std::pair<bool, AbcObjectReader *> visit_object(
 
     /* We can now assign this reader as parent for our children. */
     if (nonclaiming_child_readers.size() + assign_as_parent.size() > 0) {
-      /* TODO: When we only support C++11, use for (a: b) instead. */
-      BOOST_FOREACH (AbcObjectReader *child_reader, nonclaiming_child_readers) {
+      for (AbcObjectReader *child_reader : nonclaiming_child_readers) {
         child_reader->parent_reader = reader;
       }
-      BOOST_FOREACH (AbcObjectReader *child_reader, assign_as_parent) {
+      for (AbcObjectReader *child_reader : assign_as_parent) {
         child_reader->parent_reader = reader;
       }
     }
@@ -582,14 +580,14 @@ static std::pair<bool, AbcObjectReader *> visit_object(
        * our non-claiming children. Since all claiming children share
        * the same XForm, it doesn't really matter which one we pick. */
       AbcObjectReader *claiming_child = claiming_child_readers[0];
-      BOOST_FOREACH (AbcObjectReader *child_reader, nonclaiming_child_readers) {
+      for (AbcObjectReader *child_reader : nonclaiming_child_readers) {
         child_reader->parent_reader = claiming_child;
       }
-      BOOST_FOREACH (AbcObjectReader *child_reader, assign_as_parent) {
+      for (AbcObjectReader *child_reader : assign_as_parent) {
         child_reader->parent_reader = claiming_child;
       }
       /* Claiming children should have our parent set as their parent. */
-      BOOST_FOREACH (AbcObjectReader *child_reader, claiming_child_readers) {
+      for (AbcObjectReader *child_reader : claiming_child_readers) {
         r_assign_as_parent.push_back(child_reader);
       }
     }
@@ -597,13 +595,13 @@ static std::pair<bool, AbcObjectReader *> visit_object(
       /* This object isn't claimed by any child, and didn't produce
        * a reader. Odd situation, could be the top Alembic object, or
        * an unsupported Alembic schema. Delegate to our parent. */
-      BOOST_FOREACH (AbcObjectReader *child_reader, claiming_child_readers) {
+      for (AbcObjectReader *child_reader : claiming_child_readers) {
         r_assign_as_parent.push_back(child_reader);
       }
-      BOOST_FOREACH (AbcObjectReader *child_reader, nonclaiming_child_readers) {
+      for (AbcObjectReader *child_reader : nonclaiming_child_readers) {
         r_assign_as_parent.push_back(child_reader);
       }
-      BOOST_FOREACH (AbcObjectReader *child_reader, assign_as_parent) {
+      for (AbcObjectReader *child_reader : assign_as_parent) {
         r_assign_as_parent.push_back(child_reader);
       }
     }
@@ -782,7 +780,7 @@ static void import_endjob(void *user_data)
 
   std::vector<AbcObjectReader *>::iterator iter;
 
-  /* Delete objects on cancelation. */
+  /* Delete objects on cancellation. */
   if (data->was_cancelled) {
     for (iter = data->readers.begin(); iter != data->readers.end(); ++iter) {
       Object *ob = (*iter)->object();
@@ -939,12 +937,7 @@ void ABC_get_transform(CacheReader *reader, float r_mat[4][4], float time, float
 
 /* ************************************************************************** */
 
-Mesh *ABC_read_mesh(CacheReader *reader,
-                    Object *ob,
-                    Mesh *existing_mesh,
-                    const float time,
-                    const char **err_str,
-                    int read_flag)
+static AbcObjectReader *get_abc_reader(CacheReader *reader, Object *ob, const char **err_str)
 {
   AbcObjectReader *abc_reader = reinterpret_cast<AbcObjectReader *>(reader);
   IObject iobject = abc_reader->iobject();
@@ -960,10 +953,42 @@ Mesh *ABC_read_mesh(CacheReader *reader,
     return NULL;
   }
 
+  return abc_reader;
+}
+
+static ISampleSelector sample_selector_for_time(float time)
+{
   /* kFloorIndex is used to be compatible with non-interpolating
    * properties; they use the floor. */
-  ISampleSelector sample_sel(time, ISampleSelector::kFloorIndex);
+  return ISampleSelector(time, ISampleSelector::kFloorIndex);
+}
+
+Mesh *ABC_read_mesh(CacheReader *reader,
+                    Object *ob,
+                    Mesh *existing_mesh,
+                    const float time,
+                    const char **err_str,
+                    int read_flag)
+{
+  AbcObjectReader *abc_reader = get_abc_reader(reader, ob, err_str);
+  if (abc_reader == NULL) {
+    return NULL;
+  }
+
+  ISampleSelector sample_sel = sample_selector_for_time(time);
   return abc_reader->read_mesh(existing_mesh, sample_sel, read_flag, err_str);
+}
+
+bool ABC_mesh_topology_changed(
+    CacheReader *reader, Object *ob, Mesh *existing_mesh, const float time, const char **err_str)
+{
+  AbcObjectReader *abc_reader = get_abc_reader(reader, ob, err_str);
+  if (abc_reader == NULL) {
+    return NULL;
+  }
+
+  ISampleSelector sample_sel = sample_selector_for_time(time);
+  return abc_reader->topology_changed(existing_mesh, sample_sel);
 }
 
 /* ************************************************************************** */

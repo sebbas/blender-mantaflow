@@ -131,8 +131,8 @@ if(MSVC_CLANG) # Clangs version of cl doesn't support all flags
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference ")
   set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /nologo /J /Gd /MP /EHsc")
-  set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /nologo /J /Gd /MP")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /nologo /J /Gd /MP /EHsc /bigobj")
+  set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /nologo /J /Gd /MP /bigobj")
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
@@ -143,6 +143,11 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MT")
 set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} /MT")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MT")
+
+#JMC is available on msvc 15.8 (1915) and up
+if(MSVC_VERSION GREATER 1914 AND NOT MSVC_CLANG)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /JMC")
+endif()
 
 set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /SUBSYSTEM:CONSOLE /STACK:2097152 /INCREMENTAL:NO ")
 set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:msvcmrt.lib /NODEFAULTLIB:msvcurt.lib /NODEFAULTLIB:msvcrtd.lib ")
@@ -166,8 +171,7 @@ if(NOT DEFINED LIBDIR)
     message(STATUS "64 bit compiler detected.")
     set(LIBDIR_BASE "win64")
   else()
-    message(STATUS "32 bit compiler detected.")
-    set(LIBDIR_BASE "windows")
+    message(FATAL_ERROR "32 bit compiler detected, blender no longer provides pre-build libraries for 32 bit windows, please set the LIBDIR cmake variable to your own library folder")
   endif()
   # Can be 1910..1912
   if(MSVC_VERSION GREATER 1919)
@@ -343,15 +347,13 @@ if(WITH_PYTHON)
   set(PYTHON_VERSION 3.7) # CACHE STRING)
 
   string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
-  # Use shared libs for vc2008 and vc2010 until we actually have vc2010 libs
-  set(PYTHON_LIBRARY ${LIBDIR}/python/lib/python${_PYTHON_VERSION_NO_DOTS}.lib)
-  set(PYTHON_LIBRARY_DEBUG ${LIBDIR}/python/lib/python${_PYTHON_VERSION_NO_DOTS}_d.lib)
+  set(PYTHON_LIBRARY ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/libs/python${_PYTHON_VERSION_NO_DOTS}.lib)
+  set(PYTHON_LIBRARY_DEBUG ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/libs/python${_PYTHON_VERSION_NO_DOTS}_d.lib)
 
+  set(PYTHON_INCLUDE_DIR ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/include)
+  set(PYTHON_NUMPY_INCLUDE_DIRS ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/lib/site-packages/numpy/core/include)
+  set(NUMPY_FOUND On)
   unset(_PYTHON_VERSION_NO_DOTS)
-
-  # Shared includes for both vc2008 and vc2010
-  set(PYTHON_INCLUDE_DIR ${LIBDIR}/python/include/python${PYTHON_VERSION})
-
   # uncached vars
   set(PYTHON_INCLUDE_DIRS "${PYTHON_INCLUDE_DIR}")
   set(PYTHON_LIBRARIES debug "${PYTHON_LIBRARY_DEBUG}" optimized "${PYTHON_LIBRARY}" )
@@ -381,9 +383,6 @@ if(WITH_BOOST)
     if(CMAKE_CL_64)
       set(BOOST_POSTFIX "vc140-mt-s-x64-1_68.lib")
       set(BOOST_DEBUG_POSTFIX "vc140-mt-sgd-x64-1_68.lib")
-    else()
-      set(BOOST_POSTFIX "vc140-mt-s-x32-1_68.lib")
-      set(BOOST_DEBUG_POSTFIX "vc140-mt-sgd-x32-1_68.lib")
     endif()
     set(BOOST_LIBRARIES
       optimized ${BOOST_LIBPATH}/libboost_date_time-${BOOST_POSTFIX}
@@ -419,7 +418,7 @@ endif()
 
 if(WITH_OPENIMAGEIO)
   windows_find_package(OpenImageIO)
-  set(OPENIMAGEIO ${LIBDIR}/openimageio)
+  set(OPENIMAGEIO ${LIBDIR}/OpenImageIO)
   set(OPENIMAGEIO_LIBPATH ${OPENIMAGEIO}/lib)
   set(OPENIMAGEIO_INCLUDE_DIRS ${OPENIMAGEIO}/include)
   set(OIIO_OPTIMIZED optimized ${OPENIMAGEIO_LIBPATH}/OpenImageIO.lib optimized ${OPENIMAGEIO_LIBPATH}/OpenImageIO_Util.lib)
@@ -460,14 +459,14 @@ if(WITH_LLVM)
 endif()
 
 if(WITH_OPENCOLORIO)
-  set(OPENCOLORIO ${LIBDIR}/opencolorio)
+  set(OPENCOLORIO ${LIBDIR}/OpenColorIO)
   set(OPENCOLORIO_INCLUDE_DIRS ${OPENCOLORIO}/include)
-  set(OPENCOLORIO_LIBPATH ${LIBDIR}/opencolorio/lib)
+  set(OPENCOLORIO_LIBPATH ${OPENCOLORIO}/lib)
   set(OPENCOLORIO_LIBRARIES
     optimized ${OPENCOLORIO_LIBPATH}/OpenColorIO.lib
     optimized ${OPENCOLORIO_LIBPATH}/tinyxml.lib
     optimized ${OPENCOLORIO_LIBPATH}/libyaml-cpp.lib
-    debug ${OPENCOLORIO_LIBPATH}/OpenColorIO_d.lib
+    debug ${OPENCOLORIO_LIBPATH}/OpencolorIO_d.lib
     debug ${OPENCOLORIO_LIBPATH}/tinyxml_d.lib
     debug ${OPENCOLORIO_LIBPATH}/libyaml-cpp_d.lib
   )
@@ -478,11 +477,24 @@ if(WITH_OPENVDB)
   set(BLOSC_LIBRARIES optimized ${LIBDIR}/blosc/lib/libblosc.lib debug ${LIBDIR}/blosc/lib/libblosc_d.lib)
   set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
   set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
-  set(OPENVDB ${LIBDIR}/openvdb)
-  set(OPENVDB_LIBPATH ${LIBDIR}/openvdb/lib)
+  set(OPENVDB ${LIBDIR}/openVDB)
+  set(OPENVDB_LIBPATH ${OPENVDB}/lib)
   set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include ${TBB_INCLUDE_DIR})
   set(OPENVDB_LIBRARIES optimized ${OPENVDB_LIBPATH}/openvdb.lib debug ${OPENVDB_LIBPATH}/openvdb_d.lib ${TBB_LIBRARIES} ${BLOSC_LIBRARIES})
   set(OPENVDB_DEFINITIONS -DNOMINMAX)
+endif()
+
+if(WITH_OPENIMAGEDENOISE)
+  set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
+  set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
+  set(OPENIMAGEDENOISE ${LIBDIR}/OpenImageDenoise)
+  set(OPENIMAGEDENOISE_LIBPATH ${LIBDIR}/OpenImageDenoise/lib)
+  set(OPENIMAGEDENOISE_INCLUDE_DIRS ${OPENIMAGEDENOISE}/include ${TBB_INCLUDE_DIR})
+  set(OPENIMAGEDENOISE_LIBRARIES
+    optimized ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise.lib ${OPENIMAGEDENOISE_LIBPATH}/common.lib ${OPENIMAGEDENOISE_LIBPATH}/mkldnn.lib
+    debug ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise_d.lib ${OPENIMAGEDENOISE_LIBPATH}/common_d.lib ${OPENIMAGEDENOISE_LIBPATH}/mkldnn_d.lib
+    ${TBB_LIBRARIES})
+  set(OPENIMAGEDENOISE_DEFINITIONS)
 endif()
 
 if(WITH_ALEMBIC)
@@ -490,7 +502,7 @@ if(WITH_ALEMBIC)
   set(ALEMBIC_INCLUDE_DIR ${ALEMBIC}/include)
   set(ALEMBIC_INCLUDE_DIRS ${ALEMBIC_INCLUDE_DIR})
   set(ALEMBIC_LIBPATH ${ALEMBIC}/lib)
-  set(ALEMBIC_LIBRARIES optimized ${ALEMBIC}/lib/alembic.lib debug ${ALEMBIC}/lib/alembic_d.lib)
+  set(ALEMBIC_LIBRARIES optimized ${ALEMBIC}/lib/Alembic.lib debug ${ALEMBIC}/lib/Alembic_d.lib)
   set(ALEMBIC_FOUND 1)
 endif()
 

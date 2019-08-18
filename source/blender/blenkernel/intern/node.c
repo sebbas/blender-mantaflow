@@ -2799,6 +2799,16 @@ int nodeSocketIsHidden(bNodeSocket *sock)
   return ((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0);
 }
 
+void nodeSetSocketAvailability(bNodeSocket *sock, bool is_available)
+{
+  if (is_available) {
+    sock->flag &= ~SOCK_UNAVAIL;
+  }
+  else {
+    sock->flag |= SOCK_UNAVAIL;
+  }
+}
+
 /* ************** Node Clipboard *********** */
 
 #define USE_NODE_CB_VALIDATE
@@ -3779,6 +3789,7 @@ static void registerCompositNodes(void)
   register_node_type_cmp_despeckle();
   register_node_type_cmp_defocus();
   register_node_type_cmp_sunbeams();
+  register_node_type_cmp_denoise();
 
   register_node_type_cmp_valtorgb();
   register_node_type_cmp_rgbtobw();
@@ -3856,6 +3867,8 @@ static void registerShaderNodes(void)
   register_node_type_sh_mapping();
   register_node_type_sh_curve_vec();
   register_node_type_sh_curve_rgb();
+  register_node_type_sh_map_range();
+  register_node_type_sh_clamp();
   register_node_type_sh_math();
   register_node_type_sh_vect_math();
   register_node_type_sh_vect_transform();

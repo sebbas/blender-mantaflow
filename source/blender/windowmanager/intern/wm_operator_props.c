@@ -340,8 +340,11 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
  */
 void WM_operator_properties_use_cursor_init(wmOperatorType *ot)
 {
-  PropertyRNA *prop = RNA_def_boolean(
-      ot->srna, "use_cursor_init", true, "Cursor Init", "Use initial cursor position");
+  PropertyRNA *prop = RNA_def_boolean(ot->srna,
+                                      "use_cursor_init",
+                                      true,
+                                      "Use Mouse Position",
+                                      "Allow the initial mouse position to be used");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 }
 
@@ -509,8 +512,9 @@ void WM_operator_properties_checker_interval_from_op(struct wmOperator *op,
 
   op_params->nth = nth;
   op_params->skip = skip;
-  op_params->offset = mod_i(offset,
-                            nth + skip); /* so input of offset zero ends up being (nth - 1) */
+
+  /* So input of offset zero ends up being (nth - 1). */
+  op_params->offset = mod_i(offset, nth + skip);
 }
 
 bool WM_operator_properties_checker_interval_test(const struct CheckerIntervalParams *op_params,

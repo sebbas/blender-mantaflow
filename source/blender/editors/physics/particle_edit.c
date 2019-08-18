@@ -252,7 +252,7 @@ static void pe_update_hair_particle_edit_pointers(PTCacheEdit *edit)
 
 /* always gets at least the first particlesystem even if PSYS_CURRENT flag is not set
  *
- * note: this function runs on poll, therefor it can runs many times a second
+ * note: this function runs on poll, therefore it can runs many times a second
  * keep it fast! */
 static PTCacheEdit *pe_get_current(Depsgraph *depsgraph, Scene *scene, Object *ob, int create)
 {
@@ -338,7 +338,7 @@ static PTCacheEdit *pe_get_current(Depsgraph *depsgraph, Scene *scene, Object *o
   }
 
   /* Don't consider inactive or render dependency graphs, since they might be evaluated for a
-   * different number of childrem. or have different pointer to evaluated particle system or
+   * different number of children. or have different pointer to evaluated particle system or
    * modifier which will also cause troubles. */
   if (edit && DEG_is_active(depsgraph)) {
     edit->pid = *pid;
@@ -465,7 +465,7 @@ static void PE_set_data(bContext *C, PEData *data)
   data->scene = CTX_data_scene(C);
   data->view_layer = CTX_data_view_layer(C);
   data->ob = CTX_data_active_object(C);
-  data->depsgraph = CTX_data_depsgraph(C);
+  data->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   data->edit = PE_get_current(data->scene, data->ob);
 }
 
@@ -785,7 +785,7 @@ typedef struct KeyIterData {
 
 static void foreach_mouse_hit_key_iter(void *__restrict iter_data_v,
                                        const int iter,
-                                       const ParallelRangeTLS *__restrict UNUSED(tls))
+                                       const TaskParallelTLS *__restrict UNUSED(tls))
 {
   KeyIterData *iter_data = (KeyIterData *)iter_data_v;
   PEData *data = iter_data->data;
@@ -855,7 +855,7 @@ static void foreach_mouse_hit_key(PEData *data, ForHitKeyMatFunc func, int selec
   iter_data.selected = selected;
   iter_data.func = func;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, foreach_mouse_hit_key_iter, &settings);
@@ -1152,7 +1152,7 @@ typedef struct DeflectEmitterIter {
 
 static void deflect_emitter_iter(void *__restrict iter_data_v,
                                  const int iter,
-                                 const ParallelRangeTLS *__restrict UNUSED(tls))
+                                 const TaskParallelTLS *__restrict UNUSED(tls))
 {
   DeflectEmitterIter *iter_data = (DeflectEmitterIter *)iter_data_v;
   PTCacheEdit *edit = iter_data->edit;
@@ -1246,7 +1246,7 @@ static void pe_deflect_emitter(Scene *scene, Object *ob, PTCacheEdit *edit)
   iter_data.dist = dist;
   iter_data.emitterdist = pset->emitterdist;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, deflect_emitter_iter, &settings);
@@ -1258,7 +1258,7 @@ typedef struct ApplyLengthsIterData {
 
 static void apply_lengths_iter(void *__restrict iter_data_v,
                                const int iter,
-                               const ParallelRangeTLS *__restrict UNUSED(tls))
+                               const TaskParallelTLS *__restrict UNUSED(tls))
 {
   ApplyLengthsIterData *iter_data = (ApplyLengthsIterData *)iter_data_v;
   PTCacheEdit *edit = iter_data->edit;
@@ -1296,7 +1296,7 @@ static void PE_apply_lengths(Scene *scene, PTCacheEdit *edit)
   ApplyLengthsIterData iter_data;
   iter_data.edit = edit;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, apply_lengths_iter, &settings);
@@ -1309,7 +1309,7 @@ typedef struct IterateLengthsIterData {
 
 static void iterate_lengths_iter(void *__restrict iter_data_v,
                                  const int iter,
-                                 const ParallelRangeTLS *__restrict UNUSED(tls))
+                                 const TaskParallelTLS *__restrict UNUSED(tls))
 {
   IterateLengthsIterData *iter_data = (IterateLengthsIterData *)iter_data_v;
   PTCacheEdit *edit = iter_data->edit;
@@ -1371,7 +1371,7 @@ static void pe_iterate_lengths(Scene *scene, PTCacheEdit *edit)
   iter_data.edit = edit;
   iter_data.pset = pset;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, iterate_lengths_iter, &settings);
@@ -1499,7 +1499,7 @@ static void PE_update_selection(Depsgraph *depsgraph, Scene *scene, Object *ob, 
   DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
 }
 
-void update_world_cos(Depsgraph *UNUSED(depsgraph), Object *ob, PTCacheEdit *edit)
+void update_world_cos(Object *ob, PTCacheEdit *edit)
 {
   ParticleSystem *psys = edit->psys;
   ParticleSystemModifierData *psmd_eval = edit->psmd_eval;
@@ -1619,7 +1619,7 @@ void PE_update_object(Depsgraph *depsgraph, Scene *scene, Object *ob, int usefla
     PE_apply_mirror(ob, edit->psys);
   }
   if (edit->psys) {
-    update_world_cos(depsgraph, ob, edit);
+    update_world_cos(ob, edit);
   }
   if (pset->flag & PE_AUTO_VELOCITY) {
     update_velocities(edit);
@@ -1778,7 +1778,7 @@ static bool select_action_apply(PTCacheEditPoint *point, PTCacheEditKey *key, in
 static int pe_select_all_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   PTCacheEdit *edit = PE_get_current(scene, ob);
   POINT_P;
@@ -1943,7 +1943,7 @@ void PARTICLE_OT_select_roots(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  WM_operator_properties_select_action(ot, SEL_SELECT, true);
+  WM_operator_properties_select_action(ot, SEL_SELECT, false);
 }
 
 /************************ select tip operator ************************/
@@ -2014,7 +2014,7 @@ void PARTICLE_OT_select_tips(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  WM_operator_properties_select_action(ot, SEL_SELECT, true);
+  WM_operator_properties_select_action(ot, SEL_SELECT, false);
 }
 
 /*********************** select random operator ************************/
@@ -2348,7 +2348,7 @@ static int hide_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   PTCacheEdit *edit = PE_get_current(scene, ob);
   POINT_P;
@@ -2409,7 +2409,7 @@ static int reveal_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   PTCacheEdit *edit = PE_get_current(scene, ob);
   const bool select = RNA_boolean_get(op->ptr, "select");
   POINT_P;
@@ -2709,7 +2709,7 @@ static void rekey_particle_to_time(
 
   psys = edit->psys;
 
-  sim.depsgraph = CTX_data_depsgraph(C);
+  sim.depsgraph = CTX_data_depsgraph_pointer(C);
   sim.scene = scene;
   sim.ob = ob;
   sim.psys = psys;
@@ -3519,7 +3519,7 @@ static int mirror_exec(bContext *C, wmOperator *UNUSED(op))
 
   PE_mirror_x(scene, ob, 0);
 
-  update_world_cos(CTX_data_depsgraph(C), ob, edit);
+  update_world_cos(ob, edit);
   WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_EDITED, ob);
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
@@ -4116,7 +4116,7 @@ typedef struct BrushAddCountIterTLSData {
 
 static void brush_add_count_iter(void *__restrict iter_data_v,
                                  const int iter,
-                                 const ParallelRangeTLS *__restrict tls_v)
+                                 const TaskParallelTLS *__restrict tls_v)
 {
   BrushAddCountIterData *iter_data = (BrushAddCountIterData *)iter_data_v;
   Depsgraph *depsgraph = iter_data->depsgraph;
@@ -4211,7 +4211,7 @@ static void brush_add_count_iter_finalize(void *__restrict userdata_v,
 
 static int brush_add(const bContext *C, PEData *data, short number)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = data->scene;
   Object *ob = data->ob;
   Mesh *mesh;
@@ -4272,7 +4272,7 @@ static int brush_add(const bContext *C, PEData *data, short number)
 
   BrushAddCountIterTLSData tls = {NULL};
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   settings.userdata_chunk = &tls;
@@ -4542,7 +4542,7 @@ static int brush_edit_init(bContext *C, wmOperator *op)
 static void brush_edit_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
 {
   BrushEdit *bedit = op->customdata;
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = bedit->scene;
   Object *ob = bedit->ob;
   PTCacheEdit *edit = bedit->edit;
@@ -4747,7 +4747,7 @@ static void brush_edit_apply(bContext *C, wmOperator *op, PointerRNA *itemptr)
           PE_mirror_x(scene, ob, 1);
         }
 
-        update_world_cos(depsgraph, ob, edit);
+        update_world_cos(ob, edit);
         psys_free_path_cache(NULL, edit);
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       }
@@ -4993,7 +4993,6 @@ static void shape_cut(PEData *data, int pa_index)
 
 static int shape_cut_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   ParticleEditSettings *pset = PE_settings(scene);
@@ -5032,7 +5031,7 @@ static int shape_cut_exec(bContext *C, wmOperator *UNUSED(op))
     recalc_lengths(edit);
 
     if (removed) {
-      update_world_cos(depsgraph, ob, edit);
+      update_world_cos(ob, edit);
       psys_free_path_cache(NULL, edit);
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
@@ -5203,7 +5202,7 @@ void PE_create_particle_edit(
         }
         pa++;
       }
-      update_world_cos(depsgraph, ob, edit);
+      update_world_cos(ob, edit);
     }
     else {
       PTCacheMem *pm;
@@ -5295,7 +5294,7 @@ static void free_all_psys_edit(Object *object)
 static int particle_edit_toggle_exec(bContext *C, wmOperator *op)
 {
   struct wmMsgBus *mbus = CTX_wm_message_bus(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   const int mode_flag = OB_MODE_PARTICLE_EDIT;
@@ -5496,7 +5495,7 @@ static int unify_length_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   PTCacheEdit *edit = PE_get_current(scene, ob);
   float average_length = calculate_average_length(edit);

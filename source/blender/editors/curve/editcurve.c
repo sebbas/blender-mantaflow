@@ -1399,8 +1399,12 @@ static int separate_exec(bContext *C, wmOperator *op)
     }
 
     /* 2. Duplicate the object and data. */
-    newbase = ED_object_add_duplicate(
-        bmain, scene, view_layer, oldbase, 0); /* 0 = fully linked. */
+    newbase = ED_object_add_duplicate(bmain,
+                                      scene,
+                                      view_layer,
+                                      oldbase,
+                                      /* 0 = fully linked. */
+                                      0);
     DEG_relations_tag_update(bmain);
 
     newob = newbase->object;
@@ -4784,7 +4788,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
           BKE_nurb_handles_calc(nu1);
           ok = true;
         }
-        else if (nu1->type == CU_NURBS && nu1->bp->f1 & SELECT &&
+        else if (ELEM(nu1->type, CU_NURBS, CU_POLY) && nu1->bp->f1 & SELECT &&
                  (nu1->bp[nu1->pntsu - 1].f1 & SELECT)) {
           nu1->flagu |= CU_NURB_CYCLIC;
           BKE_nurb_knot_calc_u(nu1);
@@ -7094,16 +7098,17 @@ static bool match_texture_space_poll(bContext *C)
 
 static int match_texture_space_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  Scene *scene = CTX_data_scene(C);
+  /* Need to ensure the dependency graph is fully evaluated, so the display list is at a correct
+   * state. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  (void)depsgraph;
+
   Object *object = CTX_data_active_object(C);
   Curve *curve = (Curve *)object->data;
   float min[3], max[3], size[3], loc[3];
   int a;
 
-  if (object->runtime.curve_cache == NULL) {
-    BKE_displist_make_curveTypes(depsgraph, scene, object, false, false);
-  }
+  BLI_assert(object->runtime.curve_cache != NULL);
 
   INIT_MINMAX(min, max);
   BKE_displist_minmax(&object->runtime.curve_cache->disp, min, max);

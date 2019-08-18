@@ -76,6 +76,10 @@ enum eGPUFXFlags;
 typedef struct ViewContext {
   struct bContext *C;
   struct Main *bmain;
+  /* Dependency graph is uses for depth drawing, viewport camera matrix access, and also some areas
+   * are re-using this to access evaluated entities.
+   *
+   * Moral of the story: assign to a fully evaluated state. */
   struct Depsgraph *depsgraph;
   struct Scene *scene;
   struct ViewLayer *view_layer;
@@ -205,6 +209,16 @@ void mesh_foreachScreenEdge(struct ViewContext *vc,
                                          int index),
                             void *userData,
                             const eV3DProjTest clip_flag);
+
+void mesh_foreachScreenEdge_clip_bb_segment(struct ViewContext *vc,
+                                            void (*func)(void *userData,
+                                                         struct BMEdge *eed,
+                                                         const float screen_co_a[2],
+                                                         const float screen_co_b[2],
+                                                         int index),
+                                            void *userData,
+                                            const eV3DProjTest clip_flag);
+
 void mesh_foreachScreenFace(
     struct ViewContext *vc,
     void (*func)(void *userData, struct BMFace *efa, const float screen_co[2], int index),
@@ -451,9 +465,6 @@ int ED_view3d_backbuf_sample_size_clamp(struct ARegion *ar, const float dist);
 
 void ED_view3d_select_id_validate(struct ViewContext *vc);
 
-uint *ED_view3d_select_id_read(int xmin, int ymin, int xmax, int ymax, uint *r_buf_len);
-uint *ED_view3d_select_id_read_rect(const struct rcti *rect, uint *r_buf_len);
-
 bool ED_view3d_autodist(struct Depsgraph *depsgraph,
                         struct ARegion *ar,
                         struct View3D *v3d,
@@ -512,26 +523,6 @@ int view3d_opengl_select(struct ViewContext *vc,
                          eV3DSelectObjectFilter select_filter);
 
 /* view3d_select.c */
-struct EDSelectID_Context;
-struct EDSelectID_Context *ED_view3d_select_id_context_create(struct ViewContext *vc,
-                                                              struct Base **bases,
-                                                              const uint bases_len,
-                                                              short select_mode);
-
-void ED_view3d_select_id_context_destroy(struct EDSelectID_Context *sel_id_ctx);
-void ED_view3d_select_id_validate_view_matrices(struct EDSelectID_Context *sel_id_ctx,
-                                                struct ViewContext *vc);
-
-uint ED_view3d_select_id_context_offset_for_object_elem(
-    const struct EDSelectID_Context *sel_id_ctx, int base_index, char elem_type);
-
-uint ED_view3d_select_id_context_elem_len(const struct EDSelectID_Context *sel_id_ctx);
-bool ED_view3d_select_id_elem_get(struct EDSelectID_Context *sel_id_ctx,
-                                  const uint sel_id,
-                                  uint *r_elem,
-                                  uint *r_base_index,
-                                  char *r_elem_type);
-
 float ED_view3d_select_dist_px(void);
 void ED_view3d_viewcontext_init(struct bContext *C, struct ViewContext *vc);
 void ED_view3d_viewcontext_init_object(struct ViewContext *vc, struct Object *obact);
@@ -584,7 +575,7 @@ void ED_view3d_draw_offscreen(struct Depsgraph *depsgraph,
                               bool do_sky,
                               bool is_persp,
                               const char *viewname,
-                              const bool do_color_managment,
+                              const bool do_color_management,
                               struct GPUOffScreen *ofs,
                               struct GPUViewport *viewport);
 void ED_view3d_draw_setup_view(struct wmWindow *win,
@@ -693,6 +684,9 @@ void ED_view3d_lock_clear(struct View3D *v3d);
 
 float ED_view3d_offset_distance(float mat[4][4], const float ofs[3], const float dist_fallback);
 void ED_view3d_distance_set(struct RegionView3D *rv3d, const float dist);
+bool ED_view3d_distance_set_from_location(struct RegionView3D *rv3d,
+                                          const float dist_co[3],
+                                          const float dist_min);
 
 float ED_scene_grid_scale(struct Scene *scene, const char **grid_unit);
 float ED_view3d_grid_scale(struct Scene *scene, struct View3D *v3d, const char **grid_unit);

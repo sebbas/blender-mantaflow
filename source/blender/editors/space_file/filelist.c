@@ -1317,6 +1317,9 @@ static void filelist_cache_init(FileListEntryCache *cache, size_t cache_size)
 
   cache->size = cache_size;
   cache->flags = FLC_IS_INIT;
+
+  /* We cannot translate from non-main thread, so init translated strings once from here. */
+  IMB_thumb_ensure_translations();
 }
 
 static void filelist_cache_free(FileListEntryCache *cache)
@@ -2914,7 +2917,7 @@ void filelist_readjob_start(FileList *filelist, const bContext *C)
   /* setup job */
   wm_job = WM_jobs_get(CTX_wm_manager(C),
                        CTX_wm_window(C),
-                       CTX_wm_area(C),
+                       CTX_data_scene(C),
                        "Listing Dirs...",
                        WM_JOB_PROGRESS,
                        WM_JOB_TYPE_FILESEL_READDIR);

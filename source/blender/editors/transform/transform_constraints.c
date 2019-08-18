@@ -57,7 +57,7 @@
 static void drawObjectConstraint(TransInfo *t);
 
 /* ************************** CONSTRAINTS ************************* */
-static void constraintAutoValues(TransInfo *t, float vec[3])
+static void constraintValuesFinal(TransInfo *t, float vec[3])
 {
   int mode = t->con.mode;
   if (mode & CON_APPLY) {
@@ -147,10 +147,10 @@ static void postConstraintChecks(TransInfo *t, float vec[3], float pvec[3])
     removeAspectRatio(t, vec);
   }
 
-  /* autovalues is operator param, use that directly but not if snapping is forced */
-  if (t->flag & T_AUTOVALUES && (t->tsnap.status & SNAP_FORCED) == 0) {
-    copy_v3_v3(vec, t->auto_values);
-    constraintAutoValues(t, vec);
+  /* If `t->values` is operator param, use that directly but not if snapping is forced */
+  if (t->flag & T_INPUT_IS_VALUES_FINAL && (t->tsnap.status & SNAP_FORCED) == 0) {
+    copy_v3_v3(vec, t->values);
+    constraintValuesFinal(t, vec);
     /* inverse transformation at the end */
   }
 
@@ -326,7 +326,7 @@ static void planeProjection(const TransInfo *t, const float in[3], float out[3])
   sub_v3_v3v3(vec, out, in);
 
   factor = dot_v3v3(vec, norm);
-  if (fabsf(factor) <= 0.001f) {
+  if (factor == 0.0f) {
     return; /* prevent divide by zero */
   }
   factor = dot_v3v3(vec, vec) / factor;

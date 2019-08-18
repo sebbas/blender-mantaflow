@@ -158,7 +158,7 @@ static void stats_object(Object *ob, SceneStats *stats, GSet *objects_gset)
       if (stats_mesheval(me_eval, is_selected, stats)) {
         break;
       }
-      ATTR_FALLTHROUGH; /* Falltrough to displist. */
+      ATTR_FALLTHROUGH; /* Fallthrough to displist. */
     }
     case OB_MBALL: {
       int totv = 0, totf = 0, tottri = 0;
@@ -574,7 +574,7 @@ void ED_info_stats_clear(ViewLayer *view_layer)
 
 const char *ED_info_stats_string(Main *bmain, Scene *scene, ViewLayer *view_layer)
 {
-  /* Loopin through dependency graph when interface is locked in not safe.
+  /* Looping through dependency graph when interface is locked in not safe.
    * Thew interface is marked as locked when jobs wants to modify the
    * dependency graph. */
   wmWindowManager *wm = bmain->wm.first;

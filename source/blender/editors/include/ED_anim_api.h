@@ -25,6 +25,7 @@
 #define __ED_ANIM_API_H__
 
 struct AnimData;
+struct Depsgraph;
 struct ID;
 struct ListBase;
 
@@ -84,8 +85,6 @@ typedef struct bAnimContext {
   /** dopesheet data for editor (or which is being used) */
   struct bDopeSheet *ads;
 
-  /** active dependency graph */
-  struct Depsgraph *depsgraph;
   /** Current Main */
   struct Main *bmain;
   /** active scene */

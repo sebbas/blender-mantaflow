@@ -866,6 +866,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
   float tfill[4];
   short sthickness;
   float ink[4];
+  const bool is_unique = (tgpw->gps != NULL);
 
   GPU_program_point_size(true);
 
@@ -1099,7 +1100,7 @@ static void gp_draw_strokes(tGPDdraw *tgpw)
       }
     }
     /* if only one stroke, exit from loop */
-    if (tgpw->gps) {
+    if (is_unique) {
       break;
     }
   }
@@ -1117,7 +1118,8 @@ void ED_gp_draw_interpolation(const bContext *C, tGPDinterpolate *tgpi, const in
   RegionView3D *rv3d = ar->regiondata;
   tGPDinterpolate_layer *tgpil;
   Object *obact = CTX_data_active_object(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  /* Drawing code is expected to run with fully evaluated depsgraph. */
+  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
 
   float color[4];
 
@@ -1171,15 +1173,14 @@ void ED_gp_draw_fill(tGPDdraw *tgpw)
 /* draw a short status message in the top-right corner */
 static void UNUSED_FUNCTION(gp_draw_status_text)(const bGPdata *gpd, ARegion *ar)
 {
-  rcti rect;
 
   /* Cannot draw any status text when drawing OpenGL Renders */
   if (G.f & G_FLAG_RENDER_VIEWPORT) {
     return;
   }
 
-  /* Get bounds of region - Necessary to avoid problems with region overlap */
-  ED_region_visible_rect(ar, &rect);
+  /* Get bounds of region - Necessary to avoid problems with region overlap. */
+  const rcti *rect = ED_region_visible_rect(ar);
 
   /* for now, this should only be used to indicate when we are in stroke editmode */
   if (gpd->flag & GP_DATA_STROKE_EDITMODE) {
@@ -1191,8 +1192,8 @@ static void UNUSED_FUNCTION(gp_draw_status_text)(const bGPdata *gpd, ARegion *ar
     BLF_width_and_height(
         font_id, printable, BLF_DRAW_STR_DUMMY_MAX, &printable_size[0], &printable_size[1]);
 
-    int xco = (rect.xmax - U.widget_unit) - (int)printable_size[0];
-    int yco = (rect.ymax - U.widget_unit);
+    int xco = (rect->xmax - U.widget_unit) - (int)printable_size[0];
+    int yco = (rect->ymax - U.widget_unit);
 
     /* text label */
     UI_FontThemeColor(font_id, TH_TEXT_HI);

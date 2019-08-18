@@ -89,45 +89,49 @@ static const EnumPropertyItem node_quality_items[] = {
 };
 
 static const EnumPropertyItem node_chunksize_items[] = {
-    {NTREE_CHUNCKSIZE_32, "32", 0, "32x32", "Chunksize of 32x32"},
-    {NTREE_CHUNCKSIZE_64, "64", 0, "64x64", "Chunksize of 64x64"},
-    {NTREE_CHUNCKSIZE_128, "128", 0, "128x128", "Chunksize of 128x128"},
-    {NTREE_CHUNCKSIZE_256, "256", 0, "256x256", "Chunksize of 256x256"},
-    {NTREE_CHUNCKSIZE_512, "512", 0, "512x512", "Chunksize of 512x512"},
-    {NTREE_CHUNCKSIZE_1024, "1024", 0, "1024x1024", "Chunksize of 1024x1024"},
+    {NTREE_CHUNKSIZE_32, "32", 0, "32x32", "Chunksize of 32x32"},
+    {NTREE_CHUNKSIZE_64, "64", 0, "64x64", "Chunksize of 64x64"},
+    {NTREE_CHUNKSIZE_128, "128", 0, "128x128", "Chunksize of 128x128"},
+    {NTREE_CHUNKSIZE_256, "256", 0, "256x256", "Chunksize of 256x256"},
+    {NTREE_CHUNKSIZE_512, "512", 0, "512x512", "Chunksize of 512x512"},
+    {NTREE_CHUNKSIZE_1024, "1024", 0, "1024x1024", "Chunksize of 1024x1024"},
     {0, NULL, 0, NULL, NULL},
 };
 #endif
 
 const EnumPropertyItem rna_enum_node_math_items[] = {
-    {NODE_MATH_ADD, "ADD", 0, "Add", ""},
-    {NODE_MATH_SUB, "SUBTRACT", 0, "Subtract", ""},
-    {NODE_MATH_MUL, "MULTIPLY", 0, "Multiply", ""},
-    {NODE_MATH_DIVIDE, "DIVIDE", 0, "Divide", ""},
+    {NODE_MATH_ADD, "ADD", 0, "Add", "A + B"},
+    {NODE_MATH_SUBTRACT, "SUBTRACT", 0, "Subtract", "A - B"},
+    {NODE_MATH_MULTIPLY, "MULTIPLY", 0, "Multiply", "A * B"},
+    {NODE_MATH_DIVIDE, "DIVIDE", 0, "Divide", "A / B"},
     {0, "", ICON_NONE, NULL, NULL},
-    {NODE_MATH_POW, "POWER", 0, "Power", ""},
-    {NODE_MATH_LOG, "LOGARITHM", 0, "Logarithm", ""},
-    {NODE_MATH_SQRT, "SQRT", 0, "Square Root", ""},
-    {NODE_MATH_ABS, "ABSOLUTE", 0, "Absolute", ""},
+    {NODE_MATH_POWER, "POWER", 0, "Power", "A power B"},
+    {NODE_MATH_LOGARITHM, "LOGARITHM", 0, "Logarithm", "Logarithm A base B"},
+    {NODE_MATH_SQRT, "SQRT", 0, "Square Root", "Square root of A"},
+    {NODE_MATH_ABSOLUTE, "ABSOLUTE", 0, "Absolute", "Magnitude of A"},
     {0, "", ICON_NONE, NULL, NULL},
-    {NODE_MATH_MIN, "MINIMUM", 0, "Minimum", ""},
-    {NODE_MATH_MAX, "MAXIMUM", 0, "Maximum", ""},
-    {NODE_MATH_LESS, "LESS_THAN", 0, "Less Than", ""},
-    {NODE_MATH_GREATER, "GREATER_THAN", 0, "Greater Than", ""},
+    {NODE_MATH_MINIMUM, "MINIMUM", 0, "Minimum", "The minimum from A and B"},
+    {NODE_MATH_MAXIMUM, "MAXIMUM", 0, "Maximum", "The maximum from A and B"},
+    {NODE_MATH_LESS_THAN, "LESS_THAN", 0, "Less Than", "1 if A < B else 0"},
+    {NODE_MATH_GREATER_THAN, "GREATER_THAN", 0, "Greater Than", "1 if A > B else 0"},
     {0, "", ICON_NONE, NULL, NULL},
-    {NODE_MATH_ROUND, "ROUND", 0, "Round", ""},
-    {NODE_MATH_FLOOR, "FLOOR", 0, "Floor", ""},
-    {NODE_MATH_CEIL, "CEIL", 0, "Ceil", ""},
-    {NODE_MATH_FRACT, "FRACT", 0, "Fract", ""},
-    {NODE_MATH_MOD, "MODULO", 0, "Modulo", ""},
+    {NODE_MATH_ROUND,
+     "ROUND",
+     0,
+     "Round",
+     "Round A to the nearest integer. Round upward if the fraction part is 0.5"},
+    {NODE_MATH_FLOOR, "FLOOR", 0, "Floor", "The largest integer smaller than or equal A"},
+    {NODE_MATH_CEIL, "CEIL", 0, "Ceil", "The smallest integer greater than or equal A"},
+    {NODE_MATH_FRACTION, "FRACT", 0, "Fraction", "The fraction part of A"},
+    {NODE_MATH_MODULO, "MODULO", 0, "Modulo", "A mod B"},
     {0, "", ICON_NONE, NULL, NULL},
-    {NODE_MATH_SIN, "SINE", 0, "Sine", ""},
-    {NODE_MATH_COS, "COSINE", 0, "Cosine", ""},
-    {NODE_MATH_TAN, "TANGENT", 0, "Tangent", ""},
-    {NODE_MATH_ASIN, "ARCSINE", 0, "Arcsine", ""},
-    {NODE_MATH_ACOS, "ARCCOSINE", 0, "Arccosine", ""},
-    {NODE_MATH_ATAN, "ARCTANGENT", 0, "Arctangent", ""},
-    {NODE_MATH_ATAN2, "ARCTAN2", 0, "Arctan2", ""},
+    {NODE_MATH_SINE, "SINE", 0, "Sine", "sin(A)"},
+    {NODE_MATH_COSINE, "COSINE", 0, "Cosine", "cos(A)"},
+    {NODE_MATH_TANGENT, "TANGENT", 0, "Tangent", "tan(A)"},
+    {NODE_MATH_ARCSINE, "ARCSINE", 0, "Arcsine", "arcsin(A)"},
+    {NODE_MATH_ARCCOSINE, "ARCCOSINE", 0, "Arccosine", "arccos(A)"},
+    {NODE_MATH_ARCTANGENT, "ARCTANGENT", 0, "Arctangent", "arctan(A)"},
+    {NODE_MATH_ARCTAN2, "ARCTAN2", 0, "Arctan2", "The signed angle arctan(A / B)"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -3834,6 +3838,16 @@ static void def_frame(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, NULL);
 }
 
+static void def_map_range(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "clamp", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "custom1", 1);
+  RNA_def_property_ui_text(prop, "Clamp", "Clamp the result to the target range [To Min, To Max]");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_math(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -3842,7 +3856,7 @@ static void def_math(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_math_items);
   RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 
   prop = RNA_def_property(srna, "use_clamp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "custom2", SHD_MATH_CLAMP);
@@ -7588,6 +7602,18 @@ static void def_cmp_cryptomatte(StructRNA *srna)
       "Remove",
       "Remove object or material from matte, by picking a color from the Pick output");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeCryptomatte_update_remove");
+}
+
+static void def_cmp_denoise(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeDenoise", "storage");
+
+  prop = RNA_def_property(srna, "use_hdr", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "hdr", 0);
+  RNA_def_property_ui_text(prop, "HDR", "Process HDR images");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 /* -- Texture Nodes --------------------------------------------------------- */

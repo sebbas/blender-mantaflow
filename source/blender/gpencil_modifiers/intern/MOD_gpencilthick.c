@@ -48,9 +48,9 @@ static void initData(GpencilModifierData *md)
   gpmd->thickness = 2;
   gpmd->layername[0] = '\0';
   gpmd->vgname[0] = '\0';
-  gpmd->curve_thickness = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  gpmd->curve_thickness = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
   if (gpmd->curve_thickness) {
-    curvemapping_initialize(gpmd->curve_thickness);
+    BKE_curvemapping_initialize(gpmd->curve_thickness);
   }
 }
 
@@ -59,7 +59,7 @@ static void freeData(GpencilModifierData *md)
   ThickGpencilModifierData *gpmd = (ThickGpencilModifierData *)md;
 
   if (gpmd->curve_thickness) {
-    curvemapping_free(gpmd->curve_thickness);
+    BKE_curvemapping_free(gpmd->curve_thickness);
   }
 }
 
@@ -69,13 +69,13 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
   ThickGpencilModifierData *tgmd = (ThickGpencilModifierData *)target;
 
   if (tgmd->curve_thickness != NULL) {
-    curvemapping_free(tgmd->curve_thickness);
+    BKE_curvemapping_free(tgmd->curve_thickness);
     tgmd->curve_thickness = NULL;
   }
 
   BKE_gpencil_modifier_copyData_generic(md, target);
 
-  tgmd->curve_thickness = curvemapping_copy(gmd->curve_thickness);
+  tgmd->curve_thickness = BKE_curvemapping_copy(gmd->curve_thickness);
 }
 
 /* change stroke thickness */
@@ -83,6 +83,7 @@ static void deformStroke(GpencilModifierData *md,
                          Depsgraph *UNUSED(depsgraph),
                          Object *ob,
                          bGPDlayer *gpl,
+                         bGPDframe *UNUSED(gpf),
                          bGPDstroke *gps)
 {
   ThickGpencilModifierData *mmd = (ThickGpencilModifierData *)md;
@@ -101,16 +102,41 @@ static void deformStroke(GpencilModifierData *md,
     return;
   }
 
-  /* if normalize, set stroke thickness */
+  /* Check to see if we normalize the whole stroke or only certain points along it. */
+  bool gps_has_affected_points = false;
+  bool gps_has_unaffected_points = false;
+
   if (mmd->flag & GP_THICK_NORMALIZE) {
+    for (int i = 0; i < gps->totpoints; i++) {
+      MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
+      const float weight = get_modifier_point_weight(
+          dvert, (mmd->flag & GP_THICK_INVERT_VGROUP) != 0, def_nr);
+      if (weight < 0.0f) {
+        gps_has_unaffected_points = true;
+      }
+      else {
+        gps_has_affected_points = true;
+      }
+
+      /* If both checks are true, we have what we need so we can stop looking. */
+      if (gps_has_affected_points && gps_has_unaffected_points) {
+        break;
+      }
+    }
+  }
+
+  /* If we are normalizing and all points of the stroke are affected, it's safe to reset thickness
+   */
+  if (mmd->flag & GP_THICK_NORMALIZE && gps_has_affected_points && !gps_has_unaffected_points) {
     gps->thickness = mmd->thickness;
   }
+  /* Without this check, modifier alters the thickness of strokes which have no points in scope */
 
   for (int i = 0; i < gps->totpoints; i++) {
     bGPDspoint *pt = &gps->points[i];
     MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
     float curvef = 1.0f;
-    /* verify vertex group */
+    /* Verify point is part of vertex group. */
     const float weight = get_modifier_point_weight(
         dvert, (mmd->flag & GP_THICK_INVERT_VGROUP) != 0, def_nr);
     if (weight < 0.0f) {
@@ -118,13 +144,23 @@ static void deformStroke(GpencilModifierData *md,
     }
 
     if (mmd->flag & GP_THICK_NORMALIZE) {
-      pt->pressure = 1.0f;
+      if (gps_has_unaffected_points) {
+        /* Clamp value for very weird situations when stroke thickness can be zero. */
+        CLAMP_MIN(gps->thickness, 0.001f);
+        /* Calculate pressure value to match the width of strokes with reset thickness and 1.0
+         * pressure. */
+        pt->pressure = (float)mmd->thickness / (float)gps->thickness;
+      }
+      else {
+        /* Reset point pressure values so only stroke thickness counts. */
+        pt->pressure = 1.0f;
+      }
     }
     else {
       if ((mmd->flag & GP_THICK_CUSTOM_CURVE) && (mmd->curve_thickness)) {
-        /* normalize value to evaluate curve */
+        /* Normalize value to evaluate curve. */
         float value = (float)i / (gps->totpoints - 1);
-        curvef = curvemapping_evaluateF(mmd->curve_thickness, 0, value);
+        curvef = BKE_curvemapping_evaluateF(mmd->curve_thickness, 0, value);
       }
 
       pt->pressure += mmd->thickness * weight * curvef;
@@ -143,7 +179,7 @@ static void bakeModifier(struct Main *UNUSED(bmain),
   for (bGPDlayer *gpl = gpd->layers.first; gpl; gpl = gpl->next) {
     for (bGPDframe *gpf = gpl->frames.first; gpf; gpf = gpf->next) {
       for (bGPDstroke *gps = gpf->strokes.first; gps; gps = gps->next) {
-        deformStroke(md, depsgraph, ob, gpl, gps);
+        deformStroke(md, depsgraph, ob, gpl, gpf, gps);
       }
     }
   }

@@ -58,6 +58,7 @@ set(INC_SYS
 )
 
 set(SRC
+  ${CMAKE_SOURCE_DIR}/release/datafiles/userdef/userdef_default.c
   intern/CCGSubSurf.c
   intern/CCGSubSurf_legacy.c
   intern/CCGSubSurf_opensubdiv.c
@@ -150,6 +151,7 @@ set(SRC
   intern/mesh_mapping.c
   intern/mesh_merge.c
   intern/mesh_remap.c
+  intern/mesh_remesh_voxel.c
   intern/mesh_runtime.c
   intern/mesh_tangent.c
   intern/mesh_validate.c
@@ -298,6 +300,7 @@ set(SRC
   BKE_mesh_iterators.h
   BKE_mesh_mapping.h
   BKE_mesh_remap.h
+  BKE_mesh_remesh_voxel.h
   BKE_mesh_runtime.h
   BKE_mesh_tangent.h
   BKE_modifier.h

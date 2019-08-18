@@ -1116,7 +1116,7 @@ void ED_screen_full_prevspace(bContext *C, ScrArea *sa)
 
 void ED_screen_restore_temp_type(bContext *C, ScrArea *sa)
 {
-  /* incase nether functions below run */
+  /* In case nether functions below run. */
   ED_area_tag_redraw(sa);
 
   if (sa->flag & AREA_FLAG_TEMP_TYPE) {
@@ -1456,6 +1456,8 @@ void ED_screen_animation_timer_update(bScreen *screen, int redraws, int refresh)
 void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph)
 {
   Scene *scene = DEG_get_input_scene(depsgraph);
+
+  DEG_id_tag_update_ex(bmain, &scene->id, ID_RECALC_TIME);
 
 #ifdef DURIAN_CAMERA_SWITCH
   void *camera = BKE_scene_camera_switch_find(scene);

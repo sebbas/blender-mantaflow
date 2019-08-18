@@ -39,7 +39,7 @@
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
 
-/* edge and vertex share, currently theres no need to have different logic */
+/* edge and vertex share, currently there's no need to have different logic */
 static void bm_data_interp_from_elem(CustomData *data_layer,
                                      const BMElem *ele_src_1,
                                      const BMElem *ele_src_2,
@@ -461,7 +461,7 @@ typedef struct BMLoopInterpMultiresData {
 
 static void loop_interp_multires_cb(void *__restrict userdata,
                                     const int ix,
-                                    const ParallelRangeTLS *__restrict UNUSED(tls))
+                                    const TaskParallelTLS *__restrict UNUSED(tls))
 {
   BMLoopInterpMultiresData *data = userdata;
 
@@ -561,7 +561,7 @@ void BM_loop_interp_multires_ex(BMesh *UNUSED(bm),
       .res = res,
       .d = 1.0f / (float)(res - 1),
   };
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (res > 5);
   BLI_task_parallel_range(0, res, &data, loop_interp_multires_cb, &settings);

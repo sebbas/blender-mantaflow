@@ -113,8 +113,7 @@ int insert_vert_fcurve(
  * Use this to insert a keyframe using the current value being keyframed, in the
  * nominated F-Curve (no creation of animation data performed). Returns success.
  */
-bool insert_keyframe_direct(struct Depsgraph *depsgraph,
-                            struct ReportList *reports,
+bool insert_keyframe_direct(struct ReportList *reports,
                             struct PointerRNA ptr,
                             struct PropertyRNA *prop,
                             struct FCurve *fcu,
@@ -130,7 +129,6 @@ bool insert_keyframe_direct(struct Depsgraph *depsgraph,
  * using the current value being keyframed, in the relevant place. Returns success.
  */
 short insert_keyframe(struct Main *bmain,
-                      struct Depsgraph *depsgraph,
                       struct ReportList *reports,
                       struct ID *id,
                       struct bAction *act,
@@ -322,6 +320,8 @@ struct FCurve *verify_driver_fcurve(struct ID *id,
                                     const int array_index,
                                     short add);
 
+struct FCurve *alloc_driver_fcurve(const char rna_path[], const int array_index, short add);
+
 /* -------- */
 
 /* Main Driver Management API calls:
@@ -400,6 +400,12 @@ bool ANIM_driver_vars_copy(struct ReportList *reports, struct FCurve *fcu);
 
 /* Paste the variables in the buffer to the given FCurve */
 bool ANIM_driver_vars_paste(struct ReportList *reports, struct FCurve *fcu, bool replace);
+
+/* -------- */
+
+/* Create a driver & variable that reads the specified property,
+ * and store it in the buffers for Paste Driver and Paste Variables. */
+void ANIM_copy_as_driver(struct ID *target_id, const char *target_path, const char *var_name);
 
 /* ************ Auto-Keyframing ********************** */
 /* Notes:

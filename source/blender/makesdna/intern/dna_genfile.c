@@ -339,7 +339,7 @@ static bool init_structDNA(SDNA *sdna, bool do_endian_swap, const char **r_error
 
   data = (int *)sdna->data;
 
-  /* clear pointers incase of error */
+  /* Clear pointers in case of error. */
   sdna->names = NULL;
   sdna->types = NULL;
   sdna->structs = NULL;
@@ -899,7 +899,7 @@ static void cast_elem(
  * as lookup keys to identify data blocks in the saved .blend file, not
  * as actual in-memory pointers.
  *
- * \param curlen: Pointer length to conver to
+ * \param curlen: Pointer length to convert to
  * \param oldlen: Length of pointers in olddata
  * \param name_array_len: Result of #DNA_elem_array_size for this element.
  * \param curdata: Where to put converted data

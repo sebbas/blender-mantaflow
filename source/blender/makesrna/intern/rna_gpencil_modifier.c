@@ -377,6 +377,10 @@ static void rna_def_modifier_gpencilnoise(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Random", "Use random values");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
+  prop = RNA_def_property(srna, "seed", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_ui_text(prop, "Seed", "Random seed");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
   prop = RNA_def_property(srna, "use_edit_position", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_NOISE_MOD_LOCATION);
   RNA_def_property_ui_text(
@@ -607,12 +611,22 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
        "FIXED",
        ICON_IPO_CONSTANT,
        "Fixed",
-       "Delete alternative vertices in the stroke, except extremes"},
+       "Delete alternating vertices in the stroke, except extremes"},
       {GP_SIMPLIFY_ADAPTIVE,
        "ADAPTIVE",
        ICON_IPO_EASE_IN_OUT,
        "Adaptive",
-       "Use a RDP algorithm to simplify"},
+       "Use a RDP algorithm to simplify the stroke"},
+      {GP_SIMPLIFY_SAMPLE,
+       "SAMPLE",
+       ICON_IPO_EASE_IN_OUT,
+       "Sample",
+       "Resample the stroke with segments of the specified length"},
+      {GP_SIMPLIFY_MERGE,
+       "MERGE",
+       ICON_IPO_EASE_IN_OUT,
+       "Merge",
+       "Simplify the stroke by merging vertices closer than a given distance"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -670,6 +684,20 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "step");
   RNA_def_property_range(prop, 1, 50);
   RNA_def_property_ui_text(prop, "Iterations", "Number of times to apply simplify");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /* Sample */
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "length");
+  RNA_def_property_range(prop, 0, 10.0f);
+  RNA_def_property_ui_text(prop, "Length", "Length of each segment");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /* Distance */
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "distance");
+  RNA_def_property_range(prop, 0, 100.0f);
+  RNA_def_property_ui_text(prop, "Distance", "Distance between points");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 }
 

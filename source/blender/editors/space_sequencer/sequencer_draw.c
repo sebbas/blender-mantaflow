@@ -1045,9 +1045,8 @@ ImBuf *sequencer_ibuf_get(struct Main *bmain,
       bmain, depsgraph, scene, rectx, recty, proxy_size, false, &context);
   context.view_id = BKE_scene_multiview_view_id_get(&scene->r, viewname);
 
-  /* sequencer could start rendering, in this case we need to be sure it wouldn't be canceled
-   * by Esc pressed somewhere in the past
-   */
+  /* Sequencer could start rendering, in this case we need to be sure it wouldn't be canceled
+   * by Escape pressed somewhere in the past. */
   G.is_break = false;
 
   /* Rendering can change OGL context. Save & Restore framebuffer. */
@@ -1546,7 +1545,7 @@ void sequencer_draw_preview(const bContext *C,
                             bool draw_backdrop)
 {
   struct Main *bmain = CTX_data_main(C);
-  struct Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  struct Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   struct View2D *v2d = &ar->v2d;
   struct ImBuf *ibuf = NULL;
   struct ImBuf *scope = NULL;
@@ -2076,9 +2075,11 @@ void draw_timeline_seq(const bContext *C, ARegion *ar)
                         scene->r.cfra + scene->ed->over_ofs;
 
     uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+    immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
 
-    immUniformColor3f(0.2f, 0.2f, 0.2f);
+    immUniform1f("dash_width", 20.0f * U.pixelsize);
+    immUniform1f("dash_factor", 0.5f);
+    immUniformThemeColor(TH_CFRAME);
 
     immBegin(GPU_PRIM_LINES, 2);
     immVertex2f(pos, cfra_over, v2d->cur.ymin);

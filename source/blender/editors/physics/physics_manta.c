@@ -115,7 +115,7 @@ static bool manta_initjob(
 
   job->bmain = CTX_data_main(C);
   job->scene = CTX_data_scene(C);
-  job->depsgraph = CTX_data_depsgraph(C);
+  job->depsgraph = CTX_data_depsgraph_pointer(C);
   job->ob = CTX_data_active_object(C);
   job->mmd = mmd;
   job->type = op->type->idname;
@@ -607,7 +607,7 @@ static int manta_free_exec(struct bContext *C, struct wmOperator *op)
   MantaJob *job = MEM_mallocN(sizeof(MantaJob), "MantaJob");
   job->bmain = CTX_data_main(C);
   job->scene = scene;
-  job->depsgraph = CTX_data_depsgraph(C);
+  job->depsgraph = CTX_data_depsgraph_pointer(C);
   job->ob = ob;
   job->mmd = mmd;
   job->type = op->type->idname;

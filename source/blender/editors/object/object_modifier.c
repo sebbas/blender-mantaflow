@@ -99,7 +99,7 @@ static void object_force_modifier_update_for_bind(Depsgraph *depsgraph, Object *
   BKE_object_eval_reset(ob_eval);
   if (ob->type == OB_MESH) {
     Mesh *me_eval = mesh_create_eval_final_view(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
-    BKE_id_free(NULL, me_eval);
+    BKE_mesh_eval_delete(me_eval);
   }
   else if (ob->type == OB_LATTICE) {
     BKE_lattice_modifiers_calc(depsgraph, scene_eval, ob_eval);
@@ -912,7 +912,10 @@ void OBJECT_OT_modifier_add(wmOperatorType *ot)
 
 /********** generic functions for operators using mod names and data context *********************/
 
-bool edit_modifier_poll_generic(bContext *C, StructRNA *rna_type, int obtype_flag)
+bool edit_modifier_poll_generic(bContext *C,
+                                StructRNA *rna_type,
+                                int obtype_flag,
+                                const bool is_editmode_allowed)
 {
   PointerRNA ptr = CTX_data_pointer_get_type(C, "modifier", rna_type);
   Object *ob = (ptr.id.data) ? ptr.id.data : ED_object_active_context(C);
@@ -932,12 +935,17 @@ bool edit_modifier_poll_generic(bContext *C, StructRNA *rna_type, int obtype_fla
     return (((ModifierData *)ptr.data)->flag & eModifierFlag_OverrideLibrary_Local) != 0;
   }
 
+  if (!is_editmode_allowed && CTX_data_edit_object(C) != NULL) {
+    CTX_wm_operator_poll_msg_set(C, "This modifier operation is not allowed from Edit mode");
+    return 0;
+  }
+
   return 1;
 }
 
 bool edit_modifier_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_Modifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_Modifier, 0, true);
 }
 
 void edit_modifier_properties(wmOperatorType *ot)
@@ -1122,7 +1130,7 @@ void OBJECT_OT_modifier_move_down(wmOperatorType *ot)
 static int modifier_apply_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = ED_object_active_context(C);
   ModifierData *md = edit_modifier_property_get(op, ob, 0);
@@ -1186,7 +1194,7 @@ void OBJECT_OT_modifier_apply(wmOperatorType *ot)
 static int modifier_convert_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = ED_object_active_context(C);
@@ -1274,7 +1282,7 @@ void OBJECT_OT_modifier_copy(wmOperatorType *ot)
 
 static bool multires_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_MultiresModifier, (1 << OB_MESH));
+  return edit_modifier_poll_generic(C, &RNA_MultiresModifier, (1 << OB_MESH), true);
 }
 
 static int multires_higher_levels_delete_exec(bContext *C, wmOperator *op)
@@ -1383,7 +1391,7 @@ void OBJECT_OT_multires_subdivide(wmOperatorType *ot)
 
 static int multires_reshape_exec(bContext *C, wmOperator *op)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = ED_object_active_context(C), *secondob = NULL;
   MultiresModifierData *mmd = (MultiresModifierData *)edit_modifier_property_get(
       op, ob, eModifierType_Multires);
@@ -1627,14 +1635,13 @@ static void modifier_skin_customdata_delete(Object *ob)
 
 static bool skin_poll(bContext *C)
 {
-  return (!CTX_data_edit_object(C) &&
-          edit_modifier_poll_generic(C, &RNA_SkinModifier, (1 << OB_MESH)));
+  return (edit_modifier_poll_generic(C, &RNA_SkinModifier, (1 << OB_MESH), false));
 }
 
 static bool skin_edit_poll(bContext *C)
 {
   return (CTX_data_edit_object(C) &&
-          edit_modifier_poll_generic(C, &RNA_SkinModifier, (1 << OB_MESH)));
+          edit_modifier_poll_generic(C, &RNA_SkinModifier, (1 << OB_MESH), true));
 }
 
 static void skin_root_clear(BMVert *bm_vert, GSet *visited, const int cd_vert_skin_offset)
@@ -1927,7 +1934,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph,
 static int skin_armature_create_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C), *arm_ob;
   Mesh *me = ob->data;
@@ -1987,12 +1994,12 @@ void OBJECT_OT_skin_armature_create(wmOperatorType *ot)
 
 static bool correctivesmooth_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_CorrectiveSmoothModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_CorrectiveSmoothModifier, 0, true);
 }
 
 static int correctivesmooth_bind_exec(bContext *C, wmOperator *op)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = ED_object_active_context(C);
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)edit_modifier_property_get(
@@ -2065,12 +2072,12 @@ void OBJECT_OT_correctivesmooth_bind(wmOperatorType *ot)
 
 static bool meshdeform_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_MeshDeformModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_MeshDeformModifier, 0, true);
 }
 
 static int meshdeform_bind_exec(bContext *C, wmOperator *op)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = ED_object_active_context(C);
   MeshDeformModifierData *mmd = (MeshDeformModifierData *)edit_modifier_property_get(
       op, ob, eModifierType_MeshDeform);
@@ -2138,7 +2145,7 @@ void OBJECT_OT_meshdeform_bind(wmOperatorType *ot)
 
 static bool explode_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_ExplodeModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_ExplodeModifier, 0, true);
 }
 
 static int explode_refresh_exec(bContext *C, wmOperator *op)
@@ -2188,7 +2195,7 @@ void OBJECT_OT_explode_refresh(wmOperatorType *ot)
 
 static bool ocean_bake_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_OceanModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_OceanModifier, 0, true);
 }
 
 typedef struct OceanBakeJob {
@@ -2309,8 +2316,9 @@ static int ocean_bake_exec(bContext *C, wmOperator *op)
   for (f = omd->bakestart; f <= omd->bakeend; f++) {
     /* For now only simple animation of time value is supported, nothing else.
      * No drivers or other modifier parameters. */
-    BKE_animsys_evaluate_animdata(
-        CTX_data_depsgraph(C), scene, (ID *)ob, ob->adt, f, ADT_RECALC_ANIM);
+    /* TODO(sergey): This operates on an original data, so no flush is needed. However, baking
+     * usually should happen on an evaluated objects, so this seems to be deeper issue here. */
+    BKE_animsys_evaluate_animdata(scene, (ID *)ob, ob->adt, f, ADT_RECALC_ANIM, false);
 
     och->time[i] = omd->time;
     i++;
@@ -2389,13 +2397,13 @@ void OBJECT_OT_ocean_bake(wmOperatorType *ot)
 
 static bool laplaciandeform_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_LaplacianDeformModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_LaplacianDeformModifier, 0, false);
 }
 
 static int laplaciandeform_bind_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   LaplacianDeformModifierData *lmd = (LaplacianDeformModifierData *)edit_modifier_property_get(
       op, ob, eModifierType_LaplacianDeform);
 
@@ -2464,13 +2472,13 @@ void OBJECT_OT_laplaciandeform_bind(wmOperatorType *ot)
 
 static bool surfacedeform_bind_poll(bContext *C)
 {
-  return edit_modifier_poll_generic(C, &RNA_SurfaceDeformModifier, 0);
+  return edit_modifier_poll_generic(C, &RNA_SurfaceDeformModifier, 0, true);
 }
 
 static int surfacedeform_bind_exec(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)edit_modifier_property_get(
       op, ob, eModifierType_SurfaceDeform);
 

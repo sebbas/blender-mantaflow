@@ -148,8 +148,7 @@ typedef struct bGPDpalette {
 /* bGPDpalette->flag */
 typedef enum eGPDpalette_Flag {
   /* palette is active */
-  A,
-  PL_PALETTE_ACTIVE = (1 << 0)
+  PL_PALETTE_ACTIVE = (1 << 0),
 } eGPDpalette_Flag;
 
 /* ***************************************** */
@@ -412,7 +411,7 @@ typedef enum eGPLayerBlendModes {
 typedef struct bGPdata_Runtime {
   /** Last region where drawing was originated. */
   struct ARegion *ar;
-  /** Stroke buffer (can hold GP_STROKE_BUFFER_MAX). */
+  /** Stroke buffer. */
   void *sbuffer;
 
   /* GP Object drawing */
@@ -431,11 +430,13 @@ typedef struct bGPdata_Runtime {
    * - buffer must be initialized before use, but freed after
    *   whole paint operation is over
    */
-  /** Number of elements currently in cache. */
-  short sbuffer_size;
+  /** Number of elements currently used in cache. */
+  short sbuffer_used;
   /** Flags for stroke that cache represents. */
   short sbuffer_sflag;
-  char _pad[6];
+  /** Number of total elements available in cache. */
+  short sbuffer_size;
+  char _pad[4];
 
   /** Number of control-points for stroke. */
   int tot_cp_points;
@@ -650,6 +651,8 @@ typedef enum eGP_DrawMode {
   ((gpd) && (gpd->flag & \
              (GP_DATA_STROKE_EDITMODE | GP_DATA_STROKE_SCULPTMODE | GP_DATA_STROKE_WEIGHTMODE)))
 #define GPENCIL_PAINT_MODE(gpd) ((gpd) && (gpd->flag & (GP_DATA_STROKE_PAINTMODE)))
+#define GPENCIL_SCULPT_MODE(gpd) ((gpd) && (gpd->flag & GP_DATA_STROKE_SCULPTMODE))
+#define GPENCIL_WEIGHT_MODE(gpd) ((gpd) && (gpd->flag & GP_DATA_STROKE_WEIGHTMODE))
 #define GPENCIL_SCULPT_OR_WEIGHT_MODE(gpd) \
   ((gpd) && (gpd->flag & (GP_DATA_STROKE_SCULPTMODE | GP_DATA_STROKE_WEIGHTMODE)))
 #define GPENCIL_NONE_EDIT_MODE(gpd) \

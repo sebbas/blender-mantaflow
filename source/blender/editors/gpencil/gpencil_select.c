@@ -67,9 +67,33 @@
 /** \name Shared Utilities
  * \{ */
 
+/* Convert sculpt mask mode to Select mode */
+static int gpencil_select_mode_from_sculpt(eGP_Sculpt_SelectMaskFlag mode)
+{
+  if (mode & GP_SCULPT_MASK_SELECTMODE_POINT) {
+    return GP_SELECTMODE_POINT;
+  }
+  else if (mode & GP_SCULPT_MASK_SELECTMODE_STROKE) {
+    return GP_SELECTMODE_STROKE;
+  }
+  else if (GP_SCULPT_MASK_SELECTMODE_SEGMENT) {
+    return GP_SELECTMODE_SEGMENT;
+  }
+  else {
+    return GP_SELECTMODE_POINT;
+  }
+}
+
 static bool gpencil_select_poll(bContext *C)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
+
+  if (GPENCIL_SCULPT_MODE(gpd)) {
+    ToolSettings *ts = CTX_data_tool_settings(C);
+    if (!(GPENCIL_ANY_SCULPT_MASK(ts->gpencil_selectmode_sculpt))) {
+      return false;
+    }
+  }
 
   /* we just need some visible strokes, and to be in editmode or other modes only to catch event */
   if (GPENCIL_ANY_MODE(gpd)) {
@@ -302,11 +326,10 @@ typedef enum eGP_SelectGrouped {
 /* On each visible layer, check for selected strokes - if found, select all others */
 static void gp_select_same_layer(bContext *C)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, GP_GETFRAME_USE_PREV);
+    bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, GP_GETFRAME_USE_PREV);
     bGPDstroke *gps;
     bool found = false;
 
@@ -911,7 +934,11 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-  const int selectmode = ts->gpencil_selectmode;
+  Object *ob = CTX_data_active_object(C);
+
+  const int selectmode = (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) ?
+                             gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) :
+                             ts->gpencil_selectmode_edit;
   const float scale = ts->gp_sculpt.isect_threshold;
 
   /* if not edit/sculpt mode, the event is catched but not processed */
@@ -990,7 +1017,7 @@ void GPENCIL_OT_select_circle(wmOperatorType *ot)
   ot->cancel = WM_gesture_circle_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_gesture_circle(ot);
@@ -1017,12 +1044,18 @@ static int gpencil_generic_select_exec(bContext *C,
                                        GPencilTestFn is_inside_fn,
                                        void *user_data)
 {
+  Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   ScrArea *sa = CTX_wm_area(C);
-  const bool strokemode = ((ts->gpencil_selectmode == GP_SELECTMODE_STROKE) &&
+
+  const short selectmode = (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) ?
+                               gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) :
+                               ts->gpencil_selectmode_edit;
+
+  const bool strokemode = ((selectmode == GP_SELECTMODE_STROKE) &&
                            ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0));
-  const bool segmentmode = ((ts->gpencil_selectmode == GP_SELECTMODE_SEGMENT) &&
+  const bool segmentmode = ((selectmode == GP_SELECTMODE_SEGMENT) &&
                             ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0));
   const eSelectOp sel_op = RNA_enum_get(op->ptr, "mode");
   const float scale = ts->gp_sculpt.isect_threshold;
@@ -1065,7 +1098,6 @@ static int gpencil_generic_select_exec(bContext *C,
     for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
       /* convert point coords to screenspace */
       const bool is_inside = is_inside_fn(gps, pt, &gsc, gpstroke_iter.diff_mat, user_data);
-
       if (strokemode == false) {
         const bool is_select = (pt->flag & GP_SPOINT_SELECT) != 0;
         const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
@@ -1181,7 +1213,7 @@ void GPENCIL_OT_select_box(wmOperatorType *ot)
   ot->poll = gpencil_select_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_gesture_box(ot);
@@ -1249,7 +1281,7 @@ void GPENCIL_OT_select_lasso(wmOperatorType *ot)
   ot->cancel = WM_gesture_lasso_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_select_operation(ot);
@@ -1286,6 +1318,7 @@ static void deselect_all_selected(bContext *C)
 static int gpencil_select_exec(bContext *C, wmOperator *op)
 {
   ScrArea *sa = CTX_wm_area(C);
+  Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
   const float scale = ts->gp_sculpt.isect_threshold;
@@ -1316,8 +1349,12 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
   }
 
   /* if select mode is stroke, use whole stroke */
-  if (ts->gpencil_selectmode == GP_SELECTMODE_STROKE) {
-    whole = true;
+  if ((ob) && (ob->mode == OB_MODE_SCULPT_GPENCIL)) {
+    whole = (bool)(gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) ==
+                   GP_SELECTMODE_STROKE);
+  }
+  else {
+    whole = (bool)(ts->gpencil_selectmode_edit == GP_SELECTMODE_STROKE);
   }
 
   /* init space conversion stuff */
@@ -1418,7 +1455,11 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
       hit_stroke->flag |= GP_STROKE_SELECT;
 
       /* expand selection to segment */
-      if (ts->gpencil_selectmode == GP_SELECTMODE_SEGMENT) {
+      const short selectmode = (ob && ob->mode == OB_MODE_SCULPT_GPENCIL) ?
+                                   gpencil_select_mode_from_sculpt(ts->gpencil_selectmode_sculpt) :
+                                   ts->gpencil_selectmode_edit;
+
+      if (selectmode == GP_SELECTMODE_SEGMENT) {
         float r_hita[3], r_hitb[3];
         bool hit_select = (bool)(hit_point->flag & GP_SPOINT_SELECT);
         ED_gpencil_select_stroke_segment(
@@ -1469,7 +1510,7 @@ void GPENCIL_OT_select(wmOperatorType *ot)
   ot->poll = gpencil_select_poll;
 
   /* flag */
-  ot->flag = OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_mouse_select(ot);

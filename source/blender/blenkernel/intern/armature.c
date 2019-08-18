@@ -239,6 +239,35 @@ bArmature *BKE_armature_copy(Main *bmain, const bArmature *arm)
   return arm_copy;
 }
 
+static void copy_bone_transform(Bone *bone_dst, const Bone *bone_src)
+{
+  bone_dst->roll = bone_src->roll;
+
+  copy_v3_v3(bone_dst->head, bone_src->head);
+  copy_v3_v3(bone_dst->tail, bone_src->tail);
+
+  copy_m3_m3(bone_dst->bone_mat, bone_src->bone_mat);
+
+  copy_v3_v3(bone_dst->arm_head, bone_src->arm_head);
+  copy_v3_v3(bone_dst->arm_tail, bone_src->arm_tail);
+
+  copy_m4_m4(bone_dst->arm_mat, bone_src->arm_mat);
+
+  bone_dst->arm_roll = bone_src->arm_roll;
+}
+
+void BKE_armature_copy_bone_transforms(bArmature *armature_dst, const bArmature *armature_src)
+{
+  Bone *bone_dst = armature_dst->bonebase.first;
+  const Bone *bone_src = armature_src->bonebase.first;
+  while (bone_dst != NULL) {
+    BLI_assert(bone_src != NULL);
+    copy_bone_transform(bone_dst, bone_src);
+    bone_dst = bone_dst->next;
+    bone_src = bone_src->next;
+  }
+}
+
 static Bone *get_named_bone_bonechildren(ListBase *lb, const char *name)
 {
   Bone *curBone, *rbone;
@@ -1350,7 +1379,7 @@ typedef struct ArmatureUserdata {
 
 static void armature_vert_task(void *__restrict userdata,
                                const int i,
-                               const ParallelRangeTLS *__restrict UNUSED(tls))
+                               const TaskParallelTLS *__restrict UNUSED(tls))
 {
   const ArmatureUserdata *data = userdata;
   float(*const vertexCos)[3] = data->vertexCos;
@@ -1648,7 +1677,7 @@ void armature_deform_verts(Object *armOb,
   mul_m4_m4m4(data.postmat, obinv, armOb->obmat);
   invert_m4_m4(data.premat, data.postmat);
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.min_iter_per_thread = 32;
   BLI_task_parallel_range(0, numVerts, &data, armature_vert_task, &settings);
@@ -2374,6 +2403,9 @@ static void pose_proxy_synchronize(Object *ob, Object *from, int layer_protected
       pchanw.mpath = pchan->mpath;
       pchan->mpath = NULL;
 
+      /* Reset runtime data, we don't want to share that with the proxy. */
+      BKE_pose_channel_runtime_reset(&pchanw.runtime);
+
       /* this is freed so copy a copy, else undo crashes */
       if (pchanw.prop) {
         pchanw.prop = IDP_CopyProperty(pchanw.prop);
@@ -2675,8 +2707,9 @@ void BKE_pose_where_is_bone(struct Depsgraph *depsgraph,
       cob = BKE_constraints_make_evalob(depsgraph, scene, ob, pchan, CONSTRAINT_OBTYPE_BONE);
 
       /* Solve PoseChannel's Constraints */
-      BKE_constraints_solve(
-          depsgraph, &pchan->constraints, cob, ctime); /* ctime doesn't alter objects */
+
+      /* ctime doesn't alter objects. */
+      BKE_constraints_solve(depsgraph, &pchan->constraints, cob, ctime);
 
       /* cleanup after Constraint Solving
        * - applies matrix back to pchan, and frees temporary struct used

@@ -623,7 +623,7 @@ void DepsgraphNodeBuilder::build_object(int base_index,
     is_parent_collection_visible_ = is_current_parent_collection_visible;
     add_operation_node(&object->id, NodeType::DUPLI, OperationCode::DUPLI);
   }
-  /* Syncronization back to original object. */
+  /* Synchronization back to original object. */
   add_operation_node(&object->id,
                      NodeType::SYNCHRONIZATION,
                      OperationCode::SYNCHRONIZE_TO_ORIGINAL,
@@ -944,8 +944,9 @@ void DepsgraphNodeBuilder::build_driver_id_property(ID *id, const char *rna_path
   }
   PointerRNA id_ptr, ptr;
   PropertyRNA *prop;
+  int index;
   RNA_id_pointer_create(id, &id_ptr);
-  if (!RNA_path_resolve_full(&id_ptr, rna_path, &ptr, &prop, NULL)) {
+  if (!RNA_path_resolve_full(&id_ptr, rna_path, &ptr, &prop, &index)) {
     return;
   }
   if (prop == NULL) {
@@ -1557,7 +1558,7 @@ void DepsgraphNodeBuilder::build_movieclip(MovieClip *clip)
   add_operation_node(clip_id,
                      NodeType::PARAMETERS,
                      OperationCode::MOVIECLIP_EVAL,
-                     function_bind(BKE_movieclip_eval_update, _1, clip_cow));
+                     function_bind(BKE_movieclip_eval_update, _1, bmain_, clip_cow));
 
   add_operation_node(clip_id,
                      NodeType::BATCH_CACHE,

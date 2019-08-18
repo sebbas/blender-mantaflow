@@ -510,7 +510,7 @@ typedef struct OceanSimulateData {
 
 static void ocean_compute_htilda(void *__restrict userdata,
                                  const int i,
-                                 const ParallelRangeTLS *__restrict UNUSED(tls))
+                                 const TaskParallelTLS *__restrict UNUSED(tls))
 {
   OceanSimulateData *osd = userdata;
   const Ocean *o = osd->o;
@@ -519,7 +519,7 @@ static void ocean_compute_htilda(void *__restrict userdata,
 
   int j;
 
-  /* note the <= _N/2 here, see the fftw doco
+  /* Note the <= _N/2 here, see the FFTW documentation
    * about the mechanics of the complex->real fft storage. */
   for (j = 0; j <= o->_N / 2; ++j) {
     fftw_complex exp_param1;
@@ -779,7 +779,7 @@ void BKE_ocean_simulate(struct Ocean *o, float t, float scale, float chop_amount
    * but remains reasonably simple and should be OK most of the time. */
 
   /* compute a new htilda */
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (o->_M > 16);
   BLI_task_parallel_range(0, o->_M, &osd, ocean_compute_htilda, &settings);

@@ -1857,7 +1857,7 @@ static int pyrna_py_to_prop(
           else {
             /* Same as bytes. */
             /* XXX, this is suspect, but needed for function calls,
-             * need to see if theres a better way. */
+             * need to see if there's a better way. */
             if (data) {
               *((char **)data) = (char *)param;
             }
@@ -8557,9 +8557,10 @@ static PyObject *pyrna_register_class(PyObject *UNUSED(self), PyObject *py_class
   }
 
   if (PyDict_GetItem(((PyTypeObject *)py_class)->tp_dict, bpy_intern_str_bl_rna)) {
-    PyErr_SetString(PyExc_ValueError,
-                    "register_class(...): "
-                    "already registered as a subclass");
+    PyErr_Format(PyExc_ValueError,
+                 "register_class(...): "
+                 "already registered as a subclass '%.200s'",
+                 ((PyTypeObject *)py_class)->tp_name);
     return NULL;
   }
 

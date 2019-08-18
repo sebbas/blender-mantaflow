@@ -1067,10 +1067,10 @@ void IESLightNode::get_slot()
 
   if (slot == -1) {
     if (ies.empty()) {
-      slot = light_manager->add_ies_from_file(filename);
+      slot = light_manager->add_ies_from_file(filename.string());
     }
     else {
-      slot = light_manager->add_ies(ies);
+      slot = light_manager->add_ies(ies.string());
     }
   }
 }
@@ -5259,6 +5259,140 @@ void OutputNode::compile(OSLCompiler &compiler)
     compiler.add(this, "node_output_displacement");
 }
 
+/* Map Range Node */
+
+NODE_DEFINE(MapRangeNode)
+{
+  NodeType *type = NodeType::add("map_range", create, NodeType::SHADER);
+
+  SOCKET_IN_FLOAT(value, "Value", 1.0f);
+  SOCKET_IN_FLOAT(from_min, "From Min", 0.0f);
+  SOCKET_IN_FLOAT(from_max, "From Max", 1.0f);
+  SOCKET_IN_FLOAT(to_min, "To Min", 0.0f);
+  SOCKET_IN_FLOAT(to_max, "To Max", 1.0f);
+
+  SOCKET_OUT_FLOAT(result, "Result");
+
+  return type;
+}
+
+MapRangeNode::MapRangeNode() : ShaderNode(node_type)
+{
+}
+
+void MapRangeNode::expand(ShaderGraph *graph)
+{
+  if (clamp) {
+    ShaderOutput *result_out = output("Result");
+    if (!result_out->links.empty()) {
+      ClampNode *clamp_node = new ClampNode();
+      clamp_node->min = to_min;
+      clamp_node->max = to_max;
+      graph->add(clamp_node);
+      graph->relink(result_out, clamp_node->output("Result"));
+      graph->connect(result_out, clamp_node->input("Value"));
+    }
+  }
+}
+
+void MapRangeNode::constant_fold(const ConstantFolder &folder)
+{
+  if (folder.all_inputs_constant()) {
+    float result;
+    if (from_max != from_min) {
+      result = to_min + ((value - from_min) / (from_max - from_min)) * (to_max - to_min);
+    }
+    else {
+      result = 0.0f;
+    }
+    folder.make_constant(result);
+  }
+}
+
+void MapRangeNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *value_in = input("Value");
+  ShaderInput *from_min_in = input("From Min");
+  ShaderInput *from_max_in = input("From Max");
+  ShaderInput *to_min_in = input("To Min");
+  ShaderInput *to_max_in = input("To Max");
+  ShaderOutput *result_out = output("Result");
+
+  int value_stack_offset = compiler.stack_assign(value_in);
+  int from_min_stack_offset = compiler.stack_assign_if_linked(from_min_in);
+  int from_max_stack_offset = compiler.stack_assign_if_linked(from_max_in);
+  int to_min_stack_offset = compiler.stack_assign_if_linked(to_min_in);
+  int to_max_stack_offset = compiler.stack_assign_if_linked(to_max_in);
+  int result_stack_offset = compiler.stack_assign(result_out);
+
+  compiler.add_node(
+      NODE_MAP_RANGE,
+      value_stack_offset,
+      compiler.encode_uchar4(
+          from_min_stack_offset, from_max_stack_offset, to_min_stack_offset, to_max_stack_offset),
+      result_stack_offset);
+
+  compiler.add_node(__float_as_int(from_min),
+                    __float_as_int(from_max),
+                    __float_as_int(to_min),
+                    __float_as_int(to_max));
+}
+
+void MapRangeNode::compile(OSLCompiler &compiler)
+{
+  compiler.add(this, "node_map_range");
+}
+
+/* Clamp Node */
+
+NODE_DEFINE(ClampNode)
+{
+  NodeType *type = NodeType::add("clamp", create, NodeType::SHADER);
+
+  SOCKET_IN_FLOAT(value, "Value", 1.0f);
+  SOCKET_IN_FLOAT(min, "Min", 0.0f);
+  SOCKET_IN_FLOAT(max, "Max", 1.0f);
+
+  SOCKET_OUT_FLOAT(result, "Result");
+
+  return type;
+}
+
+ClampNode::ClampNode() : ShaderNode(node_type)
+{
+}
+
+void ClampNode::constant_fold(const ConstantFolder &folder)
+{
+  if (folder.all_inputs_constant()) {
+    folder.make_constant(clamp(value, min, max));
+  }
+}
+
+void ClampNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *value_in = input("Value");
+  ShaderInput *min_in = input("Min");
+  ShaderInput *max_in = input("Max");
+  ShaderOutput *result_out = output("Result");
+
+  int value_stack_offset = compiler.stack_assign(value_in);
+  int min_stack_offset = compiler.stack_assign(min_in);
+  int max_stack_offset = compiler.stack_assign(max_in);
+  int result_stack_offset = compiler.stack_assign(result_out);
+
+  compiler.add_node(NODE_CLAMP,
+                    value_stack_offset,
+                    compiler.encode_uchar4(min_stack_offset, max_stack_offset),
+                    result_stack_offset);
+  compiler.add_node(__float_as_int(min), __float_as_int(max));
+}
+
+void ClampNode::compile(OSLCompiler &compiler)
+{
+  compiler.add(this, "node_clamp");
+}
+
 /* Math */
 
 NODE_DEFINE(MathNode)
@@ -5288,14 +5422,12 @@ NODE_DEFINE(MathNode)
   type_enum.insert("arctan2", NODE_MATH_ARCTAN2);
   type_enum.insert("floor", NODE_MATH_FLOOR);
   type_enum.insert("ceil", NODE_MATH_CEIL);
-  type_enum.insert("fract", NODE_MATH_FRACT);
+  type_enum.insert("fraction", NODE_MATH_FRACTION);
   type_enum.insert("sqrt", NODE_MATH_SQRT);
   SOCKET_ENUM(type, "Type", type_enum, NODE_MATH_ADD);
 
-  SOCKET_BOOLEAN(use_clamp, "Use Clamp", false);
-
-  SOCKET_IN_FLOAT(value1, "Value1", 0.0f);
-  SOCKET_IN_FLOAT(value2, "Value2", 0.0f);
+  SOCKET_IN_FLOAT(value1, "Value1", 0.5f);
+  SOCKET_IN_FLOAT(value2, "Value2", 0.5f);
 
   SOCKET_OUT_FLOAT(value, "Value");
 
@@ -5306,13 +5438,28 @@ MathNode::MathNode() : ShaderNode(node_type)
 {
 }
 
+void MathNode::expand(ShaderGraph *graph)
+{
+  if (use_clamp) {
+    ShaderOutput *result_out = output("Value");
+    if (!result_out->links.empty()) {
+      ClampNode *clamp_node = new ClampNode();
+      clamp_node->min = 0.0f;
+      clamp_node->max = 1.0f;
+      graph->add(clamp_node);
+      graph->relink(result_out, clamp_node->output("Result"));
+      graph->connect(result_out, clamp_node->input("Value"));
+    }
+  }
+}
+
 void MathNode::constant_fold(const ConstantFolder &folder)
 {
   if (folder.all_inputs_constant()) {
-    folder.make_constant_clamp(svm_math(type, value1, value2), use_clamp);
+    folder.make_constant(svm_math(type, value1, value2));
   }
   else {
-    folder.fold_math(type, use_clamp);
+    folder.fold_math(type);
   }
 }
 
@@ -5322,20 +5469,19 @@ void MathNode::compile(SVMCompiler &compiler)
   ShaderInput *value2_in = input("Value2");
   ShaderOutput *value_out = output("Value");
 
-  compiler.add_node(
-      NODE_MATH, type, compiler.stack_assign(value1_in), compiler.stack_assign(value2_in));
-  compiler.add_node(NODE_MATH, compiler.stack_assign(value_out));
+  int value1_stack_offset = compiler.stack_assign(value1_in);
+  int value2_stack_offset = compiler.stack_assign(value2_in);
+  int value_stack_offset = compiler.stack_assign(value_out);
 
-  if (use_clamp) {
-    compiler.add_node(NODE_MATH, NODE_MATH_CLAMP, compiler.stack_assign(value_out));
-    compiler.add_node(NODE_MATH, compiler.stack_assign(value_out));
-  }
+  compiler.add_node(NODE_MATH,
+                    type,
+                    compiler.encode_uchar4(value1_stack_offset, value2_stack_offset),
+                    value_stack_offset);
 }
 
 void MathNode::compile(OSLCompiler &compiler)
 {
   compiler.parameter(this, "type");
-  compiler.parameter(this, "use_clamp");
   compiler.add(this, "node_math");
 }
 

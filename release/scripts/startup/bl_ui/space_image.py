@@ -176,6 +176,7 @@ class IMAGE_MT_select(Menu):
         layout.separator()
 
         layout.operator("uv.select_split")
+        layout.operator("uv.select_overlap")
 
 
 class IMAGE_MT_brush(Menu):
@@ -1077,9 +1078,12 @@ class IMAGE_PT_paint_color(Panel, ImagePaintPanel):
         settings = context.tool_settings.image_paint
         brush = settings.brush
 
-        layout.active = not brush.use_gradient
+        layout.prop(brush, "color_type", expand=True)
 
-        brush_texpaint_common_color(self, context, layout, brush, settings, True)
+        if brush.color_type == 'COLOR':
+            brush_texpaint_common_color(self, context, layout, brush, settings, True)
+        elif brush.color_type == 'GRADIENT':
+            brush_texpaint_common_gradient(self, context, layout, brush, settings, True)
 
 
 class IMAGE_PT_paint_swatches(Panel, ImagePaintPanel):
@@ -1104,38 +1108,6 @@ class IMAGE_PT_paint_swatches(Panel, ImagePaintPanel):
         layout.template_ID(settings, "palette", new="palette.new")
         if settings.palette:
             layout.template_palette(settings, "palette", color=True)
-
-
-class IMAGE_PT_paint_gradient(Panel, ImagePaintPanel):
-    bl_category = "Tool"
-    bl_context = ".paint_common_2d"
-    bl_parent_id = "IMAGE_PT_paint"
-    bl_label = "Gradient"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    @classmethod
-    def poll(cls, context):
-        settings = context.tool_settings.image_paint
-        brush = settings.brush
-        capabilities = brush.image_paint_capabilities
-
-        return capabilities.has_color
-
-    def draw_header(self, context):
-        settings = context.tool_settings.image_paint
-        brush = settings.brush
-        self.layout.prop(brush, "use_gradient", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = False
-        layout.use_property_decorate = False  # No animation.
-        settings = context.tool_settings.image_paint
-        brush = settings.brush
-
-        layout.active = brush.use_gradient
-
-        brush_texpaint_common_gradient(self, context, layout, brush, settings, True)
 
 
 class IMAGE_PT_paint_clone(Panel, ImagePaintPanel):
@@ -1438,16 +1410,21 @@ class IMAGE_PT_paint_curve(BrushButtonsPanel, Panel):
         tool_settings = context.tool_settings.image_paint
         brush = tool_settings.brush
 
-        layout.template_curve_mapping(brush, "curve")
-
         col = layout.column(align=True)
         row = col.row(align=True)
-        row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
-        row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
-        row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
-        row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
-        row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
-        row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
+        row.prop(brush, "curve_preset", text="")
+
+        if brush.curve_preset == 'CUSTOM':
+            layout.template_curve_mapping(brush, "curve")
+
+            col = layout.column(align=True)
+            row = col.row(align=True)
+            row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+            row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+            row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+            row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+            row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
+            row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
 class IMAGE_PT_tools_imagepaint_symmetry(BrushButtonsPanel, Panel):
@@ -1538,15 +1515,20 @@ class IMAGE_PT_uv_sculpt_curve(Panel):
         brush = uvsculpt.brush
 
         if brush is not None:
-            layout.template_curve_mapping(brush, "curve")
+            col = layout.column(align=True)
+            row = col.row(align=True)
+            row.prop(brush, "curve_preset", text="")
 
-            row = layout.row(align=True)
-            row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
-            row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
-            row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
-            row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
-            row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
-            row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
+            if brush.curve_preset == 'CUSTOM':
+                layout.template_curve_mapping(brush, "curve")
+
+                row = layout.row(align=True)
+                row.operator("brush.curve_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+                row.operator("brush.curve_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+                row.operator("brush.curve_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+                row.operator("brush.curve_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+                row.operator("brush.curve_preset", icon='LINCURVE', text="").shape = 'LINE'
+                row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
 class ImageScopesPanel:
@@ -1684,7 +1666,7 @@ class IMAGE_PT_uv_cursor(Panel):
 
 
 # Grease Pencil properties
-class IMAGE_PT_grease_pencil(AnnotationDataPanel, Panel):
+class IMAGE_PT_annotation(AnnotationDataPanel, Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "View"
@@ -1730,7 +1712,6 @@ classes = (
     IMAGE_PT_paint,
     IMAGE_PT_paint_color,
     IMAGE_PT_paint_swatches,
-    IMAGE_PT_paint_gradient,
     IMAGE_PT_paint_clone,
     IMAGE_PT_paint_options,
     IMAGE_PT_tools_brush_texture,
@@ -1750,7 +1731,7 @@ classes = (
     IMAGE_PT_sample_line,
     IMAGE_PT_scope_sample,
     IMAGE_PT_uv_cursor,
-    IMAGE_PT_grease_pencil,
+    IMAGE_PT_annotation,
 )
 
 

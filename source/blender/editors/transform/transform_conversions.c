@@ -52,6 +52,7 @@
 #include "BLI_string.h"
 #include "BLI_bitmap.h"
 #include "BLI_rect.h"
+#include "BLI_kdtree.h"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
@@ -235,8 +236,9 @@ static void sort_trans_data_selected_first(TransInfo *t)
   }
 }
 
-/* distance calculated from not-selected vertex to nearest selected vertex
- * warning; this is loops inside loop, has minor N^2 issues, but by sorting list it is OK */
+/**
+ * Distance calculated from not-selected vertex to nearest selected vertex.
+ */
 static void set_prop_dist(TransInfo *t, const bool with_dist)
 {
   int a;
@@ -255,54 +257,124 @@ static void set_prop_dist(TransInfo *t, const bool with_dist)
     }
   }
 
+  /* Count number of selected. */
+  int td_table_len = 0;
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    TransData *tob = tc->data;
-    for (a = 0; a < tc->data_len; a++, tob++) {
+    TransData *td = tc->data;
+    for (a = 0; a < tc->data_len; a++, td++) {
+      if (td->flag & TD_SELECTED) {
+        td_table_len++;
+      }
+      else {
+        /* By definition transform-data has selected items in beginning. */
+        break;
+      }
+    }
+  }
 
-      tob->rdist = 0.0f;  // init, it was mallocced
+  /* Pointers to selected's #TransData.
+   * Used to find #TransData from the index returned by #BLI_kdtree_find_nearest. */
+  TransData **td_table = MEM_mallocN(sizeof(*td_table) * td_table_len, __func__);
 
-      if ((tob->flag & TD_SELECTED) == 0) {
-        TransData *td;
-        int i;
-        float dist_sq, vec[3];
+  /* Create and fill kd-tree of selected's positions - in global or proj_vec space. */
+  KDTree_3d *td_tree = BLI_kdtree_3d_new(td_table_len);
 
-        tob->rdist = -1.0f;  // signal for next loop
+  int td_table_index = 0;
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    TransData *td = tc->data;
+    for (a = 0; a < tc->data_len; a++, td++) {
+      if (td->flag & TD_SELECTED) {
+        /* Initialize, it was mallocced. */
+        float vec[3];
+        td->rdist = 0.0f;
 
-        for (i = 0, td = tc->data; i < tc->data_len; i++, td++) {
-          if (td->flag & TD_SELECTED) {
-            if (use_island) {
-              sub_v3_v3v3(vec, tob->iloc, td->iloc);
-            }
-            else {
-              sub_v3_v3v3(vec, tob->center, td->center);
-            }
-            mul_m3_v3(tob->mtx, vec);
-
-            if (proj_vec) {
-              float vec_p[3];
-              project_v3_v3v3(vec_p, vec, proj_vec);
-              sub_v3_v3(vec, vec_p);
-            }
-
-            dist_sq = len_squared_v3(vec);
-            if ((tob->rdist == -1.0f) || (dist_sq < SQUARE(tob->rdist))) {
-              tob->rdist = sqrtf(dist_sq);
-              if (use_island) {
-                copy_v3_v3(tob->center, td->center);
-                copy_m3_m3(tob->axismtx, td->axismtx);
-              }
-            }
+        if (use_island) {
+          if (tc->use_local_mat) {
+            mul_v3_m4v3(vec, tc->mat, td->iloc);
           }
           else {
-            break; /* by definition transdata has selected items in beginning */
+            mul_v3_m3v3(vec, td->mtx, td->iloc);
           }
         }
+        else {
+          if (tc->use_local_mat) {
+            mul_v3_m4v3(vec, tc->mat, td->center);
+          }
+          else {
+            mul_v3_m3v3(vec, td->mtx, td->center);
+          }
+        }
+
+        if (proj_vec) {
+          float vec_p[3];
+          project_v3_v3v3(vec_p, vec, proj_vec);
+          sub_v3_v3(vec, vec_p);
+        }
+
+        BLI_kdtree_3d_insert(td_tree, td_table_index, vec);
+        td_table[td_table_index++] = td;
+      }
+      else {
+        /* By definition transform-data has selected items in beginning. */
+        break;
+      }
+    }
+  }
+  BLI_assert(td_table_index == td_table_len);
+
+  BLI_kdtree_3d_balance(td_tree);
+
+  /* For each non-selected vertex, find distance to the nearest selected vertex. */
+  FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    TransData *td = tc->data;
+    for (a = 0; a < tc->data_len; a++, td++) {
+      if ((td->flag & TD_SELECTED) == 0) {
+        float vec[3];
+
+        if (use_island) {
+          if (tc->use_local_mat) {
+            mul_v3_m4v3(vec, tc->mat, td->iloc);
+          }
+          else {
+            mul_v3_m3v3(vec, td->mtx, td->iloc);
+          }
+        }
+        else {
+          if (tc->use_local_mat) {
+            mul_v3_m4v3(vec, tc->mat, td->center);
+          }
+          else {
+            mul_v3_m3v3(vec, td->mtx, td->center);
+          }
+        }
+
+        if (proj_vec) {
+          float vec_p[3];
+          project_v3_v3v3(vec_p, vec, proj_vec);
+          sub_v3_v3(vec, vec_p);
+        }
+
+        KDTreeNearest_3d nearest;
+        const int td_index = BLI_kdtree_3d_find_nearest(td_tree, vec, &nearest);
+
+        td->rdist = -1.0f;
+        if (td_index != -1) {
+          td->rdist = nearest.dist;
+          if (use_island) {
+            copy_v3_v3(td->center, td_table[td_index]->center);
+            copy_m3_m3(td->axismtx, td_table[td_index]->axismtx);
+          }
+        }
+
         if (with_dist) {
-          tob->dist = tob->rdist;
+          td->dist = td->rdist;
         }
       }
     }
   }
+
+  BLI_kdtree_3d_free(td_tree);
+  MEM_freeN(td_table);
 }
 
 /* ************************** CONVERSIONS ************************* */
@@ -6133,6 +6205,8 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
     MEM_freeN(custom_data->data);
     custom_data->data = NULL;
   }
+
+  DEG_id_tag_update(&t->scene->id, ID_RECALC_SEQUENCER_STRIPS);
 }
 
 static void createTransSeqData(bContext *C, TransInfo *t)
@@ -6629,7 +6703,6 @@ void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Objec
 
   // TODO: this should probably be done per channel instead...
   if (autokeyframe_cfra_can_key(scene, id)) {
-    Depsgraph *depsgraph = CTX_data_depsgraph(C);
     ReportList *reports = CTX_wm_reports(C);
     ToolSettings *ts = scene->toolsettings;
     KeyingSet *active_ks = ANIM_scene_get_active_keyingset(scene);
@@ -6656,11 +6729,9 @@ void autokeyframe_object(bContext *C, Scene *scene, ViewLayer *view_layer, Objec
       /* only key on available channels */
       if (adt && adt->action) {
         ListBase nla_cache = {NULL, NULL};
-
         for (fcu = adt->action->curves.first; fcu; fcu = fcu->next) {
           fcu->flag &= ~FCURVE_SELECTED;
           insert_keyframe(bmain,
-                          depsgraph,
                           reports,
                           id,
                           adt->action,
@@ -6775,7 +6846,6 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
 
   // TODO: this should probably be done per channel instead...
   if (autokeyframe_cfra_can_key(scene, id)) {
-    Depsgraph *depsgraph = CTX_data_depsgraph(C);
     ReportList *reports = CTX_wm_reports(C);
     ToolSettings *ts = scene->toolsettings;
     KeyingSet *active_ks = ANIM_scene_get_active_keyingset(scene);
@@ -6823,7 +6893,6 @@ void autokeyframe_pose(bContext *C, Scene *scene, Object *ob, int tmode, short t
                  */
                 if (pchanName && STREQ(pchanName, pchan->name)) {
                   insert_keyframe(bmain,
-                                  depsgraph,
                                   reports,
                                   id,
                                   act,
@@ -9018,7 +9087,7 @@ static void createTransGPencil_center_get(bGPDstroke *gps, float r_center[3])
 
 static void createTransGPencil(bContext *C, TransInfo *t)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
@@ -9052,7 +9121,7 @@ static void createTransGPencil(bContext *C, TransInfo *t)
 
   /* initialize falloff curve */
   if (is_multiedit) {
-    curvemapping_initialize(ts->gp_sculpt.cur_falloff);
+    BKE_curvemapping_initialize(ts->gp_sculpt.cur_falloff);
   }
 
   /* First Pass: Count the number of data-points required for the strokes,

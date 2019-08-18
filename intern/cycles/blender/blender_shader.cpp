@@ -315,12 +315,21 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeRGBToBW)) {
     node = new RGBToBWNode();
   }
+  else if (b_node.is_a(&RNA_ShaderNodeMapRange)) {
+    BL::ShaderNodeMapRange b_map_range_node(b_node);
+    MapRangeNode *map_range_node = new MapRangeNode();
+    map_range_node->clamp = b_map_range_node.clamp();
+    node = map_range_node;
+  }
+  else if (b_node.is_a(&RNA_ShaderNodeClamp)) {
+    node = new ClampNode();
+  }
   else if (b_node.is_a(&RNA_ShaderNodeMath)) {
     BL::ShaderNodeMath b_math_node(b_node);
-    MathNode *math = new MathNode();
-    math->type = (NodeMath)b_math_node.operation();
-    math->use_clamp = b_math_node.use_clamp();
-    node = math;
+    MathNode *math_node = new MathNode();
+    math_node->type = (NodeMathType)b_math_node.operation();
+    math_node->use_clamp = b_math_node.use_clamp();
+    node = math_node;
   }
   else if (b_node.is_a(&RNA_ShaderNodeVectorMath)) {
     BL::ShaderNodeVectorMath b_vector_math_node(b_node);

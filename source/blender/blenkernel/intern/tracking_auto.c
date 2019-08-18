@@ -42,7 +42,7 @@
 #include "tracking_private.h"
 
 typedef struct AutoTrackOptions {
-  int clip_index;            /** Index of the clip this track belogs to. */
+  int clip_index;            /** Index of the clip this track belongs to. */
   int track_index;           /* Index of the track in AutoTrack tracks structure. */
   MovieTrackingTrack *track; /* Pointer to an original track/ */
   libmv_TrackRegionOptions track_region_options; /* Options for the region tracker. */
@@ -50,7 +50,7 @@ typedef struct AutoTrackOptions {
 
   /* TODO(sergey): A bit awkward to keep it in here, only used to
    * place a disabled marker once the tracking fails,
-   * Wither find a more clear way to do it or call it track context
+   * Either find a clearer way to do it or call it track context
    * or state, not options.
    */
   bool is_failed;
@@ -377,7 +377,7 @@ AutoTrackContext *BKE_autotrack_context_new(MovieClip *clip,
 
 static void autotrack_context_step_cb(void *__restrict userdata,
                                       const int track,
-                                      const ParallelRangeTLS *__restrict UNUSED(tls))
+                                      const TaskParallelTLS *__restrict UNUSED(tls))
 {
   AutoTrackContext *context = userdata;
   const int frame_delta = context->backwards ? -1 : 1;
@@ -446,7 +446,7 @@ bool BKE_autotrack_context_step(AutoTrackContext *context)
   const int frame_delta = context->backwards ? -1 : 1;
   context->step_ok = false;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (context->num_tracks > 1);
   BLI_task_parallel_range(0, context->num_tracks, context, autotrack_context_step_cb, &settings);

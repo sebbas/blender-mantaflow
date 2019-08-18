@@ -182,6 +182,8 @@ if(UNIX AND NOT APPLE)
   set(_init_SDL                            OFF)
   set(_init_FFTW3                          OFF)
   set(_init_OPENSUBDIV                     OFF)
+  set(_init_OPENVDB                        OFF)
+  set(_init_OPENIMAGEDENOISE               OFF)
 elseif(WIN32)
   set(_init_JACK                           OFF)
 elseif(APPLE)
@@ -237,11 +239,12 @@ option(WITH_OPENCOLORIO   "Enable OpenColorIO color management" ${_init_OPENCOLO
 
 # Compositor
 option(WITH_COMPOSITOR         "Enable the tile based nodal compositor" ON)
+option(WITH_OPENIMAGEDENOISE   "Enable the OpenImageDenoise compositing node" ${_init_OPENIMAGEDENOISE})
 
 option(WITH_OPENSUBDIV    "Enable OpenSubdiv for surface subdivision" ${_init_OPENSUBDIV})
 
-option(WITH_OPENVDB       "Enable features relying on OpenVDB" OFF)
-option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" OFF)
+option(WITH_OPENVDB       "Enable features relying on OpenVDB" ${_init_OPENVDB})
+option(WITH_OPENVDB_BLOSC "Enable blosc compression for OpenVDB, only enable if OpenVDB was built with blosc support" ${_init_OPENVDB})
 option(WITH_OPENVDB_3_ABI_COMPATIBLE "Assume OpenVDB library has been compiled with version 3 ABI compatibility" OFF)
 mark_as_advanced(WITH_OPENVDB_3_ABI_COMPATIBLE)
 
@@ -413,6 +416,8 @@ unset(PLATFORM_DEFAULT)
 option(WITH_CYCLES_LOGGING  "Build Cycles with logging support" ON)
 option(WITH_CYCLES_DEBUG    "Build Cycles with extra debug capabilities" OFF)
 option(WITH_CYCLES_NATIVE_ONLY  "Build Cycles with native kernel only (which fits current CPU, use for development only)" OFF)
+option(WITH_CYCLES_KERNEL_ASAN  "Build Cycles kernels with address sanitizer when WITH_COMPILER_ASAN is on, even if it's very slow" OFF)
+mark_as_advanced(WITH_CYCLES_KERNEL_ASAN)
 mark_as_advanced(WITH_CYCLES_CUBIN_COMPILER)
 mark_as_advanced(WITH_CYCLES_LOGGING)
 mark_as_advanced(WITH_CYCLES_DEBUG)
@@ -471,7 +476,7 @@ endif()
 option(WITH_OPENGL              "When off limits visibility of the opengl headers to just bf_gpu and gawain (temporary option for development purposes)" ON)
 option(WITH_GLEW_ES             "Switches to experimental copy of GLEW that has support for OpenGL ES. (temporary option for development purposes)" OFF)
 option(WITH_GL_EGL              "Use the EGL OpenGL system library instead of the platform specific OpenGL system library (CGL, glX, or WGL)"       OFF)
-option(WITH_GL_PROFILE_ES20     "Support using OpenGL ES 2.0. (thru either EGL or the AGL/WGL/XGL 'es20' profile)"                                  OFF)
+option(WITH_GL_PROFILE_ES20     "Support using OpenGL ES 2.0. (through either EGL or the AGL/WGL/XGL 'es20' profile)"                               OFF)
 
 mark_as_advanced(
   WITH_OPENGL
@@ -822,12 +827,6 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
 
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${COMPILER_ASAN_CXXFLAGS}")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${COMPILER_ASAN_CXXFLAGS}")
-    if(WITH_CYCLES_OSL)
-      # With OSL, Cycles disables rtti in some modules, wich then breaks at linking
-      # when trying to use vptr sanitizer (included into 'undefined' general option).
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-sanitize=vptr")
-      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-sanitize=vptr")
-    endif()
     if(MSVC)
       set(COMPILER_ASAN_LINKER_FLAGS "/FUNCTIONPADMIN:6")
     endif()
@@ -852,7 +851,8 @@ if(WITH_X11)
     if(X11_Xinput_LIB)
       list(APPEND PLATFORM_LINKLIBS ${X11_Xinput_LIB})
     else()
-      set(WITH_X11_XINPUT OFF)
+      message(FATAL_ERROR "LibXi not found. Disable WITH_X11_XINPUT if you
+      want to build without tablet support")
     endif()
   endif()
 
@@ -863,7 +863,8 @@ if(WITH_X11)
     if(X11_Xxf86vmode_LIB)
       list(APPEND PLATFORM_LINKLIBS ${X11_Xxf86vmode_LIB})
     else()
-      set(WITH_X11_XF86VMODE OFF)
+      message(FATAL_ERROR "libXxf86vm not found. Disable WITH_X11_XF86VMODE if you
+      want to build without")
     endif()
   endif()
 
@@ -871,7 +872,8 @@ if(WITH_X11)
     if(X11_Xfixes_LIB)
       list(APPEND PLATFORM_LINKLIBS ${X11_Xfixes_LIB})
     else()
-      set(WITH_X11_XFIXES OFF)
+      message(FATAL_ERROR "libXfixes not found. Disable WITH_X11_XFIXES if you
+      want to build without")
     endif()
   endif()
 
@@ -881,7 +883,8 @@ if(WITH_X11)
     if(X11_Xrender_LIB)
       list(APPEND PLATFORM_LINKLIBS ${X11_Xrender_LIB})
     else()
-      set(WITH_X11_ALPHA OFF)
+      message(FATAL_ERROR "libXrender not found. Disable WITH_X11_ALPHA if you
+      want to build without")
     endif()
   endif()
 
@@ -1767,6 +1770,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_CYCLES)
   info_cfg_option(WITH_FREESTYLE)
   info_cfg_option(WITH_OPENCOLORIO)
+  info_cfg_option(WITH_OPENIMAGEDENOISE)
   info_cfg_option(WITH_OPENVDB)
   info_cfg_option(WITH_ALEMBIC)
 

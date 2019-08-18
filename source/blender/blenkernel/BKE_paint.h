@@ -242,7 +242,6 @@ typedef struct SculptSession {
 
   /* PBVH acceleration structure */
   struct PBVH *pbvh;
-  bool show_diffuse_color;
   bool show_mask;
 
   /* Painting on deformed mesh */
@@ -259,6 +258,8 @@ typedef struct SculptSession {
   float (*layer_co)[3]; /* Copy of the mesh vertices' locations */
 
   struct StrokeCache *cache;
+
+  int active_vertex_index;
 
   union {
     struct {

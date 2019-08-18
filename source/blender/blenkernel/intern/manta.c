@@ -940,7 +940,7 @@ typedef struct ObstaclesFromDMData {
 
 static void obstacles_from_mesh_task_cb(void *__restrict userdata,
                                         const int z,
-                                        const ParallelRangeTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict UNUSED(tls))
 {
   ObstaclesFromDMData *data = userdata;
   MantaDomainSettings *mds = data->mds;
@@ -1144,7 +1144,7 @@ static void obstacles_from_mesh(Object *coll_ob,
                                   .velocityZ = velocityZ,
                                   .num_objects = num_objects,
                                   .distances_map = distances_map};
-      ParallelRangeSettings settings;
+      TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
       BLI_task_parallel_range(
@@ -1609,7 +1609,7 @@ typedef struct EmitFromParticlesData {
 
 static void emit_from_particles_task_cb(void *__restrict userdata,
                                         const int z,
-                                        const ParallelRangeTLS *__restrict UNUSED(tls))
+                                        const TaskParallelTLS *__restrict UNUSED(tls))
 {
   EmitFromParticlesData *data = userdata;
   MantaFlowSettings *sfs = data->sfs;
@@ -1709,13 +1709,13 @@ static void emit_from_particles(Object *flow_ob,
 
     /* prepare curvemapping tables */
     if ((psys->part->child_flag & PART_CHILD_USE_CLUMP_CURVE) && psys->part->clumpcurve) {
-      curvemapping_changed_all(psys->part->clumpcurve);
+      BKE_curvemapping_changed_all(psys->part->clumpcurve);
     }
     if ((psys->part->child_flag & PART_CHILD_USE_ROUGH_CURVE) && psys->part->roughcurve) {
-      curvemapping_changed_all(psys->part->roughcurve);
+      BKE_curvemapping_changed_all(psys->part->roughcurve);
     }
     if ((psys->part->child_flag & PART_CHILD_USE_TWIST_CURVE) && psys->part->twistcurve) {
-      curvemapping_changed_all(psys->part->twistcurve);
+      BKE_curvemapping_changed_all(psys->part->twistcurve);
     }
 
     /* initialize particle cache */
@@ -1848,7 +1848,7 @@ static void emit_from_particles(Object *flow_ob,
           .hr_smooth = hr_smooth,
       };
 
-      ParallelRangeSettings settings;
+      TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
       BLI_task_parallel_range(min[2], max[2], &data, emit_from_particles_task_cb, &settings);
@@ -2123,7 +2123,7 @@ typedef struct EmitFromDMData {
 
 static void emit_from_mesh_task_cb(void *__restrict userdata,
                                    const int z,
-                                   const ParallelRangeTLS *__restrict UNUSED(tls))
+                                   const TaskParallelTLS *__restrict UNUSED(tls))
 {
   EmitFromDMData *data = userdata;
   EmissionMap *em = data->em;
@@ -2341,7 +2341,7 @@ static void emit_from_mesh(
           .res = res,
       };
 
-      ParallelRangeSettings settings;
+      TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
       BLI_task_parallel_range(min[2], max[2], &data, emit_from_mesh_task_cb, &settings);
@@ -3363,7 +3363,7 @@ typedef struct UpdateEffectorsData {
 
 static void update_effectors_task_cb(void *__restrict userdata,
                                      const int x,
-                                     const ParallelRangeTLS *__restrict UNUSED(tls))
+                                     const TaskParallelTLS *__restrict UNUSED(tls))
 {
   UpdateEffectorsData *data = userdata;
   MantaDomainSettings *mds = data->mds;
@@ -3443,7 +3443,7 @@ static void update_effectors(
     data.flags = manta_smoke_get_obstacle(mds->fluid);
     data.phiObsIn = manta_get_phiobs_in(mds->fluid);
 
-    ParallelRangeSettings settings;
+    TaskParallelSettings settings;
     BLI_parallel_range_settings_defaults(&settings);
     settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
     BLI_task_parallel_range(0, mds->res[0], &data, update_effectors_task_cb, &settings);

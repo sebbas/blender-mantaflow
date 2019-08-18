@@ -127,7 +127,7 @@ def point_cache_ui(self, cache, enabled, cachetype):
 
     is_saved = bpy.data.is_saved
 
-    # NOTE: TODO temporarly used until the animate properties are properly skipped.
+    # NOTE: TODO temporarily used until the animate properties are properly skipped.
     layout.use_property_decorate = False  # No animation (remove this later on).
 
     if not cachetype == 'RIGID_BODY':
@@ -244,7 +244,7 @@ def effector_weights_ui(self, weights, weight_type):
     layout = self.layout
     layout.use_property_split = True
 
-    # NOTE: TODO temporarly used until the animate properties are properly skipped.
+    # NOTE: TODO temporarily used until the animate properties are properly skipped.
     layout.use_property_decorate = False  # No animation (remove this later on).
 
     layout.prop(weights, "collection")

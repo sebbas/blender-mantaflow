@@ -98,11 +98,10 @@ static void gpencil_insert_points_to_stroke(bGPDstroke *gps,
 static bGPDstroke *gpencil_prepare_stroke(bContext *C, wmOperator *op, int totpoints)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
 
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
 
   const bool back = RNA_boolean_get(op->ptr, "back");
   const bool additive = RNA_boolean_get(op->ptr, "additive");
@@ -124,7 +123,7 @@ static bGPDstroke *gpencil_prepare_stroke(bContext *C, wmOperator *op, int totpo
   else {
     add_frame_mode = GP_GETFRAME_ADD_NEW;
   }
-  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, cfra_eval, add_frame_mode);
+  bGPDframe *gpf = BKE_gpencil_layer_getframe(gpl, CFRA, add_frame_mode);
 
   /* stroke */
   bGPDstroke *gps = MEM_callocN(sizeof(bGPDstroke), "gp_stroke");

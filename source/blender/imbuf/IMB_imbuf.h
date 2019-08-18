@@ -46,8 +46,7 @@
  *
  * IMB needs:
  * - \ref DNA module
- *     The listbase types are used for handling the memory
- *     management.
+ *     The #ListBase types are used for handling the memory management.
  * - \ref blenlib module
  *     blenlib handles guarded memory management in blender-style.
  *     BLI_winstuff.h makes a few windows specific behaviors
@@ -324,7 +323,7 @@ struct IndexBuildContext *IMB_anim_index_rebuild_context(struct anim *anim,
                                                          IMB_Timecode_Type tcs_in_use,
                                                          IMB_Proxy_Size proxy_sizes_in_use,
                                                          int quality,
-                                                         const bool overwite,
+                                                         const bool overwrite,
                                                          struct GSet *file_list);
 
 /* will rebuild all used indices and proxies at once */

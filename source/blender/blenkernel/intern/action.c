@@ -236,9 +236,9 @@ void action_group_colors_sync(bActionGroup *grp, const bActionGroup *ref_grp)
        */
       else if (grp->cs.solid[0] == 0) {
         /* define for setting colors in theme below */
-        rgba_char_args_set(grp->cs.solid, 0xff, 0x00, 0x00, 255);
-        rgba_char_args_set(grp->cs.select, 0x81, 0xe6, 0x14, 255);
-        rgba_char_args_set(grp->cs.active, 0x18, 0xb6, 0xe0, 255);
+        rgba_uchar_args_set(grp->cs.solid, 0xff, 0x00, 0x00, 255);
+        rgba_uchar_args_set(grp->cs.select, 0x81, 0xe6, 0x14, 255);
+        rgba_uchar_args_set(grp->cs.active, 0x18, 0xb6, 0xe0, 255);
       }
     }
   }
@@ -1420,9 +1420,7 @@ short action_get_item_transforms(bAction *act, Object *ob, bPoseChannel *pchan, 
 
       if ((curves) || (flags & ACT_TRANS_PROP) == 0) {
         /* custom properties only */
-        pPtr = strstr(
-            bPtr,
-            "[\""); /* extra '"' comment here to keep my texteditor functionlist working :) */
+        pPtr = strstr(bPtr, "[\"");
         if (pPtr) {
           flags |= ACT_TRANS_PROP;
 
@@ -1612,6 +1610,6 @@ void what_does_obaction(
     adt.action = act;
 
     /* execute effects of Action on to workob (or it's PoseChannels) */
-    BKE_animsys_evaluate_animdata(NULL, NULL, &workob->id, &adt, cframe, ADT_RECALC_ANIM);
+    BKE_animsys_evaluate_animdata(NULL, &workob->id, &adt, cframe, ADT_RECALC_ANIM, false);
   }
 }

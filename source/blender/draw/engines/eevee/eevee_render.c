@@ -91,7 +91,7 @@ void EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, struct Depsgraph *
     copy_v4_fl4(camtexcofac, 1.0f, 1.0f, 0.0f, 0.0f);
   }
 
-  /* XXX overiding viewport size. Simplify things but is not really 100% safe. */
+  /* XXX overriding viewport size. Simplify things but is not really 100% safe. */
   DRW_render_viewport_size_set((int[2]){size_orig[0] + g_data->overscan_pixels * 2.0f,
                                         size_orig[1] + g_data->overscan_pixels * 2.0f});
 
@@ -628,7 +628,11 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     /* Mist output */
     EEVEE_mist_output_accumulate(sldata, vedata);
     /* Transparent */
+    GPU_framebuffer_texture_attach(fbl->main_color_fb, dtxl->depth, 0, 0);
+    GPU_framebuffer_bind(fbl->main_color_fb);
     DRW_draw_pass(psl->transparent_pass);
+    GPU_framebuffer_bind(fbl->main_fb);
+    GPU_framebuffer_texture_detach(fbl->main_color_fb, dtxl->depth);
     /* Result Z */
     eevee_render_result_z(rl, viewname, rect, vedata, sldata);
     /* Post Process */

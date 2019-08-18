@@ -23,12 +23,14 @@ set(INC
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
+  ../../draw
   ../../gpu
   ../../imbuf
   ../../makesdna
   ../../makesrna
   ../../render/extern/include
   ../../windowmanager
+  ../../../../intern/atomic
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
 )

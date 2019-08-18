@@ -119,7 +119,7 @@ static bool weight_from_bones_poll(bContext *C)
 
 static int weight_from_bones_exec(bContext *C, wmOperator *op)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   Object *armob = modifiers_isDeformedByArmature(ob);
@@ -161,7 +161,7 @@ void PAINT_OT_weight_from_bones(wmOperatorType *ot)
   ot->poll = weight_from_bones_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
   ot->prop = RNA_def_enum(
@@ -580,7 +580,7 @@ typedef struct WPGradient_userData {
   BLI_bitmap *vert_visit;
 
   /* options */
-  short use_select;
+  bool use_select;
   short type;
   float weightpaint;
 } WPGradient_userData;
@@ -746,7 +746,7 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
   float sco_end[2] = {x_end, y_end};
   const bool is_interactive = (gesture != NULL);
 
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   WPGradient_userData data = {NULL};
 
@@ -786,7 +786,7 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
   data.sco_end = sco_end;
   data.sco_line_div = 1.0f / len_v2v2(sco_start, sco_end);
   data.def_nr = ob->actdef - 1;
-  data.use_select = (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL));
+  data.use_select = (me->editflag & (ME_EDIT_PAINT_FACE_SEL | ME_EDIT_PAINT_VERT_SEL)) != 0;
   data.vert_cache = vert_cache;
   data.vert_visit = NULL;
   data.type = RNA_enum_get(op->ptr, "type");
@@ -796,7 +796,7 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
     VPaint *wp = ts->wpaint;
     struct Brush *brush = BKE_paint_brush(&wp->paint);
 
-    curvemapping_initialize(brush->curve);
+    BKE_curvemapping_initialize(brush->curve);
 
     data.brush = brush;
     data.weightpaint = BKE_brush_weight_get(scene, brush);
@@ -880,7 +880,7 @@ void PAINT_OT_weight_gradient(wmOperatorType *ot)
   ot->cancel = WM_gesture_straightline_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   prop = RNA_def_enum(ot->srna, "type", gradient_types, 0, "Type", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);

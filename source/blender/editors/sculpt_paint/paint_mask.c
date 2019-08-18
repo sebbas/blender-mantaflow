@@ -101,7 +101,7 @@ typedef struct MaskTaskData {
 
 static void mask_flood_fill_task_cb(void *__restrict userdata,
                                     const int i,
-                                    const ParallelRangeTLS *__restrict UNUSED(tls))
+                                    const TaskParallelTLS *__restrict UNUSED(tls))
 {
   MaskTaskData *data = userdata;
 
@@ -130,7 +130,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
 {
   ARegion *ar = CTX_wm_region(C);
   Object *ob = CTX_data_active_object(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   PaintMaskFloodMode mode;
   float value;
   PBVH *pbvh;
@@ -159,7 +159,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
       .value = value,
   };
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
   BLI_task_parallel_range(
@@ -243,7 +243,7 @@ static void flip_plane(float out[4], const float in[4], const char symm)
 
 static void mask_box_select_task_cb(void *__restrict userdata,
                                     const int i,
-                                    const ParallelRangeTLS *__restrict UNUSED(tls))
+                                    const TaskParallelTLS *__restrict UNUSED(tls))
 {
   MaskTaskData *data = userdata;
 
@@ -277,7 +277,7 @@ static void mask_box_select_task_cb(void *__restrict userdata,
 
 bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *rect, bool select)
 {
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Sculpt *sd = vc->scene->toolsettings->sculpt;
   BoundBox bb;
   float clip_planes[4][4];
@@ -328,7 +328,7 @@ bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *
           .clip_planes_final = clip_planes_final,
       };
 
-      ParallelRangeSettings settings;
+      TaskParallelSettings settings;
       BLI_parallel_range_settings_defaults(&settings);
       settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
                                 totnode > SCULPT_THREADED_LIMIT);
@@ -405,7 +405,7 @@ static void mask_lasso_px_cb(int x, int x_end, int y, void *user_data)
 
 static void mask_gesture_lasso_task_cb(void *__restrict userdata,
                                        const int i,
-                                       const ParallelRangeTLS *__restrict UNUSED(tls))
+                                       const TaskParallelTLS *__restrict UNUSED(tls))
 {
   LassoMaskData *lasso_data = userdata;
   MaskTaskData *data = &lasso_data->task_data;
@@ -444,7 +444,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
   const int(*mcords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcords_tot);
 
   if (mcords) {
-    Depsgraph *depsgraph = CTX_data_depsgraph(C);
+    Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     float clip_planes[4][4], clip_planes_final[4][4];
     BoundBox bb;
     Object *ob;
@@ -515,7 +515,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
         data.task_data.mode = mode;
         data.task_data.value = value;
 
-        ParallelRangeSettings settings;
+        TaskParallelSettings settings;
         BLI_parallel_range_settings_defaults(&settings);
         settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) &&
                                   (totnode > SCULPT_THREADED_LIMIT));

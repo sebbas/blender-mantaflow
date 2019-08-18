@@ -403,7 +403,7 @@ static void vicon_handletype_auto_clamp_draw(int x, int y, int w, int h, float a
 static void vicon_colorset_draw(int index, int x, int y, int w, int h, float UNUSED(alpha))
 {
   bTheme *btheme = UI_GetTheme();
-  ThemeWireColor *cs = &btheme->tarm[index];
+  const ThemeWireColor *cs = &btheme->tarm[index];
 
   /* Draw three bands of color: One per color
    *    x-----a-----b-----c
@@ -420,15 +420,15 @@ static void vicon_colorset_draw(int index, int x, int y, int w, int h, float UNU
 
   /* XXX: Include alpha into this... */
   /* normal */
-  immUniformColor3ubv((uchar *)cs->solid);
+  immUniformColor3ubv(cs->solid);
   immRecti(pos, x, y, a, y + h);
 
   /* selected */
-  immUniformColor3ubv((uchar *)cs->select);
+  immUniformColor3ubv(cs->select);
   immRecti(pos, a, y, b, y + h);
 
   /* active */
-  immUniformColor3ubv((uchar *)cs->active);
+  immUniformColor3ubv(cs->active);
   immRecti(pos, b, y, c, y + h);
 
   immUnbindProgram();
@@ -464,7 +464,7 @@ DEF_ICON_VECTOR_COLORSET_DRAW_NTH(20, 19)
 #  undef DEF_ICON_VECTOR_COLORSET_DRAW_NTH
 
 /* Dynamically render icon instead of rendering a plain color to a texture/buffer
- * This is mot strictly a "vicon", as it needs access to icon->obj to get the color info,
+ * This is not strictly a "vicon", as it needs access to icon->obj to get the color info,
  * but it works in a very similar way.
  */
 static void vicon_gplayer_color_draw(Icon *icon, int x, int y, int w, int h)
@@ -1782,7 +1782,7 @@ static void icon_draw_size(float x,
                            enum eIconSizes size,
                            int draw_size,
                            const float desaturate,
-                           const char mono_rgba[4],
+                           const uchar mono_rgba[4],
                            const bool mono_border)
 {
   bTheme *btheme = UI_GetTheme();
@@ -2270,7 +2270,7 @@ void UI_icon_draw_ex(float x,
                      float aspect,
                      float alpha,
                      float desaturate,
-                     const char mono_color[4],
+                     const uchar mono_color[4],
                      const bool mono_border)
 {
   int draw_size = get_draw_size(ICON_SIZE_ICON);

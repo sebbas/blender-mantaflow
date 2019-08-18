@@ -138,6 +138,8 @@ typedef enum ShaderNodeType {
   NODE_VECTOR_DISPLACEMENT,
   NODE_PRINCIPLED_VOLUME,
   NODE_IES,
+  NODE_MAP_RANGE,
+  NODE_CLAMP,
 } ShaderNodeType;
 
 typedef enum NodeAttributeType {
@@ -242,7 +244,7 @@ typedef enum NodeMix {
   NODE_MIX_CLAMP /* used for the clamp UI option */
 } NodeMix;
 
-typedef enum NodeMath {
+typedef enum NodeMathType {
   NODE_MATH_ADD,
   NODE_MATH_SUBTRACT,
   NODE_MATH_MULTIPLY,
@@ -265,10 +267,9 @@ typedef enum NodeMath {
   NODE_MATH_ARCTAN2,
   NODE_MATH_FLOOR,
   NODE_MATH_CEIL,
-  NODE_MATH_FRACT,
+  NODE_MATH_FRACTION,
   NODE_MATH_SQRT,
-  NODE_MATH_CLAMP /* used for the clamp UI option */
-} NodeMath;
+} NodeMathType;
 
 typedef enum NodeVectorMath {
   NODE_VECTOR_MATH_ADD,

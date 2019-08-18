@@ -336,7 +336,7 @@ static BMOpDefine bmo_find_doubles_def = {
   /* slots_in */
   {{"verts", BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT}}, /* input vertices */
    {"keep_verts", BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT}}, /* list of verts to keep */
-   {"dist",         BMO_OP_SLOT_FLT}, /* minimum distance */
+   {"dist",         BMO_OP_SLOT_FLT}, /* maximum distance */
    {{'\0'}},
   },
   /* slots_out */
@@ -379,7 +379,7 @@ static BMOpDefine bmo_automerge_def = {
   "automerge",
   /* slots_in */
   {{"verts", BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT}}, /* input verts */
-   {"dist",         BMO_OP_SLOT_FLT}, /* minimum distance */
+   {"dist",         BMO_OP_SLOT_FLT}, /* maximum distance */
    {{'\0'}},
   },
   {{{'\0'}}},  /* no output */
@@ -1173,7 +1173,7 @@ static BMOpDefine bmo_dissolve_limit_def = {
 static BMOpDefine bmo_dissolve_degenerate_def = {
   "dissolve_degenerate",
   /* slots_in */
-  {{"dist", BMO_OP_SLOT_FLT}, /* minimum distance to consider degenerate */
+  {{"dist", BMO_OP_SLOT_FLT}, /* maximum distance to consider degenerate */
    {"edges", BMO_OP_SLOT_ELEMENT_BUF, {BM_EDGE}},
    {{'\0'}},
   },
@@ -1545,7 +1545,7 @@ static BMOpDefine bmo_split_edges_def = {
   "split_edges",
   /* slots_in */
   {{"edges", BMO_OP_SLOT_ELEMENT_BUF, {BM_EDGE}},    /* input edges */
-   /* needed for vertex rip so we can rip only half an edge at a boundary wich would otherwise split off */
+   /* needed for vertex rip so we can rip only half an edge at a boundary which would otherwise split off */
    {"verts", BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT}},    /* optional tag verts, use to have greater control of splits */
    {"use_verts",        BMO_OP_SLOT_BOOL}, /* use 'verts' for splitting, else just find verts to split from edges */
    {{'\0'}},

@@ -116,6 +116,7 @@ set(SRC
   intern/gpu_batch_private.h
   intern/gpu_codegen.h
   intern/gpu_context_private.h
+  intern/gpu_matrix_private.h
   intern/gpu_primitive_private.h
   intern/gpu_private.h
   intern/gpu_select_private.h
@@ -220,9 +221,6 @@ data_to_c_simple(shaders/gpu_shader_2D_edituvs_facedots_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_2D_edituvs_edges_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_2D_edituvs_faces_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_2D_edituvs_stretch_vert.glsl SRC)
-
-data_to_c_simple(shaders/gpu_shader_3D_selection_id_vert.glsl SRC)
-data_to_c_simple(shaders/gpu_shader_selection_id_frag.glsl SRC)
 
 data_to_c_simple(shaders/gpu_shader_text_simple_vert.glsl SRC)
 data_to_c_simple(shaders/gpu_shader_text_simple_geom.glsl SRC)

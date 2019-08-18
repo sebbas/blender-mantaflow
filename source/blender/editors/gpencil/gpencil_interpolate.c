@@ -511,8 +511,8 @@ static int gpencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent
   wmWindow *win = CTX_wm_window(C);
   bGPdata *gpd = CTX_data_gpencil_data(C);
   bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
+  int cfra = CFRA;
   bGPDframe *actframe = gpl->actframe;
   tGPDinterpolate *tgpi = NULL;
 
@@ -526,7 +526,7 @@ static int gpencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent
   }
 
   /* cannot interpolate in extremes */
-  if (ELEM(cfra_eval, actframe->framenum, actframe->next->framenum)) {
+  if (ELEM(cfra, actframe->framenum, actframe->next->framenum)) {
     BKE_report(op->reports,
                RPT_ERROR,
                "Cannot interpolate as current frame already has existing grease pencil frames");
@@ -949,8 +949,8 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
 
   Object *ob = CTX_data_active_object(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
-  int cfra_eval = (int)DEG_get_ctime(depsgraph);
+  Scene *scene = CTX_data_scene(C);
+  int cfra = CFRA;
 
   GP_Interpolate_Settings *ipo_settings = &ts->gp_interpolate;
   eGP_Interpolate_SettingsFlag flag = ipo_settings->flag;
@@ -964,7 +964,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   /* cannot interpolate in extremes */
-  if (ELEM(cfra_eval, actframe->framenum, actframe->next->framenum)) {
+  if (ELEM(cfra, actframe->framenum, actframe->next->framenum)) {
     BKE_report(op->reports,
                RPT_ERROR,
                "Cannot interpolate as current frame already has existing grease pencil frames");
@@ -1003,7 +1003,7 @@ static int gpencil_interpolate_seq_exec(bContext *C, wmOperator *op)
       if (ipo_settings->type == GP_IPO_CURVEMAP) {
         /* custom curvemap */
         if (ipo_settings->custom_ipo) {
-          factor = curvemapping_evaluateF(ipo_settings->custom_ipo, 0, factor);
+          factor = BKE_curvemapping_evaluateF(ipo_settings->custom_ipo, 0, factor);
         }
         else {
           BKE_report(op->reports, RPT_ERROR, "Custom interpolation curve does not exist");

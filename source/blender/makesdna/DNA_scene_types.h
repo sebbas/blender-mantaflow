@@ -1116,7 +1116,7 @@ typedef struct GP_Sculpt_Settings {
   char _pad[4];
   /** Multiframe edit falloff effect by frame. */
   struct CurveMapping *cur_falloff;
-  /** Curve used for primitve tools. */
+  /** Curve used for primitive tools. */
   struct CurveMapping *cur_primitive;
   /** Guides used for paint tools */
   struct GP_Sculpt_Guide guide;
@@ -1125,7 +1125,7 @@ typedef struct GP_Sculpt_Settings {
 /* GP_Sculpt_Settings.flag */
 typedef enum eGP_Sculpt_SettingsFlag {
   /* only affect selected points */
-  GP_SCULPT_SETT_FLAG_SELECT_MASK = (1 << 0),
+  GP_SCULPT_SETT_FLAG_DEPRECATED = (1 << 0),
   /* apply brush to position */
   GP_SCULPT_SETT_FLAG_APPLY_POSITION = (1 << 1),
   /* apply brush to strength */
@@ -1138,9 +1138,19 @@ typedef enum eGP_Sculpt_SettingsFlag {
   GP_SCULPT_SETT_FLAG_FRAME_FALLOFF = (1 << 5),
   /* apply brush to uv data */
   GP_SCULPT_SETT_FLAG_APPLY_UV = (1 << 6),
-  /* apply primitve curve */
+  /* apply primitive curve */
   GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE = (1 << 7),
 } eGP_Sculpt_SettingsFlag;
+
+/* GP_Sculpt_Settings.gpencil_selectmode_sculpt */
+typedef enum eGP_Sculpt_SelectMaskFlag {
+  /* only affect selected points */
+  GP_SCULPT_MASK_SELECTMODE_POINT = (1 << 0),
+  /* only affect selected strokes */
+  GP_SCULPT_MASK_SELECTMODE_STROKE = (1 << 1),
+  /* only affect selected segmenst */
+  GP_SCULPT_MASK_SELECTMODE_SEGMENT = (1 << 2),
+} eGP_Sculpt_SelectMaskFlag;
 
 /* Settings for GP Interpolation Operators */
 typedef struct GP_Interpolate_Settings {
@@ -1412,8 +1422,10 @@ typedef struct ToolSettings {
 
   /** Default stroke thickness for annotation strokes. */
   short annotate_thickness;
-  /** Stroke selection mode. */
-  short gpencil_selectmode;
+  /** Stroke selection mode for Edit. */
+  char gpencil_selectmode_edit;
+  /** Stroke selection mode for Sculpt. */
+  char gpencil_selectmode_sculpt;
 
   /* Grease Pencil Sculpt */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -2170,7 +2182,7 @@ typedef enum eSculptFlags {
 
   SCULPT_USE_OPENMP = (1 << 7),
   SCULPT_ONLY_DEFORM = (1 << 8),
-  SCULPT_SHOW_DIFFUSE = (1 << 9),
+  // SCULPT_SHOW_DIFFUSE = (1 << 9), // deprecated
 
   /* If set, the mesh will be drawn with smooth-shading in
    * dynamic-topology mode */

@@ -233,6 +233,23 @@ static bool paint_tool_require_location(Brush *brush, ePaintMode mode)
   return true;
 }
 
+static bool paint_tool_require_inbetween_mouse_events(Brush *brush, ePaintMode mode)
+{
+  switch (mode) {
+    case PAINT_MODE_SCULPT:
+      if (ELEM(brush->sculpt_tool, SCULPT_TOOL_GRAB, SCULPT_TOOL_ROTATE, SCULPT_TOOL_THUMB)) {
+        return false;
+      }
+      else {
+        return true;
+      }
+    default:
+      break;
+  }
+
+  return true;
+}
+
 /* Initialize the stroke cache variants from operator properties */
 static bool paint_brush_update(bContext *C,
                                Brush *brush,
@@ -784,9 +801,9 @@ PaintStroke *paint_stroke_new(bContext *C,
   ups->average_stroke_counter = 0;
 
   /* initialize here to avoid initialization conflict with threaded strokes */
-  curvemapping_initialize(br->curve);
+  BKE_curvemapping_initialize(br->curve);
   if (p->flags & PAINT_USE_CAVITY_MASK) {
-    curvemapping_initialize(p->cavity_curve);
+    BKE_curvemapping_initialize(p->cavity_curve);
   }
 
   BKE_paint_set_overlay_override(br->overlay_flags);
@@ -1188,6 +1205,10 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
   bool redraw = false;
   float pressure;
 
+  if (event->type == INBETWEEN_MOUSEMOVE && !paint_tool_require_inbetween_mouse_events(br, mode)) {
+    return OPERATOR_RUNNING_MODAL;
+  }
+
   /* see if tablet affects event. Line, anchored and drag dot strokes do not support pressure */
   pressure = ((br->flag & (BRUSH_LINE | BRUSH_ANCHORED | BRUSH_DRAG_DOT)) ?
                   1.0f :
@@ -1329,7 +1350,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
     redraw = true;
   }
 
-  /* do updates for redraw. if event is inbetween mousemove there are more
+  /* do updates for redraw. if event is in between mouse-move there are more
    * coming, so postpone potentially slow redraw updates until all are done */
   if (event->type != INBETWEEN_MOUSEMOVE) {
     wmWindow *window = CTX_wm_window(C);

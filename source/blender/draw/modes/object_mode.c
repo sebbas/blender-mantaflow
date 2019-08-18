@@ -1115,6 +1115,10 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
                                                  Object *ob,
                                                  RegionView3D *rv3d)
 {
+  if (DRW_state_is_select()) {
+    return;
+  }
+
   if (!BKE_object_empty_image_frame_is_visible_in_view3d(ob, rv3d)) {
     return;
   }
@@ -1242,7 +1246,7 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
       unit_m4(win_m4_scale);
       unit_m4(win_m4_translate);
       unit_m4(scale_m4);
-      axis_angle_to_mat4_single(rot_m4, 'Z', bgpic->rotation);
+      axis_angle_to_mat4_single(rot_m4, 'Z', -bgpic->rotation);
       unit_m4(translate_m4);
 
       const float *size = DRW_viewport_size_get();
@@ -1250,13 +1254,13 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
       float camera_aspect_y = 1.0;
       float camera_offset_x = 0.0;
       float camera_offset_y = 0.0;
-      float camera_aspect = 1.0;
       float camera_width = size[0];
       float camera_height = size[1];
+      float camera_aspect = camera_width / camera_height;
 
       if (!DRW_state_is_image_render()) {
         rctf render_border;
-        ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &render_border, true);
+        ED_view3d_calc_camera_border(scene, depsgraph, ar, v3d, rv3d, &render_border, false);
         camera_width = render_border.xmax - render_border.xmin;
         camera_height = render_border.ymax - render_border.ymin;
         camera_aspect = camera_width / camera_height;
@@ -1280,48 +1284,52 @@ static void DRW_shgroup_camera_background_images(OBJECT_Shaders *sh_data,
       uv2img_space[0][0] = image_width;
       uv2img_space[1][1] = image_height;
 
-      img2cam_space[0][0] = (1.0 / image_width);
-      img2cam_space[1][1] = (1.0 / image_height);
+      const float fit_scale = image_aspect / camera_aspect;
+      img2cam_space[0][0] = 1.0 / image_width;
+      img2cam_space[1][1] = 1.0 / fit_scale / image_height;
 
       /* Update scaling based on image and camera framing */
       float scale_x = bgpic->scale;
       float scale_y = bgpic->scale;
 
       if (bgpic->flag & CAM_BGIMG_FLAG_CAMERA_ASPECT) {
-        float fit_scale = image_aspect / camera_aspect;
         if (bgpic->flag & CAM_BGIMG_FLAG_CAMERA_CROP) {
           if (image_aspect > camera_aspect) {
             scale_x *= fit_scale;
-          }
-          else {
-            scale_y /= fit_scale;
+            scale_y *= fit_scale;
           }
         }
         else {
           if (image_aspect > camera_aspect) {
+            scale_x /= fit_scale;
             scale_y /= fit_scale;
           }
           else {
             scale_x *= fit_scale;
+            scale_y *= fit_scale;
           }
         }
+      }
+      else {
+        /* Stretch image to camera aspect */
+        scale_y /= 1.0 / fit_scale;
       }
 
       // scale image to match the desired aspect ratio
       scale_m4[0][0] = scale_x;
       scale_m4[1][1] = scale_y;
 
-      // translate
-      translate_m4[3][0] = bgpic->offset[0];
-      translate_m4[3][1] = bgpic->offset[1];
+      /* Translate */
+      translate_m4[3][0] = image_width * bgpic->offset[0] * 2.0f;
+      translate_m4[3][1] = image_height * bgpic->offset[1] * 2.0f;
 
       mul_m4_series(bg_data->transform_mat,
                     win_m4_translate,
                     win_m4_scale,
-                    translate_m4,
                     img2cam_space,
-                    scale_m4,
+                    translate_m4,
                     rot_m4,
+                    scale_m4,
                     uv2img_space);
 
       DRWPass *pass = (bgpic->flag & CAM_BGIMG_FLAG_FOREGROUND) ? psl->camera_images_front :
@@ -2870,7 +2878,7 @@ static void DRW_shgroup_lightprobe(OBJECT_Shaders *sh_data,
 
       DRWCallBuffer *buf = buffer_theme_id_to_probe_cube_outline_shgrp(
           stl, theme_id, ob->base_flag);
-      /* TODO remove or change the drawing of the cube probes. Theses line draws nothing on purpose
+      /* TODO remove or change the drawing of the cube probes. This line draws nothing on purpose
        * to keep the call ids correct. */
       zero_m4(probe_cube_mat);
       DRW_buffer_add_entry(buf, call_id, &draw_size, probe_cube_mat);

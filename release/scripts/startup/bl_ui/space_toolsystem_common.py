@@ -22,6 +22,8 @@ from bpy.types import (
     Menu,
 )
 
+from bpy.app.translations import pgettext_tip as tip_
+
 __all__ = (
     "ToolDef",
     "ToolSelectPanelHelper",
@@ -84,7 +86,7 @@ ToolDef = namedtuple(
         # so internally we can swap the keymap function for the keymap it's self.
         # This isn't very nice and may change, tool definitions shouldn't care about this.
         "keymap",
-        # Optional data-block assosiated with this tool.
+        # Optional data-block associated with this tool.
         # (Typically brush name, usage depends on mode, we could use for non-brush ID's in other modes).
         "data_block",
         # Optional primary operator (for introspection only).
@@ -434,7 +436,7 @@ class ToolSelectPanelHelper:
     # -------------------------------------------------------------------------
     # Layout Generators
     #
-    # Meaning of recieved values:
+    # Meaning of received values:
     # - Bool: True for a separator, otherwise False for regular tools.
     # - None: Signal to finish (complete any final operations, e.g. add padding).
 
@@ -782,7 +784,7 @@ def description_from_id(context, space_type, idname, *, use_operator=True):
         if callable(description):
             km = _keymap_from_item(context, item)
             return description(context, item, km)
-        return description
+        return tip_(description)
 
     # Extract from the operator.
     if use_operator:
@@ -798,7 +800,7 @@ def description_from_id(context, space_type, idname, *, use_operator=True):
 
         if operator is not None:
             import _bpy
-            return _bpy.ops.get_rna_type(operator).description
+            return tip_(_bpy.ops.get_rna_type(operator).description)
     return ""
 
 

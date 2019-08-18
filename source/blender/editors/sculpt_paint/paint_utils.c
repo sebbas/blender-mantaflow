@@ -71,7 +71,8 @@
 
 #include "BLI_sys_types.h"
 #include "ED_mesh.h" /* for face mask functions */
-#include "ED_select_buffer_utils.h"
+
+#include "DRW_select_buffer.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -391,7 +392,7 @@ static int imapaint_pick_face(ViewContext *vc,
 
   /* sample only on the exact position */
   ED_view3d_select_id_validate(vc);
-  *r_index = ED_select_buffer_sample_point(mval);
+  *r_index = DRW_select_buffer_sample_point(vc->depsgraph, vc->ar, vc->v3d, mval);
 
   if ((*r_index) == 0 || (*r_index) > (unsigned int)totpoly) {
     return 0;
@@ -463,7 +464,7 @@ void paint_sample_color(
     bContext *C, ARegion *ar, int x, int y, bool texpaint_proj, bool use_palette)
 {
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Palette *palette = BKE_paint_palette(paint);
   PaletteColor *color = NULL;

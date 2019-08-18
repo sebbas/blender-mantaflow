@@ -1685,6 +1685,9 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
         row = col.row()
         row.enabled = md.random
         row.prop(md, "step")
+        row = col.row()
+        row.enabled = md.random
+        row.prop(md, "seed")
         col.prop(md, "full_stroke")
         col.prop(md, "move_extreme")
 
@@ -1782,13 +1785,15 @@ class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):
 
         col = split.column()
         col.label(text="Settings:")
-        row = col.row(align=True)
-        row.enabled = md.mode == 'FIXED'
-        row.prop(md, "step")
 
-        row = col.row(align=True)
-        row.enabled = not md.mode == 'FIXED'
-        row.prop(md, "factor")
+        if md.mode == 'FIXED':
+            col.prop(md, "step")
+        elif md.mode == 'ADAPTIVE':
+            col.prop(md, "factor")
+        elif md.mode == 'SAMPLE':
+            col.prop(md, "length")
+        elif md.mode == 'MERGE':
+            col.prop(md, "distance")
 
         col = layout.column()
         col.separator()

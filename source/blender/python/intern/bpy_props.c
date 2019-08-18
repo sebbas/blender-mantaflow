@@ -1505,6 +1505,10 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
       /* calculate combine string length */
       totbuf += id_str_size + name_str_size + desc_str_size + 3; /* 3 is for '\0's */
     }
+    else if (item == Py_None) {
+      /* Only set since the rest is cleared. */
+      items[i].identifier = "";
+    }
     else {
       MEM_freeN(items);
       PyErr_SetString(PyExc_TypeError,
@@ -2566,8 +2570,8 @@ PyDoc_STRVAR(BPy_FloatProperty_doc,
              ".. function:: FloatProperty(name=\"\", "
              "description=\"\", "
              "default=0.0, "
-             "min=sys.float_info.min, max=sys.float_info.max, "
-             "soft_min=sys.float_info.min, soft_max=sys.float_info.max, "
+             "min=-3.402823e+38, max=3.402823e+38, "
+             "soft_min=-3.402823e+38, soft_max=3.402823e+38, "
              "step=3, "
              "precision=2, "
              "options={'ANIMATABLE'}, "
@@ -2578,7 +2582,7 @@ PyDoc_STRVAR(BPy_FloatProperty_doc,
              "get=None, "
              "set=None)\n"
              "\n"
-             "   Returns a new float property definition.\n"
+             "   Returns a new float (single precision) property definition.\n"
              "\n" BPY_PROPDEF_NAME_DOC BPY_PROPDEF_DESC_DOC BPY_PROPDEF_NUM_MIN_DOC
              "   :type min: float\n" BPY_PROPDEF_NUM_MAX_DOC
              "   :type max: float\n" BPY_PROPDEF_NUM_SOFTMIN_DOC
@@ -2927,8 +2931,8 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
 
     prop = RNA_def_property(srna, id, PROP_STRING, subtype);
     if (maxlen != 0) {
-      RNA_def_property_string_maxlength(prop,
-                                        maxlen + 1); /* +1 since it includes null terminator */
+      /* +1 since it includes null terminator. */
+      RNA_def_property_string_maxlength(prop, maxlen + 1);
     }
     if (def && def[0]) {
       RNA_def_property_string_default(prop, def);
@@ -2968,7 +2972,7 @@ PyDoc_STRVAR(
     "      The first three elements of the tuples are mandatory.\n"
     "\n"
     "      :identifier: The identifier is used for Python access.\n"
-    "      :name: Name for the interace.\n"
+    "      :name: Name for the interface.\n"
     "      :description: Used for documentation and tooltips.\n"
     "      :icon: An icon string identifier or integer icon value\n"
     "         (e.g. returned by :class:`bpy.types.UILayout.icon`)\n"
@@ -2978,6 +2982,8 @@ PyDoc_STRVAR(
     "\n"
     "      When an item only contains 4 items they define ``(identifier, name, description, "
     "number)``.\n"
+    "\n"
+    "      Separators may be added using None instead of a tuple."
     "\n"
     "      For dynamic values a callback can be passed which returns a list in\n"
     "      the same format as the static list.\n"

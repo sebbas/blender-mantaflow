@@ -1171,10 +1171,9 @@ void ED_object_vpaintmode_enter_ex(
 {
   ed_vwpaintmode_enter_generic(bmain, depsgraph, wm, scene, ob, OB_MODE_VERTEX_PAINT);
 }
-void ED_object_vpaintmode_enter(struct bContext *C)
+void ED_object_vpaintmode_enter(struct bContext *C, Depsgraph *depsgraph)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -1186,10 +1185,9 @@ void ED_object_wpaintmode_enter_ex(
 {
   ed_vwpaintmode_enter_generic(bmain, depsgraph, wm, scene, ob, OB_MODE_WEIGHT_PAINT);
 }
-void ED_object_wpaintmode_enter(struct bContext *C)
+void ED_object_wpaintmode_enter(struct bContext *C, Depsgraph *depsgraph)
 {
   Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -1301,6 +1299,9 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   }
   else {
     Depsgraph *depsgraph = CTX_data_depsgraph_on_load(C);
+    if (depsgraph) {
+      depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    }
     wmWindowManager *wm = CTX_wm_manager(C);
     ED_object_wpaintmode_enter_ex(bmain, depsgraph, wm, scene, ob);
     BKE_paint_toolslots_brush_validate(bmain, &ts->wpaint->paint);
@@ -1396,7 +1397,7 @@ void PAINT_OT_weight_paint_toggle(wmOperatorType *ot)
   ot->poll = paint_poll_test;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /** \} */
@@ -1556,7 +1557,7 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   bool *defbase_sel;
   SculptSession *ss = ob->sculpt;
   VPaint *vp = CTX_data_tool_settings(C)->wpaint;
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   if (ED_wpaint_ensure_data(C, op->reports, WPAINT_ENSURE_MIRROR, &vgroup_index) == false) {
     return false;
@@ -1713,7 +1714,7 @@ static float wpaint_get_active_weight(const MDeformVert *dv, const WeightPaintIn
 
 static void do_wpaint_precompute_weight_cb_ex(void *__restrict userdata,
                                               const int n,
-                                              const ParallelRangeTLS *__restrict UNUSED(tls))
+                                              const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   const MDeformVert *dv = &data->me->dvert[n];
@@ -1737,7 +1738,7 @@ static void precompute_weight_values(
       .me = me,
   };
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   BLI_task_parallel_range(0, me->totvert, &data, do_wpaint_precompute_weight_cb_ex, &settings);
 
@@ -1746,7 +1747,7 @@ static void precompute_weight_values(
 
 static void do_wpaint_brush_blur_task_cb_ex(void *__restrict userdata,
                                             const int n,
-                                            const ParallelRangeTLS *__restrict UNUSED(tls))
+                                            const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -1838,7 +1839,7 @@ static void do_wpaint_brush_blur_task_cb_ex(void *__restrict userdata,
 
 static void do_wpaint_brush_smear_task_cb_ex(void *__restrict userdata,
                                              const int n,
-                                             const ParallelRangeTLS *__restrict UNUSED(tls))
+                                             const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -1949,7 +1950,7 @@ static void do_wpaint_brush_smear_task_cb_ex(void *__restrict userdata,
 
 static void do_wpaint_brush_draw_task_cb_ex(void *__restrict userdata,
                                             const int n,
-                                            const ParallelRangeTLS *__restrict UNUSED(tls))
+                                            const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -2022,7 +2023,7 @@ static void do_wpaint_brush_draw_task_cb_ex(void *__restrict userdata,
 }
 
 static void do_wpaint_brush_calc_average_weight_cb_ex(
-    void *__restrict userdata, const int n, const ParallelRangeTLS *__restrict UNUSED(tls))
+    void *__restrict userdata, const int n, const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -2078,7 +2079,7 @@ static void calculate_average_weight(SculptThreadedTaskData *data,
   struct WPaintAverageAccum *accum = MEM_mallocN(sizeof(*accum) * totnode, __func__);
   data->custom_data = accum;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = ((data->sd->flags & SCULPT_USE_OPENMP) &&
                             totnode > SCULPT_THREADED_LIMIT);
@@ -2127,7 +2128,7 @@ static void wpaint_paint_leaves(bContext *C,
   /* Use this so average can modify its weight without touching the brush. */
   data.strength = BKE_brush_weight_get(scene, brush);
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   /* NOTE: current mirroring code cannot be run in parallel */
   settings.use_threading = !(me->editflag & ME_EDIT_MIRROR_X);
@@ -2569,7 +2570,7 @@ void PAINT_OT_vertex_paint_toggle(wmOperatorType *ot)
   ot->poll = paint_poll_test;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /** \} */
@@ -2638,7 +2639,7 @@ static bool vpaint_stroke_test_start(bContext *C, struct wmOperator *op, const f
   Object *ob = CTX_data_active_object(C);
   Mesh *me;
   SculptSession *ss = ob->sculpt;
-  Depsgraph *depsgraph = CTX_data_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   /* context checks could be a poll() */
   me = BKE_mesh_from_object(ob);
@@ -2705,8 +2706,9 @@ static bool vpaint_stroke_test_start(bContext *C, struct wmOperator *op, const f
   return 1;
 }
 
-static void do_vpaint_brush_calc_average_color_cb_ex(
-    void *__restrict userdata, const int n, const ParallelRangeTLS *__restrict UNUSED(tls))
+static void do_vpaint_brush_calc_average_color_cb_ex(void *__restrict userdata,
+                                                     const int n,
+                                                     const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -2772,7 +2774,7 @@ static float tex_color_alpha_ubyte(SculptThreadedTaskData *data,
 
 static void do_vpaint_brush_draw_task_cb_ex(void *__restrict userdata,
                                             const int n,
-                                            const ParallelRangeTLS *__restrict UNUSED(tls))
+                                            const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -2871,7 +2873,7 @@ static void do_vpaint_brush_draw_task_cb_ex(void *__restrict userdata,
 
 static void do_vpaint_brush_blur_task_cb_ex(void *__restrict userdata,
                                             const int n,
-                                            const ParallelRangeTLS *__restrict UNUSED(tls))
+                                            const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -2989,7 +2991,7 @@ static void do_vpaint_brush_blur_task_cb_ex(void *__restrict userdata,
 
 static void do_vpaint_brush_smear_task_cb_ex(void *__restrict userdata,
                                              const int n,
-                                             const ParallelRangeTLS *__restrict UNUSED(tls))
+                                             const TaskParallelTLS *__restrict UNUSED(tls))
 {
   SculptThreadedTaskData *data = userdata;
   SculptSession *ss = data->ob->sculpt;
@@ -3139,7 +3141,7 @@ static void calculate_average_color(SculptThreadedTaskData *data,
   struct VPaintAverageAccum *accum = MEM_mallocN(sizeof(*accum) * totnode, __func__);
   data->custom_data = accum;
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   BLI_task_parallel_range(0, totnode, data, do_vpaint_brush_calc_average_color_cb_ex, &settings);
 
@@ -3185,7 +3187,7 @@ static void vpaint_paint_leaves(bContext *C,
       .lcol = (uint *)me->mloopcol,
       .me = me,
   };
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   switch ((eBrushVertexPaintTool)brush->vertexpaint_tool) {
     case VPAINT_TOOL_AVERAGE:

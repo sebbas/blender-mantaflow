@@ -1238,7 +1238,7 @@ void PAINT_OT_texture_paint_toggle(wmOperatorType *ot)
   ot->poll = texture_paint_toggle_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_USE_EVAL_DATA;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 static int brush_colors_flip_exec(bContext *C, wmOperator *UNUSED(op))
@@ -1246,8 +1246,7 @@ static int brush_colors_flip_exec(bContext *C, wmOperator *UNUSED(op))
   Scene *scene = CTX_data_scene(C);
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
 
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  Paint *paint = BKE_paint_get_active(scene, view_layer);
+  Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *br = BKE_paint_brush(paint);
 
   if (ups->flag & UNIFIED_PAINT_COLOR) {
@@ -1256,6 +1255,10 @@ static int brush_colors_flip_exec(bContext *C, wmOperator *UNUSED(op))
   else if (br) {
     swap_v3_v3(br->rgb, br->secondary_rgb);
   }
+  else {
+    return OPERATOR_CANCELLED;
+  }
+
   WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, br);
 
   return OPERATOR_FINISHED;

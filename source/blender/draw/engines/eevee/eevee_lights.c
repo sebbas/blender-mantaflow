@@ -779,7 +779,7 @@ static void eevee_light_setup(Object *ob, EEVEE_Light *evli)
 
 /**
  * Special ball distribution:
- * Point are distributed in a way that when they are orthogonaly
+ * Point are distributed in a way that when they are orthogonally
  * projected into any plane, the resulting distribution is (close to)
  * a uniform disc distribution.
  */
@@ -1166,9 +1166,8 @@ static void eevee_shadow_cascade_setup(Object *ob,
 
     /* Compute offset. */
     sub_v2_v2(shadow_texco, shadow_origin);
-    mul_v2_fl(shadow_texco,
-              (2.0f * sh_data->radius[c]) /
-                  linfo->shadow_cascade_size); /* Texture to light space. */
+    /* Texture to light space. */
+    mul_v2_fl(shadow_texco, (2.0f * sh_data->radius[c]) / linfo->shadow_cascade_size);
 
     /* Apply offset. */
     add_v2_v2(center, shadow_texco);
@@ -1347,7 +1346,7 @@ void EEVEE_draw_shadows(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, DRWView
 
   int saved_ray_type = sldata->common_data.ray_type;
 
-  /* TODO: make it optionnal if we don't draw shadows. */
+  /* TODO: make it optional if we don't draw shadows. */
   sldata->common_data.ray_type = EEVEE_RAY_SHADOW;
   DRW_uniformbuffer_update(sldata->common_ubo, &sldata->common_data);
 

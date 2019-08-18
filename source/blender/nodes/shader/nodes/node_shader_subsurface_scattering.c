@@ -24,7 +24,7 @@
 static bNodeSocketTemplate sh_node_subsurface_scattering_in[] = {
     {SOCK_RGBA, 1, N_("Color"), 0.8f, 0.8f, 0.8f, 1.0f, 0.0f, 1.0f},
     {SOCK_FLOAT, 1, N_("Scale"), 1.0, 0.0f, 0.0f, 0.0f, 0.0f, 1000.0f},
-    {SOCK_VECTOR, 1, N_("Radius"), 1.0f, 0.2f, 0.1f, 0.0f, 0.0f, 100.0f},
+    {SOCK_VECTOR, 1, N_("Radius"), 1.0f, 0.2f, 0.1f, 0.0f, 0.0f, 100.0f, PROP_NONE, SOCK_COMPACT},
     {SOCK_FLOAT, 1, N_("Sharpness"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
     {SOCK_FLOAT, 1, N_("Texture Blur"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
     {SOCK_VECTOR,
@@ -63,7 +63,7 @@ static int node_shader_gpu_subsurface_scattering(GPUMaterial *mat,
 
   GPU_material_flag_set(mat, GPU_MATFLAG_DIFFUSE | GPU_MATFLAG_SSS);
 
-  if (node->sss_id == 1) {
+  if (node->sss_id > 0) {
     bNodeSocket *socket = BLI_findlink(&node->original->inputs, 2);
     bNodeSocketValueRGBA *socket_data = socket->default_value;
     bNodeSocket *socket_sharp = BLI_findlink(&node->original->inputs, 3);

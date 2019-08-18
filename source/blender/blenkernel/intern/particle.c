@@ -494,13 +494,13 @@ void BKE_particlesettings_free(ParticleSettings *part)
   }
 
   if (part->clumpcurve) {
-    curvemapping_free(part->clumpcurve);
+    BKE_curvemapping_free(part->clumpcurve);
   }
   if (part->roughcurve) {
-    curvemapping_free(part->roughcurve);
+    BKE_curvemapping_free(part->roughcurve);
   }
   if (part->twistcurve) {
-    curvemapping_free(part->twistcurve);
+    BKE_curvemapping_free(part->twistcurve);
   }
 
   BKE_partdeflect_free(part->pd);
@@ -1764,8 +1764,9 @@ void psys_particle_on_dm(Mesh *mesh_final,
         copy_v3_v3(nor, tmpnor);
       }
 
-      normalize_v3(
-          tmpnor); /* XXX Why not normalize tmpnor before copying it into nor??? -- mont29 */
+      /* XXX Why not normalize tmpnor before copying it into nor??? -- mont29 */
+      normalize_v3(tmpnor);
+
       mul_v3_fl(tmpnor, -foffset);
       add_v3_v3(vec, tmpnor);
     }
@@ -2060,10 +2061,10 @@ int do_guides(Depsgraph *depsgraph,
       }
 
       if (clumpcurve) {
-        curvemapping_changed_all(clumpcurve);
+        BKE_curvemapping_changed_all(clumpcurve);
       }
       if (roughcurve) {
-        curvemapping_changed_all(roughcurve);
+        BKE_curvemapping_changed_all(roughcurve);
       }
 
       {
@@ -2368,22 +2369,22 @@ static bool psys_thread_context_init_path(ParticleThreadContext *ctx,
 
   /* prepare curvemapping tables */
   if ((part->child_flag & PART_CHILD_USE_CLUMP_CURVE) && part->clumpcurve) {
-    ctx->clumpcurve = curvemapping_copy(part->clumpcurve);
-    curvemapping_changed_all(ctx->clumpcurve);
+    ctx->clumpcurve = BKE_curvemapping_copy(part->clumpcurve);
+    BKE_curvemapping_changed_all(ctx->clumpcurve);
   }
   else {
     ctx->clumpcurve = NULL;
   }
   if ((part->child_flag & PART_CHILD_USE_ROUGH_CURVE) && part->roughcurve) {
-    ctx->roughcurve = curvemapping_copy(part->roughcurve);
-    curvemapping_changed_all(ctx->roughcurve);
+    ctx->roughcurve = BKE_curvemapping_copy(part->roughcurve);
+    BKE_curvemapping_changed_all(ctx->roughcurve);
   }
   else {
     ctx->roughcurve = NULL;
   }
   if ((part->child_flag & PART_CHILD_USE_TWIST_CURVE) && part->twistcurve) {
-    ctx->twistcurve = curvemapping_copy(part->twistcurve);
-    curvemapping_changed_all(ctx->twistcurve);
+    ctx->twistcurve = BKE_curvemapping_copy(part->twistcurve);
+    BKE_curvemapping_changed_all(ctx->twistcurve);
   }
   else {
     ctx->twistcurve = NULL;
@@ -3112,7 +3113,7 @@ typedef struct CacheEditrPathsIterData {
 
 static void psys_cache_edit_paths_iter(void *__restrict iter_data_v,
                                        const int iter,
-                                       const ParallelRangeTLS *__restrict UNUSED(tls))
+                                       const TaskParallelTLS *__restrict UNUSED(tls))
 {
   CacheEditrPathsIterData *iter_data = (CacheEditrPathsIterData *)iter_data_v;
   PTCacheEdit *edit = iter_data->edit;
@@ -3334,7 +3335,7 @@ void psys_cache_edit_paths(Depsgraph *depsgraph,
     iter_data.nosel_col[2] = (float)edit->nosel_col[2] / 255.0f;
   }
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.scheduling_mode = TASK_SCHEDULING_DYNAMIC;
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, psys_cache_edit_paths_iter, &settings);
@@ -3559,7 +3560,7 @@ ModifierData *object_add_particle_system(Main *bmain, Scene *scene, Object *ob, 
 
   psys->totpart = 0;
   psys->flag = PSYS_CURRENT;
-  psys->cfra = BKE_scene_frame_get_from_ctime(scene, CFRA + 1);
+  psys->cfra = BKE_scene_frame_to_ctime(scene, CFRA + 1);
 
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -3719,42 +3720,42 @@ ParticleSettings *BKE_particlesettings_add(Main *bmain, const char *name)
 
 void BKE_particlesettings_clump_curve_init(ParticleSettings *part)
 {
-  CurveMapping *cumap = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  CurveMapping *cumap = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 
   cumap->cm[0].curve[0].x = 0.0f;
   cumap->cm[0].curve[0].y = 1.0f;
   cumap->cm[0].curve[1].x = 1.0f;
   cumap->cm[0].curve[1].y = 1.0f;
 
-  curvemapping_initialize(cumap);
+  BKE_curvemapping_initialize(cumap);
 
   part->clumpcurve = cumap;
 }
 
 void BKE_particlesettings_rough_curve_init(ParticleSettings *part)
 {
-  CurveMapping *cumap = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  CurveMapping *cumap = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 
   cumap->cm[0].curve[0].x = 0.0f;
   cumap->cm[0].curve[0].y = 1.0f;
   cumap->cm[0].curve[1].x = 1.0f;
   cumap->cm[0].curve[1].y = 1.0f;
 
-  curvemapping_initialize(cumap);
+  BKE_curvemapping_initialize(cumap);
 
   part->roughcurve = cumap;
 }
 
 void BKE_particlesettings_twist_curve_init(ParticleSettings *part)
 {
-  CurveMapping *cumap = curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
+  CurveMapping *cumap = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
 
   cumap->cm[0].curve[0].x = 0.0f;
   cumap->cm[0].curve[0].y = 1.0f;
   cumap->cm[0].curve[1].x = 1.0f;
   cumap->cm[0].curve[1].y = 1.0f;
 
-  curvemapping_initialize(cumap);
+  BKE_curvemapping_initialize(cumap);
 
   part->twistcurve = cumap;
 }
@@ -3780,13 +3781,13 @@ void BKE_particlesettings_copy_data(Main *UNUSED(bmain),
   part_dst->fluid = MEM_dupallocN(part_src->fluid);
 
   if (part_src->clumpcurve) {
-    part_dst->clumpcurve = curvemapping_copy(part_src->clumpcurve);
+    part_dst->clumpcurve = BKE_curvemapping_copy(part_src->clumpcurve);
   }
   if (part_src->roughcurve) {
-    part_dst->roughcurve = curvemapping_copy(part_src->roughcurve);
+    part_dst->roughcurve = BKE_curvemapping_copy(part_src->roughcurve);
   }
   if (part_src->twistcurve) {
-    part_dst->twistcurve = curvemapping_copy(part_src->twistcurve);
+    part_dst->twistcurve = BKE_curvemapping_copy(part_src->twistcurve);
   }
 
   part_dst->boids = boid_copy_settings(part_src->boids);
@@ -4259,7 +4260,7 @@ static void get_child_modifier_parameters(ParticleSettings *part,
         ctx->mesh, cpa_from, cpa_num, cpa_fuv, ctx->vg_twist);
   }
 }
-/* get's hair (or keyed) particles state at the "path time" specified in state->time */
+/* gets hair (or keyed) particles state at the "path time" specified in state->time */
 void psys_get_particle_on_path(ParticleSimulationData *sim,
                                int p,
                                ParticleKey *state,

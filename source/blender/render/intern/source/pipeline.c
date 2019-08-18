@@ -642,7 +642,7 @@ void RE_FreeRender(Render *re)
   BLI_freelistN(&re->view_layers);
   BLI_freelistN(&re->r.views);
 
-  curvemapping_free_data(&re->r.mblur_shutter_curve);
+  BKE_curvemapping_free_data(&re->r.mblur_shutter_curve);
 
   /* main dbase can already be invalid now, some database-free code checks it */
   re->main = NULL;
@@ -772,12 +772,12 @@ static void re_init_resolution(Render *re, Render *source, int winx, int winy, r
 void render_copy_renderdata(RenderData *to, RenderData *from)
 {
   BLI_freelistN(&to->views);
-  curvemapping_free_data(&to->mblur_shutter_curve);
+  BKE_curvemapping_free_data(&to->mblur_shutter_curve);
 
   *to = *from;
 
   BLI_duplicatelist(&to->views, &from->views);
-  curvemapping_copy_data(&to->mblur_shutter_curve, &from->mblur_shutter_curve);
+  BKE_curvemapping_copy_data(&to->mblur_shutter_curve, &from->mblur_shutter_curve);
 }
 
 /* what doesn't change during entire render sequence */
@@ -1680,7 +1680,6 @@ static void do_render_all_options(Render *re)
 {
   Object *camera;
   bool render_seq = false;
-  int cfra = re->r.cfra;
 
   re->current_scene_update(re->suh, re->scene);
 
@@ -1691,16 +1690,6 @@ static void do_render_all_options(Render *re)
   /* ensure no images are in memory from previous animated sequences */
   BKE_image_all_free_anim_ibufs(re->main, re->r.cfra);
   BKE_sequencer_all_free_anim_ibufs(re->scene, re->r.cfra);
-
-  /* Update for sequencer and compositing animation.
-   * TODO: ideally we would create a depsgraph with a copy of the scene
-   * like the render engine, but sequencer and compositing do not (yet?)
-   * work with copy-on-write. */
-  BKE_animsys_evaluate_all_animation(re->main, NULL, re->scene, (float)cfra);
-
-  /* Update for masks
-   * (these do not use animsys but own lighter weight structure to define animation). */
-  BKE_mask_evaluate_all_masks(re->main, (float)cfra, true);
 
   if (RE_engine_render(re, 1)) {
     /* in this case external render overrides all */
@@ -2003,8 +1992,8 @@ static int render_initialize_from_main(Render *re,
   winx = (rd->size * rd->xsch) / 100;
   winy = (rd->size * rd->ysch) / 100;
 
-  /* We always render smaller part, inserting it in larger image is compositor bizz,
-   * it uses disprect for it. */
+  /* We always render smaller part, inserting it in larger image is compositor business,
+   * it uses 'disprect' for it. */
   if (scene->r.mode & R_BORDER) {
     disprect.xmin = rd->border.xmin * winx;
     disprect.xmax = rd->border.xmax * winx;
@@ -2566,7 +2555,7 @@ void RE_RenderAnim(Render *re,
     for (nfra = sfra, scene->r.cfra = sfra; scene->r.cfra <= efra; scene->r.cfra++) {
       char name[FILE_MAX];
 
-      /* Here is a feedback loop exists -- render initialization requires updated
+      /* A feedback loop exists here -- render initialization requires updated
        * render layers settings which could be animated, but scene evaluation for
        * the frame happens later because it depends on what layers are visible to
        * render engine.
@@ -2580,12 +2569,7 @@ void RE_RenderAnim(Render *re,
       {
         float ctime = BKE_scene_frame_get(scene);
         AnimData *adt = BKE_animdata_from_id(&scene->id);
-        /* TODO(sergey): Currently depsgraph is only used to check whether it is an active
-         * edit window or not to deal with unkeyed changes. We don't have depsgraph here yet,
-         * but we also dont' deal with unkeyed changes. But still nice to get proper depsgraph
-         * within tjhe render pipeline, somehow.
-         */
-        BKE_animsys_evaluate_animdata(NULL, scene, &scene->id, adt, ctime, ADT_RECALC_ALL);
+        BKE_animsys_evaluate_animdata(scene, &scene->id, adt, ctime, ADT_RECALC_ALL, false);
       }
 
       render_update_depsgraph(re);

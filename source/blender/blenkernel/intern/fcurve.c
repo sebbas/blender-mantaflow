@@ -506,8 +506,10 @@ static int binarysearch_bezt_index_ex(
    */
   for (loopbreaker = 0; (start <= end) && (loopbreaker < maxloop); loopbreaker++) {
     /* compute and get midpoint */
-    int mid = start + ((end - start) /
-                       2); /* we calculate the midpoint this way to avoid int overflows... */
+
+    /* We calculate the midpoint this way to avoid int overflows... */
+    int mid = start + ((end - start) / 2);
+
     float midfra = array[mid].vec[1][0];
 
     /* check if exactly equal to midpoint */
@@ -1113,7 +1115,7 @@ void calchandles_fcurve(FCurve *fcu)
     first->f5 = last->f5 = HD_AUTOTYPE_SPECIAL;
   }
 
-  /* do a second pass for auto handle: compute the handle to have 0 accelaration step */
+  /* do a second pass for auto handle: compute the handle to have 0 acceleration step */
   if (fcu->auto_smoothing != FCURVE_SMOOTH_NONE) {
     BKE_nurb_handle_smooth_fcurve(fcu->bezt, fcu->totvert, cycle);
   }
@@ -1744,7 +1746,7 @@ static float dvar_eval_transChan(ChannelDriver *driver, DriverVar *dvar)
 
 /* ......... */
 
-/* Table of Driver Varaiable Type Info Data */
+/* Table of Driver Variable Type Info Data */
 static DriverVarTypeInfo dvar_types[MAX_DVAR_TYPES] = {
     BEGIN_DVAR_TYPEDEF(DVAR_TYPE_SINGLE_PROP) dvar_eval_singleProp, /* eval callback */
     1,                                                              /* number of targets used */

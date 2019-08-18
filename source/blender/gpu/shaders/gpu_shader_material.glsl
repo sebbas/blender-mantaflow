@@ -250,185 +250,154 @@ void camera(vec3 co, out vec3 outview, out float outdepth, out float outdist)
   outview = normalize(co);
 }
 
-void math_add(float val1, float val2, out float outval)
+void math_add(float a, float b, out float result)
 {
-  outval = val1 + val2;
+  result = a + b;
 }
 
-void math_subtract(float val1, float val2, out float outval)
+void math_subtract(float a, float b, out float result)
 {
-  outval = val1 - val2;
+  result = a - b;
 }
 
-void math_multiply(float val1, float val2, out float outval)
+void math_multiply(float a, float b, out float result)
 {
-  outval = val1 * val2;
+  result = a * b;
 }
 
-void math_divide(float val1, float val2, out float outval)
+void math_divide(float a, float b, out float result)
 {
-  if (val2 == 0.0) {
-    outval = 0.0;
+  result = (b != 0.0) ? a / b : 0.0;
+}
+
+void math_power(float a, float b, out float result)
+{
+  if (a >= 0.0) {
+    result = compatible_pow(a, b);
   }
   else {
-    outval = val1 / val2;
-  }
-}
-
-void math_sine(float val, out float outval)
-{
-  outval = sin(val);
-}
-
-void math_cosine(float val, out float outval)
-{
-  outval = cos(val);
-}
-
-void math_tangent(float val, out float outval)
-{
-  outval = tan(val);
-}
-
-void math_asin(float val, out float outval)
-{
-  if (val <= 1.0 && val >= -1.0) {
-    outval = asin(val);
-  }
-  else {
-    outval = 0.0;
-  }
-}
-
-void math_acos(float val, out float outval)
-{
-  if (val <= 1.0 && val >= -1.0) {
-    outval = acos(val);
-  }
-  else {
-    outval = 0.0;
-  }
-}
-
-void math_atan(float val, out float outval)
-{
-  outval = atan(val);
-}
-
-void math_pow(float val1, float val2, out float outval)
-{
-  if (val1 >= 0.0) {
-    outval = compatible_pow(val1, val2);
-  }
-  else {
-    float val2_mod_1 = mod(abs(val2), 1.0);
-
-    if (val2_mod_1 > 0.999 || val2_mod_1 < 0.001) {
-      outval = compatible_pow(val1, floor(val2 + 0.5));
+    float fraction = mod(abs(b), 1.0);
+    if (fraction > 0.999 || fraction < 0.001) {
+      result = compatible_pow(a, floor(b + 0.5));
     }
     else {
-      outval = 0.0;
+      result = 0.0;
     }
   }
 }
 
-void math_log(float val1, float val2, out float outval)
+void math_logarithm(float a, float b, out float result)
 {
-  if (val1 > 0.0 && val2 > 0.0) {
-    outval = log2(val1) / log2(val2);
-  }
-  else {
-    outval = 0.0;
-  }
+  result = (a > 0.0 && b > 0.0) ? log2(a) / log2(b) : 0.0;
 }
 
-void math_max(float val1, float val2, out float outval)
+void math_sqrt(float a, float b, out float result)
 {
-  outval = max(val1, val2);
+  result = (a > 0.0) ? sqrt(a) : 0.0;
 }
 
-void math_min(float val1, float val2, out float outval)
+void math_absolute(float a, float b, out float result)
 {
-  outval = min(val1, val2);
+  result = abs(a);
 }
 
-void math_round(float val, out float outval)
+void math_minimum(float a, float b, out float result)
 {
-  outval = floor(val + 0.5);
+  result = min(a, b);
 }
 
-void math_less_than(float val1, float val2, out float outval)
+void math_maximum(float a, float b, out float result)
 {
-  if (val1 < val2) {
-    outval = 1.0;
-  }
-  else {
-    outval = 0.0;
-  }
+  result = max(a, b);
 }
 
-void math_greater_than(float val1, float val2, out float outval)
+void math_less_than(float a, float b, out float result)
 {
-  if (val1 > val2) {
-    outval = 1.0;
-  }
-  else {
-    outval = 0.0;
-  }
+  result = (a < b) ? 1.0 : 0.0;
 }
 
-void math_modulo(float val1, float val2, out float outval)
+void math_greater_than(float a, float b, out float result)
 {
-  if (val2 == 0.0) {
-    outval = 0.0;
-  }
-  else {
-    outval = mod(val1, val2);
-  }
-
-  /* change sign to match C convention, mod in GLSL will take absolute for negative numbers,
-   * see https://www.opengl.org/sdk/docs/man/html/mod.xhtml */
-  outval = (val1 > 0.0) ? outval : outval - val2;
+  result = (a > b) ? 1.0 : 0.0;
 }
 
-void math_abs(float val1, out float outval)
+void math_round(float a, float b, out float result)
 {
-  outval = abs(val1);
+  result = floor(a + 0.5);
 }
 
-void math_atan2(float val1, float val2, out float outval)
+void math_floor(float a, float b, out float result)
 {
-  outval = atan(val1, val2);
+  result = floor(a);
 }
 
-void math_floor(float val, out float outval)
+void math_ceil(float a, float b, out float result)
 {
-  outval = floor(val);
+  result = ceil(a);
 }
 
-void math_ceil(float val, out float outval)
+void math_fraction(float a, float b, out float result)
 {
-  outval = ceil(val);
+  result = a - floor(a);
 }
 
-void math_fract(float val, out float outval)
+/* Change sign to match C convention. mod in GLSL will take absolute for negative numbers.
+ * See https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/mod.xhtml
+ */
+void math_modulo(float a, float b, out float result)
 {
-  outval = val - floor(val);
+  result = (b != 0.0) ? sign(a) * mod(abs(a), b) : 0.0;
 }
 
-void math_sqrt(float val, out float outval)
+void math_sine(float a, float b, out float result)
 {
-  if (val > 0.0) {
-    outval = sqrt(val);
-  }
-  else {
-    outval = 0.0;
-  }
+  result = sin(a);
+}
+
+void math_cosine(float a, float b, out float result)
+{
+  result = cos(a);
+}
+
+void math_tangent(float a, float b, out float result)
+{
+  result = tan(a);
+}
+
+void math_arcsine(float a, float b, out float result)
+{
+  result = (a <= 1.0 && a >= -1.0) ? asin(a) : 0.0;
+}
+
+void math_arccosine(float a, float b, out float result)
+{
+  result = (a <= 1.0 && a >= -1.0) ? acos(a) : 0.0;
+}
+
+void math_arctangent(float a, float b, out float result)
+{
+  result = atan(a);
+}
+
+void math_arctan2(float a, float b, out float result)
+{
+  result = atan(a, b);
 }
 
 void squeeze(float val, float width, float center, out float outval)
 {
   outval = 1.0 / (1.0 + pow(2.71828183, -((val - center) * width)));
+}
+
+void map_range(
+    float value, float fromMin, float fromMax, float toMin, float toMax, out float result)
+{
+  if (fromMax != fromMin) {
+    result = toMin + ((value - fromMin) / (fromMax - fromMin)) * (toMax - toMin);
+  }
+  else {
+    result = 0.0;
+  }
 }
 
 void vec_math_add(vec3 v1, vec3 v2, out vec3 outvec, out float outval)
@@ -962,9 +931,9 @@ void clamp_vec3(vec3 vec, vec3 min, vec3 max, out vec3 out_vec)
   out_vec = clamp(vec, min, max);
 }
 
-void clamp_val(float value, float min, float max, out float out_value)
+void clamp_value(float value, float min, float max, out float result)
 {
-  out_value = clamp(value, min, max);
+  result = clamp(value, min, max);
 }
 
 void hue_sat(float hue, float sat, float value, float fac, vec4 col, out vec4 outcol)
@@ -1230,10 +1199,9 @@ vec3 principled_sheen(float NV, vec3 basecol_tint, float sheen_tint)
 void node_bsdf_diffuse(vec4 color, float roughness, vec3 N, out Closure result)
 {
   N = normalize(N);
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
   eevee_closure_diffuse(N, color.rgb, 1.0, result.radiance);
+  closure_load_ssr_data(vec3(0.0), 0.0, N, viewCameraVec, -1, result);
   result.radiance *= color.rgb;
 }
 
@@ -1245,9 +1213,7 @@ void node_bsdf_glossy(vec4 color, float roughness, vec3 N, float ssr_id, out Clo
   vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = out_spec * color.rgb;
-  result.ssr_data = vec4(ssr_spec * color.rgb, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  closure_load_ssr_data(ssr_spec * color.rgb, roughness, N, viewCameraVec, int(ssr_id), result);
 }
 
 void node_bsdf_anisotropic(vec4 color,
@@ -1276,9 +1242,8 @@ void node_bsdf_glass(
   vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = mix(out_refr, out_spec, fresnel);
-  result.ssr_data = vec4(ssr_spec * color.rgb * fresnel, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  closure_load_ssr_data(
+      ssr_spec * color.rgb * fresnel, roughness, N, viewCameraVec, int(ssr_id), result);
 }
 
 void node_bsdf_toon(vec4 color, float size, float tsmooth, vec3 N, out Closure result)
@@ -1343,7 +1308,7 @@ void node_bsdf_principled(vec4 base_color,
 
   vec3 mixed_ss_base_color = mix(diffuse, subsurface_color.rgb, subsurface);
 
-  float sss_scalef = dot(sss_scale, vec3(1.0 / 3.0)) * subsurface;
+  float sss_scalef = avg(sss_scale) * subsurface;
   eevee_closure_principled(N,
                            mixed_ss_base_color,
                            f0,
@@ -1367,28 +1332,34 @@ void node_bsdf_principled(vec4 base_color,
                                           vec3(1.0); /* Simulate 2 transmission event */
   out_refr *= refr_color * (1.0 - fresnel) * transmission;
 
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = out_spec + out_refr;
   result.radiance += out_diff * out_sheen; /* Coarse approx. */
+
+  closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
+
+  vec3 sss_radiance = (out_diff + out_trans) * alpha;
 #  ifndef USE_SSS
-  result.radiance += (out_diff + out_trans) * mixed_ss_base_color * (1.0 - transmission);
-#  endif
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
-#  ifdef USE_SSS
-  result.sss_data.a = sss_scalef;
-  result.sss_data.rgb = out_diff + out_trans;
+  result.radiance += sss_radiance * mixed_ss_base_color * (1.0 - transmission);
+#  else
 #    ifdef USE_SSS_ALBEDO
-  result.sss_albedo.rgb = mixed_ss_base_color;
+  vec3 sss_albedo = mixed_ss_base_color;
 #    else
-  result.sss_data.rgb *= mixed_ss_base_color;
+  sss_radiance *= mixed_ss_base_color;
 #    endif
-  result.sss_data.rgb *= (1.0 - transmission);
-#  endif
+  sss_radiance *= (1.0 - transmission);
+  closure_load_sss_data(sss_scalef,
+                        sss_radiance,
+#    ifdef USE_SSS_ALBEDO
+                        sss_albedo,
+#    endif
+                        int(sss_id),
+                        result);
+#  endif /* USE_SSS */
+
   result.radiance += emission.rgb;
-  result.opacity = alpha;
+  result.radiance *= alpha;
+  result.transmittance = vec3(1.0 - alpha);
 }
 
 void node_bsdf_principled_dielectric(vec4 base_color,
@@ -1434,14 +1405,12 @@ void node_bsdf_principled_dielectric(vec4 base_color,
   eevee_closure_default(
       N, diffuse, f0, vec3(1.0), int(ssr_id), roughness, 1.0, out_diff, out_spec, ssr_spec);
 
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = out_spec + out_diff * (diffuse + out_sheen);
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
   result.radiance += emission.rgb;
-  result.opacity = alpha;
+  result.radiance *= alpha;
+  result.transmittance = vec3(1.0 - alpha);
 }
 
 void node_bsdf_principled_metallic(vec4 base_color,
@@ -1479,14 +1448,12 @@ void node_bsdf_principled_metallic(vec4 base_color,
 
   eevee_closure_glossy(N, base_color.rgb, f90, int(ssr_id), roughness, 1.0, out_spec, ssr_spec);
 
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = out_spec;
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
   result.radiance += emission.rgb;
-  result.opacity = alpha;
+  result.radiance *= alpha;
+  result.transmittance = vec3(1.0 - alpha);
 }
 
 void node_bsdf_principled_clearcoat(vec4 base_color,
@@ -1534,14 +1501,12 @@ void node_bsdf_principled_clearcoat(vec4 base_color,
                           out_spec,
                           ssr_spec);
 
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = out_spec;
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
   result.radiance += emission.rgb;
-  result.opacity = alpha;
+  result.radiance *= alpha;
+  result.transmittance = vec3(1.0 - alpha);
 }
 
 void node_bsdf_principled_subsurface(vec4 base_color,
@@ -1582,7 +1547,7 @@ void node_bsdf_principled_subsurface(vec4 base_color,
 
   subsurface_color = subsurface_color * (1.0 - metallic);
   vec3 mixed_ss_base_color = mix(diffuse, subsurface_color.rgb, subsurface);
-  float sss_scalef = dot(sss_scale, vec3(1.0 / 3.0)) * subsurface;
+  float sss_scalef = avg(sss_scale) * subsurface;
 
   float NV = dot(N, cameraVec);
   vec3 out_sheen = sheen * principled_sheen(NV, ctint, sheen_tint);
@@ -1602,26 +1567,33 @@ void node_bsdf_principled_subsurface(vec4 base_color,
                      out_spec,
                      ssr_spec);
 
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = out_spec;
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
-#  ifdef USE_SSS
-  result.sss_data.a = sss_scalef;
-  result.sss_data.rgb = out_diff + out_trans;
-#    ifdef USE_SSS_ALBEDO
-  result.sss_albedo.rgb = mixed_ss_base_color;
-#    else
-  result.sss_data.rgb *= mixed_ss_base_color;
-#    endif
+  closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
+
+  vec3 sss_radiance = (out_diff + out_trans) * alpha;
+#  ifndef USE_SSS
+  result.radiance += sss_radiance * mixed_ss_base_color * (1.0 - transmission);
 #  else
-  result.radiance += (out_diff + out_trans) * mixed_ss_base_color;
-#  endif
+#    ifdef USE_SSS_ALBEDO
+  vec3 sss_albedo = mixed_ss_base_color;
+#    else
+  sss_radiance *= mixed_ss_base_color;
+#    endif
+  sss_radiance *= (1.0 - transmission);
+  closure_load_sss_data(sss_scalef,
+                        sss_radiance,
+#    ifdef USE_SSS_ALBEDO
+                        sss_albedo,
+#    endif
+                        int(sss_id),
+                        result);
+#  endif /* USE_SSS */
+
   result.radiance += out_diff * out_sheen;
   result.radiance += emission.rgb;
-  result.opacity = alpha;
+  result.radiance *= alpha;
+  result.transmittance = vec3(1.0 - alpha);
 }
 
 void node_bsdf_principled_glass(vec4 base_color,
@@ -1671,14 +1643,12 @@ void node_bsdf_principled_glass(vec4 base_color,
   out_spec *= spec_col;
   ssr_spec *= spec_col * fresnel;
 
-  vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
   result.radiance = mix(out_refr, out_spec, fresnel);
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  closure_load_ssr_data(ssr_spec * alpha, roughness, N, viewCameraVec, int(ssr_id), result);
   result.radiance += emission.rgb;
-  result.opacity = alpha;
+  result.radiance *= alpha;
+  result.transmittance = vec3(1.0 - alpha);
 }
 
 void node_bsdf_translucent(vec4 color, vec3 N, out Closure result)
@@ -1688,11 +1658,9 @@ void node_bsdf_translucent(vec4 color, vec3 N, out Closure result)
 
 void node_bsdf_transparent(vec4 color, out Closure result)
 {
-  /* this isn't right */
   result = CLOSURE_DEFAULT;
   result.radiance = vec3(0.0);
-  result.opacity = clamp(1.0 - dot(color.rgb, vec3(0.3333334)), 0.0, 1.0);
-  result.ssr_id = TRANSPARENT_CLOSURE_FLAG;
+  result.transmittance = abs(color.rgb);
 }
 
 void node_bsdf_velvet(vec4 color, float sigma, vec3 N, out Closure result)
@@ -1714,19 +1682,25 @@ void node_subsurface_scattering(vec4 color,
   vec3 out_diff, out_trans;
   vec3 vN = mat3(ViewMatrix) * N;
   result = CLOSURE_DEFAULT;
-  result.ssr_data = vec4(0.0);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = -1;
-  result.sss_data.a = scale;
+  closure_load_ssr_data(vec3(0.0), 0.0, N, viewCameraVec, -1, result);
+
   eevee_closure_subsurface(N, color.rgb, 1.0, scale, out_diff, out_trans);
-  result.sss_data.rgb = out_diff + out_trans;
+
+  vec3 sss_radiance = out_diff + out_trans;
 #    ifdef USE_SSS_ALBEDO
   /* Not perfect for texture_blur not exactly equal to 0.0 or 1.0. */
-  result.sss_albedo.rgb = mix(color.rgb, vec3(1.0), texture_blur);
-  result.sss_data.rgb *= mix(vec3(1.0), color.rgb, texture_blur);
+  vec3 sss_albedo = mix(color.rgb, vec3(1.0), texture_blur);
+  sss_radiance *= mix(vec3(1.0), color.rgb, texture_blur);
 #    else
-  result.sss_data.rgb *= color.rgb;
+  sss_radiance *= color.rgb;
 #    endif
+  closure_load_sss_data(scale,
+                        sss_radiance,
+#    ifdef USE_SSS_ALBEDO
+                        sss_albedo,
+#    endif
+                        int(sss_id),
+                        result);
 #  else
   node_bsdf_diffuse(color, 0.0, N, result);
 #  endif
@@ -1742,7 +1716,6 @@ void node_bsdf_refraction(vec4 color, float roughness, float ior, vec3 N, out Cl
   result = CLOSURE_DEFAULT;
   result.ssr_normal = normal_encode(vN, viewCameraVec);
   result.radiance = out_refr * color.rgb;
-  result.ssr_id = REFRACT_CLOSURE_FLAG;
 }
 
 void node_ambient_occlusion(
@@ -1843,7 +1816,7 @@ void node_background(vec4 color, float strength, out Closure result)
   color *= strength;
   result = CLOSURE_DEFAULT;
   result.radiance = color.rgb;
-  result.opacity = color.a;
+  result.transmittance = vec3(0.0);
 #else
   result = CLOSURE_DEFAULT;
 #endif
@@ -1951,6 +1924,15 @@ void node_volume_principled(vec4 color,
 #endif
 }
 
+void node_holdout(out Closure result)
+{
+  result = CLOSURE_DEFAULT;
+#ifndef VOLUMETRICS
+  result.holdout = 1.0;
+  result.flag = CLOSURE_HOLDOUT_FLAG;
+#endif
+}
+
 /* closures */
 
 void node_mix_shader(float fac, Closure shader1, Closure shader2, out Closure shader)
@@ -2025,7 +2007,7 @@ void node_attribute_volume_density(sampler3D tex, out vec4 outcol, out vec3 outv
 #endif
   outvec = texture(tex, cos).aaa;
   outcol = vec4(outvec, 1.0);
-  outf = dot(vec3(1.0 / 3.0), outvec);
+  outf = avg(outvec);
 }
 
 uniform vec3 volumeColor = vec3(1.0);
@@ -2046,7 +2028,7 @@ void node_attribute_volume_color(sampler3D tex, out vec4 outcol, out vec3 outvec
 
   outvec = value.rgb * volumeColor;
   outcol = vec4(outvec, 1.0);
-  outf = dot(vec3(1.0 / 3.0), outvec);
+  outf = avg(outvec);
 }
 
 void node_attribute_volume_flame(sampler3D tex, out vec4 outcol, out vec3 outvec, out float outf)
@@ -2080,7 +2062,7 @@ void node_attribute(vec3 attr, out vec4 outcol, out vec3 outvec, out float outf)
 {
   outcol = vec4(attr, 1.0);
   outvec = attr;
-  outf = dot(vec3(1.0 / 3.0), attr);
+  outf = avg(attr);
 }
 
 void node_uvmap(vec3 attr_uv, out vec3 outvec)
@@ -3493,7 +3475,7 @@ void node_output_world(Closure surface, Closure volume, out Closure result)
 {
 #ifndef VOLUMETRICS
   result.radiance = surface.radiance * backgroundAlpha;
-  result.opacity = backgroundAlpha;
+  result.transmittance = vec3(1.0 - backgroundAlpha);
 #else
   result = volume;
 #endif /* VOLUMETRICS */
@@ -3540,6 +3522,8 @@ void node_eevee_specular(vec4 diffuse,
                          float ssr_id,
                          out Closure result)
 {
+  normal = normalize(normal);
+
   vec3 out_diff, out_spec, ssr_spec;
   eevee_closure_default_clearcoat(normal,
                                   diffuse.rgb,
@@ -3555,19 +3539,19 @@ void node_eevee_specular(vec4 diffuse,
                                   out_spec,
                                   ssr_spec);
 
-  vec3 vN = normalize(mat3(ViewMatrix) * normal);
+  float alpha = 1.0 - transp;
   result = CLOSURE_DEFAULT;
   result.radiance = out_diff * diffuse.rgb + out_spec + emissive.rgb;
-  result.opacity = 1.0 - transp;
-  result.ssr_data = vec4(ssr_spec, roughness);
-  result.ssr_normal = normal_encode(vN, viewCameraVec);
-  result.ssr_id = int(ssr_id);
+  result.radiance *= alpha;
+  result.transmittance = vec3(transp);
+
+  closure_load_ssr_data(ssr_spec * alpha, roughness, normal, viewCameraVec, int(ssr_id), result);
 }
 
 void node_shader_to_rgba(Closure cl, out vec4 outcol, out float outalpha)
 {
   vec4 spec_accum = vec4(0.0);
-  if (ssrToggle && cl.ssr_id == outputSsrId) {
+  if (ssrToggle && FLAG_TEST(cl.flag, CLOSURE_SSR_FLAG)) {
     vec3 V = cameraVec;
     vec3 vN = normal_decode(cl.ssr_normal, viewCameraVec);
     vec3 N = transform_direction(ViewMatrixInverse, vN);
@@ -3576,7 +3560,7 @@ void node_shader_to_rgba(Closure cl, out vec4 outcol, out float outalpha)
     fallback_cubemap(N, V, worldPosition, viewPosition, roughness, roughnessSquared, spec_accum);
   }
 
-  outalpha = cl.opacity;
+  outalpha = avg(cl.transmittance);
   outcol = vec4((spec_accum.rgb * cl.ssr_data.rgb) + cl.radiance, 1.0);
 
 #  ifdef USE_SSS

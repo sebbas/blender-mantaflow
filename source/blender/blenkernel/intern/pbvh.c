@@ -995,7 +995,7 @@ typedef struct PBVHUpdateData {
 
 static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
                                               const int n,
-                                              const ParallelRangeTLS *__restrict UNUSED(tls))
+                                              const TaskParallelTLS *__restrict UNUSED(tls))
 {
   PBVHUpdateData *data = userdata;
 
@@ -1045,7 +1045,7 @@ static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
 
 static void pbvh_update_normals_store_task_cb(void *__restrict userdata,
                                               const int n,
-                                              const ParallelRangeTLS *__restrict UNUSED(tls))
+                                              const TaskParallelTLS *__restrict UNUSED(tls))
 {
   PBVHUpdateData *data = userdata;
   PBVH *bvh = data->bvh;
@@ -1094,7 +1094,7 @@ static void pbvh_faces_update_normals(PBVH *bvh, PBVHNode **nodes, int totnode)
       .vnors = vnors,
   };
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (totnode > PBVH_THREADED_LIMIT);
 
@@ -1107,7 +1107,7 @@ static void pbvh_faces_update_normals(PBVH *bvh, PBVHNode **nodes, int totnode)
 
 static void pbvh_update_BB_redraw_task_cb(void *__restrict userdata,
                                           const int n,
-                                          const ParallelRangeTLS *__restrict UNUSED(tls))
+                                          const TaskParallelTLS *__restrict UNUSED(tls))
 {
   PBVHUpdateData *data = userdata;
   PBVH *bvh = data->bvh;
@@ -1138,7 +1138,7 @@ void pbvh_update_BB_redraw(PBVH *bvh, PBVHNode **nodes, int totnode, int flag)
       .flag = flag,
   };
 
-  ParallelRangeSettings settings;
+  TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.use_threading = (totnode > PBVH_THREADED_LIMIT);
   BLI_task_parallel_range(0, totnode, &data, pbvh_update_BB_redraw_task_cb, &settings);
@@ -2499,11 +2499,6 @@ bool pbvh_has_mask(PBVH *bvh)
   }
 
   return false;
-}
-
-void pbvh_show_diffuse_color_set(PBVH *bvh, bool show_diffuse_color)
-{
-  bvh->show_diffuse_color = !pbvh_has_mask(bvh) || show_diffuse_color;
 }
 
 void pbvh_show_mask_set(PBVH *bvh, bool show_mask)

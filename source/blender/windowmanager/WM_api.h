@@ -93,7 +93,7 @@ void WM_init_native_pixels(bool do_it);
 void WM_init_tablet_api(void);
 
 void WM_init(struct bContext *C, int argc, const char **argv);
-void WM_exit_ext(struct bContext *C, const bool do_python);
+void WM_exit_ex(struct bContext *C, const bool do_python);
 
 void WM_exit(struct bContext *C) ATTR_NORETURN;
 
@@ -162,6 +162,7 @@ enum {
   WM_WINDOW_RENDER = 1,
   WM_WINDOW_USERPREFS,
   WM_WINDOW_DRIVERS,
+  WM_WINDOW_INFO,
   // WM_WINDOW_FILESEL // UNUSED
 };
 
@@ -420,11 +421,14 @@ int WM_operator_call_py(struct bContext *C,
                         struct ReportList *reports,
                         const bool is_undo);
 
+/* Used for keymap and macro items. */
 void WM_operator_properties_alloc(struct PointerRNA **ptr,
                                   struct IDProperty **properties,
-                                  const char *opstring); /* used for keymap and macro items */
-void WM_operator_properties_sanitize(
-    struct PointerRNA *ptr, const bool no_context); /* make props context sensitive or not */
+                                  const char *opstring);
+
+/* Make props context sensitive or not. */
+void WM_operator_properties_sanitize(struct PointerRNA *ptr, const bool no_context);
+
 bool WM_operator_properties_default(struct PointerRNA *ptr, const bool do_update);
 void WM_operator_properties_reset(struct wmOperator *op);
 void WM_operator_properties_create(struct PointerRNA *ptr, const char *opstring);
@@ -565,8 +569,8 @@ bool WM_menutype_poll(struct bContext *C, struct MenuType *mt);
 void WM_paneltype_init(void);
 void WM_paneltype_clear(void);
 struct PanelType *WM_paneltype_find(const char *idname, bool quiet);
-bool WM_paneltype_add(struct PanelType *mt);
-void WM_paneltype_remove(struct PanelType *mt);
+bool WM_paneltype_add(struct PanelType *pt);
+void WM_paneltype_remove(struct PanelType *pt);
 
 /* wm_gesture_ops.c */
 int WM_gesture_box_invoke(struct bContext *C, struct wmOperator *op, const struct wmEvent *event);
@@ -741,6 +745,10 @@ void *WM_draw_cb_activate(struct wmWindow *win,
                           void *customdata);
 void WM_draw_cb_exit(struct wmWindow *win, void *handle);
 void WM_redraw_windows(struct bContext *C);
+
+void WM_draw_region_viewport_ensure(struct ARegion *ar, short space_type);
+void WM_draw_region_viewport_bind(struct ARegion *ar);
+void WM_draw_region_viewport_unbind(struct ARegion *ar);
 
 /* Region drawing */
 void WM_draw_region_free(struct ARegion *ar);

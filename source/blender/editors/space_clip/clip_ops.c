@@ -626,36 +626,37 @@ static void view_zoom_apply(
     bContext *C, ViewZoomData *vpd, wmOperator *op, const wmEvent *event, const bool zoom_to_pos)
 {
   float factor;
+  float delta;
+
+  if (U.viewzoom != USER_ZOOM_SCALE) {
+    if (U.uiflag & USER_ZOOM_HORIZ) {
+      delta = (float)(event->x - vpd->x);
+    }
+    else {
+      delta = (float)(event->y - vpd->y);
+    }
+  }
+  else {
+    delta = event->x - vpd->x + event->y - vpd->y;
+  }
+
+  delta /= U.pixelsize;
+
+  if (U.uiflag & USER_ZOOM_INVERT) {
+    delta = -delta;
+  }
 
   if (U.viewzoom == USER_ZOOM_CONT) {
     SpaceClip *sclip = CTX_wm_space_clip(C);
     double time = PIL_check_seconds_timer();
     float time_step = (float)(time - vpd->timer_lastdraw);
-    float fac;
     float zfac;
 
-    if (U.uiflag & USER_ZOOM_HORIZ) {
-      fac = (float)(event->x - vpd->x);
-    }
-    else {
-      fac = (float)(event->y - vpd->y);
-    }
-
-    if (U.uiflag & USER_ZOOM_INVERT) {
-      fac = -fac;
-    }
-
-    zfac = 1.0f + ((fac / 20.0f) * time_step);
+    zfac = 1.0f + ((delta / 20.0f) * time_step);
     vpd->timer_lastdraw = time;
     factor = (sclip->zoom * zfac) / vpd->zoom;
   }
   else {
-    float delta = event->x - vpd->x + event->y - vpd->y;
-
-    if (U.uiflag & USER_ZOOM_INVERT) {
-      delta *= -1;
-    }
-
     factor = 1.0f + delta / 300.0f;
   }
 
@@ -1434,7 +1435,7 @@ static void proxy_endjob(void *pjv)
 
   if (pj->clip->source == MCLIP_SRC_MOVIE) {
     /* Timecode might have changed, so do a full reload to deal with this. */
-    BKE_movieclip_reload(pj->main, pj->clip);
+    DEG_id_tag_update(&pj->clip->id, ID_RECALC_SOURCE);
   }
   else {
     /* For image sequences we'll preserve original cache. */
@@ -1459,7 +1460,7 @@ static int clip_rebuild_proxy_exec(bContext *C, wmOperator *UNUSED(op))
 
   wm_job = WM_jobs_get(CTX_wm_manager(C),
                        CTX_wm_window(C),
-                       sa,
+                       scene,
                        "Building Proxies",
                        WM_JOB_PROGRESS,
                        WM_JOB_TYPE_CLIP_BUILD_PROXY);

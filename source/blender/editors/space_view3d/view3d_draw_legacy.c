@@ -102,6 +102,7 @@
 #include "RE_engine.h"
 
 #include "DRW_engine.h"
+#include "DRW_select_buffer.h"
 
 #include "view3d_intern.h" /* own include */
 
@@ -156,13 +157,12 @@ void ED_view3d_clipping_enable(void)
  * \note Only use in object mode.
  */
 static void validate_object_select_id(
-    struct Depsgraph *depsgraph, Scene *scene, ARegion *ar, View3D *v3d, Object *obact)
+    struct Depsgraph *depsgraph, ViewLayer *view_layer, ARegion *ar, View3D *v3d, Object *obact)
 {
-  RegionView3D *rv3d = ar->regiondata;
-  Scene *scene_eval = (Scene *)DEG_get_evaluated_id(depsgraph, &scene->id);
   Object *obact_eval = DEG_get_evaluated_object(depsgraph, obact);
 
   BLI_assert(ar->regiontype == RGN_TYPE_WINDOW);
+  UNUSED_VARS_NDEBUG(ar);
 
   if (obact_eval && (obact_eval->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT) ||
                      BKE_paint_select_face_test(obact_eval))) {
@@ -186,19 +186,8 @@ static void validate_object_select_id(
   }
 
   if (obact_eval && ((obact_eval->base_flag & BASE_VISIBLE) != 0)) {
-    uint dummy_vert_ofs, dummy_edge_ofs, dummy_face_ofs;
-    DRW_framebuffer_select_id_setup(ar, true);
-    DRW_draw_select_id_object(scene_eval,
-                              rv3d,
-                              obact_eval,
-                              scene->toolsettings->selectmode,
-                              false,
-                              1,
-                              &dummy_vert_ofs,
-                              &dummy_edge_ofs,
-                              &dummy_face_ofs);
-
-    DRW_framebuffer_select_id_release(ar);
+    Base *base = BKE_view_layer_base_find(view_layer, obact);
+    DRW_select_buffer_context_create(&base, 1, -1);
   }
 
   /* TODO: Create a flag in `DRW_manager` because the drawing is no longer
@@ -233,7 +222,7 @@ void ED_view3d_select_id_validate(ViewContext *vc)
   /* TODO: Create a flag in `DRW_manager` because the drawing is no longer
    *       made on the backbuffer in this case. */
   if (vc->v3d->flag & V3D_INVALID_BACKBUF) {
-    validate_object_select_id(vc->depsgraph, vc->scene, vc->ar, vc->v3d, vc->obact);
+    validate_object_select_id(vc->depsgraph, vc->view_layer, vc->ar, vc->v3d, vc->obact);
   }
 }
 
@@ -252,22 +241,6 @@ void ED_view3d_backbuf_depth_validate(ViewContext *vc)
   }
 }
 
-uint *ED_view3d_select_id_read_rect(const rcti *clip, uint *r_buf_len)
-{
-  uint width = BLI_rcti_size_x(clip);
-  uint height = BLI_rcti_size_y(clip);
-  uint buf_len = width * height;
-  uint *buf = MEM_mallocN(buf_len * sizeof(*buf), __func__);
-
-  DRW_framebuffer_select_id_read(clip, buf);
-
-  if (r_buf_len) {
-    *r_buf_len = buf_len;
-  }
-
-  return buf;
-}
-
 /**
  * allow for small values [0.5 - 2.5],
  * and large values, FLT_MAX by clamping by the area size
@@ -275,30 +248,6 @@ uint *ED_view3d_select_id_read_rect(const rcti *clip, uint *r_buf_len)
 int ED_view3d_backbuf_sample_size_clamp(ARegion *ar, const float dist)
 {
   return (int)min_ff(ceilf(dist), (float)max_ii(ar->winx, ar->winx));
-}
-
-/* reads full rect, converts indices */
-uint *ED_view3d_select_id_read(int xmin, int ymin, int xmax, int ymax, uint *r_buf_len)
-{
-  if (UNLIKELY((xmin > xmax) || (ymin > ymax))) {
-    return NULL;
-  }
-
-  const rcti rect = {
-      .xmin = xmin,
-      .xmax = xmax + 1,
-      .ymin = ymin,
-      .ymax = ymax + 1,
-  };
-
-  uint buf_len;
-  uint *buf = ED_view3d_select_id_read_rect(&rect, &buf_len);
-
-  if (r_buf_len) {
-    *r_buf_len = buf_len;
-  }
-
-  return buf;
 }
 
 /* *********************** */
