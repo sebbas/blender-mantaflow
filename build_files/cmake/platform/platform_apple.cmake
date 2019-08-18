@@ -404,8 +404,10 @@ if(WITH_OPENMP)
 endif()
 
 if(WITH_MOD_MANTA)
-  set(TBB_INCLUDE_DIRS ${LIBDIR}/tbb/include)
-  set(TBB_LIBRARIES ${LIBDIR}/tbb/lib/libtbb.a)
+  if(NOT WITH_OPENMP OR NOT WITH_MANTA_OMP)
+    set(TBB_INCLUDE_DIRS ${LIBDIR}/tbb/include)
+    set(TBB_LIBRARIES ${LIBDIR}/tbb/lib/libtbb.a)
+  endif()
 endif()
 
 set(EXETYPE MACOSX_BUNDLE)

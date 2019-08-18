@@ -73,7 +73,7 @@
 #include "DNA_manta_types.h"
 #include "DNA_mesh_types.h"
 
-typedef struct FluidMantaflowJob {
+typedef struct MantaJob {
   /* from wmJob */
   void *owner;
   short *stop, *do_update;
@@ -92,11 +92,11 @@ typedef struct FluidMantaflowJob {
   double start;
 
   int *pause_frame;
-} FluidMantaflowJob;
+} MantaJob;
 
 
-static bool fluid_manta_initjob(
-    bContext *C, FluidMantaflowJob *job, wmOperator *op, char *error_msg, int error_size)
+static bool manta_initjob(
+    bContext *C, MantaJob *job, wmOperator *op, char *error_msg, int error_size)
 {
   MantaModifierData *mmd = NULL;
   MantaDomainSettings *mds;
@@ -124,7 +124,7 @@ static bool fluid_manta_initjob(
   return true;
 }
 
-static bool fluid_manta_initpaths(FluidMantaflowJob *job, ReportList *reports)
+static bool manta_initpaths(MantaJob *job, ReportList *reports)
 {
   MantaDomainSettings *mds = job->mmd->domain;
   char tmpDir[FILE_MAX];
@@ -179,13 +179,13 @@ static bool fluid_manta_initpaths(FluidMantaflowJob *job, ReportList *reports)
   return true;
 }
 
-static void fluid_manta_bake_free(void *customdata)
+static void manta_bake_free(void *customdata)
 {
-  FluidMantaflowJob *job = customdata;
+  MantaJob *job = customdata;
   MEM_freeN(job);
 }
 
-static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
+static void manta_bake_sequence(MantaJob *job)
 {
   MantaDomainSettings *mds = job->mmd->domain;
   Scene *scene = job->scene;
@@ -245,9 +245,9 @@ static void fluid_manta_bake_sequence(FluidMantaflowJob *job)
   CFRA = orig_frame;
 }
 
-static void fluid_manta_bake_endjob(void *customdata)
+static void manta_bake_endjob(void *customdata)
 {
-  FluidMantaflowJob *job = customdata;
+  MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
 
   if (STREQ(job->type, "MANTA_OT_bake_data")) {
@@ -295,12 +295,12 @@ static void fluid_manta_bake_endjob(void *customdata)
   }
 }
 
-static void fluid_manta_bake_startjob(void *customdata,
+static void manta_bake_startjob(void *customdata,
                                       short *stop,
                                       short *do_update,
                                       float *progress)
 {
-  FluidMantaflowJob *job = customdata;
+  MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
 
   char tmpDir[FILE_MAX];
@@ -361,7 +361,7 @@ static void fluid_manta_bake_startjob(void *customdata,
   }
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
-  fluid_manta_bake_sequence(job);
+  manta_bake_sequence(job);
 
   if (do_update)
     *do_update = true;
@@ -369,9 +369,9 @@ static void fluid_manta_bake_startjob(void *customdata,
     *stop = 0;
 }
 
-static void fluid_manta_free_endjob(void *customdata)
+static void manta_free_endjob(void *customdata)
 {
-  FluidMantaflowJob *job = customdata;
+  MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
 
   G.is_rendering = false;
@@ -397,12 +397,12 @@ static void fluid_manta_free_endjob(void *customdata)
   }
 }
 
-static void fluid_manta_free_startjob(void *customdata,
+static void manta_free_startjob(void *customdata,
                                       short *stop,
                                       short *do_update,
                                       float *progress)
 {
-  FluidMantaflowJob *job = customdata;
+  MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
   Scene *scene = job->scene;
 
@@ -506,43 +506,43 @@ static void fluid_manta_free_startjob(void *customdata,
 
 /***************************** Operators ******************************/
 
-static int fluid_manta_bake_exec(struct bContext *C, struct wmOperator *op)
+static int manta_bake_exec(struct bContext *C, struct wmOperator *op)
 {
-  FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
+  MantaJob *job = MEM_mallocN(sizeof(MantaJob), "MantaJob");
   char error_msg[256] = "\0";
 
-  if (!fluid_manta_initjob(C, job, op, error_msg, sizeof(error_msg))) {
+  if (!manta_initjob(C, job, op, error_msg, sizeof(error_msg))) {
     if (error_msg[0]) {
       BKE_report(op->reports, RPT_ERROR, error_msg);
     }
-    fluid_manta_bake_free(job);
+    manta_bake_free(job);
     return OPERATOR_CANCELLED;
   }
-  fluid_manta_initpaths(job, op->reports);
-  fluid_manta_bake_startjob(job, NULL, NULL, NULL);
-  fluid_manta_bake_endjob(job);
-  fluid_manta_bake_free(job);
+  manta_initpaths(job, op->reports);
+  manta_bake_startjob(job, NULL, NULL, NULL);
+  manta_bake_endjob(job);
+  manta_bake_free(job);
 
   return OPERATOR_FINISHED;
 }
 
-static int fluid_manta_bake_invoke(struct bContext *C,
+static int manta_bake_invoke(struct bContext *C,
                                    struct wmOperator *op,
                                    const wmEvent *UNUSED(_event))
 {
   Scene *scene = CTX_data_scene(C);
-  FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
+  MantaJob *job = MEM_mallocN(sizeof(MantaJob), "MantaJob");
   char error_msg[256] = "\0";
 
-  if (!fluid_manta_initjob(C, job, op, error_msg, sizeof(error_msg))) {
+  if (!manta_initjob(C, job, op, error_msg, sizeof(error_msg))) {
     if (error_msg[0]) {
       BKE_report(op->reports, RPT_ERROR, error_msg);
     }
-    fluid_manta_bake_free(job);
+    manta_bake_free(job);
     return OPERATOR_CANCELLED;
   }
 
-  fluid_manta_initpaths(job, op->reports);
+  manta_initpaths(job, op->reports);
 
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                               CTX_wm_window(C),
@@ -551,9 +551,9 @@ static int fluid_manta_bake_invoke(struct bContext *C,
                               WM_JOB_PROGRESS,
                               WM_JOB_TYPE_OBJECT_SIM_MANTA);
 
-  WM_jobs_customdata_set(wm_job, job, fluid_manta_bake_free);
+  WM_jobs_customdata_set(wm_job, job, manta_bake_free);
   WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
-  WM_jobs_callbacks(wm_job, fluid_manta_bake_startjob, NULL, NULL, fluid_manta_bake_endjob);
+  WM_jobs_callbacks(wm_job, manta_bake_startjob, NULL, NULL, manta_bake_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
 
@@ -563,7 +563,7 @@ static int fluid_manta_bake_invoke(struct bContext *C,
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int fluid_manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
 {
   /* no running blender, remove handler and pass through */
   if (0 == WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_OBJECT_SIM_MANTA))
@@ -576,7 +576,7 @@ static int fluid_manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmE
   return OPERATOR_PASS_THROUGH;
 }
 
-static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
+static int manta_free_exec(struct bContext *C, struct wmOperator *op)
 {
   MantaModifierData *mmd = NULL;
   MantaDomainSettings *mds;
@@ -604,7 +604,7 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  FluidMantaflowJob *job = MEM_mallocN(sizeof(FluidMantaflowJob), "FluidMantaflowJob");
+  MantaJob *job = MEM_mallocN(sizeof(MantaJob), "MantaJob");
   job->bmain = CTX_data_main(C);
   job->scene = scene;
   job->depsgraph = CTX_data_depsgraph(C);
@@ -613,7 +613,7 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
   job->type = op->type->idname;
   job->name = op->type->name;
 
-  fluid_manta_initpaths(job, op->reports);
+  manta_initpaths(job, op->reports);
 
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                               CTX_wm_window(C),
@@ -622,9 +622,9 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
                               WM_JOB_PROGRESS,
                               WM_JOB_TYPE_OBJECT_SIM_MANTA);
 
-  WM_jobs_customdata_set(wm_job, job, fluid_manta_bake_free);
+  WM_jobs_customdata_set(wm_job, job, manta_bake_free);
   WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
-  WM_jobs_callbacks(wm_job, fluid_manta_free_startjob, NULL, NULL, fluid_manta_free_endjob);
+  WM_jobs_callbacks(wm_job, manta_free_startjob, NULL, NULL, manta_free_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
 
@@ -634,7 +634,7 @@ static int fluid_manta_free_exec(struct bContext *C, struct wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int fluid_manta_pause_exec(struct bContext *C, struct wmOperator *op)
+static int manta_pause_exec(struct bContext *C, struct wmOperator *op)
 {
   MantaModifierData *mmd = NULL;
   MantaDomainSettings *mds;
@@ -667,9 +667,9 @@ void MANTA_OT_bake_data(wmOperatorType *ot)
   ot->idname = "MANTA_OT_bake_data";
 
   /* api callbacks */
-  ot->exec = fluid_manta_bake_exec;
-  ot->invoke = fluid_manta_bake_invoke;
-  ot->modal = fluid_manta_bake_modal;
+  ot->exec = manta_bake_exec;
+  ot->invoke = manta_bake_invoke;
+  ot->modal = manta_bake_modal;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -681,7 +681,7 @@ void MANTA_OT_free_data(wmOperatorType *ot)
   ot->idname = "MANTA_OT_free_data";
 
   /* api callbacks */
-  ot->exec = fluid_manta_free_exec;
+  ot->exec = manta_free_exec;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -693,9 +693,9 @@ void MANTA_OT_bake_noise(wmOperatorType *ot)
   ot->idname = "MANTA_OT_bake_noise";
 
   /* api callbacks */
-  ot->exec = fluid_manta_bake_exec;
-  ot->invoke = fluid_manta_bake_invoke;
-  ot->modal = fluid_manta_bake_modal;
+  ot->exec = manta_bake_exec;
+  ot->invoke = manta_bake_invoke;
+  ot->modal = manta_bake_modal;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -707,7 +707,7 @@ void MANTA_OT_free_noise(wmOperatorType *ot)
   ot->idname = "MANTA_OT_free_noise";
 
   /* api callbacks */
-  ot->exec = fluid_manta_free_exec;
+  ot->exec = manta_free_exec;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -719,9 +719,9 @@ void MANTA_OT_bake_mesh(wmOperatorType *ot)
   ot->idname = "MANTA_OT_bake_mesh";
 
   /* api callbacks */
-  ot->exec = fluid_manta_bake_exec;
-  ot->invoke = fluid_manta_bake_invoke;
-  ot->modal = fluid_manta_bake_modal;
+  ot->exec = manta_bake_exec;
+  ot->invoke = manta_bake_invoke;
+  ot->modal = manta_bake_modal;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -733,7 +733,7 @@ void MANTA_OT_free_mesh(wmOperatorType *ot)
   ot->idname = "MANTA_OT_free_mesh";
 
   /* api callbacks */
-  ot->exec = fluid_manta_free_exec;
+  ot->exec = manta_free_exec;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -745,9 +745,9 @@ void MANTA_OT_bake_particles(wmOperatorType *ot)
   ot->idname = "MANTA_OT_bake_particles";
 
   /* api callbacks */
-  ot->exec = fluid_manta_bake_exec;
-  ot->invoke = fluid_manta_bake_invoke;
-  ot->modal = fluid_manta_bake_modal;
+  ot->exec = manta_bake_exec;
+  ot->invoke = manta_bake_invoke;
+  ot->modal = manta_bake_modal;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -759,7 +759,7 @@ void MANTA_OT_free_particles(wmOperatorType *ot)
   ot->idname = "MANTA_OT_free_particles";
 
   /* api callbacks */
-  ot->exec = fluid_manta_free_exec;
+  ot->exec = manta_free_exec;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -771,9 +771,9 @@ void MANTA_OT_bake_guiding(wmOperatorType *ot)
   ot->idname = "MANTA_OT_bake_guiding";
 
   /* api callbacks */
-  ot->exec = fluid_manta_bake_exec;
-  ot->invoke = fluid_manta_bake_invoke;
-  ot->modal = fluid_manta_bake_modal;
+  ot->exec = manta_bake_exec;
+  ot->invoke = manta_bake_invoke;
+  ot->modal = manta_bake_modal;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -785,7 +785,7 @@ void MANTA_OT_free_guiding(wmOperatorType *ot)
   ot->idname = "MANTA_OT_free_guiding";
 
   /* api callbacks */
-  ot->exec = fluid_manta_free_exec;
+  ot->exec = manta_free_exec;
   ot->poll = ED_operator_object_active_editable;
 }
 
@@ -797,6 +797,6 @@ void MANTA_OT_pause_bake(wmOperatorType *ot)
   ot->idname = "MANTA_OT_pause_bake";
 
   /* api callbacks */
-  ot->exec = fluid_manta_pause_exec;
+  ot->exec = manta_pause_exec;
   ot->poll = ED_operator_object_active_editable;
 }

@@ -34,13 +34,14 @@ set(MANTA_HLP
 set(MANTA_PP
   intern/manta_develop/preprocessed/tbb
 )
-add_definitions(-DTBB=1)
 
 if(WITH_OPENMP AND WITH_MANTA_OMP)
   set(MANTA_PP
     intern/manta_develop/preprocessed/omp
   )
   add_definitions(-DOPENMP=1)
+else()
+  add_definitions(-DTBB=1)
 endif()
 
 if(WITH_OPENVDB)
@@ -61,15 +62,19 @@ set(INC
   ../../source/blender/blenlib
 )
 
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-endif()
+# Python is always required
+add_definitions(-DWITH_PYTHON)
 
 set(INC_SYS
   ${PYTHON_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
-  ${TBB_INCLUDE_DIRS}
 )
+
+if(NOT WITH_OPENMP OR NOT WITH_MANTA_OMP)
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+endif()
 
 if(WITH_OPENVDB)
   list(APPEND INC_SYS

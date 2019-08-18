@@ -391,6 +391,8 @@ typedef struct MantaDomainSettings {
   struct ListBase ptcaches[2];
   int cache_comp;
   int cache_high_comp;
+  char cache_file_format;
+  char _pad10[7]; /* unused */
 
 } MantaDomainSettings;
 

@@ -547,8 +547,10 @@ if(WITH_SYSTEM_AUDASPACE)
 endif()
 
 if(WITH_MOD_MANTA)
-  set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
-  set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
+  if(NOT WITH_OPENMP OR NOT WITH_MANTA_OMP)
+    set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
+    set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
+  endif()
 endif()
 
 # used in many places so include globally, like OpenGL
