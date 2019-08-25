@@ -3569,7 +3569,7 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
 
   BKE_mesh_ensure_normals(me);
   BKE_mesh_calc_edges(me, false, false);
-  BKE_mesh_apply_vert_normals(me, (short(*)[3])normals);
+  BKE_mesh_vert_normals_apply(me, (short(*)[3])normals);
 
   MEM_freeN(normals);
 

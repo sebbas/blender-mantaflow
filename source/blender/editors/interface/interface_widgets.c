@@ -2709,10 +2709,10 @@ static void widget_state_menu_item(uiWidgetType *wt, int state, int UNUSED(drawf
 
   /* active and disabled (not so common) */
   if ((state & UI_BUT_DISABLED) && (state & UI_ACTIVE)) {
-    widget_state_blend(wt->wcol.text, wt->wcol.text_sel, 0.5f);
     /* draw the backdrop at low alpha, helps navigating with keys
      * when disabled items are active */
-    copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
+    wt->wcol.text[3] = 128;
+    widget_state_blend(wt->wcol.inner, wt->wcol.text, 0.5f);
     wt->wcol.inner[3] = 64;
   }
   else {
@@ -3802,7 +3802,7 @@ static void widget_swatch(
 
   widgetbase_draw_ex(&wtb, wcol, show_alpha_checkers);
   if (but->a1 == UI_PALETTE_COLOR &&
-      ((Palette *)but->rnapoin.id.data)->active_color == (int)but->a2) {
+      ((Palette *)but->rnapoin.owner_id)->active_color == (int)but->a2) {
     float width = rect->xmax - rect->xmin;
     float height = rect->ymax - rect->ymin;
     /* find color luminance and change it slightly */

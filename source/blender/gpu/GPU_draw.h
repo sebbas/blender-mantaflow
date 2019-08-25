@@ -28,17 +28,11 @@
 extern "C" {
 #endif
 
-struct DupliObject;
 struct ImBuf;
 struct Image;
 struct ImageUser;
 struct Main;
-struct Object;
-struct RegionView3D;
-struct Scene;
 struct MantaModifierData;
-struct View3D;
-struct ViewLayer;
 
 #include "DNA_object_enums.h"
 

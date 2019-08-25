@@ -113,7 +113,7 @@ typedef struct bNodeSocket {
   short stack_index;
   /* XXX deprecated, kept for forward compatibility */
   short stack_type DNA_DEPRECATED;
-  char draw_shape;
+  char display_shape;
   char _pad[3];
 
   /** Cached data from execution. */
@@ -153,11 +153,14 @@ typedef enum eNodeSocketDatatype {
 } eNodeSocketDatatype;
 
 /* socket shape */
-typedef enum eNodeSocketDrawShape {
-  SOCK_DRAW_SHAPE_CIRCLE = 0,
-  SOCK_DRAW_SHAPE_SQUARE = 1,
-  SOCK_DRAW_SHAPE_DIAMOND = 2,
-} eNodeSocketDrawShape;
+typedef enum eNodeSocketDisplayShape {
+  SOCK_DISPLAY_SHAPE_CIRCLE = 0,
+  SOCK_DISPLAY_SHAPE_SQUARE = 1,
+  SOCK_DISPLAY_SHAPE_DIAMOND = 2,
+  SOCK_DISPLAY_SHAPE_CIRCLE_DOT = 3,
+  SOCK_DISPLAY_SHAPE_SQUARE_DOT = 4,
+  SOCK_DISPLAY_SHAPE_DIAMOND_DOT = 5,
+} eNodeSocketDisplayShape;
 
 /* socket side (input/output) */
 typedef enum eNodeSocketInOut {
@@ -1193,6 +1196,33 @@ enum {
   NODE_MATH_CEIL = 21,
   NODE_MATH_FRACTION = 22,
   NODE_MATH_SQRT = 23,
+};
+
+/* Vector Math node operations. */
+enum {
+  NODE_VECTOR_MATH_ADD = 0,
+  NODE_VECTOR_MATH_SUBTRACT = 1,
+  NODE_VECTOR_MATH_MULTIPLY = 2,
+  NODE_VECTOR_MATH_DIVIDE = 3,
+
+  NODE_VECTOR_MATH_CROSS_PRODUCT = 4,
+  NODE_VECTOR_MATH_PROJECT = 5,
+  NODE_VECTOR_MATH_REFLECT = 6,
+  NODE_VECTOR_MATH_DOT_PRODUCT = 7,
+
+  NODE_VECTOR_MATH_DISTANCE = 8,
+  NODE_VECTOR_MATH_LENGTH = 9,
+  NODE_VECTOR_MATH_SCALE = 10,
+  NODE_VECTOR_MATH_NORMALIZE = 11,
+
+  NODE_VECTOR_MATH_SNAP = 12,
+  NODE_VECTOR_MATH_FLOOR = 13,
+  NODE_VECTOR_MATH_CEIL = 14,
+  NODE_VECTOR_MATH_MODULO = 15,
+  NODE_VECTOR_MATH_FRACTION = 16,
+  NODE_VECTOR_MATH_ABSOLUTE = 17,
+  NODE_VECTOR_MATH_MINIMUM = 18,
+  NODE_VECTOR_MATH_MAXIMUM = 19,
 };
 
 /* mix rgb node flags */

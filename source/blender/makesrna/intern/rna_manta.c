@@ -59,10 +59,10 @@
 
 static void rna_Manta_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 
   // Needed for liquid domain objects
-  Object *ob = ptr->id.data;
+  Object *ob = ptr->owner_id;
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 }
 
@@ -77,7 +77,7 @@ static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
   MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
   if (settings->mmd && settings->mmd->domain)
     settings->point_cache[0]->flag |= PTCACHE_OUTDATED;
-  DEG_id_tag_update(ptr->id.data, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 }
 static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
@@ -108,7 +108,7 @@ static void rna_Manta_parts_create(Main *bmain,
                                    char *psys_name,
                                    int psys_type)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   ParticleSystemModifierData *pmmd;
   ParticleSystem *psys;
   ParticleSettings *part;
@@ -136,7 +136,7 @@ static void rna_Manta_parts_create(Main *bmain,
 
 static void rna_Manta_parts_delete(PointerRNA *ptr, int ptype)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   ParticleSystemModifierData *pmmd;
   ParticleSystem *psys, *next_psys;
 
@@ -157,7 +157,7 @@ static void rna_Manta_parts_delete(PointerRNA *ptr, int ptype)
 
 static bool rna_Manta_parts_exists(PointerRNA *ptr, int ptype)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   ParticleSystem *psys;
 
   for (psys = ob->particlesystem.first; psys; psys = psys->next) {
@@ -171,7 +171,7 @@ static void rna_Manta_draw_type_update(Main *UNUSED(bmain),
                                        Scene *UNUSED(scene),
                                        struct PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
 
   /* Wireframe mode more convenient when particles present */
@@ -185,7 +185,7 @@ static void rna_Manta_draw_type_update(Main *UNUSED(bmain),
 
 static void rna_Manta_flip_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
   mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_FLIP);
@@ -211,7 +211,7 @@ static void rna_Manta_flip_parts_update(Main *bmain, Scene *UNUSED(scene), Point
 
 static void rna_Manta_spray_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
   mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_SPRAY);
@@ -237,7 +237,7 @@ static void rna_Manta_spray_parts_update(Main *bmain, Scene *UNUSED(scene), Poin
 
 static void rna_Manta_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
   mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_BUBBLE);
@@ -263,7 +263,7 @@ static void rna_Manta_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
 
 static void rna_Manta_foam_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
   mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_FOAM);
@@ -289,7 +289,7 @@ static void rna_Manta_foam_parts_update(Main *bmain, Scene *UNUSED(scene), Point
 
 static void rna_Manta_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
   mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_TRACER);
@@ -315,7 +315,7 @@ static void rna_Manta_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
 
 static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
   mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
 
@@ -605,7 +605,7 @@ static void rna_Manta_cache_directory_set(struct PointerRNA *ptr, const char *va
 static void rna_Manta_domaintype_set(struct PointerRNA *ptr, int value)
 {
   MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
-  Object *ob = (Object *)ptr->id.data;
+  Object *ob = (Object *)ptr->owner_id;
 
   if (value != settings->type) {
     /* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
