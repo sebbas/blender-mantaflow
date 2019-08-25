@@ -2246,12 +2246,6 @@ static void rna_def_particle_settings(BlenderRNA *brna)
       {PART_EMITTER, "EMITTER", 0, "Emitter", ""},
       /*{PART_REACTOR, "REACTOR", 0, "Reactor", ""}, */
       {PART_HAIR, "HAIR", 0, "Hair", ""},
-      {PART_FLUID, "FLUID", 0, "Fluid", ""},
-      {PART_MANTA_FLIP, "FLIP", 0, "FLIP", ""},
-      {PART_MANTA_SPRAY, "SPRAY", 0, "Spray", ""},
-      {PART_MANTA_BUBBLE, "BUBBLE", 0, "Bubble", ""},
-      {PART_MANTA_FOAM, "FOAM", 0, "Foam", ""},
-      {PART_MANTA_TRACER, "TRACER", 0, "Tracer", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
