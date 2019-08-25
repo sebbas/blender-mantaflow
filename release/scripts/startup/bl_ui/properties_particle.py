@@ -55,7 +55,7 @@ def particle_panel_poll(cls, context):
     if not settings:
         return False
 
-    return (settings.is_fluid is False) and (settings.is_manta is False) and (engine in cls.COMPAT_ENGINES)
+    return (settings.is_manta is False) and (engine in cls.COMPAT_ENGINES)
 
 
 def particle_get_settings(context):
@@ -190,7 +190,7 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
 
             layout.template_ID(context.space_data, "pin_id")
 
-            if part.is_fluid or part.is_manta:
+            if part.is_manta:
                 layout.label(text="Settings used for fluid")
                 return
 
@@ -203,12 +203,12 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
 
             col = layout.column()
 
-            if (part.is_fluid is False) and (part.is_manta is False):
+            if (part.is_manta is False):
                 row = col.row()
                 row.enabled = particle_panel_enabled(context, psys)
                 row.template_ID(psys, "settings", new="particle.new")
 
-            if part.is_fluid or part.is_manta:
+            if part.is_manta:
                 layout.label(text=iface_("%d fluid particles for this frame") % part.count, translate=False)
                 return
 
@@ -253,7 +253,7 @@ class PARTICLE_PT_emission(ParticleButtonsPanel, Panel):
 
         if settings is None:
             return False
-        if settings.is_fluid or settings.is_manta:
+        if settings.is_manta:
             return False
         if particle_panel_poll(PARTICLE_PT_emission, context):
             return psys is None or not context.particle_system.point_cache.use_external
@@ -487,7 +487,7 @@ class PARTICLE_PT_cache(ParticleButtonsPanel, Panel):
             return False
         if psys.settings is None:
             return False
-        if psys.settings.is_fluid or psys.settings.is_manta:
+        if psys.settings.is_manta:
             return False
         phystype = psys.settings.physics_type
         if phystype in {'NO', 'KEYED'}:
