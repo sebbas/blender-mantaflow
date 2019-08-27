@@ -62,7 +62,7 @@ static void rna_Manta_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerR
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 
   // Needed for liquid domain objects
-  Object *ob = ptr->owner_id;
+  Object *ob = (Object *)ptr->owner_id;
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, ob);
 }
 
