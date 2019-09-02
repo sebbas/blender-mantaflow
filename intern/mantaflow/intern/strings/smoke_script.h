@@ -42,8 +42,8 @@ using_heat_s$ID$        = $USING_HEAT$\n\
 using_fire_s$ID$        = $USING_FIRE$\n\
 using_noise_s$ID$       = $USING_NOISE$\n\
 vorticity_s$ID$         = $VORTICITY$\n\
-buoyancy_dens_s$ID$     = $BUOYANCY_ALPHA$ / $FLUID_DOMAIN_SIZE$\n\
-buoyancy_heat_s$ID$     = $BUOYANCY_BETA$ / $FLUID_DOMAIN_SIZE$\n\
+buoyancy_dens_s$ID$     = float($BUOYANCY_ALPHA$) / float($FLUID_DOMAIN_SIZE$)\n\
+buoyancy_heat_s$ID$     = float($BUOYANCY_BETA$) / float($FLUID_DOMAIN_SIZE$)\n\
 dissolveSpeed_s$ID$     = $DISSOLVE_SPEED$\n\
 using_logdissolve_s$ID$ = $USING_LOG_DISSOLVE$\n\
 using_dissolve_s$ID$    = $USING_DISSOLVE$\n";
@@ -52,7 +52,6 @@ const std::string smoke_variables_noise =
     "\n\
 mantaMsg('Smoke variables noise')\n\
 wltStrength_s$ID$ = $WLT_STR$\n\
-octaves_s$ID$     = 0\n\
 uvs_s$ID$         = 2\n\
 uvs_offset_s$ID$  = vec3($MIN_RESX$, $MIN_RESY$, $MIN_RESZ$)\n\
 octaves_s$ID$     = int(math.log(upres_sn$ID$) / math.log(2.0) + 0.5) if (upres_sn$ID$ > 1) else 1\n";
@@ -377,18 +376,20 @@ def smoke_step_noise_$ID$(framenr):\n\
     mantaMsg('Manta step noise, frame ' + str(framenr))\n\
     sn$ID$.frame = framenr\n\
     \n\
-    mantaMsg('Interpolating grids')\n\
-    interpolateGrid(target=phiIn_sn$ID$, source=phiIn_s$ID$)\n\
-    if using_outflow_s$ID$:\n\
-        interpolateGrid(target=phiOut_sn$ID$, source=phiOut_s$ID$)\n\
-    if using_obstacle_s$ID$:\n\
-        interpolateGrid(target=phiObs_sn$ID$, source=phiObs_s$ID$)\n\
-    interpolateMACGrid(target=vel_sn$ID$, source=vel_s$ID$)\n\
-    \n\
     copyRealToVec3(sourceX=texture_u_s$ID$, sourceY=texture_v_s$ID$, sourceZ=texture_w_s$ID$, target=uv_s$ID$[0])\n\
     copyRealToVec3(sourceX=texture_u2_s$ID$, sourceY=texture_v2_s$ID$, sourceZ=texture_w2_s$ID$, target=uv_s$ID$[1])\n\
     \n\
     flags_sn$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_sn$ID$, outflow=boundConditions_s$ID$)\n\
+    \n\
+    mantaMsg('Interpolating grids')\n\
+    # Join big obstacle levelset after initDomain() call as it overwrites everything in phiObs\n\
+    if using_obstacle_s$ID$:\n\
+        interpolateGrid(target=phiIn_sn$ID$, source=phiObs_s$ID$) # mis-use phiIn_sn\n\
+        phiObs_sn$ID$.join(phiIn_sn$ID$)\n\
+    if using_outflow_s$ID$:\n\
+        interpolateGrid(target=phiOut_sn$ID$, source=phiOut_s$ID$)\n\
+    interpolateGrid(target=phiIn_sn$ID$, source=phiIn_s$ID$)\n\
+    interpolateMACGrid(target=vel_sn$ID$, source=vel_s$ID$)\n\
     \n\
     setObstacleFlags(flags=flags_sn$ID$, phiObs=phiObs_sn$ID$, phiOut=phiOut_sn$ID$, phiIn=phiIn_sn$ID$)\n\
     flags_sn$ID$.fillGrid()\n\
@@ -396,6 +397,9 @@ def smoke_step_noise_$ID$(framenr):\n\
     # Interpolate emission grids and apply them to big noise grids\n\
     interpolateGrid(source=densityIn_s$ID$, target=tmpIn_sn$ID$)\n\
     interpolateGrid(source=emissionIn_s$ID$, target=emissionIn_sn$ID$)\n\
+    \n\
+    # Higher-res noise grid needs scaled emission values\n\
+    tmpIn_sn$ID$.multConst(float(upres_sn$ID$))\n\
     applyEmission(flags=flags_sn$ID$, target=density_sn$ID$, source=tmpIn_sn$ID$, emissionTexture=emissionIn_sn$ID$, type=FlagInflow|FlagOutflow)\n\
     \n\
     if using_colors_s$ID$:\n\

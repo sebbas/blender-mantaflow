@@ -321,6 +321,9 @@ const std::string fluid_pre_step =
 def fluid_pre_step_$ID$():\n\
     mantaMsg('Fluid pre step')\n\
     \n\
+    phiObs_s$ID$.setConst(9999)\n\
+    phiOut_s$ID$.setConst(9999)\n\
+    \n\
     # Main vel grid is copied in adapt time step function\n\
     \n\
     # translate obvels (world space) to grid space\n\
@@ -374,9 +377,6 @@ def fluid_post_step_$ID$():\n\
         z_invel_s$ID$.clear()\n\
         invel_s$ID$.clear()\n\
         invelC_s$ID$.clear()\n\
-    \n\
-    phiObs_s$ID$.setConst(9999)\n\
-    phiOut_s$ID$.setConst(9999)\n\
     \n\
     # Copy vel grid to reals grids (which Blender internal will in turn use for vel access)\n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
