@@ -529,7 +529,7 @@ static inline BL::MantaDomainSettings object_manta_domain_find(BL::Object &b_ob)
     if (b_mod->is_a(&RNA_MantaModifier)) {
       BL::MantaModifier b_mmd(*b_mod);
 
-      if (b_mmd.type() == BL::MantaModifier::type_DOMAIN)
+      if (b_mmd.manta_type() == BL::MantaModifier::manta_type_DOMAIN)
         return b_mmd.domain_settings();
     }
   }

@@ -367,7 +367,7 @@ class QuickSmoke(ObjectModeOperator, Operator):
             fake_context["object"] = obj
             # make each selected object a smoke flow
             bpy.ops.object.modifier_add(fake_context, type='MANTA')
-            obj.modifiers[-1].type = 'FLOW'
+            obj.modifiers[-1].manta_type = 'FLOW'
 
             # set type
             obj.modifiers[-1].flow_settings.flow_type = self.style
@@ -392,7 +392,7 @@ class QuickSmoke(ObjectModeOperator, Operator):
 
         # setup smoke domain
         bpy.ops.object.modifier_add(type='MANTA')
-        obj.modifiers[-1].type = 'DOMAIN'
+        obj.modifiers[-1].manta_type = 'DOMAIN'
         if self.style == 'FIRE' or self.style == 'BOTH':
             obj.modifiers[-1].domain_settings.use_noise = True
 
@@ -463,7 +463,7 @@ class QuickLiquid(Operator):
             fake_context["object"] = obj
             # make each selected object a liquid flow
             bpy.ops.object.modifier_add(fake_context, type='MANTA')
-            obj.modifiers[-1].type = 'FLOW'
+            obj.modifiers[-1].manta_type = 'FLOW'
 
             # set type
             obj.modifiers[-1].flow_settings.flow_type = 'LIQUID'
@@ -488,7 +488,7 @@ class QuickLiquid(Operator):
 
         # setup liquid domain
         bpy.ops.object.modifier_add(type='MANTA')
-        obj.modifiers[-1].type = 'DOMAIN'
+        obj.modifiers[-1].manta_type = 'DOMAIN'
         obj.modifiers[-1].domain_settings.domain_type = 'LIQUID'
         # set all domain borders to obstacle
         obj.modifiers[-1].domain_settings.use_collision_border_front = True

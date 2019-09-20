@@ -45,7 +45,7 @@ class PhysicButtonsPanel:
             return False
 
         md = context.manta
-        return md and (context.manta.type != 'NONE') and (bpy.app.build_options.manta)
+        return md and (context.manta.manta_type != 'NONE') and (bpy.app.build_options.manta)
 
     @staticmethod
     def poll_fluid_domain(context):
@@ -53,7 +53,7 @@ class PhysicButtonsPanel:
             return False
 
         md = context.manta
-        return md and (md.type == 'DOMAIN')
+        return md and (md.manta_type == 'DOMAIN')
 
     @staticmethod
     def poll_gas_domain(context):
@@ -61,7 +61,7 @@ class PhysicButtonsPanel:
             return False
 
         md = context.manta
-        if md and (md.type == 'DOMAIN'):
+        if md and (md.manta_type == 'DOMAIN'):
             domain = md.domain_settings
             return domain.domain_type in {'GAS'}
         return False
@@ -72,7 +72,7 @@ class PhysicButtonsPanel:
             return False
 
         md = context.manta
-        if md and (md.type == 'DOMAIN'):
+        if md and (md.manta_type == 'DOMAIN'):
             domain = md.domain_settings
             return domain.domain_type in {'LIQUID'}
         return False
@@ -83,7 +83,7 @@ class PhysicButtonsPanel:
             return False
 
         md = context.manta
-        return md and (md.type == 'FLOW')
+        return md and (md.manta_type == 'FLOW')
 
 
 class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
@@ -107,7 +107,7 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
 
         md = context.manta
 
-        layout.prop(md, "type")
+        layout.prop(md, "manta_type")
 
 
 class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
@@ -130,7 +130,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
         ob = context.object
         scene = context.scene
 
-        if md.type == 'DOMAIN':
+        if md.manta_type == 'DOMAIN':
             domain = md.domain_settings
 
             # Deactivate UI if guiding is enabled but not baked yet
@@ -182,7 +182,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
             else:
                 split.operator("manta.free_data", text="Free Data")
 
-        elif md.type == 'FLOW':
+        elif md.manta_type == 'FLOW':
             flow = md.flow_settings
 
             row = layout.row()
@@ -215,7 +215,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 col.separator()
                 col.prop_search(flow, "density_vertex_group", ob, "vertex_groups", text="Vertex Group")
 
-        elif md.type == 'EFFECTOR':
+        elif md.manta_type == 'EFFECTOR':
             effec = md.effec_settings
 
             row = layout.row()
@@ -923,7 +923,7 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "guiding_source", text="Velocity Source")
-        if domain.guiding_source == "DOMAIN":            
+        if domain.guiding_source == "DOMAIN":
             col.prop(domain, "guiding_parent", text="Guiding parent")
 
         col.separator()
