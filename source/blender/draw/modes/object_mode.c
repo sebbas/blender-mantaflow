@@ -2690,16 +2690,18 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
   sub_v3_v3v3(size, max, min);
   float voxel_cubemat[4][4] = {{0.0f}};
   /* scale small cube */
-  voxel_cubemat[0][0] = (1.0f / (float)mds->res[0]) * size[0] * ob->obmat[0][0] * 0.5;
-  voxel_cubemat[1][1] = (1.0f / (float)mds->res[1]) * size[1] * ob->obmat[1][1] * 0.5;
-  voxel_cubemat[2][2] = (1.0f / (float)mds->res[2]) * size[2] * ob->obmat[2][2] * 0.5;
+  voxel_cubemat[0][0] = (1.0f / (float)mds->res[0]) * size[0] * 0.5;
+  voxel_cubemat[1][1] = (1.0f / (float)mds->res[1]) * size[1] * 0.5;
+  voxel_cubemat[2][2] = (1.0f / (float)mds->res[2]) * size[2] * 0.5;
   /* translate small cube */
-  voxel_cubemat[3][0] = min[0] * ob->obmat[0][0] + ob->obmat[3][0];
-  voxel_cubemat[3][1] = min[1] * ob->obmat[1][1] + ob->obmat[3][1];
-  voxel_cubemat[3][2] = min[2] * ob->obmat[2][2] + ob->obmat[3][2];
+  voxel_cubemat[3][0] = min[0];
+  voxel_cubemat[3][1] = min[1];
+  voxel_cubemat[3][2] = min[2];
   voxel_cubemat[3][3] = 1.0f;
-  /* move small cube into the domain (before centered on vertex) */
+  /* move small cube into the domain (otherwise its centered on vertex of domain object) */
   translate_m4(voxel_cubemat, 1.0f, 1.0f, 1.0f);
+  /* apply transformation matrix to voxel cube matrix */
+  mul_m4_m4m4(voxel_cubemat, ob->obmat, voxel_cubemat);
 
   DRW_buffer_add_entry(sgl->empties.cube, color, &one, voxel_cubemat);
 
