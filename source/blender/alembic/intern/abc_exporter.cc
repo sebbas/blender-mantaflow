@@ -204,7 +204,7 @@ AbcExporter::~AbcExporter()
   }
 
   /* Free shapes vector */
-  for (int i = 0, e = m_shapes.size(); i != e; ++i) {
+  for (int i = 0, e = m_shapes.size(); i != e; i++) {
     delete m_shapes[i];
   }
 
@@ -225,7 +225,7 @@ void AbcExporter::getShutterSamples(unsigned int nr_of_samples,
   double time_inc = (shutter_close - shutter_open) / nr_of_samples;
 
   /* sample between shutter open & close */
-  for (int sample = 0; sample < nr_of_samples; ++sample) {
+  for (int sample = 0; sample < nr_of_samples; sample++) {
     double sample_time = shutter_open + time_inc * sample;
     double time = (frame_offset + sample_time) / time_factor;
 
@@ -259,13 +259,13 @@ void AbcExporter::getFrameSet(unsigned int nr_of_samples, std::set<double> &fram
   getShutterSamples(nr_of_samples, false, shutter_samples);
 
   for (double frame = m_settings.frame_start; frame <= m_settings.frame_end; frame += 1.0) {
-    for (size_t j = 0; j < nr_of_samples; ++j) {
+    for (size_t j = 0; j < nr_of_samples; j++) {
       frames.insert(frame + shutter_samples[j]);
     }
   }
 }
 
-void AbcExporter::operator()(float &progress, bool &was_canceled)
+void AbcExporter::operator()(short *do_update, float *progress, bool *was_canceled)
 {
   std::string scene_name;
 
@@ -334,10 +334,11 @@ void AbcExporter::operator()(float &progress, bool &was_canceled)
   size_t i = 0;
 
   for (; begin != end; ++begin) {
-    progress = (++i / size);
+    *progress = (++i / size);
+    *do_update = 1;
 
     if (G.is_break) {
-      was_canceled = true;
+      *was_canceled = true;
       break;
     }
 
@@ -347,7 +348,7 @@ void AbcExporter::operator()(float &progress, bool &was_canceled)
     setCurrentFrame(m_bmain, frame);
 
     if (shape_frames.count(frame) != 0) {
-      for (int i = 0, e = m_shapes.size(); i != e; ++i) {
+      for (int i = 0, e = m_shapes.size(); i != e; i++) {
         m_shapes[i]->write();
       }
     }

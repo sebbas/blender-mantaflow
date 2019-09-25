@@ -74,7 +74,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   /* The object type check is only needed here in case we have a placeholder
    * object assigned (because the library containing the mesh is missing).
    *
-   * In other cases it should be impossible to have a type missmatch.
+   * In other cases it should be impossible to have a type mismatch.
    */
   return !bmd->object || bmd->object->type != OB_MESH;
 }
@@ -316,7 +316,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
         MEM_freeN(looptris);
       }
 
-      result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
+      result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
 
       BM_mesh_free(bm);
 

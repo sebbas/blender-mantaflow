@@ -32,7 +32,6 @@
 
 #include "BKE_addon.h"
 #include "BKE_colorband.h"
-#include "BKE_idprop.h"
 #include "BKE_main.h"
 #include "BKE_keyconfig.h"
 
@@ -150,6 +149,10 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    * Include next version bump.
    */
   {
+    FROM_DEFAULT_V4_UCHAR(space_file.execution_buts);
+    FROM_DEFAULT_V4_UCHAR(tui.icon_folder);
+    FROM_DEFAULT_V4_UCHAR(space_clip.path_keyframe_before);
+    FROM_DEFAULT_V4_UCHAR(space_clip.path_keyframe_after);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -607,6 +610,16 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
     userdef->drag_threshold = 30;
     userdef->drag_threshold_mouse = 3;
     userdef->drag_threshold_tablet = 10;
+  }
+
+  if (!USER_VERSION_ATLEAST(281, 9)) {
+    /* X3D is no longer enabled by default. */
+    BKE_addon_remove_safe(&userdef->addons, "io_scene_x3d");
+  }
+
+  if (!USER_VERSION_ATLEAST(281, 12)) {
+    userdef->render_display_type = USER_RENDER_DISPLAY_WINDOW;
+    userdef->filebrowser_display_type = USER_TEMP_SPACE_DISPLAY_WINDOW;
   }
 
   /**

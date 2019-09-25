@@ -669,9 +669,8 @@ typedef struct RenderData {
 
   char _pad0[1];
 
-  /* safety, border and display rect */
-  rctf safety, border;
-  rcti disprect;
+  /** Render border to render sub-resions. */
+  rctf border;
 
   /* information on different layers to be rendered */
   /** Converted to Scene->view_layers. */
@@ -1366,6 +1365,12 @@ typedef struct MeshStatVis {
 /* *************************************************************** */
 /* Tool Settings */
 
+/* CurvePaintSettings.surface_plane */
+enum {
+  AUTO_MERGE = 1 << 0,
+  AUTO_MERGE_AND_SPLIT = 1 << 1,
+};
+
 typedef struct ToolSettings {
   /** Vertex paint. */
   VPaint *vpaint;
@@ -1631,7 +1636,7 @@ typedef struct SceneEEVEE {
   int motion_blur_samples;
   float motion_blur_shutter;
 
-  int shadow_method;
+  int shadow_method DNA_DEPRECATED;
   int shadow_cube_size;
   int shadow_cascade_size;
 
@@ -1974,6 +1979,8 @@ extern const char *RE_engine_id_CYCLES;
 #define BASE_VISIBLE(v3d, base) \
   (((v3d == NULL) || ((v3d)->localvd == NULL) || \
     ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
+   ((v3d == NULL) || (((v3d)->flag & V3D_LOCAL_COLLECTIONS) == 0) || \
+    ((v3d)->local_collections_uuid & (base)->local_collections_bits)) && \
    ((v3d == NULL) || \
     (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) && \
    (((base)->flag & BASE_VISIBLE) != 0))
@@ -1996,6 +2003,8 @@ extern const char *RE_engine_id_CYCLES;
   (((workspace)->object_mode & OD_MODE_EDIT) ? OBACT(_view_layer) : NULL)
 #define OBEDIT_FROM_OBACT(ob) ((ob) ? (((ob)->mode & OB_MODE_EDIT) ? ob : NULL) : NULL)
 #define OBPOSE_FROM_OBACT(ob) ((ob) ? (((ob)->mode & OB_MODE_POSE) ? ob : NULL) : NULL)
+#define OBWEIGHTPAINT_FROM_OBACT(ob) \
+  ((ob) ? (((ob)->mode & OB_MODE_WEIGHT_PAINT) ? ob : NULL) : NULL)
 #define OBEDIT_FROM_VIEW_LAYER(view_layer) OBEDIT_FROM_OBACT(OBACT(view_layer))
 
 #define V3D_CAMERA_LOCAL(v3d) ((!(v3d)->scenelock && (v3d)->camera) ? (v3d)->camera : NULL)
@@ -2019,6 +2028,7 @@ extern const char *RE_engine_id_CYCLES;
 enum {
   SCE_XFORM_AXIS_ALIGN = (1 << 0),
   SCE_XFORM_DATA_ORIGIN = (1 << 1),
+  SCE_XFORM_SKIP_CHILDREN = (1 << 2),
 };
 
 /* ToolSettings.object_flag */
@@ -2284,6 +2294,8 @@ typedef enum eGPencil_SimplifyFlags {
   SIMPLIFY_GPENCIL_FX = (1 << 5),
   /* Simplify layer blending */
   SIMPLIFY_GPENCIL_BLEND = (1 << 6),
+  /* Simplify layer tint */
+  SIMPLIFY_GPENCIL_TINT = (1 << 7),
 } eGPencil_SimplifyFlags;
 
 /* ToolSettings.gpencil_*_align - Stroke Placement mode flags */
@@ -2317,6 +2329,7 @@ typedef enum eGPencil_GuideTypes {
   GP_GUIDE_RADIAL,
   GP_GUIDE_PARALLEL,
   GP_GUIDE_GRID,
+  GP_GUIDE_ISO,
 } eGPencil_GuideTypes;
 
 /* ToolSettings.gpencil_guide_references */
@@ -2383,7 +2396,7 @@ enum {
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
   // SCE_EEVEE_SSS_ENABLED = (1 << 12), /* Unused */
-  SCE_EEVEE_SSS_SEPARATE_ALBEDO = (1 << 13),
+  // SCE_EEVEE_SSS_SEPARATE_ALBEDO = (1 << 13), /* Unused */
   SCE_EEVEE_SSR_ENABLED = (1 << 14),
   SCE_EEVEE_SSR_REFRACTION = (1 << 15),
   SCE_EEVEE_SSR_HALF_RESOLUTION = (1 << 16),

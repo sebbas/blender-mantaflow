@@ -265,6 +265,26 @@ class USERPREF_PT_interface_editors(PreferencePanel, Panel):
         flow.prop(view, "factor_display_type")
 
 
+class USERPREF_PT_interface_temporary_windows(PreferencePanel, Panel):
+    bl_label = "Temporary Windows"
+    bl_parent_id = "USERPREF_PT_interface_editors"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        return (prefs.active_section == 'INTERFACE')
+
+    def draw_props(self, context, layout):
+        prefs = context.preferences
+        view = prefs.view
+
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+
+        flow.prop(view, "render_display_type", text="Render in")
+        flow.prop(view, "filebrowser_display_type", text="File Browser")
+
+
 class USERPREF_PT_interface_menus(Panel):
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
@@ -814,31 +834,51 @@ class PreferenceThemeWidgetColorPanel:
 
         layout.use_property_split = True
 
-        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+        flow = layout.grid_flow(row_major=False, columns=2, even_columns=True, even_rows=False, align=False)
 
-        col = flow.column()
-        col.prop(widget_style, "outline")
-        col.prop(widget_style, "item", slider=True)
-        col.prop(widget_style, "inner", slider=True)
-        col.prop(widget_style, "inner_sel", slider=True)
-
-        col = flow.column()
+        col = flow.column(align=True)
         col.prop(widget_style, "text")
-        col.prop(widget_style, "text_sel")
+        col.prop(widget_style, "text_sel", text="Selected")
+        col.prop(widget_style, "item", slider=True)
+
+        col = flow.column(align=True)
+        col.prop(widget_style, "inner", slider=True)
+        col.prop(widget_style, "inner_sel", text="Selected", slider=True)
+        col.prop(widget_style, "outline")
+
+        col.separator()
+
         col.prop(widget_style, "roundness")
-
-        col = flow.column()
-        col.prop(widget_style, "show_shaded")
-
-        colsub = col.column()
-        colsub.active = widget_style.show_shaded
-        colsub.prop(widget_style, "shadetop")
-        colsub.prop(widget_style, "shadedown")
 
     @classmethod
     def poll(cls, context):
         prefs = context.preferences
         return (prefs.active_section == 'THEMES')
+
+
+class PreferenceThemeWidgetShadePanel:
+    bl_space_type = 'PREFERENCES'
+    bl_region_type = 'WINDOW'
+
+    def draw(self, context):
+        theme = context.preferences.themes[0]
+        ui = theme.user_interface
+        widget_style = getattr(ui, self.wcol)
+        layout = self.layout
+
+        layout.use_property_split = True
+
+        col = layout.column(align=True)
+        col.active = widget_style.show_shaded
+        col.prop(widget_style, "shadetop", text="Shade Top")
+        col.prop(widget_style, "shadedown", text="Down")
+
+    def draw_header(self, context):
+        theme = context.preferences.themes[0]
+        ui = theme.user_interface
+        widget_style = getattr(ui, self.wcol)
+
+        self.layout.prop(widget_style, "show_shaded", text="")
 
 
 class USERPREF_PT_theme_interface_state(PreferencePanel, Panel):
@@ -937,6 +977,7 @@ class USERPREF_PT_theme_interface_icons(PreferencePanel, Panel):
         flow.prop(ui, "icon_object_data")
         flow.prop(ui, "icon_modifier")
         flow.prop(ui, "icon_shading")
+        flow.prop(ui, "icon_folder")
         flow.prop(ui, "icon_border_intensity")
 
 
@@ -1133,6 +1174,15 @@ class ThemeGenericClassGenerator():
                 "bl_label": name,
                 "bl_options": {'DEFAULT_CLOSED'},
                 "draw": PreferenceThemeWidgetColorPanel.draw,
+                "wcol": wcol,
+            })
+
+            panel_shade_id = "USERPREF_PT_theme_interface_shade_" + wcol
+            yield type(panel_shade_id, (PreferenceThemeWidgetShadePanel, Panel), {
+                "bl_label": "Shaded",
+                "bl_options": {'DEFAULT_CLOSED'},
+                "bl_parent_id": panel_id,
+                "draw": PreferenceThemeWidgetShadePanel.draw,
                 "wcol": wcol,
             })
 
@@ -2089,6 +2139,7 @@ classes = (
 
     USERPREF_PT_interface_display,
     USERPREF_PT_interface_editors,
+    USERPREF_PT_interface_temporary_windows,
     USERPREF_PT_interface_translation,
     USERPREF_PT_interface_text,
     USERPREF_PT_interface_menus,

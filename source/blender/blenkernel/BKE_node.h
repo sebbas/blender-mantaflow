@@ -30,13 +30,7 @@
 #include "DNA_listBase.h"
 
 /* for FOREACH_NODETREE_BEGIN */
-#include "DNA_light_types.h"
-#include "DNA_material_types.h"
 #include "DNA_node_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_texture_types.h"
-#include "DNA_world_types.h"
-#include "DNA_linestyle_types.h"
 
 #include "RNA_types.h"
 
@@ -46,19 +40,23 @@
 struct ARegion;
 struct ColorManagedDisplaySettings;
 struct ColorManagedViewSettings;
+struct FreestyleLineStyle;
 struct GPUMaterial;
 struct GPUNodeStack;
 struct ID;
 struct ImBuf;
 struct ImageFormatData;
+struct Light;
 struct ListBase;
 struct MTex;
 struct Main;
+struct Material;
 struct PointerRNA;
 struct RenderData;
 struct Scene;
 struct SpaceNode;
 struct Tex;
+struct World;
 struct bContext;
 struct bNode;
 struct bNodeExecContext;
@@ -384,6 +382,7 @@ void ntreeUserIncrefID(struct bNodeTree *ntree);
 void ntreeUserDecrefID(struct bNodeTree *ntree);
 
 struct bNodeTree *ntreeFromID(const struct ID *id);
+struct ID *BKE_node_tree_find_owner_ID(struct Main *bmain, struct bNodeTree *ntree);
 
 void ntreeMakeLocal(struct Main *bmain,
                     struct bNodeTree *ntree,
@@ -831,11 +830,11 @@ void BKE_node_tree_unlink_id(ID *id, struct bNodeTree *ntree);
 struct NodeTreeIterStore {
   bNodeTree *ngroup;
   Scene *scene;
-  Material *mat;
+  struct Material *mat;
   Tex *tex;
-  Light *light;
-  World *world;
-  FreestyleLineStyle *linestyle;
+  struct Light *light;
+  struct World *world;
+  struct FreestyleLineStyle *linestyle;
 };
 
 void BKE_node_tree_iter_init(struct NodeTreeIterStore *ntreeiter, struct Main *bmain);
@@ -979,6 +978,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree,
 #define SH_NODE_CLAMP 703
 #define SH_NODE_TEX_WHITE_NOISE 704
 #define SH_NODE_VOLUME_INFO 705
+#define SH_NODE_VERTEX_COLOR 706
 
 /* custom defines options for Material node */
 #define SH_NODE_MAT_DIFF 1

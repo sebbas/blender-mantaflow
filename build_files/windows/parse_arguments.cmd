@@ -82,18 +82,19 @@ if NOT "%1" == "" (
 	REM Non-Build Commands
 	) else if "%1" == "update" (
 		SET BUILD_UPDATE=1
-		set BUILD_UPDATE_SVN=1
-		set BUILD_UPDATE_GIT=1
+		set BUILD_UPDATE_ARGS=
 	) else if "%1" == "code_update" (
 		SET BUILD_UPDATE=1
-		set BUILD_UPDATE_SVN=0
-		set BUILD_UPDATE_GIT=1
+		set BUILD_UPDATE_ARGS="--no-libraries"
 	) else if "%1" == "ninja" (
 		SET BUILD_WITH_NINJA=1
 	) else if "%1" == "clean" (
 		set MUST_CLEAN=1
 	) else if "%1" == "verbose" (
 		set VERBOSE=1
+	) else if "%1" == "test" (
+		set TEST=1
+		set NOBUILD=1
 	) else if "%1" == "format" (
 		set FORMAT=1
 		set FORMAT_ARGS=%2 %3 %4 %5 %6 %7 %8 %9

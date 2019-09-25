@@ -38,6 +38,7 @@
 #include "DNA_workspace_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_light_types.h"
 
 #include "BKE_appdir.h"
 #include "BKE_colortools.h"
@@ -195,18 +196,13 @@ static void blo_update_defaults_screen(bScreen *screen,
     }
   }
 
-  /* Show toopbar for sculpt/paint modes. */
-  const bool show_tool_header = STR_ELEM(
-      workspace_name, "Sculpting", "Texture Paint", "2D Animation", "2D Full Canvas");
-
-  if (show_tool_header) {
-    for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
-      for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
-        ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
-        for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
-          if (ar->regiontype == RGN_TYPE_TOOL_HEADER) {
-            ar->flag &= ~(RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER);
-          }
+  /* Show top-bar by default. */
+  for (ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+    for (SpaceLink *sl = sa->spacedata.first; sl; sl = sl->next) {
+      ListBase *regionbase = (sl == sa->spacedata.first) ? &sa->regionbase : &sl->regionbase;
+      for (ARegion *ar = regionbase->first; ar; ar = ar->next) {
+        if (ar->regiontype == RGN_TYPE_TOOL_HEADER) {
+          ar->flag &= ~(RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER);
         }
       }
     }
@@ -264,6 +260,9 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   /* Change default cubemap quality. */
   scene->eevee.gi_filter_quality = 3.0f;
+
+  /* Enable Soft Shadows by default. */
+  scene->eevee.flag |= SCE_EEVEE_SHADOW_SOFT;
 
   /* Be sure curfalloff and primitive are initializated */
   ToolSettings *ts = scene->toolsettings;
@@ -328,6 +327,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       bScreen *screen = layout->screen;
       BLI_strncpy(screen->id.name + 2, workspace->id.name + 2, sizeof(screen->id.name) - 2);
       BLI_libblock_ensure_unique_name(bmain, screen->id.name);
+    }
+
+    /* For some reason we have unused screens, needed until re-saving.
+     * Clear unused layouts because they're visible in the outliner & Python API. */
+    LISTBASE_FOREACH_MUTABLE (WorkSpaceLayout *, layout_iter, &workspace->layouts) {
+      if (layout != layout_iter) {
+        BKE_workspace_layout_remove(bmain, workspace, layout_iter);
+      }
     }
   }
 

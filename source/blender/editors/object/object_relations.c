@@ -1434,7 +1434,7 @@ static int make_links_scene_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  Collection *collection_to = BKE_collection_master(scene_to);
+  Collection *collection_to = scene_to->master_collection;
   CTX_DATA_BEGIN (C, Base *, base, selected_bases) {
     BKE_collection_object_add(bmain, collection_to, base->object);
   }
@@ -1771,7 +1771,7 @@ static void single_object_users(
     Main *bmain, Scene *scene, View3D *v3d, const int flag, const bool copy_collections)
 {
   /* duplicate all the objects of the scene (and matching collections, if required). */
-  Collection *master_collection = BKE_collection_master(scene);
+  Collection *master_collection = scene->master_collection;
   single_object_users_collection(bmain, scene, master_collection, flag, copy_collections, true);
 
   /* duplicate collections that consist entirely of duplicated objects */
@@ -1816,6 +1816,10 @@ static void single_object_users(
   ID_NEW_REMAP(scene->camera);
   if (v3d) {
     ID_NEW_REMAP(v3d->camera);
+  }
+  /* Camera pointers of markers. */
+  for (TimeMarker *marker = scene->markers.first; marker; marker = marker->next) {
+    ID_NEW_REMAP(marker->camera);
   }
 
   /* Making single user may affect other scenes if they share
@@ -2426,6 +2430,16 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
 
   if (!ID_IS_LINKED(obact) && obact->instance_collection != NULL &&
       ID_IS_LINKED(obact->instance_collection)) {
+    if (!ID_IS_OVERRIDABLE_LIBRARY(obact->instance_collection)) {
+      BKE_reportf(op->reports,
+                  RPT_ERROR_INVALID_INPUT,
+                  "Collection '%s' (instantiated by the active object) is not overridable",
+                  obact->instance_collection->id.name + 2);
+      return OPERATOR_CANCELLED;
+    }
+
+    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+
     Object *obcollection = obact;
     Collection *collection = obcollection->instance_collection;
 
@@ -2503,7 +2517,14 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
 
     /* Cleanup. */
     BKE_main_id_clear_newpoins(bmain);
-    BKE_main_id_tag_listbase(&bmain->objects, LIB_TAG_DOIT, false);
+    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+  }
+  else if (!ID_IS_OVERRIDABLE_LIBRARY(obact)) {
+    BKE_reportf(op->reports,
+                RPT_ERROR_INVALID_INPUT,
+                "Active object '%s' is not overridable",
+                obact->id.name + 2);
+    return OPERATOR_CANCELLED;
   }
   /* Else, poll func ensures us that ID_IS_LINKED(obact) is true. */
   else if (obact->type == OB_ARMATURE) {
@@ -2522,11 +2543,14 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
 
     /* Cleanup. */
     BKE_main_id_clear_newpoins(bmain);
-    BKE_main_id_tag_listbase(&bmain->objects, LIB_TAG_DOIT, false);
+    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
   }
   /* TODO: probably more cases where we want to do automated smart things in the future! */
   else {
-    success = (BKE_override_library_create_from_id(bmain, &obact->id) != NULL);
+    /* For now, remapp all local usages of linked ID to local override one here. */
+    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, true);
+    success = (BKE_override_library_create_from_id(bmain, &obact->id, true) != NULL);
+    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
   }
 
   WM_event_add_notifier(C, NC_WINDOW, NULL);

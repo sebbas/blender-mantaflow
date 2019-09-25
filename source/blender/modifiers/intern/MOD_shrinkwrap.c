@@ -65,8 +65,8 @@ static void requiredDataMask(Object *UNUSED(ob),
 
   if ((smd->shrinkType == MOD_SHRINKWRAP_PROJECT) &&
       (smd->projAxis == MOD_SHRINKWRAP_PROJECT_OVER_NORMAL)) {
-    r_cddata_masks->vmask |=
-        CD_MASK_MVERT; /* XXX Really? These should always be present, always... */
+    /* XXX Really? These should always be present, always... */
+    r_cddata_masks->vmask |= CD_MASK_MVERT;
   }
 }
 
@@ -79,7 +79,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   /* The object type check is only needed here in case we have a placeholder
    * object assigned (because the library containing the mesh is missing).
    *
-   * In other cases it should be impossible to have a type missmatch.
+   * In other cases it should be impossible to have a type mismatch.
    */
   if (!smd->target || smd->target->type != OB_MESH) {
     return true;

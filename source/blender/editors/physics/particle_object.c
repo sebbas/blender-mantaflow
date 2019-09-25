@@ -704,8 +704,8 @@ static bool remap_hair_emitter(Depsgraph *depsgraph,
                                Object *target_ob,
                                ParticleSystem *target_psys,
                                PTCacheEdit *target_edit,
-                               float from_mat[4][4],
-                               float to_mat[4][4],
+                               const float from_mat[4][4],
+                               const float to_mat[4][4],
                                bool from_global,
                                bool to_global)
 {
@@ -1116,7 +1116,7 @@ static bool copy_particle_systems_to_object(const bContext *C,
 
   tmp_psys = MEM_mallocN(sizeof(ParticleSystem *) * totpsys, "temporary particle system array");
 
-  for (psys_from = PSYS_FROM_FIRST, i = 0; psys_from; psys_from = PSYS_FROM_NEXT(psys_from), ++i) {
+  for (psys_from = PSYS_FROM_FIRST, i = 0; psys_from; psys_from = PSYS_FROM_NEXT(psys_from), i++) {
     psys = BKE_object_copy_particlesystem(psys_from, 0);
     tmp_psys[i] = psys;
 
@@ -1140,6 +1140,7 @@ static bool copy_particle_systems_to_object(const bContext *C,
 
     /* append to the object */
     BLI_addtail(&ob_to->particlesystem, psys);
+    psys_unique_name(ob_to, psys, psys->name);
 
     /* add a particle system modifier for each system */
     md = modifier_new(eModifierType_ParticleSystem);
@@ -1167,7 +1168,7 @@ static bool copy_particle_systems_to_object(const bContext *C,
    * the remapping otherwise makes final_dm invalid!
    */
   for (psys = psys_start, psys_from = PSYS_FROM_FIRST, i = 0; psys;
-       psys = psys->next, psys_from = PSYS_FROM_NEXT(psys_from), ++i) {
+       psys = psys->next, psys_from = PSYS_FROM_NEXT(psys_from), i++) {
     float(*from_mat)[4], (*to_mat)[4];
 
     switch (space) {

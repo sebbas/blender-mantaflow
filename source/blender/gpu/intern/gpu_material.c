@@ -37,6 +37,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
+#include "BLI_ghash.h"
 
 #include "BKE_main.h"
 #include "BKE_node.h"
@@ -101,6 +102,8 @@ struct GPUMaterial {
 
   GPUTexture *coba_tex; /* 1D Texture array containing all color bands. */
   GPUColorBandBuilder *coba_builder;
+
+  GSet *used_libraries;
 
 #ifndef NDEBUG
   char name[64];
@@ -183,6 +186,8 @@ static void gpu_material_free_single(GPUMaterial *material)
   if (material->coba_tex != NULL) {
     GPU_texture_free(material->coba_tex);
   }
+
+  BLI_gset_free(material->used_libraries, NULL);
 }
 
 void GPU_material_free(ListBase *gpumaterial)
@@ -328,7 +333,7 @@ static float eval_integral(float x0, float x1, short falloff_type, float sharpne
   const float step = range / INTEGRAL_RESOLUTION;
   float integral = 0.0f;
 
-  for (int i = 0; i < INTEGRAL_RESOLUTION; ++i) {
+  for (int i = 0; i < INTEGRAL_RESOLUTION; i++) {
     float x = x0 + range * ((float)i + 0.5f) / (float)INTEGRAL_RESOLUTION;
     float y = eval_profile(x, falloff_type, sharpness, param);
     integral += y * step;
@@ -339,7 +344,7 @@ static float eval_integral(float x0, float x1, short falloff_type, float sharpne
 #undef INTEGRAL_RESOLUTION
 
 static void compute_sss_kernel(
-    GPUSssKernelData *kd, float radii[3], int sample_len, int falloff_type, float sharpness)
+    GPUSssKernelData *kd, const float radii[3], int sample_len, int falloff_type, float sharpness)
 {
   float rad[3];
   /* Minimum radius */
@@ -409,7 +414,7 @@ static void compute_sss_kernel(
     sum[2] += kd->kernel[i][2];
   }
 
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < 3; i++) {
     if (sum[i] > 0.0f) {
       /* Normalize */
       for (int j = 0; j < sample_len; j++) {
@@ -445,7 +450,7 @@ static void compute_sss_translucence_kernel(const GPUSssKernelData *kd,
   *output = (float *)texels;
 
   /* Last texel should be black, hence the - 1. */
-  for (int i = 0; i < resolution - 1; ++i) {
+  for (int i = 0; i < resolution - 1; i++) {
     /* Distance from surface. */
     float d = kd->max_radius * ((float)i + 0.00001f) / ((float)resolution);
 
@@ -582,6 +587,11 @@ void gpu_material_add_node(GPUMaterial *material, GPUNode *node)
   BLI_addtail(&material->nodes, node);
 }
 
+GSet *gpu_material_used_libraries(GPUMaterial *material)
+{
+  return material->used_libraries;
+}
+
 /* Return true if the material compilation has not yet begin or begin. */
 eGPUMaterialStatus GPU_material_status(GPUMaterial *mat)
 {
@@ -658,6 +668,9 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
 #else
   UNUSED_VARS(name);
 #endif
+
+  mat->used_libraries = BLI_gset_new(
+      BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "GPUMaterial.used_libraries");
 
   /* localize tree to create links for reroute and mute */
   bNodeTree *localtree = ntreeLocalize(ntree);

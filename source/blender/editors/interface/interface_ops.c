@@ -100,10 +100,12 @@ static bool copy_data_path_button_poll(bContext *C)
 
 static int copy_data_path_button_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   PointerRNA ptr;
   PropertyRNA *prop;
   char *path;
   int index;
+  ID *id;
 
   const bool full_path = RNA_boolean_get(op->ptr, "full_path");
 
@@ -111,18 +113,20 @@ static int copy_data_path_button_exec(bContext *C, wmOperator *op)
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
   if (ptr.owner_id != NULL) {
-
     if (full_path) {
-
       if (prop) {
-        path = RNA_path_full_property_py_ex(&ptr, prop, index, true);
+        path = RNA_path_full_property_py_ex(bmain, &ptr, prop, index, true);
       }
       else {
-        path = RNA_path_full_struct_py(&ptr);
+        path = RNA_path_full_struct_py(bmain, &ptr);
       }
     }
     else {
-      path = RNA_path_from_ID_to_property(&ptr, prop);
+      path = RNA_path_from_real_ID_to_property_index(bmain, &ptr, prop, 0, -1, &id);
+
+      if (!path) {
+        path = RNA_path_from_ID_to_property(&ptr, prop);
+      }
     }
 
     if (path) {
@@ -185,8 +189,9 @@ static bool copy_as_driver_button_poll(bContext *C)
   return 0;
 }
 
-static int copy_as_driver_button_exec(bContext *C, wmOperator *UNUSED(op))
+static int copy_as_driver_button_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
   PointerRNA ptr;
   PropertyRNA *prop;
   int index;
@@ -195,13 +200,18 @@ static int copy_as_driver_button_exec(bContext *C, wmOperator *UNUSED(op))
   UI_context_active_but_prop_get(C, &ptr, &prop, &index);
 
   if (ptr.owner_id && ptr.data && prop) {
+    ID *id;
     int dim = RNA_property_array_dimension(&ptr, prop, NULL);
-    char *path = RNA_path_from_ID_to_property_index(&ptr, prop, dim, index);
+    char *path = RNA_path_from_real_ID_to_property_index(bmain, &ptr, prop, dim, index, &id);
 
     if (path) {
-      ANIM_copy_as_driver(ptr.owner_id, path, RNA_property_identifier(prop));
+      ANIM_copy_as_driver(id, path, RNA_property_identifier(prop));
       MEM_freeN(path);
       return OPERATOR_FINISHED;
+    }
+    else {
+      BKE_reportf(op->reports, RPT_ERROR, "Could not compute a valid data path");
+      return OPERATOR_CANCELLED;
     }
   }
 
@@ -211,7 +221,7 @@ static int copy_as_driver_button_exec(bContext *C, wmOperator *UNUSED(op))
 static void UI_OT_copy_as_driver_button(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Copy As New Driver";
+  ot->name = "Copy as New Driver";
   ot->idname = "UI_OT_copy_as_driver_button";
   ot->description =
       "Create a new driver with this property as input, and copy it to the "
@@ -443,7 +453,7 @@ static int unset_property_button_exec(bContext *C, wmOperator *UNUSED(op))
 static void UI_OT_unset_property_button(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Unset property";
+  ot->name = "Unset Property";
   ot->idname = "UI_OT_unset_property_button";
   ot->description = "Clear the property and use default or generated value in operators";
 
@@ -934,7 +944,7 @@ static int copy_to_selected_button_exec(bContext *C, wmOperator *op)
 static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Copy To Selected";
+  ot->name = "Copy to Selected";
   ot->idname = "UI_OT_copy_to_selected_button";
   ot->description = "Copy property from this object to selected objects or bones";
 
@@ -1082,7 +1092,7 @@ static int jump_to_target_button_exec(bContext *C, wmOperator *UNUSED(op))
 static void UI_OT_jump_to_target_button(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Jump To Target";
+  ot->name = "Jump to Target";
   ot->idname = "UI_OT_jump_to_target_button";
   ot->description = "Switch to the target object or bone";
 
@@ -1580,6 +1590,34 @@ static void UI_OT_button_execute(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Text Button Clear Operator
+ * \{ */
+
+static int button_string_clear_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  uiBut *but = UI_context_active_but_get(C);
+
+  if (but) {
+    ui_but_active_string_clear_and_exit(C, but);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void UI_OT_button_string_clear(wmOperatorType *ot)
+{
+  ot->name = "Clear Button String";
+  ot->idname = "UI_OT_button_string_clear";
+  ot->description = "Unsets the text of the active button";
+
+  ot->poll = ED_operator_regionactive;
+  ot->exec = button_string_clear_exec;
+  ot->flag = OPTYPE_UNDO | OPTYPE_INTERNAL;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Drop Color Operator
  * \{ */
 
@@ -1704,6 +1742,7 @@ void ED_operatortypes_ui(void)
 #endif
   WM_operatortype_append(UI_OT_reloadtranslation);
   WM_operatortype_append(UI_OT_button_execute);
+  WM_operatortype_append(UI_OT_button_string_clear);
 
   /* external */
   WM_operatortype_append(UI_OT_eyedropper_color);

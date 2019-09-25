@@ -211,7 +211,7 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
         }
         /* Final transform properties go to the Done node for the exit. */
         else if (STREQ(prop_name, "head") || STREQ(prop_name, "tail") ||
-                 STRPREFIX(prop_name, "matrix")) {
+                 STREQ(prop_name, "length") || STRPREFIX(prop_name, "matrix")) {
           if (source == RNAPointerSource::EXIT) {
             node_identifier.operation_code = OperationCode::BONE_DONE;
           }
@@ -280,7 +280,11 @@ RNANodeIdentifier RNANodeQuery::construct_node_identifier(const PointerRNA *ptr,
   else if (RNA_struct_is_a(ptr->type, &RNA_Mesh) || RNA_struct_is_a(ptr->type, &RNA_Modifier) ||
            RNA_struct_is_a(ptr->type, &RNA_GpencilModifier) ||
            RNA_struct_is_a(ptr->type, &RNA_Spline) || RNA_struct_is_a(ptr->type, &RNA_TextBox) ||
-           RNA_struct_is_a(ptr->type, &RNA_GPencilLayer)) {
+           RNA_struct_is_a(ptr->type, &RNA_GPencilLayer) ||
+           RNA_struct_is_a(ptr->type, &RNA_LatticePoint) ||
+           RNA_struct_is_a(ptr->type, &RNA_MeshUVLoop) ||
+           RNA_struct_is_a(ptr->type, &RNA_MeshLoopColor) ||
+           RNA_struct_is_a(ptr->type, &RNA_VertexGroupElement)) {
     /* When modifier is used as FROM operation this is likely referencing to
      * the property (for example, modifier's influence).
      * But when it's used as TO operation, this is geometry component. */

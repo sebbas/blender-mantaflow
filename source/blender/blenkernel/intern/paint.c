@@ -992,9 +992,23 @@ static void sculptsession_free_pbvh(Object *object)
 {
   SculptSession *ss = object->sculpt;
 
-  if (ss && ss->pbvh) {
+  if (!ss) {
+    return;
+  }
+
+  if (ss->pbvh) {
     BKE_pbvh_free(ss->pbvh);
     ss->pbvh = NULL;
+  }
+
+  if (ss->pmap) {
+    MEM_freeN(ss->pmap);
+    ss->pmap = NULL;
+  }
+
+  if (ss->pmap_mem) {
+    MEM_freeN(ss->pmap_mem);
+    ss->pmap_mem = NULL;
   }
 }
 
@@ -1060,6 +1074,10 @@ void BKE_sculptsession_free(Object *ob)
       MEM_freeN(ss->deform_imats);
     }
 
+    if (ss->preview_vert_index_list) {
+      MEM_freeN(ss->preview_vert_index_list);
+    }
+
     BKE_sculptsession_free_vwpaint_data(ob->sculpt);
 
     MEM_freeN(ss);
@@ -1083,6 +1101,12 @@ MultiresModifierData *BKE_sculpt_multires_active(Scene *scene, Object *ob)
 
   if (!CustomData_get_layer(&me->ldata, CD_MDISPS)) {
     /* multires can't work without displacement layer */
+    return NULL;
+  }
+
+  /* Weight paint operates on original vertices, and needs to treat multires as regular modifier
+   * to make it so that PBVH vertices are at the multires surface. */
+  if ((ob->mode & OB_MODE_SCULPT) == 0) {
     return NULL;
   }
 
@@ -1131,7 +1155,10 @@ static bool sculpt_modifiers_active(Scene *scene, Sculpt *sd, Object *ob)
     if (!modifier_isEnabled(scene, md, eModifierMode_Realtime)) {
       continue;
     }
-    if (ELEM(md->type, eModifierType_ShapeKey, eModifierType_Multires)) {
+    if (md->type == eModifierType_Multires && (ob->mode & OB_MODE_SCULPT)) {
+      continue;
+    }
+    if (md->type == eModifierType_ShapeKey) {
       continue;
     }
 
@@ -1181,8 +1208,9 @@ static void sculpt_update_object(
 
   ss->kb = (mmd == NULL) ? BKE_keyblock_from_object(ob) : NULL;
 
-  /* VWPaint require mesh info for loop lookup, so require sculpt mode here */
-  if (mmd && ob->mode & OB_MODE_SCULPT) {
+  /* NOTE: Weight pPaint require mesh info for loop lookup, but it never uses multires code path,
+   * so no extra checks is needed here. */
+  if (mmd) {
     ss->multires = mmd;
     ss->totvert = me_eval->totvert;
     ss->totpoly = me_eval->totpoly;
@@ -1206,9 +1234,7 @@ static void sculpt_update_object(
   BLI_assert(pbvh == ss->pbvh);
   UNUSED_VARS_NDEBUG(pbvh);
 
-  MEM_SAFE_FREE(ss->pmap);
-  MEM_SAFE_FREE(ss->pmap_mem);
-  if (need_pmap && ob->type == OB_MESH) {
+  if (need_pmap && ob->type == OB_MESH && !ss->pmap) {
     BKE_mesh_vert_poly_map_create(
         &ss->pmap, &ss->pmap_mem, me->mpoly, me->mloop, me->totvert, me->totpoly, me->totloop);
   }
@@ -1227,7 +1253,7 @@ static void sculpt_update_object(
       BKE_crazyspace_build_sculpt(depsgraph, scene, ob, &ss->deform_imats, &ss->deform_cos);
       BKE_pbvh_vert_coords_apply(ss->pbvh, ss->deform_cos, me->totvert);
 
-      for (a = 0; a < me->totvert; ++a) {
+      for (a = 0; a < me->totvert; a++) {
         invert_m3(ss->deform_imats[a]);
       }
     }
@@ -1268,7 +1294,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob)
   SculptSession *ss = ob->sculpt;
 
   if (ss && ss->building_vp_handle == false) {
-    if (!ss->cache) {
+    if (!ss->cache && !ss->filter_cache) {
       /* We free pbvh on changes, except in the middle of drawing a stroke
        * since it can't deal with changing PVBH node organization, we hope
        * topology does not change in the meantime .. weak. */

@@ -1356,6 +1356,52 @@ bool isect_seg_seg_v2_simple(const float v1[2],
 }
 
 /**
+ * If intersection == ISECT_LINE_LINE_CROSS or ISECT_LINE_LINE_NONE:
+ * <pre>
+ * pt = v1 + lambda * (v2 - v1) = v3 + mu * (v4 - v3)
+ * </pre>
+ * \returns intersection type:
+ * - ISECT_LINE_LINE_COLINEAR: collinear.
+ * - ISECT_LINE_LINE_EXACT: intersection at an endpoint of either.
+ * - ISECT_LINE_LINE_CROSS: interaction, not at an endpoint.
+ * - ISECT_LINE_LINE_NONE: no intersection.
+ * Also returns lambda and mu in r_lambda and r_mu.
+ */
+int isect_seg_seg_v2_lambda_mu_db(const double v1[2],
+                                  const double v2[2],
+                                  const double v3[2],
+                                  const double v4[2],
+                                  double *r_lambda,
+                                  double *r_mu)
+{
+  double div, lambda, mu;
+
+  div = (v2[0] - v1[0]) * (v4[1] - v3[1]) - (v2[1] - v1[1]) * (v4[0] - v3[0]);
+  if (fabs(div) < DBL_EPSILON) {
+    return ISECT_LINE_LINE_COLINEAR;
+  }
+
+  lambda = ((v1[1] - v3[1]) * (v4[0] - v3[0]) - (v1[0] - v3[0]) * (v4[1] - v3[1])) / div;
+
+  mu = ((v1[1] - v3[1]) * (v2[0] - v1[0]) - (v1[0] - v3[0]) * (v2[1] - v1[1])) / div;
+
+  if (r_lambda) {
+    *r_lambda = lambda;
+  }
+  if (r_mu) {
+    *r_mu = mu;
+  }
+
+  if (lambda >= 0.0 && lambda <= 1.0 && mu >= 0.0 && mu <= 1.0) {
+    if (lambda == 0.0 || lambda == 1.0 || mu == 0.0 || mu == 1.0) {
+      return ISECT_LINE_LINE_EXACT;
+    }
+    return ISECT_LINE_LINE_CROSS;
+  }
+  return ISECT_LINE_LINE_NONE;
+}
+
+/**
  * \param l1, l2: Coordinates (point of line).
  * \param sp, r:  Coordinate and radius (sphere).
  * \return r_p1, r_p2: Intersection coordinates.
@@ -3011,19 +3057,21 @@ bool isect_line_line_strict_v3(const float v1[3],
  *
  * \note Neither directions need to be normalized.
  */
-bool isect_ray_ray_v3(const float ray_origin_a[3],
-                      const float ray_direction_a[3],
-                      const float ray_origin_b[3],
-                      const float ray_direction_b[3],
-                      float *r_lambda_a,
-                      float *r_lambda_b)
+bool isect_ray_ray_epsilon_v3(const float ray_origin_a[3],
+                              const float ray_direction_a[3],
+                              const float ray_origin_b[3],
+                              const float ray_direction_b[3],
+                              const float epsilon,
+                              float *r_lambda_a,
+                              float *r_lambda_b)
 {
   BLI_assert(r_lambda_a || r_lambda_b);
   float n[3];
   cross_v3_v3v3(n, ray_direction_b, ray_direction_a);
   const float nlen = len_squared_v3(n);
 
-  if (UNLIKELY(nlen == 0.0f)) {
+  /* `nlen` is the the square of the area formed by the two vectors. */
+  if (UNLIKELY(nlen < epsilon)) {
     /* The lines are parallel. */
     return false;
   }
@@ -3043,6 +3091,22 @@ bool isect_ray_ray_v3(const float ray_origin_a[3],
   }
 
   return true;
+}
+
+bool isect_ray_ray_v3(const float ray_origin_a[3],
+                      const float ray_direction_a[3],
+                      const float ray_origin_b[3],
+                      const float ray_direction_b[3],
+                      float *r_lambda_a,
+                      float *r_lambda_b)
+{
+  return isect_ray_ray_epsilon_v3(ray_origin_a,
+                                  ray_direction_a,
+                                  ray_origin_b,
+                                  ray_direction_b,
+                                  FLT_MIN,
+                                  r_lambda_a,
+                                  r_lambda_b);
 }
 
 bool isect_aabb_aabb_v3(const float min1[3],
@@ -3182,6 +3246,26 @@ float closest_to_line_v2(float r_close[2], const float p[2], const float l1[2], 
   sub_v2_v2v2(u, l2, l1);
   sub_v2_v2v2(h, p, l1);
   lambda = dot_v2v2(u, h) / dot_v2v2(u, u);
+  r_close[0] = l1[0] + u[0] * lambda;
+  r_close[1] = l1[1] + u[1] * lambda;
+  return lambda;
+}
+
+double closest_to_line_v2_db(double r_close[2],
+                             const double p[2],
+                             const double l1[2],
+                             const double l2[2])
+{
+  double h[2], u[2], lambda, denom;
+  sub_v2_v2v2_db(u, l2, l1);
+  sub_v2_v2v2_db(h, p, l1);
+  denom = dot_v2v2_db(u, u);
+  if (denom < DBL_EPSILON) {
+    r_close[0] = l1[0];
+    r_close[1] = l1[1];
+    return 0.0;
+  }
+  lambda = dot_v2v2_db(u, h) / dot_v2v2_db(u, u);
   r_close[0] = l1[0] + u[0] * lambda;
   r_close[1] = l1[1] + u[1] * lambda;
   return lambda;
@@ -4707,29 +4791,24 @@ void projmat_from_subregion(const float projmat[4][4],
   float rect_width = (float)(x_max - x_min);
   float rect_height = (float)(y_max - y_min);
 
+  float x_sca = (float)win_size[0] / rect_width;
+  float y_sca = (float)win_size[1] / rect_height;
+
   float x_fac = (float)((x_min + x_max) - win_size[0]) / rect_width;
   float y_fac = (float)((y_min + y_max) - win_size[1]) / rect_height;
 
   copy_m4_m4(r_projmat, projmat);
-  r_projmat[0][0] *= (float)win_size[0] / rect_width;
-  r_projmat[1][1] *= (float)win_size[1] / rect_height;
+  r_projmat[0][0] *= x_sca;
+  r_projmat[1][1] *= y_sca;
 
-#if 0 /* TODO: check if this is more efficient. */
-  r_projmat[2][0] -= x_fac * r_projmat[2][3];
-  r_projmat[2][1] -= y_fac * r_projmat[2][3];
-
-  r_projmat[3][0] -= x_fac * r_projmat[3][3];
-  r_projmat[3][1] -= y_fac * r_projmat[3][3];
-#else
   if (projmat[3][3] == 0.0f) {
-    r_projmat[2][0] += x_fac;
-    r_projmat[2][1] += y_fac;
+    r_projmat[2][0] = r_projmat[2][0] * x_sca + x_fac;
+    r_projmat[2][1] = r_projmat[2][1] * y_sca + y_fac;
   }
   else {
-    r_projmat[3][0] -= x_fac;
-    r_projmat[3][1] -= y_fac;
+    r_projmat[3][0] = r_projmat[3][0] * x_sca - x_fac;
+    r_projmat[3][1] = r_projmat[3][1] * y_sca - y_fac;
   }
-#endif
 }
 
 static void i_multmatrix(float icand[4][4], float Vm[4][4])

@@ -44,7 +44,6 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_blender.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
@@ -83,8 +82,6 @@
 #include "GPU_framebuffer.h"
 #include "GPU_init_exit.h"
 #include "GPU_immediate.h"
-#include "GPU_material.h"
-#include "GPU_texture.h"
 #include "GPU_context.h"
 #include "BLF_api.h"
 
@@ -795,10 +792,11 @@ wmWindow *WM_window_open(bContext *C, const rcti *rect)
  * Uses `screen->temp` tag to define what to do, currently it limits
  * to only one "temp" window for render out, preferences, filewindow, etc...
  *
- * \param type: WM_WINDOW_RENDER, WM_WINDOW_USERPREFS...
- * \return the window or NULL.
+ * \param space_type: SPACE_VIEW3D, SPACE_INFO, ... (eSpace_Type)
+ * \return the window or NULL in case of failure.
  */
-wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, int type)
+wmWindow *WM_window_open_temp(
+    bContext *C, const char *title, int x, int y, int sizex, int sizey, int space_type)
 {
   Main *bmain = CTX_data_main(C);
   wmWindow *win_prev = CTX_wm_window(C);
@@ -807,7 +805,6 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
   ScrArea *sa;
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  const char *title;
 
   /* convert to native OS window coordinates */
   const float native_pixel_size = GHOST_GetNativePixelSize(win_prev->ghostwin);
@@ -887,45 +884,10 @@ wmWindow *WM_window_open_temp(bContext *C, int x, int y, int sizex, int sizey, i
   sa = screen->areabase.first;
   CTX_wm_area_set(C, sa);
 
-  if (type == WM_WINDOW_RENDER) {
-    ED_area_newspace(C, sa, SPACE_IMAGE, false);
-  }
-  else if (type == WM_WINDOW_DRIVERS) {
-    ED_area_newspace(C, sa, SPACE_GRAPH, false);
-  }
-  else if (type == WM_WINDOW_INFO) {
-    ED_area_newspace(C, sa, SPACE_INFO, false);
-  }
-  else {
-    ED_area_newspace(C, sa, SPACE_USERPREF, false);
-  }
+  ED_area_newspace(C, sa, space_type, false);
 
   ED_screen_change(C, screen);
   ED_screen_refresh(CTX_wm_manager(C), win); /* test scale */
-
-  /* do additional setup for specific editor type */
-  if (type == WM_WINDOW_DRIVERS) {
-    ED_drivers_editor_init(C, sa);
-  }
-
-  if (sa->spacetype == SPACE_IMAGE) {
-    title = IFACE_("Blender Render");
-  }
-  else if (ELEM(sa->spacetype, SPACE_OUTLINER, SPACE_USERPREF)) {
-    title = IFACE_("Blender Preferences");
-  }
-  else if (sa->spacetype == SPACE_FILE) {
-    title = IFACE_("Blender File View");
-  }
-  else if (sa->spacetype == SPACE_GRAPH) {
-    title = IFACE_("Blender Drivers Editor");
-  }
-  else if (sa->spacetype == SPACE_INFO) {
-    title = IFACE_("Blender Info Log");
-  }
-  else {
-    title = "Blender";
-  }
 
   if (win->ghostwin) {
     GHOST_SetTitle(win->ghostwin, title);

@@ -55,13 +55,11 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
-#include "GPU_draw.h"
 #include "GPU_state.h"
 #include "GPU_framebuffer.h"
 
 #include "BLF_api.h"
 
-#include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
@@ -813,7 +811,7 @@ static void area_azone_initialize(wmWindow *win, const bScreen *screen, ScrArea 
     return;
   }
 
-  float coords[4][4] = {
+  const float coords[4][4] = {
       /* Bottom-left. */
       {sa->totrct.xmin - U.pixelsize,
        sa->totrct.ymin - U.pixelsize,
@@ -1264,9 +1262,6 @@ static void region_rect_recursive(
   }
   else if (ED_area_is_global(sa)) {
     prefsizey = ED_region_global_size_y();
-  }
-  else if (ar->regiontype == RGN_TYPE_UI && sa->spacetype == SPACE_FILE) {
-    prefsizey = UI_UNIT_Y * 2 + (UI_UNIT_Y / 2);
   }
   else {
     prefsizey = UI_DPI_FAC * (ar->sizey > 1 ? ar->sizey + 0.5f : ar->type->prefsizey);
@@ -2438,7 +2433,7 @@ void ED_region_panels_layout_ex(const bContext *C,
      * instead they calculate offsets for the next panel to start drawing. */
     Panel *panel = ar->panels.last;
     if (panel != NULL) {
-      int size_dyn[2] = {
+      const int size_dyn[2] = {
           UI_UNIT_X * ((panel->flag & PNL_CLOSED) ? 8 : 14) / UI_DPI_FAC,
           UI_panel_size_y(panel) / UI_DPI_FAC,
       };

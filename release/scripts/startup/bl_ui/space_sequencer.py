@@ -187,7 +187,7 @@ class SEQUENCER_MT_range(Menu):
 class SEQUENCER_MT_preview_zoom(Menu):
     bl_label = "Fractional Zoom"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_PREVIEW'
 
@@ -502,6 +502,10 @@ class SEQUENCER_MT_add(Menu):
         col.menu("SEQUENCER_MT_add_transitions", icon='ARROW_LEFTRIGHT')
         col.enabled = selected_sequences_len(context) >= 2
 
+        col = layout.column()
+        col.operator_menu_enum("sequencer.fades_add", "type", text="Fade", icon="IPO_EASE_IN_OUT")
+        col.enabled = selected_sequences_len(context) >= 1
+
 
 class SEQUENCER_MT_add_empty(Menu):
     bl_label = "Empty"
@@ -749,25 +753,32 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.operator("sequencer.gap_remove").all = False
         layout.operator("sequencer.gap_insert")
 
+        layout.separator()
+
         strip = act_strip(context)
 
         if strip:
             strip_type = strip.type
+            selected_sequences_count = selected_sequences_len(context)
 
             if strip_type != 'SOUND':
-
                 layout.separator()
                 layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
                 layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
 
-                if selected_sequences_len(context) >= 2:
+                if selected_sequences_count >= 2:
                     layout.separator()
                     col = layout.column()
                     col.menu("SEQUENCER_MT_add_transitions", text="Add Transition")
 
-            elif selected_sequences_len(context) >= 2:
+            elif selected_sequences_count >= 2:
                 layout.separator()
                 layout.operator("sequencer.crossfade_sounds", text="Crossfade Sounds")
+
+            if selected_sequences_count >= 1:
+                col = layout.column()
+                col.operator_menu_enum("sequencer.fades_add", "type", text="Fade")
+                layout.operator("sequencer.fades_clear", text="Clear Fade")
 
             if strip_type in {
                     'CROSS', 'ADD', 'SUBTRACT', 'ALPHA_OVER', 'ALPHA_UNDER',
@@ -1467,7 +1478,7 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.alignment = 'RIGHT'
         split.label(text="End")
         split = split.split(factor=0.8 + max_factor, align=True)
-        split.label(text="{:>14}".format(smpte_from_frame(frame_final_end) + ":"))
+        split.label(text="{:>14}".format(smpte_from_frame(frame_final_end)))
         split.alignment = 'RIGHT'
         split.label(text=str(frame_final_end) + " ")
 
@@ -1511,7 +1522,7 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.label(text="Playhead")
         split = split.split(factor=0.8 + max_factor, align=True)
         playhead = frame_current - frame_final_start
-        split.label(text="{:>14}".format(smpte_from_frame(playhead) + ":"))
+        split.label(text="{:>14}".format(smpte_from_frame(playhead)))
         split.alignment = 'RIGHT'
         split.label(text=str(playhead) + " ")
 
@@ -1678,7 +1689,7 @@ class SEQUENCER_PT_adjust_video(SequencerButtonsPanel, Panel):
             col.prop(strip, "undistort")
             col.separator()
 
-        col.prop(strip, "playback_direction")
+        col.prop(strip, "use_reverse_frames")
 
 
 class SEQUENCER_PT_adjust_color(SequencerButtonsPanel, Panel):
@@ -1880,7 +1891,7 @@ class SEQUENCER_PT_preview(SequencerButtonsPanel_Output, Panel):
         col = layout.column()
         col.prop(render, "sequencer_gl_preview", text="Preview Shading")
 
-        if render.sequencer_gl_preview in ['SOLID', 'WIREFRAME']:
+        if render.sequencer_gl_preview in {'SOLID', 'WIREFRAME'}:
             col.prop(render, "use_sequencer_override_scene_strip")
 
 
@@ -1894,6 +1905,7 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
         layout.use_property_decorate = False
 
         st = context.space_data
+        ed = context.scene.sequence_editor
 
         col = layout.column()
         col.prop(st, "display_channel", text="Channel")
@@ -1905,6 +1917,7 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
             col.prop(st, "show_separate_color")
 
         col.prop(st, "proxy_render_size")
+        col.prop(ed, "use_prefetch")
 
 
 class SEQUENCER_PT_frame_overlay(SequencerButtonsPanel_Output, Panel):

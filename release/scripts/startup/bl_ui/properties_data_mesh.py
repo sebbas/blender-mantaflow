@@ -72,8 +72,8 @@ class MESH_MT_shape_key_context_menu(Menu):
         layout.separator()
         layout.operator("object.shape_key_remove", icon='X', text="Delete All Shape Keys").all = True
         layout.separator()
-        layout.operator("object.shape_key_move", icon='TRIA_UP_BAR', text="Move To Top").type = 'TOP'
-        layout.operator("object.shape_key_move", icon='TRIA_DOWN_BAR', text="Move To Bottom").type = 'BOTTOM'
+        layout.operator("object.shape_key_move", icon='TRIA_UP_BAR', text="Move to Top").type = 'TOP'
+        layout.operator("object.shape_key_move", icon='TRIA_DOWN_BAR', text="Move to Bottom").type = 'BOTTOM'
 
 
 class MESH_UL_vgroups(UIList):
@@ -459,6 +459,7 @@ class DATA_PT_vertex_colors(MeshButtonsPanel, Panel):
         col.operator("mesh.vertex_color_add", icon='ADD', text="")
         col.operator("mesh.vertex_color_remove", icon='REMOVE', text="")
 
+
 class DATA_PT_remesh(MeshButtonsPanel, Panel):
     bl_label = "Remesh"
     bl_options = {'DEFAULT_CLOSED'}
@@ -467,14 +468,19 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        col = layout.column()
+        layout.use_property_decorate = False
+        row = layout.row()
 
         mesh = context.mesh
-        col.prop(mesh, "remesh_voxel_size")
-        col.prop(mesh, "remesh_smooth_normals")
-        col.prop(mesh, "remesh_preserve_paint_mask")
-        col.operator("object.voxel_remesh", text="Voxel Remesh")
-
+        row.prop(mesh, "remesh_mode", text="Mode", expand=True)
+        col = layout.column()
+        if (mesh.remesh_mode == 'VOXEL'):
+            col.prop(mesh, "remesh_voxel_size")
+            col.prop(mesh, "remesh_smooth_normals")
+            col.prop(mesh, "remesh_preserve_paint_mask")
+            col.operator("object.voxel_remesh", text="Voxel Remesh")
+        else:
+            col.operator("object.quadriflow_remesh", text="QuadriFlow Remesh")
 
 class DATA_PT_customdata(MeshButtonsPanel, Panel):
     bl_label = "Geometry Data"
@@ -484,6 +490,7 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
 
         obj = context.object
         me = context.mesh

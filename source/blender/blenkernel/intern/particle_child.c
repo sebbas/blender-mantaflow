@@ -381,7 +381,7 @@ void psys_apply_child_modifiers(ParticleThreadContext *ctx,
     }
 
     /* we have to correct velocity because of kink & clump */
-    for (k = 0, key = keys; k < totkeys; ++k, ++key) {
+    for (k = 0, key = keys; k < totkeys; k++, key++) {
       if (k >= 2) {
         sub_v3_v3v3((key - 1)->vel, key->co, (key - 2)->co);
         mul_v3_fl((key - 1)->vel, 0.5);
@@ -657,7 +657,7 @@ float do_clump(ParticleKey *state,
 }
 
 static void do_rough(const float loc[3],
-                     float mat[4][4],
+                     const float mat[4][4],
                      float t,
                      float fac,
                      float size,
@@ -701,7 +701,7 @@ static void do_rough_end(
 }
 
 static void do_rough_curve(const float loc[3],
-                           float mat[4][4],
+                           const float mat[4][4],
                            float time,
                            float fac,
                            float size,

@@ -432,9 +432,14 @@ typedef enum ID_Type {
 #define ID_BLEND_PATH_FROM_GLOBAL(_id) \
   ((_id)->lib ? (_id)->lib->filepath : BKE_main_blendfile_path_from_global())
 
-#define ID_MISSING(_id) (((_id)->tag & LIB_TAG_MISSING) != 0)
+#define ID_MISSING(_id) ((((ID *)(_id))->tag & LIB_TAG_MISSING) != 0)
 
 #define ID_IS_LINKED(_id) (((ID *)(_id))->lib != NULL)
+
+/* Note that this is a fairly high-level check, should be used at user interaction level, not in
+ * BKE_library_override typically (especially due to the check on LIB_TAG_EXTERN). */
+#define ID_IS_OVERRIDABLE_LIBRARY(_id) \
+  (ID_IS_LINKED(_id) && !ID_MISSING(_id) && (((ID *)(_id))->tag & LIB_TAG_EXTERN) != 0)
 
 #define ID_IS_OVERRIDE_LIBRARY(_id) \
   (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference != NULL)
@@ -467,7 +472,15 @@ typedef enum ID_Type {
 
 /* id->flag (persitent). */
 enum {
+  /* Don't delete the datablock even if unused. */
   LIB_FAKEUSER = 1 << 9,
+  /* The datablock structure is a sub-object of a different one.
+   * Direct persistent references are not allowed. */
+  LIB_PRIVATE_DATA = 1 << 10,
+  /* Datablock is from a library and linked indirectly, with LIB_TAG_INDIRECT
+   * tag set. But the current .blend file also has a weak pointer to it that
+   * we want to restore if possible, and silently drop if it's missing. */
+  LIB_INDIRECT_WEAK_LINK = 1 << 11,
 };
 
 /**

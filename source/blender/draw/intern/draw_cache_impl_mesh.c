@@ -55,7 +55,6 @@
 #include "bmesh.h"
 
 #include "GPU_batch.h"
-#include "GPU_extensions.h"
 #include "GPU_material.h"
 
 #include "DRW_render.h"
@@ -502,13 +501,16 @@ static void mesh_batch_cache_discard_uvedit(MeshBatchCache *cache)
     GPU_INDEXBUF_DISCARD_SAFE(mbufcache->ibo.edituv_points);
     GPU_INDEXBUF_DISCARD_SAFE(mbufcache->ibo.edituv_fdots);
   }
-  GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_strech_area);
-  GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_strech_angle);
+  GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_stretch_area);
+  GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_stretch_angle);
   GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces);
   GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_edges);
   GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_verts);
   GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_fdots);
   GPU_BATCH_DISCARD_SAFE(cache->batch.wire_loops_uvs);
+
+  cache->tot_area = 0.0f;
+  cache->tot_uv_area = 0.0f;
 
   cache->batch_ready &= ~MBC_EDITUV;
 }
@@ -549,6 +551,7 @@ void DRW_mesh_batch_cache_dirty_tag(Mesh *me, int mode)
       {
         GPU_INDEXBUF_DISCARD_SAFE(mbufcache->ibo.lines_paint_mask);
         GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.pos_nor);
+        GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.lnor);
       }
       GPU_BATCH_DISCARD_SAFE(cache->batch.surface);
       GPU_BATCH_DISCARD_SAFE(cache->batch.wire_loops);
@@ -576,8 +579,8 @@ void DRW_mesh_batch_cache_dirty_tag(Mesh *me, int mode)
         GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.edituv_data);
         GPU_VERTBUF_DISCARD_SAFE(mbufcache->vbo.fdots_edituv_data);
       }
-      GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_strech_area);
-      GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_strech_angle);
+      GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_stretch_area);
+      GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces_stretch_angle);
       GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_faces);
       GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_edges);
       GPU_BATCH_DISCARD_SAFE(cache->batch.edituv_verts);
@@ -599,14 +602,14 @@ static void mesh_batch_cache_clear(Mesh *me)
   {
     GPUVertBuf **vbos = (GPUVertBuf **)&mbufcache->vbo;
     GPUIndexBuf **ibos = (GPUIndexBuf **)&mbufcache->ibo;
-    for (int i = 0; i < sizeof(mbufcache->vbo) / sizeof(void *); ++i) {
+    for (int i = 0; i < sizeof(mbufcache->vbo) / sizeof(void *); i++) {
       GPU_VERTBUF_DISCARD_SAFE(vbos[i]);
     }
-    for (int i = 0; i < sizeof(mbufcache->ibo) / sizeof(void *); ++i) {
+    for (int i = 0; i < sizeof(mbufcache->ibo) / sizeof(void *); i++) {
       GPU_INDEXBUF_DISCARD_SAFE(ibos[i]);
     }
   }
-  for (int i = 0; i < sizeof(cache->batch) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->batch) / sizeof(void *); i++) {
     GPUBatch **batch = (GPUBatch **)&cache->batch;
     GPU_BATCH_DISCARD_SAFE(batch[i]);
   }
@@ -752,7 +755,7 @@ GPUBatch **DRW_mesh_batch_cache_get_surface_shaded(Mesh *me,
     *auto_layer_is_srgb = cache->auto_layer_is_srgb;
     *auto_layer_count = cache->auto_layer_len;
   }
-  for (int i = 0; i < cache->mat_len; ++i) {
+  for (int i = 0; i < cache->mat_len; i++) {
     DRW_batch_request(&cache->surface_per_mat[i]);
   }
   return cache->surface_per_mat;
@@ -763,7 +766,7 @@ GPUBatch **DRW_mesh_batch_cache_get_surface_texpaint(Mesh *me)
   MeshBatchCache *cache = mesh_batch_cache_get(me);
   mesh_batch_cache_add_request(cache, MBC_SURF_PER_MAT);
   texpaint_request_active_uv(cache, me);
-  for (int i = 0; i < cache->mat_len; ++i) {
+  for (int i = 0; i < cache->mat_len; i++) {
     DRW_batch_request(&cache->surface_per_mat[i]);
   }
   return cache->surface_per_mat;
@@ -873,20 +876,34 @@ GPUBatch *DRW_mesh_batch_cache_get_verts_with_select_id(Mesh *me)
 /** \name UV Image editor API
  * \{ */
 
-GPUBatch *DRW_mesh_batch_cache_get_edituv_faces_strech_area(Mesh *me)
+/* Creates the GPUBatch for drawing the UV Stretching Area Overlay.
+ * Optional retrieves the total area or total uv area of the mesh.
+ *
+ * The `cache->tot_area` and cache->tot_uv_area` update are calculation are
+ * only valid after calling `DRW_mesh_batch_cache_create_requested`. */
+GPUBatch *DRW_mesh_batch_cache_get_edituv_faces_stretch_area(Mesh *me,
+                                                             float *tot_area,
+                                                             float *tot_uv_area)
 {
   MeshBatchCache *cache = mesh_batch_cache_get(me);
   texpaint_request_active_uv(cache, me);
-  mesh_batch_cache_add_request(cache, MBC_EDITUV_FACES_STRECH_AREA);
-  return DRW_batch_request(&cache->batch.edituv_faces_strech_area);
+  mesh_batch_cache_add_request(cache, MBC_EDITUV_FACES_STRETCH_AREA);
+
+  if (tot_area != NULL) {
+    *tot_area = cache->tot_area;
+  }
+  if (tot_uv_area != NULL) {
+    *tot_uv_area = cache->tot_uv_area;
+  }
+  return DRW_batch_request(&cache->batch.edituv_faces_stretch_area);
 }
 
-GPUBatch *DRW_mesh_batch_cache_get_edituv_faces_strech_angle(Mesh *me)
+GPUBatch *DRW_mesh_batch_cache_get_edituv_faces_stretch_angle(Mesh *me)
 {
   MeshBatchCache *cache = mesh_batch_cache_get(me);
   texpaint_request_active_uv(cache, me);
-  mesh_batch_cache_add_request(cache, MBC_EDITUV_FACES_STRECH_ANGLE);
-  return DRW_batch_request(&cache->batch.edituv_faces_strech_angle);
+  mesh_batch_cache_add_request(cache, MBC_EDITUV_FACES_STRETCH_ANGLE);
+  return DRW_batch_request(&cache->batch.edituv_faces_stretch_angle);
 }
 
 GPUBatch *DRW_mesh_batch_cache_get_edituv_faces(Mesh *me)
@@ -999,9 +1016,29 @@ void DRW_mesh_batch_cache_create_requested(
     }
   }
 
+  /* HACK: if MBC_SURF_PER_MAT is requested and ibo.tris is already available, it won't have it's
+   * index ranges initialized. So discard ibo.tris in order to recreate it.
+   * This needs to happen before saved_elem_ranges is populated. */
+  if ((batch_requested & MBC_SURF_PER_MAT) != 0 && (cache->batch_ready & MBC_SURF_PER_MAT) == 0) {
+    FOREACH_MESH_BUFFER_CACHE(cache, mbuffercache)
+    {
+      GPU_INDEXBUF_DISCARD_SAFE(mbuffercache->ibo.tris);
+    }
+    /* Clear all batches that reference ibo.tris. */
+    GPU_BATCH_CLEAR_SAFE(cache->batch.surface);
+    GPU_BATCH_CLEAR_SAFE(cache->batch.surface_weights);
+    GPU_BATCH_CLEAR_SAFE(cache->batch.edit_mesh_analysis);
+    GPU_BATCH_CLEAR_SAFE(cache->batch.edit_triangles);
+    GPU_BATCH_CLEAR_SAFE(cache->batch.edit_lnor);
+    GPU_BATCH_CLEAR_SAFE(cache->batch.edit_selection_faces);
+
+    cache->batch_ready &= ~(MBC_SURFACE | MBC_SURFACE_WEIGHTS | MBC_EDIT_MESH_ANALYSIS |
+                            MBC_EDIT_TRIANGLES | MBC_EDIT_LNOR | MBC_EDIT_SELECTION_FACES);
+  }
+
   if (batch_requested &
-      (MBC_SURFACE | MBC_SURF_PER_MAT | MBC_WIRE_LOOPS_UVS | MBC_EDITUV_FACES_STRECH_AREA |
-       MBC_EDITUV_FACES_STRECH_ANGLE | MBC_EDITUV_FACES | MBC_EDITUV_EDGES | MBC_EDITUV_VERTS)) {
+      (MBC_SURFACE | MBC_SURF_PER_MAT | MBC_WIRE_LOOPS_UVS | MBC_EDITUV_FACES_STRETCH_AREA |
+       MBC_EDITUV_FACES_STRETCH_ANGLE | MBC_EDITUV_FACES | MBC_EDITUV_EDGES | MBC_EDITUV_VERTS)) {
     /* Modifiers will only generate an orco layer if the mesh is deformed. */
     if (cache->cd_needed.orco != 0) {
       if (CustomData_get_layer(&me->vdata, CD_ORCO) == NULL) {
@@ -1036,7 +1073,7 @@ void DRW_mesh_batch_cache_create_requested(
        * This is only if the cd_needed changes so it is ok to keep them.*/
       if (cache->surface_per_mat[0] && cache->surface_per_mat[0]->elem) {
         saved_elem_ranges = MEM_callocN(sizeof(saved_elem_ranges) * cache->mat_len, __func__);
-        for (int i = 0; i < cache->mat_len; ++i) {
+        for (int i = 0; i < cache->mat_len; i++) {
           saved_elem_ranges[i] = cache->surface_per_mat[i]->elem;
           /* Avoid deletion as the batch is owner. */
           cache->surface_per_mat[i]->elem = NULL;
@@ -1045,7 +1082,7 @@ void DRW_mesh_batch_cache_create_requested(
       }
       /* We can't discard batches at this point as they have been
        * referenced for drawing. Just clear them in place. */
-      for (int i = 0; i < cache->mat_len; ++i) {
+      for (int i = 0; i < cache->mat_len; i++) {
         GPU_BATCH_CLEAR_SAFE(cache->surface_per_mat[i]);
       }
       GPU_BATCH_CLEAR_SAFE(cache->batch.surface);
@@ -1077,8 +1114,8 @@ void DRW_mesh_batch_cache_create_requested(
         /* We only clear the batches as they may already have been
          * referenced. */
         GPU_BATCH_CLEAR_SAFE(cache->batch.wire_loops_uvs);
-        GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_faces_strech_area);
-        GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_faces_strech_angle);
+        GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_faces_stretch_area);
+        GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_faces_stretch_angle);
         GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_faces);
         GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_edges);
         GPU_BATCH_CLEAR_SAFE(cache->batch.edituv_verts);
@@ -1140,6 +1177,8 @@ void DRW_mesh_batch_cache_create_requested(
   }
   if (DRW_batch_requested(cache->batch.wire_loops, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache->batch.wire_loops, &mbufcache->ibo.lines_paint_mask);
+    /* Order matters. First ones override latest vbos' attribs. */
+    DRW_vbo_request(cache->batch.wire_loops, &mbufcache->vbo.lnor);
     DRW_vbo_request(cache->batch.wire_loops, &mbufcache->vbo.pos_nor);
   }
   if (DRW_batch_requested(cache->batch.wire_edges, GPU_PRIM_LINES)) {
@@ -1161,7 +1200,7 @@ void DRW_mesh_batch_cache_create_requested(
   }
 
   /* Per Material */
-  for (int i = 0; i < cache->mat_len; ++i) {
+  for (int i = 0; i < cache->mat_len; i++) {
     if (DRW_batch_requested(cache->surface_per_mat[i], GPU_PRIM_TRIS)) {
       if (saved_elem_ranges && saved_elem_ranges[i]) {
         /* XXX assign old element buffer range (it did not change).*/
@@ -1258,17 +1297,17 @@ void DRW_mesh_batch_cache_create_requested(
     DRW_vbo_request(cache->batch.edituv_faces, &mbufcache->vbo.uv);
     DRW_vbo_request(cache->batch.edituv_faces, &mbufcache->vbo.edituv_data);
   }
-  if (DRW_batch_requested(cache->batch.edituv_faces_strech_area, GPU_PRIM_TRIS)) {
-    DRW_ibo_request(cache->batch.edituv_faces_strech_area, &mbufcache->ibo.edituv_tris);
-    DRW_vbo_request(cache->batch.edituv_faces_strech_area, &mbufcache->vbo.uv);
-    DRW_vbo_request(cache->batch.edituv_faces_strech_area, &mbufcache->vbo.edituv_data);
-    DRW_vbo_request(cache->batch.edituv_faces_strech_area, &mbufcache->vbo.stretch_area);
+  if (DRW_batch_requested(cache->batch.edituv_faces_stretch_area, GPU_PRIM_TRIS)) {
+    DRW_ibo_request(cache->batch.edituv_faces_stretch_area, &mbufcache->ibo.edituv_tris);
+    DRW_vbo_request(cache->batch.edituv_faces_stretch_area, &mbufcache->vbo.uv);
+    DRW_vbo_request(cache->batch.edituv_faces_stretch_area, &mbufcache->vbo.edituv_data);
+    DRW_vbo_request(cache->batch.edituv_faces_stretch_area, &mbufcache->vbo.stretch_area);
   }
-  if (DRW_batch_requested(cache->batch.edituv_faces_strech_angle, GPU_PRIM_TRIS)) {
-    DRW_ibo_request(cache->batch.edituv_faces_strech_angle, &mbufcache->ibo.edituv_tris);
-    DRW_vbo_request(cache->batch.edituv_faces_strech_angle, &mbufcache->vbo.uv);
-    DRW_vbo_request(cache->batch.edituv_faces_strech_angle, &mbufcache->vbo.edituv_data);
-    DRW_vbo_request(cache->batch.edituv_faces_strech_angle, &mbufcache->vbo.stretch_angle);
+  if (DRW_batch_requested(cache->batch.edituv_faces_stretch_angle, GPU_PRIM_TRIS)) {
+    DRW_ibo_request(cache->batch.edituv_faces_stretch_angle, &mbufcache->ibo.edituv_tris);
+    DRW_vbo_request(cache->batch.edituv_faces_stretch_angle, &mbufcache->vbo.uv);
+    DRW_vbo_request(cache->batch.edituv_faces_stretch_angle, &mbufcache->vbo.edituv_data);
+    DRW_vbo_request(cache->batch.edituv_faces_stretch_angle, &mbufcache->vbo.stretch_angle);
   }
   if (DRW_batch_requested(cache->batch.edituv_edges, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache->batch.edituv_edges, &mbufcache->ibo.edituv_lines);
@@ -1305,25 +1344,25 @@ void DRW_mesh_batch_cache_create_requested(
 #ifdef DEBUG
 check:
   /* Make sure all requested batches have been setup. */
-  for (int i = 0; i < sizeof(cache->batch) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->batch) / sizeof(void *); i++) {
     BLI_assert(!DRW_batch_requested(((GPUBatch **)&cache->batch)[i], 0));
   }
-  for (int i = 0; i < sizeof(cache->final.vbo) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->final.vbo) / sizeof(void *); i++) {
     BLI_assert(!DRW_vbo_requested(((GPUVertBuf **)&cache->final.vbo)[i]));
   }
-  for (int i = 0; i < sizeof(cache->final.ibo) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->final.ibo) / sizeof(void *); i++) {
     BLI_assert(!DRW_ibo_requested(((GPUIndexBuf **)&cache->final.ibo)[i]));
   }
-  for (int i = 0; i < sizeof(cache->cage.vbo) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->cage.vbo) / sizeof(void *); i++) {
     BLI_assert(!DRW_vbo_requested(((GPUVertBuf **)&cache->cage.vbo)[i]));
   }
-  for (int i = 0; i < sizeof(cache->cage.ibo) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->cage.ibo) / sizeof(void *); i++) {
     BLI_assert(!DRW_ibo_requested(((GPUIndexBuf **)&cache->cage.ibo)[i]));
   }
-  for (int i = 0; i < sizeof(cache->uv_cage.vbo) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->uv_cage.vbo) / sizeof(void *); i++) {
     BLI_assert(!DRW_vbo_requested(((GPUVertBuf **)&cache->uv_cage.vbo)[i]));
   }
-  for (int i = 0; i < sizeof(cache->uv_cage.ibo) / sizeof(void *); ++i) {
+  for (int i = 0; i < sizeof(cache->uv_cage.ibo) / sizeof(void *); i++) {
     BLI_assert(!DRW_ibo_requested(((GPUIndexBuf **)&cache->uv_cage.ibo)[i]));
   }
 #endif

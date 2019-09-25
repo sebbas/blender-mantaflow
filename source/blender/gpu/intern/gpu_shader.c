@@ -36,7 +36,6 @@
 #include "DNA_space_types.h"
 
 #include "GPU_extensions.h"
-#include "GPU_context.h"
 #include "GPU_matrix.h"
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -249,6 +248,9 @@ static void gpu_shader_standard_extensions(char defines[MAX_EXT_DEFINE_LENGTH])
     /* a #version 400 feature, but we use #version 330 maximum so use extension */
     strcat(defines, "#extension GL_ARB_texture_query_lod: enable\n");
   }
+  if (GLEW_ARB_shader_draw_parameters) {
+    strcat(defines, "#extension GL_ARB_shader_draw_parameters : enable\n");
+  }
 }
 
 static void gpu_shader_standard_defines(char defines[MAX_DEFINE_LENGTH])
@@ -256,6 +258,9 @@ static void gpu_shader_standard_defines(char defines[MAX_DEFINE_LENGTH])
   /* some useful defines to detect GPU type */
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
     strcat(defines, "#define GPU_ATI\n");
+    if (GPU_crappy_amd_driver()) {
+      strcat(defines, "#define GPU_DEPRECATED_AMD_DRIVER\n");
+    }
   }
   else if (GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_ANY)) {
     strcat(defines, "#define GPU_NVIDIA\n");
@@ -273,6 +278,22 @@ static void gpu_shader_standard_defines(char defines[MAX_DEFINE_LENGTH])
   }
   else if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_UNIX, GPU_DRIVER_ANY)) {
     strcat(defines, "#define OS_UNIX\n");
+  }
+
+  float derivatives_factors[2];
+  GPU_get_dfdy_factors(derivatives_factors);
+  if (derivatives_factors[0] == 1.0f) {
+    strcat(defines, "#define DFDX_SIGN 1.0\n");
+  }
+  else {
+    strcat(defines, "#define DFDX_SIGN -1.0\n");
+  }
+
+  if (derivatives_factors[1] == 1.0f) {
+    strcat(defines, "#define DFDY_SIGN 1.0\n");
+  }
+  else {
+    strcat(defines, "#define DFDY_SIGN -1.0\n");
   }
 
   return;

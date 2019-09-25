@@ -58,6 +58,9 @@ struct MDeformVert;
 #define GPENCIL_SIMPLIFY_BLEND(scene, playing) \
   ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
     (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_BLEND)))
+#define GPENCIL_SIMPLIFY_TINT(scene, playing) \
+  ((GPENCIL_SIMPLIFY_ONPLAY(playing) && (GPENCIL_SIMPLIFY(scene)) && \
+    (scene->r.simplify_gpencil & SIMPLIFY_GPENCIL_TINT)))
 
 /* ------------ Grease-Pencil API ------------------ */
 
@@ -149,13 +152,14 @@ bool BKE_gpencil_layer_delframe(struct bGPDlayer *gpl, struct bGPDframe *gpf);
 struct bGPDlayer *BKE_gpencil_layer_getactive(struct bGPdata *gpd);
 void BKE_gpencil_layer_setactive(struct bGPdata *gpd, struct bGPDlayer *active);
 void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
+void BKE_gpencil_layer_autolock_set(struct bGPdata *gpd, const bool unlock);
 
 /* Brush */
 struct Material *BKE_gpencil_brush_material_get(struct Brush *brush);
 void BKE_gpencil_brush_material_set(struct Brush *brush, struct Material *material);
 
 /* Object */
-struct Material *BKE_gpencil_object_material_ensure_active(struct Main *bmain, struct Object *ob);
+struct Material *BKE_gpencil_object_material_ensure_active(struct Object *ob);
 struct Material *BKE_gpencil_object_material_ensure_from_brush(struct Main *bmain,
                                                                struct Object *ob,
                                                                struct Brush *brush);
@@ -179,8 +183,7 @@ struct Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettin
 struct Material *BKE_gpencil_object_material_ensure_from_active_input_brush(struct Main *bmain,
                                                                             struct Object *ob,
                                                                             struct Brush *brush);
-struct Material *BKE_gpencil_object_material_ensure_from_active_input_material(struct Main *bmain,
-                                                                               struct Object *ob);
+struct Material *BKE_gpencil_object_material_ensure_from_active_input_material(struct Object *ob);
 
 /* object boundbox */
 bool BKE_gpencil_data_minmax(const struct bGPdata *gpd, float r_min[3], float r_max[3]);
@@ -237,6 +240,14 @@ void BKE_gpencil_dissolve_points(struct bGPDframe *gpf, struct bGPDstroke *gps, 
 void BKE_gpencil_get_range_selected(struct bGPDlayer *gpl, int *r_initframe, int *r_endframe);
 float BKE_gpencil_multiframe_falloff_calc(
     struct bGPDframe *gpf, int actnum, int f_init, int f_end, struct CurveMapping *cur_falloff);
+
+void BKE_gpencil_convert_curve(struct Main *bmain,
+                               struct Scene *scene,
+                               struct Object *ob_gp,
+                               struct Object *ob_cu,
+                               const bool gpencil_lines,
+                               const bool use_collections,
+                               const bool only_stroke);
 
 extern void (*BKE_gpencil_batch_cache_dirty_tag_cb)(struct bGPdata *gpd);
 extern void (*BKE_gpencil_batch_cache_free_cb)(struct bGPdata *gpd);

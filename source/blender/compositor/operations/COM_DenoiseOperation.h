@@ -19,8 +19,8 @@
  *      Stefan Werner
  */
 
-#ifndef __COM_DENOISEBASEOPERATION_H__
-#define __COM_DENOISEBASEOPERATION_H__
+#ifndef __COM_DENOISEOPERATION_H__
+#define __COM_DENOISEOPERATION_H__
 
 #include "COM_SingleThreadedOperation.h"
 #include "DNA_node_types.h"
@@ -62,10 +62,11 @@ class DenoiseOperation : public SingleThreadedOperation {
  protected:
   void generateDenoise(float *data,
                        MemoryBuffer *inputTileColor,
-                       MemoryBuffer *inputTileAlbedo,
                        MemoryBuffer *inputTileNormal,
+                       MemoryBuffer *inputTileAlbedo,
                        NodeDenoise *settings);
 
   MemoryBuffer *createMemoryBuffer(rcti *rect);
 };
-#endif
+
+#endif /* __COM_DENOISEOPERATION_H__ */

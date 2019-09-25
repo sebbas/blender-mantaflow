@@ -71,7 +71,7 @@ void OBJECT_OT_hide_view_set(struct wmOperatorType *ot);
 void OBJECT_OT_hide_view_clear(struct wmOperatorType *ot);
 void OBJECT_OT_hide_collection(struct wmOperatorType *ot);
 void OBJECT_OT_mode_set(struct wmOperatorType *ot);
-void OBJECT_OT_mode_set_or_submode(struct wmOperatorType *ot);
+void OBJECT_OT_mode_set_with_submode(struct wmOperatorType *ot);
 void OBJECT_OT_editmode_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_posemode_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_proxy_make(struct wmOperatorType *ot);
@@ -281,6 +281,7 @@ void TRANSFORM_OT_vertex_random(struct wmOperatorType *ot);
 
 /* object_remesh.c */
 void OBJECT_OT_voxel_remesh(struct wmOperatorType *ot);
+void OBJECT_OT_quadriflow_remesh(struct wmOperatorType *ot);
 
 /* object_transfer_data.c */
 void OBJECT_OT_data_transfer(struct wmOperatorType *ot);

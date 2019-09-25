@@ -55,6 +55,7 @@
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
 #include "BKE_object.h"
+#include "BKE_paint.h"
 
 #include "DEG_depsgraph.h"
 
@@ -82,13 +83,11 @@
 
 /* local module include */
 #include "transform.h"
+#include "transform_convert.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_select.h"
 #include "GPU_state.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1055,7 +1054,13 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
     }
   }
   else if (ob && (ob->mode & OB_MODE_ALL_PAINT)) {
-    /* pass */
+    if (ob->mode & OB_MODE_SCULPT) {
+      totsel = 1;
+      calc_tw_center_with_matrix(tbounds, ob->sculpt->pivot_pos, false, ob->obmat);
+      mul_m4_v3(ob->obmat, tbounds->center);
+      mul_m4_v3(ob->obmat, tbounds->min);
+      mul_m4_v3(ob->obmat, tbounds->max);
+    }
   }
   else if (ob && ob->mode & OB_MODE_PARTICLE_EDIT) {
     PTCacheEdit *edit = PE_get_current(scene, ob);
@@ -1163,12 +1168,20 @@ static void gizmo_prepare_mat(const bContext *C,
 
       if (scene->toolsettings->transform_pivot_point == V3D_AROUND_ACTIVE) {
         bGPdata *gpd = CTX_data_gpencil_data(C);
-        Object *ob = OBACT(view_layer);
         if (gpd && (gpd->flag & GP_DATA_STROKE_EDITMODE)) {
           /* pass */
         }
-        else if (ob != NULL) {
-          ED_object_calc_active_center(ob, false, rv3d->twmat[3]);
+        else {
+          Object *ob = OBACT(view_layer);
+          if (ob != NULL) {
+            if ((ob->mode & OB_MODE_ALL_SCULPT) && ob->sculpt) {
+              SculptSession *ss = ob->sculpt;
+              copy_v3_v3(rv3d->twmat[3], ss->pivot_pos);
+            }
+            else {
+              ED_object_calc_active_center(ob, false, rv3d->twmat[3]);
+            }
+          }
         }
       }
       break;
@@ -1284,7 +1297,7 @@ static void gizmo_xform_message_subscribe(wmGizmoGroup *gzgroup,
   PointerRNA toolsettings_ptr;
   RNA_pointer_create(&scene->id, &RNA_ToolSettings, scene->toolsettings, &toolsettings_ptr);
 
-  if (type_fn == VIEW3D_GGT_xform_gizmo) {
+  if (ELEM(type_fn, VIEW3D_GGT_xform_gizmo, VIEW3D_GGT_xform_shear)) {
     extern PropertyRNA rna_ToolSettings_transform_pivot_point;
     const PropertyRNA *props[] = {
         &rna_ToolSettings_transform_pivot_point,
@@ -1392,7 +1405,8 @@ void drawDial3d(const TransInfo *t)
     scale *= ED_view3d_pixel_size_no_ui_scale(t->ar->regiondata, mat_final[3]);
     mul_mat3_m4_fl(mat_final, scale);
 
-    if ((t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)) && activeSnap(t)) {
+    if (activeSnap(t) && (!transformModeUseSnap(t) ||
+                          (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)))) {
       increment = (t->modifiers & MOD_PRECISION) ? t->snap[2] : t->snap[1];
     }
     else {
@@ -2294,7 +2308,6 @@ static void WIDGETGROUP_xform_shear_setup(const bContext *UNUSED(C), wmGizmoGrou
       interp_v3_v3v3(gz->color, axis_color[i_ortho_a], axis_color[i_ortho_b], 0.75f);
       gz->color[3] = 0.5f;
       PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_shear, NULL);
-      RNA_enum_set(ptr, "shear_axis", 0);
       RNA_boolean_set(ptr, "release_confirm", 1);
       xgzgroup->gizmo[i][j] = gz;
     }

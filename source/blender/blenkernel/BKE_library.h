@@ -117,7 +117,7 @@ enum {
 void BKE_libblock_copy_ex(struct Main *bmain,
                           const struct ID *id,
                           struct ID **r_newid,
-                          const int flag);
+                          const int orig_flag);
 void *BKE_libblock_copy(struct Main *bmain, const struct ID *id) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
 /* Special version. sued by datablock localization. */
@@ -175,6 +175,7 @@ void BKE_libblock_management_usercounts_clear(struct Main *bmain, void *idv);
 
 void BKE_id_lib_local_paths(struct Main *bmain, struct Library *lib, struct ID *id);
 void id_lib_extern(struct ID *id);
+void id_lib_indirect_weak_link(struct ID *id);
 void BKE_library_filepath_set(struct Main *bmain, struct Library *lib, const char *filepath);
 void id_us_ensure_real(struct ID *id);
 void id_us_clear_real(struct ID *id);

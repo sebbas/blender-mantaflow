@@ -369,6 +369,9 @@ void gpu_extensions_init(void)
   }
 
   /* df/dy calculation factors, those are dependent on driver */
+  GG.dfdyfactors[0] = 1.0;
+  GG.dfdyfactors[1] = 1.0;
+
   if ((strstr(vendor, "ATI") && strstr(version, "3.3.10750"))) {
     GG.dfdyfactors[0] = 1.0;
     GG.dfdyfactors[1] = -1.0;
@@ -383,16 +386,18 @@ void gpu_extensions_init(void)
       GG.dfdyfactors[0] = -1.0;
       GG.dfdyfactors[1] = 1.0;
     }
-    else {
-      GG.dfdyfactors[0] = 1.0;
-      GG.dfdyfactors[1] = 1.0;
-    }
 
     if (strstr(version, "Build 10.18.10.3") || strstr(version, "Build 10.18.10.4") ||
-        strstr(version, "Build 10.18.14.4") || strstr(version, "Build 10.18.14.5")) {
+        strstr(version, "Build 10.18.10.5") || strstr(version, "Build 10.18.14.4") ||
+        strstr(version, "Build 10.18.14.5")) {
       /* Maybe not all of these drivers have problems with `GLEW_ARB_base_instance`.
        * But it's hard to test each case. */
       GG.glew_arb_base_instance_is_supported = false;
+      GG.context_local_shaders_workaround = true;
+    }
+
+    if (strstr(version, "Build 20.19.15.4285")) {
+      /* Somehow fixes armature display issues (see T69743). */
       GG.context_local_shaders_workaround = true;
     }
   }

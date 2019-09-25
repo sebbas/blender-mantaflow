@@ -39,6 +39,7 @@
 #include "BLI_task.h"
 #include "BLI_math_solvers.h"
 
+#include "BKE_context.h"
 #include "BKE_shrinkwrap.h"
 #include "BKE_cdderivedmesh.h"
 #include "BKE_DerivedMesh.h"
@@ -1408,7 +1409,7 @@ void shrinkwrapModifier_deform(ShrinkwrapModifierData *smd,
     Object *ob_target = DEG_get_evaluated_object(ctx->depsgraph, smd->target);
     calc.target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target, false);
 
-    /* TODO there might be several "bugs" on non-uniform scales matrixs
+    /* TODO there might be several "bugs" with non-uniform scales matrices
      * because it will no longer be nearest surface, not sphere projection
      * because space has been deformed */
     BLI_SPACE_TRANSFORM_SETUP(&calc.local2target, ob, ob_target);
@@ -1479,4 +1480,29 @@ void shrinkwrapModifier_deform(ShrinkwrapModifierData *smd,
   if (ss_mesh) {
     ss_mesh->release(ss_mesh);
   }
+}
+
+void BKE_shrinkwrap_mesh_nearest_surface_deform(struct bContext *C,
+                                                Object *ob_source,
+                                                Object *ob_target)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  struct Scene *sce = CTX_data_scene(C);
+  ShrinkwrapModifierData ssmd = {0};
+  ModifierEvalContext ctx = {depsgraph, ob_source, 0};
+  int totvert;
+
+  ssmd.target = ob_target;
+  ssmd.shrinkType = MOD_SHRINKWRAP_NEAREST_SURFACE;
+  ssmd.shrinkMode = MOD_SHRINKWRAP_ON_SURFACE;
+  ssmd.keepDist = 0.0f;
+
+  Mesh *src_me = ob_source->data;
+  float(*vertexCos)[3] = BKE_mesh_vert_coords_alloc(src_me, &totvert);
+
+  shrinkwrapModifier_deform(&ssmd, &ctx, sce, ob_source, src_me, NULL, -1, vertexCos, totvert);
+
+  BKE_mesh_vert_coords_apply(src_me, vertexCos);
+
+  MEM_freeN(vertexCos);
 }

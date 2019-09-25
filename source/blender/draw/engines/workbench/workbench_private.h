@@ -36,9 +36,9 @@
 
 #define WORKBENCH_ENGINE "BLENDER_WORKBENCH"
 #define M_GOLDEN_RATION_CONJUGATE 0.618033988749895
-#define MAX_COMPOSITE_SHADERS (1 << 6)
+#define MAX_COMPOSITE_SHADERS (1 << 7)
 #define MAX_PREPASS_SHADERS (1 << 7)
-#define MAX_ACCUM_SHADERS (1 << 6)
+#define MAX_ACCUM_SHADERS (1 << 7)
 #define MAX_CAVITY_SHADERS (1 << 3)
 
 #define TEXTURE_DRAWING_ENABLED(wpd) (wpd->shading.color_type == V3D_SHADING_TEXTURE_COLOR)
@@ -77,9 +77,6 @@
 #define IS_NAVIGATING(wpd) \
   ((DRW_context_state_get()->rv3d) && (DRW_context_state_get()->rv3d->rflag & RV3D_NAVIGATING))
 
-#define SPECULAR_HIGHLIGHT_ENABLED(wpd) \
-  (STUDIOLIGHT_ENABLED(wpd) && (wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT) && \
-   (!STUDIOLIGHT_TYPE_MATCAP_ENABLED(wpd)))
 #define OBJECT_OUTLINE_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE)
 #define OBJECT_ID_PASS_ENABLED(wpd) (OBJECT_OUTLINE_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
 #define NORMAL_VIEWPORT_COMP_PASS_ENABLED(wpd) \
@@ -284,13 +281,8 @@ typedef struct WORKBENCH_EffectInfo {
 } WORKBENCH_EffectInfo;
 
 typedef struct WORKBENCH_MaterialData {
-  float base_color[3];
-  float diffuse_color[3];
-  float specular_color[3];
-  float alpha;
-  float metallic;
-  float roughness;
-  int object_id;
+  float base_color[3], metallic;
+  float roughness, alpha;
   int color_type;
   int interp;
   Image *ima;
@@ -311,11 +303,19 @@ typedef struct WORKBENCH_ObjectData {
   float shadow_min[3], shadow_max[3];
   BoundBox shadow_bbox;
   bool shadow_bbox_dirty;
-
-  int object_id;
 } WORKBENCH_ObjectData;
 
 /* inline helper functions */
+BLI_INLINE bool workbench_is_specular_highlight_enabled(WORKBENCH_PrivateData *wpd)
+{
+  if ((wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT)) {
+    if (STUDIOLIGHT_ENABLED(wpd) || MATCAP_ENABLED(wpd)) {
+      return (wpd->studio_light->flag & STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS) != 0;
+    }
+  }
+  return false;
+}
+
 BLI_INLINE bool workbench_is_taa_enabled(WORKBENCH_PrivateData *wpd)
 {
   if (DRW_state_is_image_render()) {
@@ -493,7 +493,6 @@ void workbench_material_shgroup_uniform(WORKBENCH_PrivateData *wpd,
                                         DRWShadingGroup *grp,
                                         WORKBENCH_MaterialData *material,
                                         Object *ob,
-                                        const bool use_metallic,
                                         const bool deferred,
                                         const int interp);
 void workbench_material_copy(WORKBENCH_MaterialData *dest_material,

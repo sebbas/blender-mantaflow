@@ -24,7 +24,6 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_ghash.h"
-#include "BLI_utildefines.h"
 
 struct BMLog;
 struct BMesh;
@@ -132,8 +131,11 @@ bool BKE_pbvh_node_raycast(PBVH *bvh,
                            float (*origco)[3],
                            bool use_origco,
                            const float ray_start[3],
+                           const float ray_normal[3],
                            struct IsectRayPrecalc *isect_precalc,
-                           float *depth);
+                           float *depth,
+                           int *active_vertex_index,
+                           float *face_normal);
 
 bool BKE_pbvh_bmesh_node_raycast_detail(PBVHNode *node,
                                         const float ray_start[3],

@@ -266,7 +266,7 @@ BLI_INLINE TaskThreadLocalStorage *get_task_tls(TaskPool *pool, const int thread
 BLI_INLINE void free_task_tls(TaskThreadLocalStorage *tls)
 {
   TaskMemPool *task_mempool = &tls->task_mempool;
-  for (int i = 0; i < task_mempool->num_tasks; ++i) {
+  for (int i = 0; i < task_mempool->num_tasks; i++) {
     MEM_freeN(task_mempool->tasks[i]);
   }
 }
@@ -561,7 +561,7 @@ void BLI_task_scheduler_free(TaskScheduler *scheduler)
 
   /* Delete task thread data */
   if (scheduler->task_threads) {
-    for (int i = 0; i < scheduler->num_threads + 1; ++i) {
+    for (int i = 0; i < scheduler->num_threads + 1; i++) {
       TaskThreadLocalStorage *tls = &scheduler->task_threads[i].tls;
       free_task_tls(tls);
     }
@@ -732,9 +732,7 @@ static TaskPool *task_pool_create_ex(TaskScheduler *scheduler,
 }
 
 /**
- * Create a normal task pool.
- * This means that in single-threaded context, it will not be executed at all until you call
- * \a BLI_task_pool_work_and_wait() on it.
+ * Create a normal task pool. Tasks will be executed as soon as they are added.
  */
 TaskPool *BLI_task_pool_create(TaskScheduler *scheduler, void *userdata)
 {
@@ -779,7 +777,7 @@ void BLI_task_pool_free(TaskPool *pool)
 
 #ifdef DEBUG_STATS
   printf("Thread ID    Allocated   Reused   Discarded\n");
-  for (int i = 0; i < pool->scheduler->num_threads + 1; ++i) {
+  for (int i = 0; i < pool->scheduler->num_threads + 1; i++) {
     printf("%02d           %05d       %05d    %05d\n",
            i,
            pool->mempool_stats[i].num_alloc,
@@ -1066,22 +1064,28 @@ BLI_INLINE void task_parallel_range_calc_chunk_size(const TaskParallelSettings *
     chunk_size = settings->min_iter_per_thread;
   }
   else {
-    /* Basic heuristic to avoid threading on low amount of items. We could make that limit
-     * configurable in settings too... */
-    if (tot_items > 0 && tot_items < 256) {
-      chunk_size = tot_items;
-    }
-    /* NOTE: The idea here is to compensate for rather measurable threading
+    /* Multiplier used in heuristics below to define "optimal" chunk size.
+     * The idea here is to increase the chunk size to compensate for a rather measurable threading
      * overhead caused by fetching tasks. With too many CPU threads we are starting
-     * to spend too much time in those overheads. */
-    else if (num_tasks > 32) {
-      chunk_size = 128;
-    }
-    else if (num_tasks > 16) {
-      chunk_size = 64;
-    }
-    else {
-      chunk_size = 32;
+     * to spend too much time in those overheads.
+     * First values are: 1 if num_tasks < 16;
+     *              else 2 if num_tasks < 32;
+     *              else 3 if num_tasks < 48;
+     *              else 4 if num_tasks < 64;
+     *                   etc.
+     * Note: If we wanted to keep the 'power of two' multiplier, we'd need something like:
+     *     1 << max_ii(0, (int)(sizeof(int) * 8) - 1 - bitscan_reverse_i(num_tasks) - 3)
+     */
+    const int num_tasks_factor = max_ii(1, num_tasks >> 3);
+
+    /* We could make that 'base' 32 number configurable in TaskParallelSettings too, or maybe just
+     * always use that heuristic using TaskParallelSettings.min_iter_per_thread as basis? */
+    chunk_size = 32 * num_tasks_factor;
+
+    /* Basic heuristic to avoid threading on low amount of items.
+     * We could make that limit configurable in settings too. */
+    if (tot_items > 0 && tot_items < max_ii(256, chunk_size * 2)) {
+      chunk_size = tot_items;
     }
   }
 
@@ -1118,7 +1122,7 @@ static void parallel_range_func(TaskPool *__restrict pool, void *userdata_chunk,
   };
   int iter, count;
   while (parallel_range_next_iter_get(state, &iter, &count)) {
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < count; i++) {
       state->func(state->userdata, iter + i, &tls);
     }
   }
@@ -1142,7 +1146,7 @@ static void parallel_range_single_thread(const int start,
       .thread_id = 0,
       .userdata_chunk = userdata_chunk_local,
   };
-  for (int i = start; i < stop; ++i) {
+  for (int i = start; i < stop; i++) {
     func(userdata, i, &tls);
   }
   if (settings->func_finalize != NULL) {
@@ -1275,7 +1279,7 @@ BLI_INLINE Link *parallel_listbase_next_iter_get(ParallelListState *__restrict s
   if (LIKELY(result != NULL)) {
     *index = state->index;
     while (state->link != NULL && task_count < state->chunk_size) {
-      ++task_count;
+      task_count++;
       state->link = state->link->next;
     }
     state->index += task_count;
@@ -1294,7 +1298,7 @@ static void parallel_listbase_func(TaskPool *__restrict pool,
   int index, count;
 
   while ((link = parallel_listbase_next_iter_get(state, &index, &count)) != NULL) {
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < count; i++) {
       state->func(state->userdata, link, index + i);
       link = link->next;
     }
@@ -1306,7 +1310,7 @@ static void task_parallel_listbase_no_threads(struct ListBase *listbase,
                                               TaskParallelListbaseFunc func)
 {
   int i = 0;
-  for (Link *link = listbase->first; link != NULL; link = link->next, ++i) {
+  for (Link *link = listbase->first; link != NULL; link = link->next, i++) {
     func(userdata, link, i);
   }
 }

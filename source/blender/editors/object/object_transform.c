@@ -711,7 +711,7 @@ static int apply_objects_internal(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  for (int object_index = 0; object_index < num_objects; ++object_index) {
+  for (int object_index = 0; object_index < num_objects; object_index++) {
     Object *ob = objects[object_index];
 
     /* calculate rotation/scale matrix */
@@ -1086,7 +1086,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
   }
 
   /* reset flags */
-  for (int object_index = 0; object_index < num_objects; ++object_index) {
+  for (int object_index = 0; object_index < num_objects; object_index++) {
     Object *ob = objects[object_index];
     ob->flag &= ~OB_DONE;
 
@@ -1106,7 +1106,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
     }
   }
 
-  for (int object_index = 0; object_index < num_objects; ++object_index) {
+  for (int object_index = 0; object_index < num_objects; object_index++) {
     Object *ob = objects[object_index];
 
     if ((ob->flag & OB_DONE) == 0) {
@@ -1411,7 +1411,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         //{
 
         /* use existing context looper */
-        for (int other_object_index = 0; other_object_index < num_objects; ++other_object_index) {
+        for (int other_object_index = 0; other_object_index < num_objects; other_object_index++) {
           Object *ob_other = objects[other_object_index];
 
           if ((ob_other->flag & OB_DONE) == 0 &&
@@ -1679,7 +1679,7 @@ static void object_apply_location(Object *ob, const float loc[3])
 }
 
 static void object_orient_to_location(Object *ob,
-                                      float rot_orig[3][3],
+                                      const float rot_orig[3][3],
                                       const float axis[3],
                                       const float location[3])
 {
@@ -1715,8 +1715,9 @@ static void object_transform_axis_target_cancel(bContext *C, wmOperator *op)
 
 static int object_transform_axis_target_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc);
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   if (vc.obact == NULL || !object_is_target_compat(vc.obact)) {
     /* Falls back to texture space transform. */

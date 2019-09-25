@@ -129,7 +129,7 @@ static bool gather_objects_paths(const IObject &object, ListBase *object_paths)
   size_t children_claiming_this_object = 0;
   size_t num_children = object.getNumChildren();
 
-  for (size_t i = 0; i < num_children; ++i) {
+  for (size_t i = 0; i < num_children; i++) {
     bool child_claims_this_object = gather_objects_paths(object.getChild(i), object_paths);
     children_claiming_this_object += child_claims_this_object ? 1 : 0;
   }
@@ -173,9 +173,11 @@ static bool gather_objects_paths(const IObject &object, ListBase *object_paths)
   return parent_is_part_of_this_object;
 }
 
-AbcArchiveHandle *ABC_create_handle(const char *filename, ListBase *object_paths)
+AbcArchiveHandle *ABC_create_handle(struct Main *bmain,
+                                    const char *filename,
+                                    ListBase *object_paths)
 {
-  ArchiveReader *archive = new ArchiveReader(filename);
+  ArchiveReader *archive = new ArchiveReader(bmain, filename);
 
   if (!archive->valid()) {
     delete archive;
@@ -222,6 +224,7 @@ static void find_iobject(const IObject &object, IObject &ret, const std::string 
 struct ExportJobData {
   ViewLayer *view_layer;
   Main *bmain;
+  wmWindowManager *wm;
 
   char filename[1024];
   ExportSettings settings;
@@ -246,8 +249,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
    * scene frame in separate threads
    */
   G.is_rendering = true;
-  BKE_spacedata_draw_locks(true);
-
+  WM_set_locked_interface(data->wm, true);
   G.is_break = false;
 
   DEG_graph_build_from_view_layer(
@@ -261,7 +263,7 @@ static void export_startjob(void *customdata, short *stop, short *do_update, flo
     const int orig_frame = CFRA;
 
     data->was_canceled = false;
-    exporter(*data->progress, data->was_canceled);
+    exporter(do_update, progress, &data->was_canceled);
 
     if (CFRA != orig_frame) {
       CFRA = orig_frame;
@@ -296,7 +298,7 @@ static void export_endjob(void *customdata)
   }
 
   G.is_rendering = false;
-  BKE_spacedata_draw_locks(false);
+  WM_set_locked_interface(data->wm, false);
 }
 
 bool ABC_export(Scene *scene,
@@ -310,6 +312,7 @@ bool ABC_export(Scene *scene,
 
   job->view_layer = CTX_data_view_layer(C);
   job->bmain = CTX_data_main(C);
+  job->wm = CTX_wm_manager(C);
   job->export_ok = false;
   BLI_strncpy(job->filename, filepath, 1024);
 
@@ -330,7 +333,7 @@ bool ABC_export(Scene *scene,
    * hardcore refactoring. */
   new (&job->settings) ExportSettings();
   job->settings.scene = scene;
-  job->settings.depsgraph = DEG_graph_new(scene, job->view_layer, DAG_EVAL_RENDER);
+  job->settings.depsgraph = DEG_graph_new(job->bmain, scene, job->view_layer, DAG_EVAL_RENDER);
 
   /* TODO(Sybren): for now we only export the active scene layer.
    * Later in the 2.8 development process this may be replaced by using
@@ -452,7 +455,7 @@ static std::pair<bool, AbcObjectReader *> visit_object(
   AbcObjectReader::ptr_vector claiming_child_readers;
   AbcObjectReader::ptr_vector nonclaiming_child_readers;
   AbcObjectReader::ptr_vector assign_as_parent;
-  for (size_t i = 0; i < num_children; ++i) {
+  for (size_t i = 0; i < num_children; i++) {
     const IObject ichild = object.getChild(i);
 
     /* TODO: When we only support C++11, use std::tie() instead. */
@@ -649,7 +652,7 @@ static void import_startjob(void *user_data, short *stop, short *do_update, floa
 
   WM_set_locked_interface(data->wm, true);
 
-  ArchiveReader *archive = new ArchiveReader(data->filename);
+  ArchiveReader *archive = new ArchiveReader(data->bmain, data->filename);
 
   if (!archive->valid()) {
 #ifndef WITH_ALEMBIC_HDF5
@@ -984,7 +987,7 @@ bool ABC_mesh_topology_changed(
 {
   AbcObjectReader *abc_reader = get_abc_reader(reader, ob, err_str);
   if (abc_reader == NULL) {
-    return NULL;
+    return false;
   }
 
   ISampleSelector sample_sel = sample_selector_for_time(time);

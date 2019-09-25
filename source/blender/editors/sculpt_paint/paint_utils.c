@@ -46,7 +46,6 @@
 #include "BKE_image.h"
 #include "BKE_material.h"
 #include "BKE_mesh_runtime.h"
-#include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
 
@@ -101,9 +100,9 @@ bool paint_convert_bb_to_rect(rcti *rect,
 
   ED_view3d_ob_project_mat_get(rv3d, ob, projection_mat);
 
-  for (i = 0; i < 2; ++i) {
-    for (j = 0; j < 2; ++j) {
-      for (k = 0; k < 2; ++k) {
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < 2; j++) {
+      for (k = 0; k < 2; k++) {
         float vec[3], proj[2];
         int proj_i[2];
         vec[0] = i ? bb_min[0] : bb_max[0];
@@ -251,7 +250,7 @@ static void imapaint_project(float matrix[4][4], const float co[3], float pco[4]
 }
 
 static void imapaint_tri_weights(float matrix[4][4],
-                                 GLint view[4],
+                                 const GLint view[4],
                                  const float v1[3],
                                  const float v2[3],
                                  const float v3[3],
@@ -506,7 +505,7 @@ void paint_sample_color(
       unsigned int totpoly = me->totpoly;
 
       if (CustomData_has_layer(&me_eval->ldata, CD_MLOOPUV)) {
-        ED_view3d_viewcontext_init(C, &vc);
+        ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
         view3d_operator_needs_opengl(C);
 

@@ -644,6 +644,8 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   brush.sculpt.clay_strips
   brush.sculpt.crease
   brush.sculpt.draw
+  brush.sculpt.draw_sharp
+  brush.sculpt.elastic_deform
   brush.sculpt.fill
   brush.sculpt.flatten
   brush.sculpt.grab
@@ -652,6 +654,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   brush.sculpt.mask
   brush.sculpt.nudge
   brush.sculpt.pinch
+  brush.sculpt.pose
   brush.sculpt.rotate
   brush.sculpt.scrape
   brush.sculpt.simplify
@@ -735,6 +738,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.sculpt.border_hide
   ops.sculpt.border_mask
   ops.sculpt.lasso_mask
+  ops.sculpt.mesh_filter
   ops.transform.bone_envelope
   ops.transform.bone_size
   ops.transform.edge_slide
@@ -835,6 +839,8 @@ if(WITH_BLENDER)
     data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_block.png SRC)
     data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_marker.png SRC)
     data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_fill.png SRC)
+    data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_airbrush.png SRC)
+    data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_chisel.png SRC)
     data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_erase_soft.png SRC)
     data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_erase_hard.png SRC)
     data_to_c_simple(../../../../release/datafiles/brushicons/gp_brush_erase_stroke.png SRC)

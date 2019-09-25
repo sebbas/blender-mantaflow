@@ -42,6 +42,7 @@
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_defaults.h"
 
 #include "BLI_math.h"
 #include "BLI_listbase.h"
@@ -71,6 +72,7 @@
 
 /* used in UI and render */
 Material defmaterial;
+Material defgpencil_material;
 
 static CLG_LogRef LOG = {"bke.material"};
 
@@ -78,6 +80,13 @@ static CLG_LogRef LOG = {"bke.material"};
 void init_def_material(void)
 {
   BKE_material_init(&defmaterial);
+  BKE_material_gpencil_init(&defgpencil_material);
+}
+
+/* Free the GPencil data of the default material, creator.c */
+void BKE_material_gpencil_default_free(void)
+{
+  MEM_SAFE_FREE(defgpencil_material.gp_style);
 }
 
 /** Free (or release) any data used by this material (does not free the material itself). */
@@ -128,20 +137,17 @@ void BKE_material_init(Material *ma)
 {
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(ma, id));
 
-  ma->r = ma->g = ma->b = 0.8;
-  ma->specr = ma->specg = ma->specb = 1.0;
-  ma->a = 1.0f;
-  ma->spec = 0.5;
+  MEMCPY_STRUCT_AFTER(ma, DNA_struct_default_get(Material), id);
+}
 
-  ma->roughness = 0.4f;
+void BKE_material_gpencil_init(Material *ma)
+{
+  BKE_material_init(ma);
 
-  ma->pr_type = MA_SPHERE;
-
-  ma->preview = NULL;
-
-  ma->alpha_threshold = 0.5f;
-
-  ma->blend_shadow = MA_BS_SOLID;
+  /* grease pencil settings */
+  strcpy(ma->id.name, "MADefault GPencil");
+  BKE_material_init_gpencil_settings(ma);
+  add_v3_fl(&ma->gp_style->stroke_rgba[0], 0.6f);
 }
 
 Material *BKE_material_add(Main *bmain, const char *name)
@@ -180,10 +186,11 @@ Material *BKE_material_add_gpencil(Main *bmain, const char *name)
  */
 void BKE_material_copy_data(Main *bmain, Material *ma_dst, const Material *ma_src, const int flag)
 {
+  /* We always need allocation of our private ID data. */
+  const int flag_private_id_data = flag & ~LIB_ID_CREATE_NO_ALLOCATE;
+
   if (ma_src->nodetree) {
-    /* Note: nodetree is *not* in bmain, however this specific case is handled at lower level
-     *       (see BKE_libblock_copy_ex()). */
-    BKE_id_copy_ex(bmain, (ID *)ma_src->nodetree, (ID **)&ma_dst->nodetree, flag);
+    BKE_id_copy_ex(bmain, (ID *)ma_src->nodetree, (ID **)&ma_dst->nodetree, flag_private_id_data);
   }
 
   if ((flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
@@ -580,6 +587,17 @@ Material *give_current_material(Object *ob, short act)
   return ma_p ? *ma_p : NULL;
 }
 
+Material *BKE_material_gpencil_get(Object *ob, short act)
+{
+  Material *ma = give_current_material(ob, act);
+  if (ma != NULL) {
+    return ma;
+  }
+  else {
+    return &defgpencil_material;
+  }
+}
+
 MaterialGPencilStyle *BKE_material_gpencil_settings_get(Object *ob, short act)
 {
   Material *ma = give_current_material(ob, act);
@@ -591,7 +609,7 @@ MaterialGPencilStyle *BKE_material_gpencil_settings_get(Object *ob, short act)
     return ma->gp_style;
   }
   else {
-    return NULL;
+    return defgpencil_material.gp_style;
   }
 }
 
@@ -1070,10 +1088,6 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
   }
   /* check indices from gpencil */
   else if (ob->type == OB_GPENCIL) {
-    /* need one color */
-    if (ob->totcol == 0) {
-      BKE_gpencil_object_material_ensure_from_active_input_material(bmain, ob);
-    }
     BKE_gpencil_material_index_reassign((bGPdata *)ob->data, ob->totcol, actcol - 1);
   }
 

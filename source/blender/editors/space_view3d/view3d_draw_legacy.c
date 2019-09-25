@@ -88,14 +88,8 @@
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
 
-#include "GPU_draw.h"
 #include "GPU_framebuffer.h"
-#include "GPU_material.h"
-#include "GPU_extensions.h"
 #include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_select.h"
-#include "GPU_matrix.h"
 #include "GPU_state.h"
 #include "GPU_viewport.h"
 
@@ -388,6 +382,14 @@ void ED_view3d_datamask(const bContext *C,
   if (ELEM(v3d->shading.type, OB_TEXTURE, OB_MATERIAL, OB_RENDER)) {
     r_cddata_masks->lmask |= CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL;
     r_cddata_masks->vmask |= CD_MASK_ORCO;
+  }
+  else if (v3d->shading.type == OB_SOLID) {
+    if (v3d->shading.color_type == V3D_SHADING_TEXTURE_COLOR) {
+      r_cddata_masks->lmask |= CD_MASK_MLOOPUV;
+    }
+    if (v3d->shading.color_type == V3D_SHADING_VERTEX_COLOR) {
+      r_cddata_masks->lmask |= CD_MASK_MLOOPCOL;
+    }
   }
 
   if ((CTX_data_mode_enum(C) == CTX_MODE_EDIT_MESH) &&

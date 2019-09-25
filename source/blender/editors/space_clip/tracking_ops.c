@@ -448,8 +448,8 @@ static float mouse_to_slide_zone_distance_squared(const float co[2],
                                                   int width,
                                                   int height)
 {
-  float pixel_co[2] = {co[0] * width, co[1] * height},
-        pixel_slide_zone[2] = {slide_zone[0] * width, slide_zone[1] * height};
+  const float pixel_co[2] = {co[0] * width, co[1] * height},
+              pixel_slide_zone[2] = {slide_zone[0] * width, slide_zone[1] * height};
   return SQUARE(pixel_co[0] - pixel_slide_zone[0]) + SQUARE(pixel_co[1] - pixel_slide_zone[1]);
 }
 
@@ -2090,7 +2090,7 @@ static int keyframe_insert_exec(bContext *C, wmOperator *UNUSED(op))
 void CLIP_OT_keyframe_insert(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Insert keyframe";
+  ot->name = "Insert Keyframe";
   ot->description = "Insert a keyframe to selected tracks at current frame";
   ot->idname = "CLIP_OT_keyframe_insert";
 
@@ -2113,7 +2113,7 @@ static int keyframe_delete_exec(bContext *C, wmOperator *UNUSED(op))
 void CLIP_OT_keyframe_delete(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Delete keyframe";
+  ot->name = "Delete Keyframe";
   ot->description = "Delete a keyframe from selected tracks at current frame";
   ot->idname = "CLIP_OT_keyframe_delete";
 

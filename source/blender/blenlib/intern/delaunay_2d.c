@@ -115,101 +115,9 @@ static void validate_face_centroid(SymEdge *se);
 static void validate_cdt(CDT_state *cdt, bool check_all_tris);
 #endif
 
-/* TODO: move these to BLI_vector... and BLI_math... */
-static double max_dd(const double a, const double b)
-{
-  return (a > b) ? a : b;
-}
-
-static double len_v2v2_db(const double a[2], const double b[2])
-{
-  return sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]));
-}
-
-static double len_squared_v2v2_db(const double a[2], const double b[2])
-{
-  return (b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]);
-}
-
-static void add_v2_v2_db(double a[2], const double b[2])
-{
-  a[0] += b[0];
-  a[1] += b[1];
-}
-
-static void sub_v2_v2v2_db(double *a, const double *b, const double *c)
-{
-  a[0] = b[0] - c[0];
-  a[1] = b[1] - c[1];
-}
-
-static double dot_v2v2_db(const double *a, const double *b)
-{
-  return a[0] * b[0] + a[1] * b[1];
-}
-
-static double closest_to_line_v2_db(double r_close[2],
-                                    const double p[2],
-                                    const double l1[2],
-                                    const double l2[2])
-{
-  double h[2], u[2], lambda, denom;
-  sub_v2_v2v2_db(u, l2, l1);
-  sub_v2_v2v2_db(h, p, l1);
-  denom = dot_v2v2_db(u, u);
-  if (denom < DBL_EPSILON) {
-    r_close[0] = l1[0];
-    r_close[1] = l1[1];
-    return 0.0;
-  }
-  lambda = dot_v2v2_db(u, h) / dot_v2v2_db(u, u);
-  r_close[0] = l1[0] + u[0] * lambda;
-  r_close[1] = l1[1] + u[1] * lambda;
-  return lambda;
-}
-
-/**
- * If intersection == ISECT_LINE_LINE_CROSS or ISECT_LINE_LINE_NONE:
- * <pre>
- * pt = v1 + lamba * (v2 - v1) = v3 + mu * (v4 - v3)
- * </pre>
- */
-static int isect_seg_seg_v2_lambda_mu_db(const double v1[2],
-                                         const double v2[2],
-                                         const double v3[2],
-                                         const double v4[2],
-                                         double *r_lambda,
-                                         double *r_mu)
-{
-  double div, lambda, mu;
-
-  div = (v2[0] - v1[0]) * (v4[1] - v3[1]) - (v2[1] - v1[1]) * (v4[0] - v3[0]);
-  if (fabs(div) < DBL_EPSILON) {
-    return ISECT_LINE_LINE_COLINEAR;
-  }
-
-  lambda = ((v1[1] - v3[1]) * (v4[0] - v3[0]) - (v1[0] - v3[0]) * (v4[1] - v3[1])) / div;
-
-  mu = ((v1[1] - v3[1]) * (v2[0] - v1[0]) - (v1[0] - v3[0]) * (v2[1] - v1[1])) / div;
-
-  if (r_lambda) {
-    *r_lambda = lambda;
-  }
-  if (r_mu) {
-    *r_mu = mu;
-  }
-
-  if (lambda >= 0.0 && lambda <= 1.0 && mu >= 0.0 && mu <= 1.0) {
-    if (lambda == 0.0 || lambda == 1.0 || mu == 0.0 || mu == 1.0) {
-      return ISECT_LINE_LINE_EXACT;
-    }
-    return ISECT_LINE_LINE_CROSS;
-  }
-  return ISECT_LINE_LINE_NONE;
-}
-
-/** return 1 if a,b,c forms CCW angle, -1 if a CW angle, 0 if straight  */
-static int CCW_test(const double a[2], const double b[2], const double c[2])
+/** return 1 if a,b,c forms CCW angle, -1 if a CW angle, 0 if straight.
+ * For straight test, allow b to be withing eps of line. */
+static int CCW_test(const double a[2], const double b[2], const double c[2], const double eps)
 {
   double det;
   double ab;
@@ -217,14 +125,14 @@ static int CCW_test(const double a[2], const double b[2], const double c[2])
   /* This is twice the signed area of triangle abc. */
   det = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
   ab = len_v2v2_db(a, b);
-  if (ab < DBL_EPSILON) {
+  if (ab <= eps) {
     return 0;
   }
   det /= ab;
-  if (det > DBL_EPSILON) {
+  if (det > eps) {
     return 1;
   }
-  else if (det < -DBL_EPSILON) {
+  else if (det < -eps) {
     return -1;
   }
   return 0;
@@ -755,7 +663,7 @@ static bool locate_point_final(const double p[2],
     }
     else {
       dist_inside[i] = len_close_p;
-      dist_inside[i] = CCW_test(a, b, p) >= 0 ? len_close_p : -len_close_p;
+      dist_inside[i] = CCW_test(a, b, p, epsilon) >= 0 ? len_close_p : -len_close_p;
     }
     i++;
     se = se->next;
@@ -906,7 +814,8 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
     a = cur_se->vert->co;
     b = cur_se->next->vert->co;
     c = cur_se->next->next->vert->co;
-    if (CCW_test(a, b, p) >= 0 && CCW_test(b, c, p) >= 0 && CCW_test(c, a, p) >= 0) {
+    if (CCW_test(a, b, p, epsilon) >= 0 && CCW_test(b, c, p, epsilon) >= 0 &&
+        CCW_test(c, a, p, epsilon) >= 0) {
 #ifdef DEBUG_CDT
       if (dbglevel > 1) {
         fprintf(stderr, "p in current triangle\n");
@@ -930,7 +839,7 @@ static LocateResult locate_point(CDT_state *cdt, const double p[2])
       }
 #endif
       next_se_sym = sym(next_se);
-      if (CCW_test(a, b, p) <= 0 && next_se->face != cdt->outer_face) {
+      if (CCW_test(a, b, p, epsilon) <= 0 && next_se->face != cdt->outer_face) {
 #ifdef DEBUG_CDT
         if (dbglevel > 1) {
           fprintf(stderr, "CCW_test(a, b, p) <= 0\n");
@@ -1524,6 +1433,7 @@ static void add_edge_constraint(
   int ccw1, ccw2, isect;
   int i, search_count;
   double lambda;
+  const double epsilon = cdt->epsilon;
   bool done, state_through_vert;
   LinkNodePair edge_list = {NULL, NULL};
   typedef struct CrossData {
@@ -1634,8 +1544,8 @@ static void add_edge_constraint(
         do {
           va = t->next->vert;
           vb = t->next->next->vert;
-          ccw1 = CCW_test(t->vert->co, va->co, v2->co);
-          ccw2 = CCW_test(t->vert->co, vb->co, v2->co);
+          ccw1 = CCW_test(t->vert->co, va->co, v2->co, epsilon);
+          ccw2 = CCW_test(t->vert->co, vb->co, v2->co, epsilon);
 #ifdef DEBUG_CDT
           if (dbg_level > 1) {
             fprintf(stderr, "non-final through vert case\n");
@@ -1684,7 +1594,7 @@ static void add_edge_constraint(
           }
 #endif
         } while (t != tstart);
-        BLI_assert(tout != NULL); /* TODO: something sensivle for "this can't happen" */
+        BLI_assert(tout != NULL); /* TODO: something sensible for "this can't happen" */
         crossings[BLI_array_len(crossings) - 1].out = tout;
       }
     }
@@ -1727,7 +1637,7 @@ static void add_edge_constraint(
       /* 'tout' is 'symedge' from 'vb' to third vertex, 'vc'. */
       BLI_assert(tout->vert == va);
       vc = tout->next->vert;
-      ccw1 = CCW_test(v1->co, v2->co, vc->co);
+      ccw1 = CCW_test(v1->co, v2->co, vc->co, epsilon);
 #ifdef DEBUG_CDT
       if (dbg_level > 1) {
         fprintf(stderr, "now searching with third vertex ");
@@ -2004,7 +1914,7 @@ static void remove_non_constraint_edges(CDT_state *cdt, const bool valid_bmesh)
     dissolve = !is_deleted_edge(e) && !is_constrained_edge(e);
     if (dissolve) {
       se = &e->symedges[0];
-      if (valid_bmesh) {
+      if (valid_bmesh && !edge_touches_frame(e)) {
         fleft = se->face;
         fright = sym(se)->face;
         if (fleft != cdt->outer_face && fright != cdt->outer_face &&
@@ -2320,7 +2230,7 @@ CDT_result *BLI_delaunay_2d_cdt_calc(const CDT_input *input, const CDT_output_ty
   CDTEdge *face_edge;
   SymEdge *face_symedge;
 #ifdef DEBUG_CDT
-  int dbg_level = 1;
+  int dbg_level = 0;
 #endif
 
   if ((nv > 0 && input->vert_coords == NULL) || (ne > 0 && input->edges == NULL) ||
@@ -2378,6 +2288,13 @@ CDT_result *BLI_delaunay_2d_cdt_calc(const CDT_input *input, const CDT_output_ty
     }
     add_edge_constraint(cdt, verts[v1], verts[v2], i, NULL);
   }
+#ifdef DEBUG_CDT
+  if (dbg_level > 2) {
+    cdt_draw(cdt, "after edge constraints");
+    dump_cdt(cdt, "after edge constraints");
+    validate_cdt(cdt, true);
+  }
+#endif
   cdt->face_edge_offset = ne;
   for (f = 0; f < nf; f++) {
     int flen = input->faces_len_table[f];
@@ -2409,6 +2326,11 @@ CDT_result *BLI_delaunay_2d_cdt_calc(const CDT_input *input, const CDT_output_ty
                   F2(cdt_e->symedges[0].vert->co),
                   F2(cdt_e->symedges[1].vert->co));
         }
+      }
+      if (dbg_level > 2) {
+        cdt_draw(cdt, "after a face edge");
+        dump_cdt(cdt, "after a face edge");
+        validate_cdt(cdt, true);
       }
 #endif
       if (i == 0) {

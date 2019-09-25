@@ -1319,8 +1319,8 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
                                           Object *ob,
                                           Mesh *me,
                                           int index,
-                                          float norm[3],
-                                          float coord[3],
+                                          const float norm[3],
+                                          const float coord[3],
                                           float d,
                                           float distToBe,
                                           float strength,
@@ -3794,7 +3794,7 @@ static int vgroup_sort_name(const void *def_a_ptr, const void *def_b_ptr)
   const bDeformGroup *def_a = def_a_ptr;
   const bDeformGroup *def_b = def_b_ptr;
 
-  return BLI_natstrcmp(def_a->name, def_b->name);
+  return BLI_strcasecmp_natural(def_a->name, def_b->name);
 }
 
 /**

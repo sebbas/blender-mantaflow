@@ -265,9 +265,11 @@ int BKE_mesh_nurbs_displist_to_mdata(Object *ob,
   const float *data;
   int a, b, ofs, vertcount, startvert, totvert = 0, totedge = 0, totloop = 0, totpoly = 0;
   int p1, p2, p3, p4, *index;
-  const bool conv_polys = ((CU_DO_2DFILL(cu) ==
-                            false) || /* 2d polys are filled with DL_INDEX3 displists */
-                           (ob->type == OB_SURF)); /* surf polys are never filled */
+  const bool conv_polys = (
+      /* 2d polys are filled with DL_INDEX3 displists */
+      (CU_DO_2DFILL(cu) == false) ||
+      /* surf polys are never filled */
+      (ob->type == OB_SURF));
 
   /* count */
   dl = dispbase->first;
@@ -554,7 +556,7 @@ Mesh *BKE_mesh_new_nomain_from_curve_displist(Object *ob, ListBase *dispbase)
   memcpy(mesh->mpoly, allpoly, totpoly * sizeof(MPoly));
 
   if (alluv) {
-    const char *uvname = "Orco";
+    const char *uvname = "UVMap";
     CustomData_add_layer_named(&mesh->ldata, CD_MLOOPUV, CD_ASSIGN, alluv, totloop, uvname);
   }
 
@@ -633,7 +635,7 @@ void BKE_mesh_from_nurbs_displist(Main *bmain,
     me->mpoly = CustomData_add_layer(&me->pdata, CD_MPOLY, CD_ASSIGN, allpoly, me->totpoly);
 
     if (alluv) {
-      const char *uvname = "Orco";
+      const char *uvname = "UVMap";
       me->mloopuv = CustomData_add_layer_named(
           &me->ldata, CD_MLOOPUV, CD_ASSIGN, alluv, me->totloop, uvname);
     }
@@ -665,7 +667,6 @@ void BKE_mesh_from_nurbs_displist(Main *bmain,
   me->texflag = cu->texflag & ~CU_AUTOSPACE;
   copy_v3_v3(me->loc, cu->loc);
   copy_v3_v3(me->size, cu->size);
-  copy_v3_v3(me->rot, cu->rot);
   BKE_mesh_texspace_calc(me);
 
   cu->mat = NULL;
@@ -1078,6 +1079,7 @@ static Mesh *mesh_new_from_mball_object(Object *object)
 
   Mesh *mesh_result = BKE_id_new_nomain(ID_ME, ((ID *)object->data)->name + 2);
   BKE_mesh_from_metaball(&object->runtime.curve_cache->disp, mesh_result);
+  BKE_mesh_texspace_copy_from_object(mesh_result, object);
 
   /* Copy materials. */
   mesh_result->totcol = mball->totcol;
@@ -1573,11 +1575,7 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src,
   /* Clear selection history */
   MEM_SAFE_FREE(tmp.mselect);
   tmp.totselect = 0;
-  BLI_assert(ELEM(tmp.bb, NULL, mesh_dst->bb));
-  if (mesh_dst->bb) {
-    MEM_freeN(mesh_dst->bb);
-    tmp.bb = NULL;
-  }
+  tmp.texflag &= ~ME_AUTOSPACE_EVALUATED;
 
   /* skip the listbase */
   MEMCPY_STRUCT_AFTER(mesh_dst, &tmp, id.prev);

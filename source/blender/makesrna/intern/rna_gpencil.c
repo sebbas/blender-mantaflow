@@ -151,30 +151,7 @@ static void rna_GPencil_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Pointe
 static void rna_GPencil_autolock(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
-  bGPDlayer *gpl = NULL;
-
-  if (gpd->flag & GP_DATA_AUTOLOCK_LAYERS) {
-    bGPDlayer *layer = BKE_gpencil_layer_getactive(gpd);
-
-    /* Lock all other layers */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      /* unlock active layer */
-      if (gpl == layer) {
-        gpl->flag &= ~GP_LAYER_LOCKED;
-      }
-      else {
-        gpl->flag |= GP_LAYER_LOCKED;
-      }
-    }
-  }
-  else {
-    /* If disable is better unlock all layers by default or it looks there is
-     * a problem in the UI because the user expects all layers will be unlocked
-     */
-    for (gpl = gpd->layers.first; gpl; gpl = gpl->next) {
-      gpl->flag &= ~GP_LAYER_LOCKED;
-    }
-  }
+  BKE_gpencil_layer_autolock_set(gpd, true);
 
   /* standard update */
   rna_GPencil_update(bmain, scene, ptr);
@@ -1884,7 +1861,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "onion_keytype");
   RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, 0);
   RNA_def_property_enum_items(prop, rna_enum_onion_keyframe_type_items);
-  RNA_def_property_ui_text(prop, "Filter By Type", "Type of keyframe (for filtering)");
+  RNA_def_property_ui_text(prop, "Filter by Type", "Type of keyframe (for filtering)");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   prop = RNA_def_property(srna, "use_onion_fade", PROP_BOOLEAN, PROP_NONE);

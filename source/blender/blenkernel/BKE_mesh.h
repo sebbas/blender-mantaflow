@@ -26,9 +26,6 @@
 /* defines BLI_INLINE */
 #include "BLI_compiler_compat.h"
 
-/* defines CustomDataMask */
-//#include "BKE_customdata.h"
-
 struct BLI_Stack;
 struct BMEditMesh;
 struct BMesh;
@@ -81,12 +78,18 @@ struct BMesh *BKE_mesh_to_bmesh(struct Mesh *me,
                                 const bool add_key_index,
                                 const struct BMeshCreateParams *params);
 
-struct Mesh *BKE_mesh_from_bmesh_nomain(struct BMesh *bm, const struct BMeshToMeshParams *params);
+struct Mesh *BKE_mesh_from_bmesh_nomain(struct BMesh *bm,
+                                        const struct BMeshToMeshParams *params,
+                                        const struct Mesh *me_settings);
 struct Mesh *BKE_mesh_from_bmesh_for_eval_nomain(struct BMesh *bm,
-                                                 const struct CustomData_MeshMasks *cd_mask_extra);
+                                                 const struct CustomData_MeshMasks *cd_mask_extra,
+                                                 const struct Mesh *me_settings);
 
 struct Mesh *BKE_mesh_from_editmesh_with_coords_thin_wrap(
-    struct BMEditMesh *em, const struct CustomData_MeshMasks *data_mask, float (*vertexCos)[3]);
+    struct BMEditMesh *em,
+    const struct CustomData_MeshMasks *data_mask,
+    float (*vertexCos)[3],
+    const struct Mesh *me_settings);
 
 int poly_find_loop_from_vert(const struct MPoly *poly,
                              const struct MLoop *loopstart,
@@ -110,6 +113,7 @@ void BKE_mesh_copy_data(struct Main *bmain,
                         const struct Mesh *me_src,
                         const int flag);
 struct Mesh *BKE_mesh_copy(struct Main *bmain, const struct Mesh *me);
+void BKE_mesh_copy_settings(struct Mesh *me_dst, const struct Mesh *me_src);
 void BKE_mesh_update_customdata_pointers(struct Mesh *me, const bool do_ensure_tess_cd);
 void BKE_mesh_ensure_skin_customdata(struct Mesh *me);
 
@@ -121,6 +125,13 @@ struct Mesh *BKE_mesh_new_nomain_from_template(const struct Mesh *me_src,
                                                int tessface_len,
                                                int loops_len,
                                                int polys_len);
+struct Mesh *BKE_mesh_new_nomain_from_template_ex(const struct Mesh *me_src,
+                                                  int verts_len,
+                                                  int edges_len,
+                                                  int tessface_len,
+                                                  int loops_len,
+                                                  int polys_len,
+                                                  CustomData_MeshMasks mask);
 
 void BKE_mesh_eval_delete(struct Mesh *me_eval);
 
@@ -137,8 +148,6 @@ bool BKE_mesh_ensure_facemap_customdata(struct Mesh *me);
 bool BKE_mesh_clear_facemap_customdata(struct Mesh *me);
 
 void BKE_mesh_make_local(struct Main *bmain, struct Mesh *me, const bool lib_local);
-void BKE_mesh_boundbox_calc(struct Mesh *me, float r_loc[3], float r_size[3]);
-void BKE_mesh_texspace_calc(struct Mesh *me);
 float (*BKE_mesh_orco_verts_get(struct Object *ob))[3];
 void BKE_mesh_orco_verts_transform(struct Mesh *me, float (*orco)[3], int totvert, int invert);
 int test_index_face(struct MFace *mface, struct CustomData *mfdata, int mfindex, int nr);
@@ -188,12 +197,14 @@ void BKE_mesh_smooth_flag_set(struct Mesh *me, const bool use_smooth);
 const char *BKE_mesh_cmp(struct Mesh *me1, struct Mesh *me2, float thresh);
 
 struct BoundBox *BKE_mesh_boundbox_get(struct Object *ob);
-struct BoundBox *BKE_mesh_texspace_get(struct Mesh *me,
-                                       float r_loc[3],
-                                       float r_rot[3],
-                                       float r_size[3]);
-void BKE_mesh_texspace_get_reference(
-    struct Mesh *me, short **r_texflag, float **r_loc, float **r_rot, float **r_size);
+
+void BKE_mesh_texspace_calc(struct Mesh *me);
+void BKE_mesh_texspace_ensure(struct Mesh *me);
+void BKE_mesh_texspace_get(struct Mesh *me, float r_loc[3], float r_size[3]);
+void BKE_mesh_texspace_get_reference(struct Mesh *me,
+                                     short **r_texflag,
+                                     float **r_loc,
+                                     float **r_size);
 void BKE_mesh_texspace_copy_from_object(struct Mesh *me, struct Object *ob);
 
 void BKE_mesh_split_faces(struct Mesh *mesh, bool free_loop_normals);
@@ -473,6 +484,7 @@ void BKE_mesh_calc_poly_center(const struct MPoly *mpoly,
 float BKE_mesh_calc_poly_area(const struct MPoly *mpoly,
                               const struct MLoop *loopstart,
                               const struct MVert *mvarray);
+float BKE_mesh_calc_area(const struct Mesh *me);
 float BKE_mesh_calc_poly_uv_area(const struct MPoly *mpoly, const struct MLoopUV *uv_array);
 void BKE_mesh_calc_poly_angles(const struct MPoly *mpoly,
                                const struct MLoop *loopstart,

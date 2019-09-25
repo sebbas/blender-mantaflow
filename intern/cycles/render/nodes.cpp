@@ -25,6 +25,7 @@
 #include "kernel/svm/svm_color_util.h"
 #include "kernel/svm/svm_ramp_util.h"
 #include "kernel/svm/svm_math_util.h"
+#include "kernel/svm/svm_mapping_util.h"
 #include "render/osl.h"
 #include "render/constant_fold.h"
 
@@ -149,7 +150,7 @@ bool TextureMapping::skip()
 
 void TextureMapping::compile(SVMCompiler &compiler, int offset_in, int offset_out)
 {
-  compiler.add_node(NODE_MAPPING, offset_in, offset_out);
+  compiler.add_node(NODE_TEXTURE_MAPPING, offset_in, offset_out);
 
   Transform tfm = compute_transform();
   compiler.add_node(tfm.x);
@@ -893,14 +894,22 @@ NODE_DEFINE(NoiseTextureNode)
 
   TEXTURE_MAPPING_DEFINE(NoiseTextureNode);
 
+  static NodeEnum dimensions_enum;
+  dimensions_enum.insert("1D", 1);
+  dimensions_enum.insert("2D", 2);
+  dimensions_enum.insert("3D", 3);
+  dimensions_enum.insert("4D", 4);
+  SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
+
+  SOCKET_IN_POINT(
+      vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_GENERATED);
+  SOCKET_IN_FLOAT(w, "W", 0.0f);
   SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
   SOCKET_IN_FLOAT(detail, "Detail", 2.0f);
   SOCKET_IN_FLOAT(distortion, "Distortion", 0.0f);
-  SOCKET_IN_POINT(
-      vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_GENERATED);
 
-  SOCKET_OUT_COLOR(color, "Color");
   SOCKET_OUT_FLOAT(fac, "Fac");
+  SOCKET_OUT_COLOR(color, "Color");
 
   return type;
 }
@@ -911,31 +920,40 @@ NoiseTextureNode::NoiseTextureNode() : TextureNode(node_type)
 
 void NoiseTextureNode::compile(SVMCompiler &compiler)
 {
-  ShaderInput *distortion_in = input("Distortion");
-  ShaderInput *detail_in = input("Detail");
-  ShaderInput *scale_in = input("Scale");
   ShaderInput *vector_in = input("Vector");
-  ShaderOutput *color_out = output("Color");
+  ShaderInput *w_in = input("W");
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *detail_in = input("Detail");
+  ShaderInput *distortion_in = input("Distortion");
   ShaderOutput *fac_out = output("Fac");
+  ShaderOutput *color_out = output("Color");
 
-  int vector_offset = tex_mapping.compile_begin(compiler, vector_in);
+  int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
+  int w_stack_offset = compiler.stack_assign_if_linked(w_in);
+  int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
+  int detail_stack_offset = compiler.stack_assign_if_linked(detail_in);
+  int distortion_stack_offset = compiler.stack_assign_if_linked(distortion_in);
+  int fac_stack_offset = compiler.stack_assign_if_linked(fac_out);
+  int color_stack_offset = compiler.stack_assign_if_linked(color_out);
 
-  compiler.add_node(NODE_TEX_NOISE,
-                    compiler.encode_uchar4(vector_offset,
-                                           compiler.stack_assign_if_linked(scale_in),
-                                           compiler.stack_assign_if_linked(detail_in),
-                                           compiler.stack_assign_if_linked(distortion_in)),
-                    compiler.encode_uchar4(compiler.stack_assign_if_linked(color_out),
-                                           compiler.stack_assign_if_linked(fac_out)));
-  compiler.add_node(__float_as_int(scale), __float_as_int(detail), __float_as_int(distortion));
+  compiler.add_node(
+      NODE_TEX_NOISE,
+      dimensions,
+      compiler.encode_uchar4(
+          vector_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset),
+      compiler.encode_uchar4(distortion_stack_offset, fac_stack_offset, color_stack_offset));
+  compiler.add_node(__float_as_int(w),
+                    __float_as_int(scale),
+                    __float_as_int(detail),
+                    __float_as_int(distortion));
 
-  tex_mapping.compile_end(compiler, vector_in, vector_offset);
+  tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
 
 void NoiseTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
-
+  compiler.parameter(this, "dimensions");
   compiler.add(this, "node_noise_texture");
 }
 
@@ -947,33 +965,41 @@ NODE_DEFINE(VoronoiTextureNode)
 
   TEXTURE_MAPPING_DEFINE(VoronoiTextureNode);
 
-  static NodeEnum coloring_enum;
-  coloring_enum.insert("intensity", NODE_VORONOI_INTENSITY);
-  coloring_enum.insert("cells", NODE_VORONOI_CELLS);
-  SOCKET_ENUM(coloring, "Coloring", coloring_enum, NODE_VORONOI_INTENSITY);
+  static NodeEnum dimensions_enum;
+  dimensions_enum.insert("1D", 1);
+  dimensions_enum.insert("2D", 2);
+  dimensions_enum.insert("3D", 3);
+  dimensions_enum.insert("4D", 4);
+  SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
 
-  static NodeEnum metric;
-  metric.insert("distance", NODE_VORONOI_DISTANCE);
-  metric.insert("manhattan", NODE_VORONOI_MANHATTAN);
-  metric.insert("chebychev", NODE_VORONOI_CHEBYCHEV);
-  metric.insert("minkowski", NODE_VORONOI_MINKOWSKI);
-  SOCKET_ENUM(metric, "Distance Metric", metric, NODE_VORONOI_INTENSITY);
+  static NodeEnum metric_enum;
+  metric_enum.insert("euclidean", NODE_VORONOI_EUCLIDEAN);
+  metric_enum.insert("manhattan", NODE_VORONOI_MANHATTAN);
+  metric_enum.insert("chebychev", NODE_VORONOI_CHEBYCHEV);
+  metric_enum.insert("minkowski", NODE_VORONOI_MINKOWSKI);
+  SOCKET_ENUM(metric, "Distance Metric", metric_enum, NODE_VORONOI_EUCLIDEAN);
 
   static NodeEnum feature_enum;
-  feature_enum.insert("F1", NODE_VORONOI_F1);
-  feature_enum.insert("F2", NODE_VORONOI_F2);
-  feature_enum.insert("F3", NODE_VORONOI_F3);
-  feature_enum.insert("F4", NODE_VORONOI_F4);
-  feature_enum.insert("F2F1", NODE_VORONOI_F2F1);
-  SOCKET_ENUM(feature, "Feature", feature_enum, NODE_VORONOI_INTENSITY);
+  feature_enum.insert("f1", NODE_VORONOI_F1);
+  feature_enum.insert("f2", NODE_VORONOI_F2);
+  feature_enum.insert("smooth_f1", NODE_VORONOI_SMOOTH_F1);
+  feature_enum.insert("distance_to_edge", NODE_VORONOI_DISTANCE_TO_EDGE);
+  feature_enum.insert("n_sphere_radius", NODE_VORONOI_N_SPHERE_RADIUS);
+  SOCKET_ENUM(feature, "Feature", feature_enum, NODE_VORONOI_F1);
 
-  SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
-  SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
   SOCKET_IN_POINT(
       vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_GENERATED);
+  SOCKET_IN_FLOAT(w, "W", 0.0f);
+  SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
+  SOCKET_IN_FLOAT(smoothness, "Smoothness", 5.0f);
+  SOCKET_IN_FLOAT(exponent, "Exponent", 0.5f);
+  SOCKET_IN_FLOAT(randomness, "Randomness", 1.0f);
 
+  SOCKET_OUT_FLOAT(distance, "Distance");
   SOCKET_OUT_COLOR(color, "Color");
-  SOCKET_OUT_FLOAT(fac, "Fac");
+  SOCKET_OUT_POINT(position, "Position");
+  SOCKET_OUT_FLOAT(w, "W");
+  SOCKET_OUT_FLOAT(radius, "Radius");
 
   return type;
 }
@@ -984,39 +1010,57 @@ VoronoiTextureNode::VoronoiTextureNode() : TextureNode(node_type)
 
 void VoronoiTextureNode::compile(SVMCompiler &compiler)
 {
-  ShaderInput *scale_in = input("Scale");
   ShaderInput *vector_in = input("Vector");
+  ShaderInput *w_in = input("W");
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *smoothness_in = input("Smoothness");
   ShaderInput *exponent_in = input("Exponent");
+  ShaderInput *randomness_in = input("Randomness");
+
+  ShaderOutput *distance_out = output("Distance");
   ShaderOutput *color_out = output("Color");
-  ShaderOutput *fac_out = output("Fac");
+  ShaderOutput *position_out = output("Position");
+  ShaderOutput *w_out = output("W");
+  ShaderOutput *radius_out = output("Radius");
 
-  if (vector_in->link)
-    compiler.stack_assign(vector_in);
-  if (scale_in->link)
-    compiler.stack_assign(scale_in);
-  if (exponent_in->link)
-    compiler.stack_assign(exponent_in);
+  int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
+  int w_in_stack_offset = compiler.stack_assign_if_linked(w_in);
+  int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
+  int smoothness_stack_offset = compiler.stack_assign_if_linked(smoothness_in);
+  int exponent_stack_offset = compiler.stack_assign_if_linked(exponent_in);
+  int randomness_stack_offset = compiler.stack_assign_if_linked(randomness_in);
+  int distance_stack_offset = compiler.stack_assign_if_linked(distance_out);
+  int color_stack_offset = compiler.stack_assign_if_linked(color_out);
+  int position_stack_offset = compiler.stack_assign_if_linked(position_out);
+  int w_out_stack_offset = compiler.stack_assign_if_linked(w_out);
+  int radius_stack_offset = compiler.stack_assign_if_linked(radius_out);
 
-  int vector_offset = tex_mapping.compile_begin(compiler, vector_in);
+  compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, metric);
+  compiler.add_node(
+      compiler.encode_uchar4(
+          vector_stack_offset, w_in_stack_offset, scale_stack_offset, smoothness_stack_offset),
+      compiler.encode_uchar4(exponent_stack_offset,
+                             randomness_stack_offset,
+                             distance_stack_offset,
+                             color_stack_offset),
+      compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset),
+      __float_as_int(w));
 
-  compiler.add_node(NODE_TEX_VORONOI,
-                    compiler.encode_uchar4(vector_offset, coloring, metric, feature),
-                    compiler.encode_uchar4(compiler.stack_assign_if_linked(scale_in),
-                                           compiler.stack_assign_if_linked(exponent_in),
-                                           compiler.stack_assign(fac_out),
-                                           compiler.stack_assign(color_out)));
-  compiler.add_node(__float_as_int(scale), __float_as_int(exponent));
+  compiler.add_node(__float_as_int(scale),
+                    __float_as_int(smoothness),
+                    __float_as_int(exponent),
+                    __float_as_int(randomness));
 
-  tex_mapping.compile_end(compiler, vector_in, vector_offset);
+  tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
 
 void VoronoiTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
 
-  compiler.parameter(this, "coloring");
-  compiler.parameter(this, "metric");
+  compiler.parameter(this, "dimensions");
   compiler.parameter(this, "feature");
+  compiler.parameter(this, "metric");
   compiler.add(this, "node_voronoi_texture");
 }
 
@@ -1165,6 +1209,13 @@ NODE_DEFINE(MusgraveTextureNode)
 
   TEXTURE_MAPPING_DEFINE(MusgraveTextureNode);
 
+  static NodeEnum dimensions_enum;
+  dimensions_enum.insert("1D", 1);
+  dimensions_enum.insert("2D", 2);
+  dimensions_enum.insert("3D", 3);
+  dimensions_enum.insert("4D", 4);
+  SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
+
   static NodeEnum type_enum;
   type_enum.insert("multifractal", NODE_MUSGRAVE_MULTIFRACTAL);
   type_enum.insert("fBM", NODE_MUSGRAVE_FBM);
@@ -1173,16 +1224,16 @@ NODE_DEFINE(MusgraveTextureNode)
   type_enum.insert("hetero_terrain", NODE_MUSGRAVE_HETERO_TERRAIN);
   SOCKET_ENUM(type, "Type", type_enum, NODE_MUSGRAVE_FBM);
 
+  SOCKET_IN_POINT(
+      vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_GENERATED);
+  SOCKET_IN_FLOAT(w, "W", 0.0f);
   SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
   SOCKET_IN_FLOAT(detail, "Detail", 2.0f);
   SOCKET_IN_FLOAT(dimension, "Dimension", 2.0f);
   SOCKET_IN_FLOAT(lacunarity, "Lacunarity", 1.0f);
   SOCKET_IN_FLOAT(offset, "Offset", 0.0f);
   SOCKET_IN_FLOAT(gain, "Gain", 1.0f);
-  SOCKET_IN_POINT(
-      vector, "Vector", make_float3(0.0f, 0.0f, 0.0f), SocketType::LINK_TEXTURE_GENERATED);
 
-  SOCKET_OUT_COLOR(color, "Color");
   SOCKET_OUT_FLOAT(fac, "Fac");
 
   return type;
@@ -1195,35 +1246,38 @@ MusgraveTextureNode::MusgraveTextureNode() : TextureNode(node_type)
 void MusgraveTextureNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
+  ShaderInput *w_in = input("W");
   ShaderInput *scale_in = input("Scale");
+  ShaderInput *detail_in = input("Detail");
   ShaderInput *dimension_in = input("Dimension");
   ShaderInput *lacunarity_in = input("Lacunarity");
-  ShaderInput *detail_in = input("Detail");
   ShaderInput *offset_in = input("Offset");
   ShaderInput *gain_in = input("Gain");
   ShaderOutput *fac_out = output("Fac");
-  ShaderOutput *color_out = output("Color");
 
-  int vector_offset = tex_mapping.compile_begin(compiler, vector_in);
+  int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
+  int w_stack_offset = compiler.stack_assign_if_linked(w_in);
+  int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
+  int detail_stack_offset = compiler.stack_assign_if_linked(detail_in);
+  int dimension_stack_offset = compiler.stack_assign_if_linked(dimension_in);
+  int lacunarity_stack_offset = compiler.stack_assign_if_linked(lacunarity_in);
+  int offset_stack_offset = compiler.stack_assign_if_linked(offset_in);
+  int gain_stack_offset = compiler.stack_assign_if_linked(gain_in);
+  int fac_stack_offset = compiler.stack_assign(fac_out);
 
-  compiler.add_node(NODE_TEX_MUSGRAVE,
-                    compiler.encode_uchar4(type,
-                                           vector_offset,
-                                           compiler.stack_assign_if_linked(color_out),
-                                           compiler.stack_assign_if_linked(fac_out)),
-                    compiler.encode_uchar4(compiler.stack_assign_if_linked(dimension_in),
-                                           compiler.stack_assign_if_linked(lacunarity_in),
-                                           compiler.stack_assign_if_linked(detail_in),
-                                           compiler.stack_assign_if_linked(offset_in)),
-                    compiler.encode_uchar4(compiler.stack_assign_if_linked(gain_in),
-                                           compiler.stack_assign_if_linked(scale_in)));
-  compiler.add_node(__float_as_int(dimension),
-                    __float_as_int(lacunarity),
-                    __float_as_int(detail),
-                    __float_as_int(offset));
-  compiler.add_node(__float_as_int(gain), __float_as_int(scale));
+  compiler.add_node(
+      NODE_TEX_MUSGRAVE,
+      compiler.encode_uchar4(type, dimensions, vector_stack_offset, w_stack_offset),
+      compiler.encode_uchar4(scale_stack_offset,
+                             detail_stack_offset,
+                             dimension_stack_offset,
+                             lacunarity_stack_offset),
+      compiler.encode_uchar4(offset_stack_offset, gain_stack_offset, fac_stack_offset));
+  compiler.add_node(
+      __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(dimension));
+  compiler.add_node(__float_as_int(lacunarity), __float_as_int(offset), __float_as_int(gain));
 
-  tex_mapping.compile_end(compiler, vector_in, vector_offset);
+  tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
 
 void MusgraveTextureNode::compile(OSLCompiler &compiler)
@@ -1231,6 +1285,7 @@ void MusgraveTextureNode::compile(OSLCompiler &compiler)
   tex_mapping.compile(compiler);
 
   compiler.parameter(this, "type");
+  compiler.parameter(this, "dimensions");
   compiler.add(this, "node_musgrave_texture");
 }
 
@@ -1710,9 +1765,18 @@ NODE_DEFINE(MappingNode)
 {
   NodeType *type = NodeType::add("mapping", create, NodeType::SHADER);
 
-  TEXTURE_MAPPING_DEFINE(MappingNode);
+  static NodeEnum type_enum;
+  type_enum.insert("point", NODE_MAPPING_TYPE_POINT);
+  type_enum.insert("texture", NODE_MAPPING_TYPE_TEXTURE);
+  type_enum.insert("vector", NODE_MAPPING_TYPE_VECTOR);
+  type_enum.insert("normal", NODE_MAPPING_TYPE_NORMAL);
+  SOCKET_ENUM(type, "Type", type_enum, NODE_MAPPING_TYPE_POINT);
 
   SOCKET_IN_POINT(vector, "Vector", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(location, "Location", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(rotation, "Rotation", make_float3(0.0f, 0.0f, 0.0f));
+  SOCKET_IN_POINT(scale, "Scale", make_float3(1.0f, 1.0f, 1.0f));
+
   SOCKET_OUT_POINT(vector, "Vector");
 
   return type;
@@ -1722,22 +1786,42 @@ MappingNode::MappingNode() : ShaderNode(node_type)
 {
 }
 
+void MappingNode::constant_fold(const ConstantFolder &folder)
+{
+  if (folder.all_inputs_constant()) {
+    float3 result = svm_mapping((NodeMappingType)type, vector, location, rotation, scale);
+    folder.make_constant(result);
+  }
+  else {
+    folder.fold_mapping((NodeMappingType)type);
+  }
+}
+
 void MappingNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
+  ShaderInput *location_in = input("Location");
+  ShaderInput *rotation_in = input("Rotation");
+  ShaderInput *scale_in = input("Scale");
   ShaderOutput *vector_out = output("Vector");
 
-  tex_mapping.compile(
-      compiler, compiler.stack_assign(vector_in), compiler.stack_assign(vector_out));
+  int vector_stack_offset = compiler.stack_assign(vector_in);
+  int location_stack_offset = compiler.stack_assign(location_in);
+  int rotation_stack_offset = compiler.stack_assign(rotation_in);
+  int scale_stack_offset = compiler.stack_assign(scale_in);
+  int result_stack_offset = compiler.stack_assign(vector_out);
+
+  compiler.add_node(
+      NODE_MAPPING,
+      type,
+      compiler.encode_uchar4(
+          vector_stack_offset, location_stack_offset, rotation_stack_offset, scale_stack_offset),
+      result_stack_offset);
 }
 
 void MappingNode::compile(OSLCompiler &compiler)
 {
-  compiler.parameter("Matrix", tex_mapping.compute_transform());
-  compiler.parameter_point("mapping_min", tex_mapping.min);
-  compiler.parameter_point("mapping_max", tex_mapping.max);
-  compiler.parameter("use_minmax", tex_mapping.use_minmax);
-
+  compiler.parameter(this, "type");
   compiler.add(this, "node_mapping");
 }
 
@@ -4258,6 +4342,64 @@ void VolumeInfoNode::compile(OSLCompiler &)
 {
 }
 
+NODE_DEFINE(VertexColorNode)
+{
+  NodeType *type = NodeType::add("vertex_color", create, NodeType::SHADER);
+
+  SOCKET_STRING(layer_name, "Layer Name", ustring());
+  SOCKET_OUT_COLOR(color, "Color");
+  SOCKET_OUT_FLOAT(alpha, "Alpha");
+
+  return type;
+}
+
+VertexColorNode::VertexColorNode() : ShaderNode(node_type)
+{
+}
+
+void VertexColorNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+{
+  if (!(output("Color")->links.empty() && output("Alpha")->links.empty())) {
+    attributes->add_standard(layer_name);
+  }
+  ShaderNode::attributes(shader, attributes);
+}
+
+void VertexColorNode::compile(SVMCompiler &compiler)
+{
+  ShaderOutput *color_out = output("Color");
+  ShaderOutput *alpha_out = output("Alpha");
+  int layer_id = compiler.attribute(layer_name);
+
+  ShaderNodeType node;
+
+  if (bump == SHADER_BUMP_DX)
+    node = NODE_VERTEX_COLOR_BUMP_DX;
+  else if (bump == SHADER_BUMP_DY)
+    node = NODE_VERTEX_COLOR_BUMP_DY;
+  else {
+    node = NODE_VERTEX_COLOR;
+  }
+
+  compiler.add_node(
+      node, layer_id, compiler.stack_assign(color_out), compiler.stack_assign(alpha_out));
+}
+
+void VertexColorNode::compile(OSLCompiler &compiler)
+{
+  if (bump == SHADER_BUMP_DX) {
+    compiler.parameter("bump_offset", "dx");
+  }
+  else if (bump == SHADER_BUMP_DY) {
+    compiler.parameter("bump_offset", "dy");
+  }
+  else {
+    compiler.parameter("bump_offset", "center");
+  }
+  compiler.parameter("layer_name", layer_name.c_str());
+  compiler.add(this, "node_vertex_color");
+}
+
 /* Value */
 
 NODE_DEFINE(ValueNode)
@@ -5674,8 +5816,8 @@ VectorMathNode::VectorMathNode() : ShaderNode(node_type)
 
 void VectorMathNode::constant_fold(const ConstantFolder &folder)
 {
-  float value;
-  float3 vector;
+  float value = 0.0f;
+  float3 vector = make_float3(0.0f, 0.0f, 0.0f);
 
   if (folder.all_inputs_constant()) {
     svm_vector_math(&value, &vector, type, vector1, vector2, scale);

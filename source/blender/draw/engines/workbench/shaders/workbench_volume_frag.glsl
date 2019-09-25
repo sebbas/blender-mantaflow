@@ -1,6 +1,4 @@
 
-uniform vec3 OrcoTexCoFactors[2];
-
 uniform sampler2D depthBuffer;
 
 uniform sampler3D densityTexture;
@@ -172,7 +170,7 @@ vec4 volume_integration(vec3 ray_ori, vec3 ray_dir, float ray_inc, float ray_max
   float noise = fract(dither_mat[tx.x][tx.y] + noiseOfs);
 
   float ray_len = noise * ray_inc;
-  for (int i = 0; i < samplesLen && ray_len < ray_max; ++i, ray_len += ray_inc) {
+  for (int i = 0; i < samplesLen && ray_len < ray_max; i++, ray_len += ray_inc) {
     vec3 ls_pos = ray_ori + ray_dir * ray_len;
 
     vec3 Lscat;
@@ -216,13 +214,13 @@ void main()
   vs_ray_dir /= abs(vs_ray_dir.z);
 
   /* TODO(fclem) Precompute the matrix/ */
-  vec3 ls_ray_dir = mat3(ViewMatrixInverse) * vs_ray_dir * OrcoTexCoFactors[1] * 2.0;
+  vec3 ls_ray_dir = mat3(ViewMatrixInverse) * vs_ray_dir * OrcoTexCoFactors[1].xyz * 2.0;
   ls_ray_dir = mat3(ModelMatrixInverse) * ls_ray_dir;
   vec3 ls_ray_ori = point_view_to_object(vs_ray_ori);
   vec3 ls_ray_end = point_view_to_object(vs_ray_end);
 
-  ls_ray_ori = (OrcoTexCoFactors[0] + ls_ray_ori * OrcoTexCoFactors[1]) * 2.0 - 1.0;
-  ls_ray_end = (OrcoTexCoFactors[0] + ls_ray_end * OrcoTexCoFactors[1]) * 2.0 - 1.0;
+  ls_ray_ori = (OrcoTexCoFactors[0].xyz + ls_ray_ori * OrcoTexCoFactors[1].xyz) * 2.0 - 1.0;
+  ls_ray_end = (OrcoTexCoFactors[0].xyz + ls_ray_end * OrcoTexCoFactors[1].xyz) * 2.0 - 1.0;
 
   /* TODO: Align rays to volume center so that it mimics old behaviour of slicing the volume. */
 

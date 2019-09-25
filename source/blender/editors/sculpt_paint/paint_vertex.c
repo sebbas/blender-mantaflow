@@ -34,7 +34,6 @@
 #include "BLI_array_utils.h"
 #include "BLI_task.h"
 
-#include "DNA_armature_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
@@ -42,7 +41,6 @@
 #include "DNA_object_types.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
@@ -195,17 +193,12 @@ static bool vertex_paint_use_fast_update_check(Object *ob)
   return false;
 }
 
-static void paint_last_stroke_update(Scene *scene, ARegion *ar, const float mval[2])
+static void paint_last_stroke_update(Scene *scene, const float location[3])
 {
-  const int mval_i[2] = {mval[0], mval[1]};
-  float world[3];
-
-  if (ED_view3d_autodist_simple(ar, mval_i, world, 0, NULL)) {
-    UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
-    ups->average_stroke_counter++;
-    add_v3_v3(ups->average_stroke_accum, world);
-    ups->last_stroke_valid = true;
-  }
+  UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
+  ups->average_stroke_counter++;
+  add_v3_v3(ups->average_stroke_accum, location);
+  ups->last_stroke_valid = true;
 }
 
 /* polling - retrieve whether cursor should be set or operator should be done */
@@ -260,7 +253,7 @@ static bool weight_paint_poll_ex(bContext *C, bool check_tool)
       (BKE_paint_brush(&CTX_data_tool_settings(C)->wpaint->paint) != NULL) &&
       (sa = CTX_wm_area(C)) && (sa->spacetype == SPACE_VIEW3D)) {
     ARegion *ar = CTX_wm_region(C);
-    if (ar->regiontype == RGN_TYPE_WINDOW) {
+    if (ELEM(ar->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_HUD)) {
       if (!check_tool || WM_toolsystem_active_tool_is_brush(C)) {
         return 1;
       }
@@ -1610,7 +1603,7 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   /* make mode data storage */
   wpd = MEM_callocN(sizeof(struct WPaintData), "WPaintData");
   paint_stroke_set_mode_data(stroke, wpd);
-  ED_view3d_viewcontext_init(C, &wpd->vc);
+  ED_view3d_viewcontext_init(C, &wpd->vc, depsgraph);
   view_angle_limits_init(&wpd->normal_angle_precalc,
                          vp->paint.brush->falloff_angle,
                          (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
@@ -2351,7 +2344,7 @@ static void wpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, P
 
   /* calculate pivot for rotation around seletion if needed */
   /* also needed for "View Selected" on last stroke */
-  paint_last_stroke_update(scene, vc->ar, ss->cache->mouse);
+  paint_last_stroke_update(scene, ss->cache->location);
 
   BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
 
@@ -2655,7 +2648,7 @@ static bool vpaint_stroke_test_start(bContext *C, struct wmOperator *op, const f
   /* make mode data storage */
   vpd = MEM_callocN(sizeof(*vpd), "VPaintData");
   paint_stroke_set_mode_data(stroke, vpd);
-  ED_view3d_viewcontext_init(C, &vpd->vc);
+  ED_view3d_viewcontext_init(C, &vpd->vc, depsgraph);
   view_angle_limits_init(&vpd->normal_angle_precalc,
                          vp->paint.brush->falloff_angle,
                          (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
@@ -3331,7 +3324,7 @@ static void vpaint_stroke_update_step(bContext *C, struct PaintStroke *stroke, P
 
   /* calculate pivot for rotation around seletion if needed */
   /* also needed for "View Selected" on last stroke */
-  paint_last_stroke_update(scene, vc->ar, ss->cache->mouse);
+  paint_last_stroke_update(scene, ss->cache->location);
 
   ED_region_tag_redraw(vc->ar);
 

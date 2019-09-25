@@ -900,19 +900,17 @@ void DepsgraphNodeBuilder::build_driver(ID *id, FCurve *fcurve, int driver_index
 {
   /* Create data node for this driver */
   ID *id_cow = get_cow_id(id);
-  ChannelDriver *driver_orig = fcurve->driver;
 
   /* TODO(sergey): ideally we could pass the COW of fcu, but since it
    * has not yet been allocated at this point we can't. As a workaround
    * the animation systems allocates an array so we can do a fast lookup
    * with the driver index. */
-  ensure_operation_node(
-      id,
-      NodeType::PARAMETERS,
-      OperationCode::DRIVER,
-      function_bind(BKE_animsys_eval_driver, _1, id_cow, driver_index, driver_orig),
-      fcurve->rna_path ? fcurve->rna_path : "",
-      fcurve->array_index);
+  ensure_operation_node(id,
+                        NodeType::PARAMETERS,
+                        OperationCode::DRIVER,
+                        function_bind(BKE_animsys_eval_driver, _1, id_cow, driver_index, fcurve),
+                        fcurve->rna_path ? fcurve->rna_path : "",
+                        fcurve->array_index);
   build_driver_variables(id, fcurve);
 }
 
@@ -1155,7 +1153,7 @@ void DepsgraphNodeBuilder::build_particle_settings(ParticleSettings *particle_se
       &particle_settings->id, NodeType::PARTICLE_SETTINGS, OperationCode::PARTICLE_SETTINGS_EVAL);
   op_node->set_as_exit();
   /* Texture slots. */
-  for (int mtex_index = 0; mtex_index < MAX_MTEX; ++mtex_index) {
+  for (int mtex_index = 0; mtex_index < MAX_MTEX; mtex_index++) {
     MTex *mtex = particle_settings->mtex[mtex_index];
     if (mtex == NULL || mtex->tex == NULL) {
       continue;
@@ -1436,7 +1434,7 @@ void DepsgraphNodeBuilder::build_material(Material *material)
 
 void DepsgraphNodeBuilder::build_materials(Material **materials, int num_materials)
 {
-  for (int i = 0; i < num_materials; ++i) {
+  for (int i = 0; i < num_materials; i++) {
     if (materials[i] == NULL) {
       continue;
     }

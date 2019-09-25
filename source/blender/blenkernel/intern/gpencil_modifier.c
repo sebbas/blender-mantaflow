@@ -340,6 +340,23 @@ bool BKE_gpencil_has_time_modifiers(Object *ob)
   return false;
 }
 
+/* Check if exist transform stroke modifiers (to rotate sculpt or edit). */
+bool BKE_gpencil_has_transform_modifiers(Object *ob)
+{
+  GpencilModifierData *md;
+  for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
+    /* Only if enabled in edit mode. */
+    if (!GPENCIL_MODIFIER_EDIT(md, true) && GPENCIL_MODIFIER_ACTIVE(md, false)) {
+      if ((md->type == eGpencilModifierType_Armature) || (md->type == eGpencilModifierType_Hook) ||
+          (md->type == eGpencilModifierType_Lattice) ||
+          (md->type == eGpencilModifierType_Offset)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /* apply stroke modifiers */
 void BKE_gpencil_stroke_modifiers(Depsgraph *depsgraph,
                                   Object *ob,
@@ -797,8 +814,10 @@ static void gpencil_frame_copy_noalloc(Object *ob, bGPDframe *gpf, bGPDframe *gp
 
     /* copy color to temp fields to apply temporal changes in the stroke */
     MaterialGPencilStyle *gp_style = BKE_material_gpencil_settings_get(ob, gps_src->mat_nr + 1);
-    copy_v4_v4(gps_dst->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
-    copy_v4_v4(gps_dst->runtime.tmp_fill_rgba, gp_style->fill_rgba);
+    if (gp_style) {
+      copy_v4_v4(gps_dst->runtime.tmp_stroke_rgba, gp_style->stroke_rgba);
+      copy_v4_v4(gps_dst->runtime.tmp_fill_rgba, gp_style->fill_rgba);
+    }
 
     /* Save original pointers for using in edit and select operators. */
     gps_dst->runtime.gps_orig = gps_src;

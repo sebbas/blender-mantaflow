@@ -274,6 +274,12 @@ static void rna_PoseChannel_rotation_mode_set(PointerRNA *ptr, int value)
   pchan->rotmode = value;
 }
 
+static float rna_PoseChannel_length_get(PointerRNA *ptr)
+{
+  bPoseChannel *pchan = ptr->data;
+  return len_v3v3(pchan->pose_head, pchan->pose_tail);
+}
+
 static void rna_PoseChannel_name_set(PointerRNA *ptr, const char *value)
 {
   Object *ob = (Object *)ptr->owner_id;
@@ -599,6 +605,24 @@ static void rna_PoseChannel_constraints_remove(
   if (is_ik) {
     BIK_clear_data(ob->pose);
   }
+}
+
+static void rna_PoseChannel_constraints_move(
+    ID *id, bPoseChannel *pchan, Main *bmain, ReportList *reports, int from, int to)
+{
+  Object *ob = (Object *)id;
+
+  if (from == to) {
+    return;
+  }
+
+  if (!BLI_listbase_move_index(&pchan->constraints, from, to)) {
+    BKE_reportf(reports, RPT_ERROR, "Could not move constraint from index '%d' to '%d'", from, to);
+    return;
+  }
+
+  ED_object_constraint_tag_update(bmain, ob, NULL);
+  WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT, ob);
 }
 
 bool rna_PoseChannel_constraints_override_apply(Main *UNUSED(bmain),
@@ -929,6 +953,15 @@ static void rna_def_pose_channel_constraints(BlenderRNA *brna, PropertyRNA *cpro
   parm = RNA_def_pointer(func, "constraint", "Constraint", "", "Removed constraint");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
+
+  func = RNA_def_function(srna, "move", "rna_PoseChannel_constraints_move");
+  RNA_def_function_ui_description(func, "Move a constraint to a different position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_int(
+      func, "from_index", -1, INT_MIN, INT_MAX, "From Index", "Index to move", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(func, "to_index", -1, INT_MIN, INT_MAX, "To Index", "Target index", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 }
 
 static void rna_def_pose_channel(BlenderRNA *brna)
@@ -1044,7 +1077,7 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
 
   /* Curved bones settings - Applied on top of restpose values */
-  rna_def_bone_curved_common(srna, true);
+  rna_def_bone_curved_common(srna, true, false);
 
   /* Custom BBone next/prev sources */
   prop = RNA_def_property(srna, "bbone_custom_handle_start", PROP_POINTER, PROP_NONE);
@@ -1107,6 +1140,11 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Pose Tail Position", "Location of tail of the channel's bone");
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+
+  prop = RNA_def_property(srna, "length", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_funcs(prop, "rna_PoseChannel_length_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Length", "Length of the bone");
 
   /* IK Settings */
   prop = RNA_def_property(srna, "is_in_ik_chain", PROP_BOOLEAN, PROP_NONE);
@@ -1261,7 +1299,7 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Custom Object", "Object that defines custom draw type for this bone");
   RNA_def_property_editable_func(prop, "rna_PoseChannel_proxy_editable");
-  RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_dependency_update");
 
   prop = RNA_def_property(srna, "custom_shape_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "custom_scale");
@@ -1419,7 +1457,7 @@ static void rna_def_pose_itasc(BlenderRNA *brna)
   prop = RNA_def_property(srna, "step_count", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "numstep");
   RNA_def_property_range(prop, 1.f, 50.f);
-  RNA_def_property_ui_text(prop, "Num steps", "Divide the frame interval into this many steps");
+  RNA_def_property_ui_text(prop, "Num Steps", "Divide the frame interval into this many steps");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Itasc_update");
 
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
@@ -1440,7 +1478,7 @@ static void rna_def_pose_itasc(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_auto_step", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ITASC_AUTO_STEP);
   RNA_def_property_ui_text(prop,
-                           "Auto step",
+                           "Auto Step",
                            "Automatically determine the optimal number of steps for best "
                            "performance/accuracy trade off");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Itasc_update");
@@ -1449,14 +1487,14 @@ static void rna_def_pose_itasc(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "minstep");
   RNA_def_property_range(prop, 0.0f, 0.1f);
   RNA_def_property_ui_text(
-      prop, "Min step", "Lower bound for timestep in second in case of automatic substeps");
+      prop, "Min Step", "Lower bound for timestep in second in case of automatic substeps");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Itasc_update");
 
   prop = RNA_def_property(srna, "step_max", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "maxstep");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(
-      prop, "Max step", "Higher bound for timestep in second in case of automatic substeps");
+      prop, "Max Step", "Higher bound for timestep in second in case of automatic substeps");
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Itasc_update");
 
   prop = RNA_def_property(srna, "feedback", PROP_FLOAT, PROP_NONE);

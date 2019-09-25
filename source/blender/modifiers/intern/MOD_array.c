@@ -268,9 +268,9 @@ static void dm_mvert_map_doubles(int *doubles_map,
 
 static void mesh_merge_transform(Mesh *result,
                                  Mesh *cap_mesh,
-                                 float cap_offset[4][4],
-                                 unsigned int cap_verts_index,
-                                 unsigned int cap_edges_index,
+                                 const float cap_offset[4][4],
+                                 uint cap_verts_index,
+                                 uint cap_edges_index,
                                  int cap_loops_index,
                                  int cap_polys_index,
                                  int cap_nverts,
@@ -775,7 +775,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   /* The object type check is only needed here in case we have a placeholder
    * object assigned (because the library containing the curve/mesh is missing).
    *
-   * In other cases it should be impossible to have a type missmatch.
+   * In other cases it should be impossible to have a type mismatch.
    */
 
   if (amd->curve_ob && amd->curve_ob->type != OB_CURVE) {

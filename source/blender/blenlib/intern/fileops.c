@@ -35,7 +35,6 @@
 #ifdef WIN32
 #  include <io.h>
 #  include "BLI_winstuff.h"
-#  include "BLI_callbacks.h"
 #  include "BLI_fileops_types.h"
 #  include "utf_winfunc.h"
 #  include "utfconv.h"
@@ -343,7 +342,7 @@ static bool delete_recursive(const char *dir)
         err = true;
       }
     }
-    ++fl;
+    fl++;
   }
 
   if (!err && delete_unique(dir, true)) {
@@ -771,7 +770,7 @@ int BLI_delete(const char *file, bool dir, bool recursive)
 }
 
 /**
- * Do the two paths denote the same filesystem object?
+ * Do the two paths denote the same file-system object?
  */
 static bool check_the_same(const char *path_a, const char *path_b)
 {

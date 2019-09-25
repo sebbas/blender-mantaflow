@@ -110,7 +110,7 @@ typedef enum eObjectVisibilityResult {
 
 int BKE_object_visibility(const struct Object *ob, const int dag_eval_mode);
 
-void BKE_object_init(struct Object *ob);
+void BKE_object_init(struct Object *ob, const short ob_type);
 struct Object *BKE_object_add_only_object(struct Main *bmain, int type, const char *name)
     ATTR_NONNULL(1) ATTR_RETURNS_NONNULL;
 struct Object *BKE_object_add(struct Main *bmain,
@@ -222,7 +222,13 @@ void BKE_boundbox_minmax(const struct BoundBox *bb,
 
 struct BoundBox *BKE_object_boundbox_get(struct Object *ob);
 void BKE_object_dimensions_get(struct Object *ob, float vec[3]);
+void BKE_object_dimensions_set_ex(struct Object *ob,
+                                  const float value[3],
+                                  int axis_mask,
+                                  const float ob_scale_orig[3],
+                                  const float ob_obmat_orig[4][4]);
 void BKE_object_dimensions_set(struct Object *ob, const float value[3], int axis_mask);
+
 void BKE_object_empty_draw_type_set(struct Object *ob, const int value);
 void BKE_object_boundbox_flag(struct Object *ob, int flag, const bool set);
 void BKE_object_boundbox_calc_from_mesh(struct Object *ob, struct Mesh *me_eval);
@@ -315,8 +321,10 @@ void BKE_object_handle_update_ex(struct Depsgraph *depsgraph,
 
 void BKE_object_sculpt_data_create(struct Object *ob);
 
-int BKE_object_obdata_texspace_get(
-    struct Object *ob, short **r_texflag, float **r_loc, float **r_size, float **r_rot);
+int BKE_object_obdata_texspace_get(struct Object *ob,
+                                   short **r_texflag,
+                                   float **r_loc,
+                                   float **r_size);
 
 struct Mesh *BKE_object_get_evaluated_mesh(const struct Depsgraph *depsgraph, struct Object *ob);
 struct Mesh *BKE_object_get_final_mesh(struct Object *object);

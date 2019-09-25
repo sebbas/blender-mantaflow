@@ -77,15 +77,11 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
-#include "BKE_texture.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
-
 #include "ED_object.h"
-#include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_paint.h"
 #include "ED_screen.h"
@@ -105,7 +101,6 @@
 
 #include "IMB_colormanagement.h"
 
-#include "bmesh.h"
 //#include "bmesh_tools.h"
 
 #include "paint_intern.h"
@@ -5212,8 +5207,10 @@ static void do_projectpaint_thread(TaskPool *__restrict UNUSED(pool),
             float line_len_sq_inv, line_len;
             float f;
             float color_f[4];
-            float p[2] = {projPixel->projCoSS[0] - lastpos[0],
-                          projPixel->projCoSS[1] - lastpos[1]};
+            const float p[2] = {
+                projPixel->projCoSS[0] - lastpos[0],
+                projPixel->projCoSS[1] - lastpos[1],
+            };
 
             sub_v2_v2v2(tangent, pos, lastpos);
             line_len = len_squared_v2(tangent);

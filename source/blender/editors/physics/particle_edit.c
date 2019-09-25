@@ -473,7 +473,8 @@ static void PE_set_view3d_data(bContext *C, PEData *data)
 {
   PE_set_data(C, data);
 
-  ED_view3d_viewcontext_init(C, &data->vc);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  ED_view3d_viewcontext_init(C, &data->vc, depsgraph);
 
   if (!XRAY_ENABLED(data->vc.v3d)) {
     if (data->vc.v3d->flag & V3D_INVALID_BACKBUF) {
@@ -649,8 +650,8 @@ typedef void (*ForHitPointFunc)(PEData *data, int point_index, float mouse_dista
 typedef void (*ForKeyFunc)(PEData *data, int point_index, int key_index, bool is_inside);
 
 typedef void (*ForKeyMatFunc)(PEData *data,
-                              float mat[4][4],
-                              float imat[4][4],
+                              const float mat[4][4],
+                              const float imat[4][4],
                               int point_index,
                               int key_index,
                               PTCacheEditKey *key);
@@ -1377,7 +1378,7 @@ static void pe_iterate_lengths(Scene *scene, PTCacheEdit *edit)
   BLI_task_parallel_range(0, edit->totpoint, &iter_data, iterate_lengths_iter, &settings);
 }
 
-/* set current distances to be kept between neighbouting keys */
+/* set current distances to be kept between neighboring keys */
 void recalc_lengths(PTCacheEdit *edit)
 {
   POINT_P;
@@ -2354,7 +2355,7 @@ static int hide_exec(bContext *C, wmOperator *op)
   POINT_P;
   KEY_K;
 
-  if (RNA_enum_get(op->ptr, "unselected")) {
+  if (RNA_boolean_get(op->ptr, "unselected")) {
     LOOP_UNSELECTED_POINTS
     {
       point->flag |= PEP_HIDE;
@@ -3315,6 +3316,7 @@ static int delete_exec(bContext *C, wmOperator *op)
   }
 
   DEG_id_tag_update(&data.ob->id, ID_RECALC_GEOMETRY);
+  BKE_particle_batch_cache_dirty_tag(data.edit->psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
   WM_event_add_notifier(C, NC_OBJECT | ND_PARTICLE | NA_EDITED, data.ob);
 
   return OPERATOR_FINISHED;
@@ -5438,7 +5440,7 @@ static float calculate_average_length(PTCacheEdit *edit)
   LOOP_SELECTED_POINTS
   {
     total_length += calculate_point_length(point);
-    ++num_selected;
+    num_selected++;
   }
   if (num_selected == 0) {
     return 0.0f;

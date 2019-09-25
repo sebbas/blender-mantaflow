@@ -116,7 +116,7 @@ static void get_vertices(struct Mesh *mesh, std::vector<Imath::V3f> &points)
 
   MVert *verts = mesh->mvert;
 
-  for (int i = 0, e = mesh->totvert; i < e; ++i) {
+  for (int i = 0, e = mesh->totvert; i < e; i++) {
     copy_yup_from_zup(points[i].getValue(), verts[i].co);
   }
 }
@@ -137,7 +137,7 @@ static void get_topology(struct Mesh *mesh,
   loop_counts.reserve(num_poly);
 
   /* NOTE: data needs to be written in the reverse order. */
-  for (int i = 0; i < num_poly; ++i) {
+  for (int i = 0; i < num_poly; i++) {
     MPoly &poly = mpoly[i];
     loop_counts.push_back(poly.totloop);
 
@@ -145,7 +145,7 @@ static void get_topology(struct Mesh *mesh,
 
     MLoop *loop = mloop + poly.loopstart + (poly.totloop - 1);
 
-    for (int j = 0; j < poly.totloop; ++j, --loop) {
+    for (int j = 0; j < poly.totloop; j++, loop--) {
       poly_verts.push_back(loop->v);
     }
   }
@@ -164,7 +164,7 @@ static void get_creases(struct Mesh *mesh,
 
   MEdge *edge = mesh->medge;
 
-  for (int i = 0, e = mesh->totedge; i < e; ++i) {
+  for (int i = 0, e = mesh->totedge; i < e; i++) {
     const float sharpness = static_cast<float>(edge[i].crease) * factor;
 
     if (sharpness != 0.0f) {
@@ -185,7 +185,7 @@ static void get_vertex_normals(struct Mesh *mesh, std::vector<Imath::V3f> &norma
   MVert *verts = mesh->mvert;
   float no[3];
 
-  for (int i = 0, e = mesh->totvert; i < e; ++i) {
+  for (int i = 0, e = mesh->totvert; i < e; i++) {
     normal_short_to_float_v3(no, verts[i].no);
     copy_yup_from_zup(normals[i].getValue(), no);
   }
@@ -209,8 +209,8 @@ static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals
   int abc_index = 0;
 
   if (lnors) {
-    for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
-      for (int j = mp->totloop - 1; j >= 0; --j, ++abc_index) {
+    for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
+      for (int j = mp->totloop - 1; j >= 0; j--, abc_index++) {
         int blender_index = mp->loopstart + j;
         copy_yup_from_zup(normals[abc_index].getValue(), lnors[blender_index]);
       }
@@ -219,20 +219,20 @@ static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals
   else {
     float no[3];
 
-    for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mp) {
+    for (int i = 0, e = mesh->totpoly; i < e; i++, mp++) {
       ml = mloop + mp->loopstart + (mp->totloop - 1);
 
       /* Flat shaded, use common normal for all verts. */
       if ((mp->flag & ME_SMOOTH) == 0) {
         BKE_mesh_calc_poly_normal(mp, ml - (mp->totloop - 1), verts, no);
 
-        for (int j = 0; j < mp->totloop; --ml, ++j, ++abc_index) {
+        for (int j = 0; j < mp->totloop; ml--, j++, abc_index++) {
           copy_yup_from_zup(normals[abc_index].getValue(), no);
         }
       }
       else {
         /* Smooth shaded, use individual vert normals. */
-        for (int j = 0; j < mp->totloop; --ml, ++j, ++abc_index) {
+        for (int j = 0; j < mp->totloop; ml--, j++, abc_index++) {
           normal_short_to_float_v3(no, verts[ml->v].no);
           copy_yup_from_zup(normals[abc_index].getValue(), no);
         }
@@ -561,7 +561,7 @@ Mesh *AbcGenericMeshWriter::getFinalMesh(bool &r_needsfree)
 
     BM_mesh_triangulate(bm, quad_method, ngon_method, 4, tag_only, NULL, NULL, NULL);
 
-    Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL);
+    Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, NULL, mesh);
     BM_mesh_free(bm);
 
     if (r_needsfree) {
@@ -615,7 +615,7 @@ void AbcGenericMeshWriter::getVelocities(struct Mesh *mesh, std::vector<Imath::V
   if (fss->meshVelocities) {
     float *mesh_vels = reinterpret_cast<float *>(fss->meshVelocities);
 
-    for (int i = 0; i < totverts; ++i) {
+    for (int i = 0; i < totverts; i++) {
       copy_yup_from_zup(vels[i].getValue(), mesh_vels);
       mesh_vels += 3;
     }
@@ -631,7 +631,7 @@ void AbcGenericMeshWriter::getGeoGroups(struct Mesh *mesh,
   const int num_poly = mesh->totpoly;
   MPoly *polygons = mesh->mpoly;
 
-  for (int i = 0; i < num_poly; ++i) {
+  for (int i = 0; i < num_poly; i++) {
     MPoly &current_poly = polygons[i];
     short mnr = current_poly.mat_nr;
 
@@ -658,7 +658,7 @@ void AbcGenericMeshWriter::getGeoGroups(struct Mesh *mesh,
 
     std::vector<int32_t> faceArray;
 
-    for (int i = 0, e = mesh->totface; i < e; ++i) {
+    for (int i = 0, e = mesh->totface; i < e; i++) {
       faceArray.push_back(i);
     }
 
@@ -707,7 +707,7 @@ static void assign_materials(Main *bmain,
   std::map<std::string, int>::const_iterator it = mat_index_map.begin();
 
   int matcount = 0;
-  for (; it != mat_index_map.end(); ++it, ++matcount) {
+  for (; it != mat_index_map.end(); ++it, matcount++) {
     if (!BKE_object_material_slot_add(bmain, ob)) {
       can_assign = false;
       break;
@@ -770,7 +770,7 @@ static void read_mverts_interp(MVert *mverts,
                                const float weight)
 {
   float tmp[3];
-  for (int i = 0; i < positions->size(); ++i) {
+  for (int i = 0; i < positions->size(); i++) {
     MVert &mvert = mverts[i];
     const Imath::V3f &floor_pos = (*positions)[i];
     const Imath::V3f &ceil_pos = (*ceil_positions)[i];
@@ -801,7 +801,7 @@ void read_mverts(MVert *mverts,
                  const P3fArraySamplePtr &positions,
                  const N3fArraySamplePtr &normals)
 {
-  for (int i = 0; i < positions->size(); ++i) {
+  for (int i = 0; i < positions->size(); i++) {
     MVert &mvert = mverts[i];
     Imath::V3f pos_in = (*positions)[i];
 
@@ -839,7 +839,7 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
   unsigned int rev_loop_index = 0;
   unsigned int uv_index = 0;
 
-  for (int i = 0; i < face_counts->size(); ++i) {
+  for (int i = 0; i < face_counts->size(); i++) {
     const int face_size = (*face_counts)[i];
 
     MPoly &poly = mpolys[i];
@@ -856,7 +856,7 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
     /* NOTE: Alembic data is stored in the reverse order. */
     rev_loop_index = loop_index + (face_size - 1);
 
-    for (int f = 0; f < face_size; ++f, ++loop_index, --rev_loop_index) {
+    for (int f = 0; f < face_size; f++, loop_index++, rev_loop_index--) {
       MLoop &loop = mloops[rev_loop_index];
       loop.v = (*face_indices)[loop_index];
 
@@ -899,9 +899,9 @@ static void process_normals(CDStreamConfig &config, const AbcMeshData &mesh_data
 
   MPoly *mpoly = mesh->mpoly;
   int abc_index = 0;
-  for (int i = 0, e = mesh->totpoly; i < e; ++i, ++mpoly) {
+  for (int i = 0, e = mesh->totpoly; i < e; i++, mpoly++) {
     /* As usual, ABC orders the loops in reverse. */
-    for (int j = mpoly->totloop - 1; j >= 0; --j, ++abc_index) {
+    for (int j = mpoly->totloop - 1; j >= 0; j--, abc_index++) {
       int blender_index = mpoly->loopstart + j;
       copy_zup_from_yup(lnors[blender_index], loop_normals[abc_index].getValue());
     }
@@ -1192,8 +1192,6 @@ Mesh *AbcMeshReader::read_mesh(Mesh *existing_mesh,
         existing_mesh, positions->size(), 0, 0, face_indices->size(), face_counts->size());
 
     settings.read_flag |= MOD_MESHSEQ_READ_ALL;
-    /* XXX fixme after 2.80; mesh->flag isn't copied by BKE_mesh_new_nomain_from_template() */
-    new_mesh->flag |= (existing_mesh->flag & ME_AUTOSMOOTH);
   }
   else {
     /* If the face count changed (e.g. by triangulation), only read points.
@@ -1246,7 +1244,7 @@ void AbcMeshReader::assign_facesets_to_mpoly(const ISampleSelector &sample_sel,
 
   int current_mat = 0;
 
-  for (int i = 0; i < face_sets.size(); ++i) {
+  for (int i = 0; i < face_sets.size(); i++) {
     const std::string &grp_name = face_sets[i];
 
     if (r_mat_map.find(grp_name) == r_mat_map.end()) {
@@ -1292,7 +1290,7 @@ void AbcMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const ISampleSel
 
 ABC_INLINE MEdge *find_edge(MEdge *edges, int totedge, int v1, int v2)
 {
-  for (int i = 0, e = totedge; i < e; ++i) {
+  for (int i = 0, e = totedge; i < e; i++) {
     MEdge &edge = edges[i];
 
     if (edge.v1 == v1 && edge.v2 == v2) {
@@ -1416,11 +1414,24 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
   Int32ArraySamplePtr indices = sample.getCreaseIndices();
   Alembic::Abc::FloatArraySamplePtr sharpnesses = sample.getCreaseSharpnesses();
 
-  MEdge *edges = mesh->medge;
-
   if (indices && sharpnesses) {
-    for (int i = 0, s = 0, e = indices->size(); i < e; i += 2, ++s) {
-      MEdge *edge = find_edge(edges, mesh->totedge, (*indices)[i], (*indices)[i + 1]);
+    MEdge *edges = mesh->medge;
+    int totedge = mesh->totedge;
+
+    for (int i = 0, s = 0, e = indices->size(); i < e; i += 2, s++) {
+      int v1 = (*indices)[i];
+      int v2 = (*indices)[i + 1];
+
+      if (v2 < v1) {
+        /* It appears to be common to store edges with the smallest index first, in which case this
+         * prevents us from doing the second search below. */
+        std::swap(v1, v2);
+      }
+
+      MEdge *edge = find_edge(edges, totedge, v1, v2);
+      if (edge == NULL) {
+        edge = find_edge(edges, totedge, v2, v1);
+      }
 
       if (edge) {
         edge->crease = unit_float_to_uchar_clamp((*sharpnesses)[s]);

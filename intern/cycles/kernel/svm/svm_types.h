@@ -140,13 +140,18 @@ typedef enum ShaderNodeType {
   NODE_IES,
   NODE_MAP_RANGE,
   NODE_CLAMP,
+  NODE_TEXTURE_MAPPING,
   NODE_TEX_WHITE_NOISE,
+  NODE_VERTEX_COLOR,
+  NODE_VERTEX_COLOR_BUMP_DX,
+  NODE_VERTEX_COLOR_BUMP_DY,
 } ShaderNodeType;
 
 typedef enum NodeAttributeType {
   NODE_ATTR_FLOAT = 0,
   NODE_ATTR_FLOAT2,
   NODE_ATTR_FLOAT3,
+  NODE_ATTR_RGBA,
   NODE_ATTR_MATRIX
 } NodeAttributeType;
 
@@ -299,6 +304,13 @@ typedef enum NodeVectorMathType {
   NODE_VECTOR_MATH_MAXIMUM,
 } NodeVectorMathType;
 
+typedef enum NodeMappingType {
+  NODE_MAPPING_TYPE_POINT,
+  NODE_MAPPING_TYPE_TEXTURE,
+  NODE_MAPPING_TYPE_VECTOR,
+  NODE_MAPPING_TYPE_NORMAL
+} NodeMappingType;
+
 typedef enum NodeVectorTransformType {
   NODE_VECTOR_TRANSFORM_TYPE_VECTOR,
   NODE_VECTOR_TRANSFORM_TYPE_POINT,
@@ -349,24 +361,19 @@ typedef enum NodeGradientType {
   NODE_BLEND_SPHERICAL
 } NodeGradientType;
 
-typedef enum NodeVoronoiColoring {
-  NODE_VORONOI_INTENSITY,
-  NODE_VORONOI_CELLS
-} NodeVoronoiColoring;
-
 typedef enum NodeVoronoiDistanceMetric {
-  NODE_VORONOI_DISTANCE,
+  NODE_VORONOI_EUCLIDEAN,
   NODE_VORONOI_MANHATTAN,
   NODE_VORONOI_CHEBYCHEV,
-  NODE_VORONOI_MINKOWSKI
+  NODE_VORONOI_MINKOWSKI,
 } NodeVoronoiDistanceMetric;
 
 typedef enum NodeVoronoiFeature {
   NODE_VORONOI_F1,
   NODE_VORONOI_F2,
-  NODE_VORONOI_F3,
-  NODE_VORONOI_F4,
-  NODE_VORONOI_F2F1
+  NODE_VORONOI_SMOOTH_F1,
+  NODE_VORONOI_DISTANCE_TO_EDGE,
+  NODE_VORONOI_N_SPHERE_RADIUS,
 } NodeVoronoiFeature;
 
 typedef enum NodeBlendWeightType {

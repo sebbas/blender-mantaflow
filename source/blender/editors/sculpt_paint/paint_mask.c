@@ -305,7 +305,7 @@ bool ED_sculpt_mask_box_select(struct bContext *C, ViewContext *vc, const rcti *
 
   sculpt_undo_push_begin("Mask box fill");
 
-  for (symmpass = 0; symmpass <= symm; ++symmpass) {
+  for (symmpass = 0; symmpass <= symm; symmpass++) {
     if (symmpass == 0 || (symm & symmpass && (symm != 5 || symmpass != 3) &&
                           (symm != 6 || (symmpass != 3 && symmpass != 5)))) {
       int j = 0;
@@ -462,7 +462,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
     /* Calculations of individual vertices are done in 2D screen space to diminish the amount of
      * calculations done. Bounding box PBVH collision is not computed against enclosing rectangle
      * of lasso */
-    ED_view3d_viewcontext_init(C, &vc);
+    ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
     /* lasso data calculations */
     data.vc = &vc;
@@ -491,7 +491,7 @@ static int paint_mask_gesture_lasso_exec(bContext *C, wmOperator *op)
 
     sculpt_undo_push_begin("Mask lasso fill");
 
-    for (symmpass = 0; symmpass <= symm; ++symmpass) {
+    for (symmpass = 0; symmpass <= symm; symmpass++) {
       if ((symmpass == 0) || (symm & symmpass && (symm != 5 || symmpass != 3) &&
                               (symm != 6 || (symmpass != 3 && symmpass != 5)))) {
         int j = 0;

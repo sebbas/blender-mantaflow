@@ -47,7 +47,6 @@
 
 #include "BIF_glutil.h"
 
-#include "GPU_draw.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
@@ -261,7 +260,7 @@ void ED_node_sort(bNodeTree *ntree)
 
     do {
       /* setup first_b pointer */
-      for (b = 0; b < k && first_b; ++b) {
+      for (b = 0; b < k && first_b; b++) {
         first_b = first_b->next;
       }
       /* all batches merged? */
@@ -289,7 +288,7 @@ void ED_node_sort(bNodeTree *ntree)
 
       /* setup first pointers for next batch */
       first_b = node_b;
-      for (; b < k; ++b) {
+      for (; b < k; b++) {
         /* all nodes sorted? */
         if (first_b == NULL) {
           break;
@@ -970,7 +969,7 @@ void node_draw_sockets(View2D *v2d,
       continue;
     }
     if (select_all || (sock->flag & SELECT)) {
-      ++selected_input_len;
+      selected_input_len++;
       continue;
     }
 
@@ -995,7 +994,7 @@ void node_draw_sockets(View2D *v2d,
         continue;
       }
       if (select_all || (sock->flag & SELECT)) {
-        ++selected_output_len;
+        selected_output_len++;
         continue;
       }
 
@@ -1732,11 +1731,11 @@ void drawnodespace(const bContext *C, ARegion *ar)
     depth = 0;
     while (path->prev && depth < max_depth) {
       path = path->prev;
-      ++depth;
+      depth++;
     }
 
     /* parent node trees in the background */
-    for (curdepth = depth; curdepth > 0; path = path->next, --curdepth) {
+    for (curdepth = depth; curdepth > 0; path = path->next, curdepth--) {
       ntree = path->nodetree;
       if (ntree) {
         snode_setup_v2d(snode, ar, path->view_center);

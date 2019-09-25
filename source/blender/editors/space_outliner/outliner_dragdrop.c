@@ -56,8 +56,6 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "GPU_state.h"
-
 #include "RNA_access.h"
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -537,7 +535,7 @@ static int scene_drop_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent 
   Collection *collection;
   if (scene != CTX_data_scene(C)) {
     /* when linking to an inactive scene link to the master collection */
-    collection = BKE_collection_master(scene);
+    collection = scene->master_collection;
   }
   else {
     collection = CTX_data_collection(C);
@@ -967,7 +965,7 @@ static int outliner_item_drag_drop_invoke(bContext *C,
       }
       else {
         Scene *scene = CTX_data_scene(C);
-        parent = BKE_collection_master(scene);
+        parent = scene->master_collection;
       }
 
       WM_drag_add_ID(drag, id, &parent->id);
