@@ -4109,10 +4109,17 @@ struct Mesh *mantaModifier_do(
   if (!result) {
     result = BKE_mesh_copy_for_eval(me, false);
   }
-  /* XXX This is really not a nice hack, but until root of the problem is understood,
-   * this should be an acceptable workaround I think.
-   * See T58492 for details on the issue. */
-  result->texflag |= ME_AUTOSPACE;
+  else {
+    BKE_mesh_copy_settings(result, me);
+  }
+
+  /* Liquid simulation has a texture space that based on the bounds of the fluid mesh.
+   * This does not seem particularly useful, but it's backwards compatible.
+   *
+   * Smoke simulation needs a texture space relative to the adaptive domain bounds, not the
+   * original mesh. So recompute it at this point in the modifier stack. See T58492. */
+  BKE_mesh_texspace_calc(result);
+
   return result;
 }
 
