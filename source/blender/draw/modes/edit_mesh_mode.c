@@ -89,7 +89,6 @@ typedef struct EDIT_MESH_PassList {
 
 typedef struct EDIT_MESH_FramebufferList {
   struct GPUFrameBuffer *occlude_wire_fb;
-  struct GPUFrameBuffer *ghost_wire_fb;
 } EDIT_MESH_FramebufferList;
 
 typedef struct EDIT_MESH_StorageList {
@@ -158,12 +157,6 @@ typedef struct EDIT_MESH_PrivateData {
 
   EDIT_MESH_ComponentShadingGroupList edit_shgrps;
   EDIT_MESH_ComponentShadingGroupList edit_in_front_shgrps;
-
-  DRWShadingGroup *vert_shgrp_in_front;
-  DRWShadingGroup *edge_shgrp_in_front;
-  DRWShadingGroup *face_shgrp_in_front;
-  DRWShadingGroup *face_cage_shgrp_in_front;
-  DRWShadingGroup *facedot_shgrp_in_front;
 
   DRWShadingGroup *facefill_occluded_shgrp;
   DRWShadingGroup *facefill_occluded_cage_shgrp;
