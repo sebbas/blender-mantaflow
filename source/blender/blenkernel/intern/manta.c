@@ -1727,8 +1727,8 @@ static void emit_from_particles(Object *flow_ob,
       totchild = psys->totchild * psys->part->disp / 100;
     }
 
-    particle_pos = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles");
-    particle_vel = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles");
+    particle_pos = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles_pos");
+    particle_vel = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles_vel");
 
     /* setup particle radius emission if enabled */
     if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {

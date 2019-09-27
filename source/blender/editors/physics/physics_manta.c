@@ -163,7 +163,7 @@ static bool manta_initpaths(MantaJob *job, ReportList *reports)
     BLI_strncpy(tmpDir, mds->cache_directory, FILE_MAXDIR);
     BLI_path_abs(tmpDir, relbase);
 
-    /* Ensure whole path exists and is wirtable. */
+    /* Ensure whole path exists and is writable. */
     if (!BLI_dir_create_recursive(tmpDir)) {
       BKE_reportf(reports,
                   RPT_ERROR,
@@ -171,6 +171,9 @@ static bool manta_initpaths(MantaJob *job, ReportList *reports)
                   "please define a valid cache path manually",
                   tmpDir);
     }
+    /* Copy final dir back into domain settings */
+    BLI_strncpy(mds->cache_directory, tmpDir, FILE_MAXDIR);
+
     return false;
   }
 
@@ -518,7 +521,9 @@ static int manta_bake_exec(struct bContext *C, struct wmOperator *op)
     manta_bake_free(job);
     return OPERATOR_CANCELLED;
   }
-  manta_initpaths(job, op->reports);
+  if (!manta_initpaths(job, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
   manta_bake_startjob(job, NULL, NULL, NULL);
   manta_bake_endjob(job);
   manta_bake_free(job);
@@ -542,7 +547,9 @@ static int manta_bake_invoke(struct bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  manta_initpaths(job, op->reports);
+  if (!manta_initpaths(job, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
 
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                               CTX_wm_window(C),
@@ -552,7 +559,7 @@ static int manta_bake_invoke(struct bContext *C,
                               WM_JOB_TYPE_OBJECT_SIM_MANTA);
 
   WM_jobs_customdata_set(wm_job, job, manta_bake_free);
-  WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
+  WM_jobs_timer(wm_job, 0.01, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
   WM_jobs_callbacks(wm_job, manta_bake_startjob, NULL, NULL, manta_bake_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
@@ -613,7 +620,9 @@ static int manta_free_exec(struct bContext *C, struct wmOperator *op)
   job->type = op->type->idname;
   job->name = op->type->name;
 
-  manta_initpaths(job, op->reports);
+  if (!manta_initpaths(job, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
 
   wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
                               CTX_wm_window(C),
@@ -623,7 +632,7 @@ static int manta_free_exec(struct bContext *C, struct wmOperator *op)
                               WM_JOB_TYPE_OBJECT_SIM_MANTA);
 
   WM_jobs_customdata_set(wm_job, job, manta_bake_free);
-  WM_jobs_timer(wm_job, 0.1, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
+  WM_jobs_timer(wm_job, 0.01, NC_OBJECT | ND_MODIFIER, NC_OBJECT | ND_MODIFIER);
   WM_jobs_callbacks(wm_job, manta_free_startjob, NULL, NULL, manta_free_endjob);
 
   WM_set_locked_interface(CTX_wm_manager(C), true);
