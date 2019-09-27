@@ -1759,7 +1759,7 @@ static void emit_from_particles(Object *flow_ob,
         }
       }
 
-      state.time = DEG_get_ctime(depsgraph); /* use depsgraph time */
+      state.time = BKE_scene_frame_get(scene); /* DEG_get_ctime(depsgraph) does not give subframe time */
       if (psys_get_particle_state(&sim, p, &state, 0) == 0) {
         continue;
       }
@@ -3109,9 +3109,14 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
         CLAMP(scene->r.subframe, 0.0f, 1.0f);
         //printf("flow: frame (is first: %d): %d // scene current frame: %d // scene current subframe: %f\n", is_first_frame, frame, scene->r.cfra, scene->r.subframe);
 
+        /* Update frame time, this is considering current subframe fraction
+         * BLI_mutex_lock() called in manta_step(), so safe to update subframe here
+         * TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as subframes dont work with the latter yet */
+        BKE_object_modifier_update_subframe(
+            depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
+
         /* Emission from particles */
         if (sfs->source == FLUID_FLOW_SOURCE_PARTICLES) {
-          /* emit_from_particles() updates timestep internally */
           if (subframes) {
             emit_from_particles(flowobj, mds, sfs, &em_temp, depsgraph, scene, subframe_dt);
           }
@@ -3125,14 +3130,6 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
         }
         /* Emission from mesh */
         else if (sfs->source == FLUID_FLOW_SOURCE_MESH) {
-          /* Update flow object frame */
-          // BLI_mutex_lock() called in manta_step(), so safe to update subframe here
-
-          /* TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as subframes dont work with the latter yet */
-          BKE_object_modifier_update_subframe(
-              depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
-
-          /* Apply flow */
           if (subframes) {
             emit_from_mesh(flowobj, mds, sfs, &em_temp, subframe_dt);
           }
