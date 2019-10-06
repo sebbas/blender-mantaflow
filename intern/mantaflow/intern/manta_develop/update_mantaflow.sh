@@ -27,9 +27,10 @@ fi
 cd $MANTA_INSTALLATION
 
 # Check-out manta repo from git?
-if [ "$CLEAN_REPOSITORY" = true ]
+if [ "$CLEAN_REPOSITORY" = true ]; then
   if cd mantaflowgit/; then git pull; else git clone git@bitbucket.org:thunil/mantaflowgit.git; cd mantaflowgit; fi
   git checkout develop
+fi
 
 MANTA_OMP_PATH=$MANTA_INSTALLATION/mantaflowgit/build_omp/
 MANTA_TBB_PATH=$MANTA_INSTALLATION/mantaflowgit/build_tbb/
