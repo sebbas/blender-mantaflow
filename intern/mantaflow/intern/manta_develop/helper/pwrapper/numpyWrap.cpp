@@ -20,95 +20,100 @@
 namespace Manta {
 
 #if PY_VERSION_HEX < 0x03000000
-PyMODINIT_FUNC initNumpy() { import_array(); }
+PyMODINIT_FUNC initNumpy()
+{
+  import_array();
+}
 #endif
 
 // ------------------------------------------------------------------------
 // Class Functions
 // ------------------------------------------------------------------------
-PyArrayContainer::PyArrayContainer(void *_pParentPyArray) :
-	pParentPyArray(_pParentPyArray)
+PyArrayContainer::PyArrayContainer(void *_pParentPyArray) : pParentPyArray(_pParentPyArray)
 {
-	ExtractData(pParentPyArray);
+  ExtractData(pParentPyArray);
 }
 // ------------------------------------------------------------------------
-PyArrayContainer::PyArrayContainer(const PyArrayContainer &_Other) :
-	pParentPyArray(_Other.pParentPyArray)
+PyArrayContainer::PyArrayContainer(const PyArrayContainer &_Other)
+    : pParentPyArray(_Other.pParentPyArray)
 {
-	ExtractData(pParentPyArray);
-	Py_INCREF(pParentPyArray);
+  ExtractData(pParentPyArray);
+  Py_INCREF(pParentPyArray);
 }
 // ------------------------------------------------------------------------
 PyArrayContainer::~PyArrayContainer()
 {
-	Py_DECREF(pParentPyArray);
+  Py_DECREF(pParentPyArray);
 }
 // ------------------------------------------------------------------------
-PyArrayContainer &
-PyArrayContainer::operator=(const PyArrayContainer &_Other)
+PyArrayContainer &PyArrayContainer::operator=(const PyArrayContainer &_Other)
 {
-	if(this != &_Other) {
-		// DecRef the existing resource
-		Py_DECREF(pParentPyArray);
+  if (this != &_Other) {
+    // DecRef the existing resource
+    Py_DECREF(pParentPyArray);
 
-		// Relink new data
-		pParentPyArray = _Other.pParentPyArray;
-		ExtractData(pParentPyArray);
-		Py_INCREF(pParentPyArray);
-	}
-	return *this;
+    // Relink new data
+    pParentPyArray = _Other.pParentPyArray;
+    ExtractData(pParentPyArray);
+    Py_INCREF(pParentPyArray);
+  }
+  return *this;
 }
 // ------------------------------------------------------------------------
-void
-PyArrayContainer::ExtractData(void *_pParentPyArray)
+void PyArrayContainer::ExtractData(void *_pParentPyArray)
 {
-	PyArrayObject *pParent = reinterpret_cast<PyArrayObject *>(pParentPyArray);
+  PyArrayObject *pParent = reinterpret_cast<PyArrayObject *>(pParentPyArray);
 
-	pData = PyArray_DATA(pParent);
-	TotalSize = PyArray_SIZE(pParent);
+  pData = PyArray_DATA(pParent);
+  TotalSize = PyArray_SIZE(pParent);
 
-	int iDataType = PyArray_TYPE(pParent);
-	switch(iDataType) {
-	case NPY_FLOAT:
-		DataType = N_FLOAT;
-		break;
-	case NPY_DOUBLE:
-		DataType = N_DOUBLE;
-		break;
-	case NPY_INT:
-		DataType = N_INT;
-		break;
-	default:
-		errMsg("unknown type of Numpy array");
-		break;
-	}
+  int iDataType = PyArray_TYPE(pParent);
+  switch (iDataType) {
+    case NPY_FLOAT:
+      DataType = N_FLOAT;
+      break;
+    case NPY_DOUBLE:
+      DataType = N_DOUBLE;
+      break;
+    case NPY_INT:
+      DataType = N_INT;
+      break;
+    default:
+      errMsg("unknown type of Numpy array");
+      break;
+  }
 }
 
 // ------------------------------------------------------------------------
 // Conversion Functions
 // ------------------------------------------------------------------------
 
-template<>
-PyArrayContainer
-fromPy<PyArrayContainer>(PyObject *obj)
+template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject *obj)
 {
-	if(PyArray_API == NULL) {
-		// python 3 uses the return value
-#		if PY_VERSION_HEX >= 0x03000000
-		import_array();
-#		else
-		initNumpy();
-#		endif
-	}
+  if (PyArray_API == NULL) {
+    // python 3 uses the return value
+#if PY_VERSION_HEX >= 0x03000000
+    import_array();
+#else
+    initNumpy();
+#endif
+  }
 
-	if(!PyArray_Check(obj)) {
-		errMsg("argument is not an numpy array");
-	}
+  if (!PyArray_Check(obj)) {
+    errMsg("argument is not an numpy array");
+  }
 
-	PyArrayObject *obj_p = reinterpret_cast<PyArrayObject *>(PyArray_CheckFromAny(obj, NULL, 0, 0, /*NPY_ARRAY_ENSURECOPY*/ NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED, NULL));
-	PyArrayContainer container = PyArrayContainer(obj_p);
+  PyArrayObject *obj_p = reinterpret_cast<PyArrayObject *>(
+      PyArray_CheckFromAny(obj,
+                           NULL,
+                           0,
+                           0,
+                           /*NPY_ARRAY_ENSURECOPY*/ NPY_ARRAY_C_CONTIGUOUS |
+                               NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED,
+                           NULL));
+  PyArrayContainer container = PyArrayContainer(obj_p);
 
-	return container;
+  return container;
 }
 
 // template<> PyArrayContainer* fromPyPtr<PyArrayContainer>(PyObject* obj, std::vector<void*>* tmp)
@@ -120,4 +125,4 @@ fromPy<PyArrayContainer>(PyObject *obj)
 // 	*((PyArrayContainer*) ptr) = fromPy<PyArrayContainer>(obj);
 // 	return (PyArrayContainer*) ptr;
 // }
-}
+}  // namespace Manta

@@ -1,11 +1,16 @@
 #include "levelset.h"
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","LevelsetGrid","Grid<$BT$>"); template<> const char* Namify<LevelsetGrid >::S = "LevelsetGrid"; 
->LevelsetGrid^
-@LevelsetGrid^^Grid^Real
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","LevelsetGrid",LevelsetGrid::_W_0); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","reinitMarching",LevelsetGrid::_W_1); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","createMesh",LevelsetGrid::_W_2); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","join",LevelsetGrid::_W_3); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","subtract",LevelsetGrid::_W_4); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","initFromFlags",LevelsetGrid::_W_5); 
-+LevelsetGrid^ static const Pb::Register _R_$IDX$ ("LevelsetGrid","fillHoles",LevelsetGrid::_W_6); 
++ LevelsetGrid ^ static const Pb::Register _R_$IDX$("LevelsetGrid", "LevelsetGrid", "Grid<$BT$>");
+template<> const char *Namify<LevelsetGrid>::S = "LevelsetGrid";
+> LevelsetGrid ^ @LevelsetGrid ^ ^Grid ^ Real + LevelsetGrid ^
+    static const Pb::Register _R_$IDX$("LevelsetGrid", "LevelsetGrid", LevelsetGrid::_W_0);
++ LevelsetGrid ^
+    static const Pb::Register _R_$IDX$("LevelsetGrid", "reinitMarching", LevelsetGrid::_W_1);
++ LevelsetGrid ^
+    static const Pb::Register _R_$IDX$("LevelsetGrid", "createMesh", LevelsetGrid::_W_2);
++ LevelsetGrid ^ static const Pb::Register _R_$IDX$("LevelsetGrid", "join", LevelsetGrid::_W_3);
++ LevelsetGrid ^
+    static const Pb::Register _R_$IDX$("LevelsetGrid", "subtract", LevelsetGrid::_W_4);
++ LevelsetGrid ^
+    static const Pb::Register _R_$IDX$("LevelsetGrid", "initFromFlags", LevelsetGrid::_W_5);
++ LevelsetGrid ^
+    static const Pb::Register _R_$IDX$("LevelsetGrid", "fillHoles", LevelsetGrid::_W_6);
