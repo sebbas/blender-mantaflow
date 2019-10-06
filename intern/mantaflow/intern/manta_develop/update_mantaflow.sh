@@ -10,17 +10,27 @@
 MANTA_INSTALLATION=/Users/sebbas/Developer/Mantaflow/mantaflowDevelop
 BLENDER_INSTALLATION=/Users/sebbas/Developer/Blender/fluid-mantaflow
 
+# CHECK OUT MANTAFLOW REPOSITORY
+CLEAN_REPOSITORY=false
+
 # ==================== 2) BUILD MANTAFLOW (OPENMP AND TBB) ===============================
 
 # Need non-default (OpenMP enabled) compiler to build Mantaflow on OSX
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  export CC=/usr/local/Cellar/gcc/9.1.0/bin/gcc-9
-  export CXX=/usr/local/Cellar/gcc/9.1.0/bin/g++-9
+  #export CC=/usr/local/Cellar/gcc/9.2.0/bin/gcc-9
+  #export CXX=/usr/local/Cellar/gcc/9.2.0/bin/g++-9
+  export CC=/usr/local/opt/llvm/bin/clang
+  export CXX=/usr/local/opt/llvm/bin/clang++
+  export LDFLAGS=-L/usr/local/opt/llvm/lib
 fi
 
 cd $MANTA_INSTALLATION
-if cd mantaflowgit/; then git pull; else git clone git@bitbucket.org:thunil/mantaflowgit.git; cd mantaflowgit; fi
-git checkout develop
+
+# Check-out manta repo from git?
+if [ "$CLEAN_REPOSITORY" = true ]
+  if cd mantaflowgit/; then git pull; else git clone git@bitbucket.org:thunil/mantaflowgit.git; cd mantaflowgit; fi
+  git checkout develop
+
 MANTA_OMP_PATH=$MANTA_INSTALLATION/mantaflowgit/build_omp/
 MANTA_TBB_PATH=$MANTA_INSTALLATION/mantaflowgit/build_tbb/
 mkdir -p $MANTA_OMP_PATH $MANTA_TBB_PATH
@@ -48,7 +58,15 @@ BLENDER_TBB_PATH=$BLENDER_INSTALLATION/blender/intern/mantaflow/intern/manta_dev
 mkdir -p $BLENDER_TBB_PATH && cp -Rf $MANTA_INSTALLATION/mantaflowgit/build_tbb/pp/source/. "$_"
 echo "Copied Mantaflow TBB preprocessed files to" $BLENDER_TBB_PATH
 
-# ==================== 4) CHECK CMAKE SETUP ==============================================
+# ==================== 4) CLANG-FORMAT ===================================================
+
+cd $BLENDER_INSTALLATION
+MANTA_SRC=blender/intern/mantaflow/intern/manta_develop
+
+cd $MANTA_SRC
+find . -iname *.h -o -iname *.cpp -o -iname *.reg | xargs clang-format -i -style=file
+
+# ==================== 5) CHECK CMAKE SETUP ==============================================
 
 # Make sure that all files copied from Mantaflow are listed in intern/mantaflow/CMakeLists.txt
 # Especially if new source files / plugins were added to Mantaflow.
