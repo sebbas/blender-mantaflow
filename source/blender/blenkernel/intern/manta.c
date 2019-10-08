@@ -836,52 +836,52 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     tmds->data_depth = mds->data_depth;
   }
   else if (tmmd->flow) {
-    MantaFlowSettings *tsfs = tmmd->flow;
-    MantaFlowSettings *sfs = mmd->flow;
+    MantaFlowSettings *tmfs = tmmd->flow;
+    MantaFlowSettings *mfs = mmd->flow;
 
-    tsfs->psys = sfs->psys;
-    tsfs->noise_texture = sfs->noise_texture;
+    tmfs->psys = mfs->psys;
+    tmfs->noise_texture = mfs->noise_texture;
 
     /* initial velocity */
-    tsfs->vel_multi = sfs->vel_multi;
-    tsfs->vel_normal = sfs->vel_normal;
-    tsfs->vel_random = sfs->vel_random;
-    tsfs->vel_coord[0] = sfs->vel_coord[0];
-    tsfs->vel_coord[1] = sfs->vel_coord[1];
-    tsfs->vel_coord[2] = sfs->vel_coord[2];
+    tmfs->vel_multi = mfs->vel_multi;
+    tmfs->vel_normal = mfs->vel_normal;
+    tmfs->vel_random = mfs->vel_random;
+    tmfs->vel_coord[0] = mfs->vel_coord[0];
+    tmfs->vel_coord[1] = mfs->vel_coord[1];
+    tmfs->vel_coord[2] = mfs->vel_coord[2];
 
     /* emission */
-    tsfs->density = sfs->density;
-    copy_v3_v3(tsfs->color, sfs->color);
-    tsfs->fuel_amount = sfs->fuel_amount;
-    tsfs->temp = sfs->temp;
-    tsfs->volume_density = sfs->volume_density;
-    tsfs->surface_distance = sfs->surface_distance;
-    tsfs->particle_size = sfs->particle_size;
-    tsfs->subframes = sfs->subframes;
+    tmfs->density = mfs->density;
+    copy_v3_v3(tmfs->color, mfs->color);
+    tmfs->fuel_amount = mfs->fuel_amount;
+    tmfs->temp = mfs->temp;
+    tmfs->volume_density = mfs->volume_density;
+    tmfs->surface_distance = mfs->surface_distance;
+    tmfs->particle_size = mfs->particle_size;
+    tmfs->subframes = mfs->subframes;
 
     /* texture control */
-    tsfs->texture_size = sfs->texture_size;
-    tsfs->texture_offset = sfs->texture_offset;
-    BLI_strncpy(tsfs->uvlayer_name, sfs->uvlayer_name, sizeof(tsfs->uvlayer_name));
-    tsfs->vgroup_density = sfs->vgroup_density;
+    tmfs->texture_size = mfs->texture_size;
+    tmfs->texture_offset = mfs->texture_offset;
+    BLI_strncpy(tmfs->uvlayer_name, mfs->uvlayer_name, sizeof(tmfs->uvlayer_name));
+    tmfs->vgroup_density = mfs->vgroup_density;
 
-    tsfs->type = sfs->type;
-    tsfs->behavior = sfs->behavior;
-    tsfs->source = sfs->source;
-    tsfs->texture_type = sfs->texture_type;
-    tsfs->flags = sfs->flags;
+    tmfs->type = mfs->type;
+    tmfs->behavior = mfs->behavior;
+    tmfs->source = mfs->source;
+    tmfs->texture_type = mfs->texture_type;
+    tmfs->flags = mfs->flags;
   }
   else if (tmmd->effec) {
-    MantaCollSettings *tscs = tmmd->effec;
-    MantaCollSettings *scs = mmd->effec;
+    MantaCollSettings *tmcs = tmmd->effec;
+    MantaCollSettings *mcs = mmd->effec;
 
-    tscs->surface_distance = scs->surface_distance;
-    tscs->type = scs->type;
+    tmcs->surface_distance = mcs->surface_distance;
+    tmcs->type = mcs->type;
 
     /* guiding options */
-    tscs->guiding_mode = scs->guiding_mode;
-    tscs->vel_multi = scs->vel_multi;
+    tmcs->guiding_mode = mcs->guiding_mode;
+    tmcs->vel_multi = mcs->vel_multi;
   }
 }
 
@@ -925,7 +925,7 @@ static int get_light(ViewLayer *view_layer, float *light)
 
 typedef struct ObstaclesFromDMData {
   MantaDomainSettings *mds;
-  MantaCollSettings *scs;
+  MantaCollSettings *mcs;
   const MVert *mvert;
   const MLoop *mloop;
   const MLoopTri *looptri;
@@ -990,10 +990,10 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
                            weights);
 
           /* Guiding has additional velocity multiplier */
-          if (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
-            mul_v3_fl(hit_vel, data->scs->vel_multi);
+          if (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
+            mul_v3_fl(hit_vel, data->mcs->vel_multi);
 
-            switch (data->scs->guiding_mode) {
+            switch (data->mcs->guiding_mode) {
               case FLUID_EFFECTOR_GUIDING_AVERAGED:
                 data->velocityX[index] = (data->velocityX[index] + hit_vel[0]) * 0.5f;
                 data->velocityY[index] = (data->velocityY[index] + hit_vel[1]) * 0.5f;
@@ -1019,14 +1019,14 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
           }
           else {
             /* Apply (i.e. add) effector object velocity */
-            data->velocityX[index] += (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
-                                          hit_vel[0] * data->scs->vel_multi :
+            data->velocityX[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
+                                          hit_vel[0] * data->mcs->vel_multi :
                                           hit_vel[0];
-            data->velocityY[index] += (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
-                                          hit_vel[1] * data->scs->vel_multi :
+            data->velocityY[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
+                                          hit_vel[1] * data->mcs->vel_multi :
                                           hit_vel[1];
-            data->velocityZ[index] += (data->scs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
-                                          hit_vel[2] * data->scs->vel_multi :
+            data->velocityZ[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
+                                          hit_vel[2] * data->mcs->vel_multi :
                                           hit_vel[2];
             //printf("adding effector object vel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], mds->dx);
           }
@@ -1036,7 +1036,7 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
       /* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
       if (data->distances_map) {
         update_mesh_distances(
-            index, data->distances_map, data->tree, ray_start, data->scs->surface_distance);
+            index, data->distances_map, data->tree, ray_start, data->mcs->surface_distance);
 
         /* Ensure that num objects are also counted inside object. But dont count twice (see object inc for nearest point) */
         if (data->distances_map[index] < 0 && !hasIncObj) {
@@ -1049,7 +1049,7 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
 
 static void obstacles_from_mesh(Object *coll_ob,
                                 MantaDomainSettings *mds,
-                                MantaCollSettings *scs,
+                                MantaCollSettings *mcs,
                                 float *distances_map,
                                 float *velocityX,
                                 float *velocityY,
@@ -1057,7 +1057,7 @@ static void obstacles_from_mesh(Object *coll_ob,
                                 int *num_objects,
                                 float dt)
 {
-  if (!scs->mesh) {
+  if (!mcs->mesh) {
     return;
   }
   {
@@ -1071,7 +1071,7 @@ static void obstacles_from_mesh(Object *coll_ob,
     float *vert_vel = NULL;
     bool has_velocity = false;
 
-    me = BKE_mesh_copy_for_eval(scs->mesh, true);
+    me = BKE_mesh_copy_for_eval(mcs->mesh, true);
 
     /* Duplicate vertices to modify. */
     if (me->mvert) {
@@ -1091,13 +1091,13 @@ static void obstacles_from_mesh(Object *coll_ob,
     {
       vert_vel = MEM_callocN(sizeof(float) * numverts * 3, "manta_obs_velocity");
 
-      if (scs->numverts != numverts || !scs->verts_old) {
-        if (scs->verts_old) {
-          MEM_freeN(scs->verts_old);
+      if (mcs->numverts != numverts || !mcs->verts_old) {
+        if (mcs->verts_old) {
+          MEM_freeN(mcs->verts_old);
         }
 
-        scs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "manta_obs_verts_old");
-        scs->numverts = numverts;
+        mcs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "manta_obs_verts_old");
+        mcs->numverts = numverts;
       }
       else {
         has_velocity = true;
@@ -1124,15 +1124,15 @@ static void obstacles_from_mesh(Object *coll_ob,
       /* vert velocity */
       add_v3fl_v3fl_v3i(co, mvert[i].co, mds->shift);
       if (has_velocity) {
-        sub_v3_v3v3(&vert_vel[i * 3], co, &scs->verts_old[i * 3]);
+        sub_v3_v3v3(&vert_vel[i * 3], co, &mcs->verts_old[i * 3]);
         mul_v3_fl(&vert_vel[i * 3], mds->dx / dt);
       }
-      copy_v3_v3(&scs->verts_old[i * 3], co);
+      copy_v3_v3(&mcs->verts_old[i * 3], co);
     }
 
     if (BKE_bvhtree_from_mesh_get(&treeData, me, BVHTREE_FROM_LOOPTRI, 4)) {
       ObstaclesFromDMData data = {.mds = mds,
-                                  .scs = scs,
+                                  .mcs = mcs,
                                   .mvert = mvert,
                                   .mloop = mloop,
                                   .looptri = looptri,
@@ -1175,14 +1175,14 @@ static void update_obstacleflags(MantaDomainSettings *mds, Object **collobjs, in
                                                                         eModifierType_Manta);
 
     if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effec) {
-      MantaCollSettings *scs = mmd2->effec;
-      if (!scs) {
+      MantaCollSettings *mcs = mmd2->effec;
+      if (!mcs) {
         break;
       }
-      if (scs->type == FLUID_EFFECTOR_TYPE_COLLISION) {
+      if (mcs->type == FLUID_EFFECTOR_TYPE_COLLISION) {
         active_fields |= FLUID_DOMAIN_ACTIVE_OBSTACLE;
       }
-      if (scs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
+      if (mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
         active_fields |= FLUID_DOMAIN_ACTIVE_GUIDING;
       }
     }
@@ -1273,7 +1273,7 @@ static void update_obstacles(Depsgraph *depsgraph,
 
     // DG TODO: check if modifier is active?
     if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effec) {
-      MantaCollSettings *scs = mmd2->effec;
+      MantaCollSettings *mcs = mmd2->effec;
 
       /* Length of one frame. If using adaptive stepping, length is smaller than actual frame length */
       float adaptframe_length = time_per_frame / frame_length;
@@ -1294,12 +1294,12 @@ static void update_obstacles(Depsgraph *depsgraph,
       BKE_object_modifier_update_subframe(
           depsgraph, scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
 
-      if (scs && (scs->type == FLUID_EFFECTOR_TYPE_COLLISION)) {
-        obstacles_from_mesh(collob, mds, scs, phiObsIn, velx, vely, velz, num_obstacles, dt);
+      if (mcs && (mcs->type == FLUID_EFFECTOR_TYPE_COLLISION)) {
+        obstacles_from_mesh(collob, mds, mcs, phiObsIn, velx, vely, velz, num_obstacles, dt);
       }
-      if (scs && (scs->type == FLUID_EFFECTOR_TYPE_GUIDE)) {
+      if (mcs && (mcs->type == FLUID_EFFECTOR_TYPE_GUIDE)) {
         obstacles_from_mesh(
-            collob, mds, scs, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
+            collob, mds, mcs, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
       }
     }
   }
@@ -1592,7 +1592,7 @@ static void em_combineMaps(
 }
 
 typedef struct EmitFromParticlesData {
-  MantaFlowSettings *sfs;
+  MantaFlowSettings *mfs;
   KDTree_3d *tree;
   int hires_multiplier;
 
@@ -1612,7 +1612,7 @@ static void emit_from_particles_task_cb(void *__restrict userdata,
                                         const TaskParallelTLS *__restrict UNUSED(tls))
 {
   EmitFromParticlesData *data = userdata;
-  MantaFlowSettings *sfs = data->sfs;
+  MantaFlowSettings *mfs = data->mfs;
   EmissionMap *em = data->em;
   const int hires_multiplier = data->hires_multiplier;
 
@@ -1640,10 +1640,10 @@ static void emit_from_particles_task_cb(void *__restrict userdata,
                                      1.0f :
                                      (1.0f - (nearest.dist - data->solid) / data->smooth);
           /* Uses particle velocity as initial velocity for smoke */
-          if (sfs->flags & FLUID_FLOW_INITVELOCITY &&
-              (sfs->psys->part->phystype != PART_PHYS_NO)) {
+          if (mfs->flags & FLUID_FLOW_INITVELOCITY &&
+              (mfs->psys->part->phystype != PART_PHYS_NO)) {
             madd_v3_v3fl(
-                &em->velocity[index * 3], &data->particle_vel[nearest.index * 3], sfs->vel_multi);
+                &em->velocity[index * 3], &data->particle_vel[nearest.index * 3], mfs->vel_multi);
           }
         }
       }
@@ -1677,17 +1677,17 @@ static void emit_from_particles_task_cb(void *__restrict userdata,
 
 static void emit_from_particles(Object *flow_ob,
                                 MantaDomainSettings *mds,
-                                MantaFlowSettings *sfs,
+                                MantaFlowSettings *mfs,
                                 EmissionMap *em,
                                 Depsgraph *depsgraph,
                                 Scene *scene,
                                 float dt)
 {
-  if (sfs && sfs->psys && sfs->psys->part &&
-      ELEM(sfs->psys->part->type, PART_EMITTER, PART_FLUID))  // is particle system selected
+  if (mfs && mfs->psys && mfs->psys->part &&
+      ELEM(mfs->psys->part->type, PART_EMITTER, PART_FLUID))  // is particle system selected
   {
     ParticleSimulationData sim;
-    ParticleSystem *psys = sfs->psys;
+    ParticleSystem *psys = mfs->psys;
     float *particle_pos;
     float *particle_vel;
     int totpart = psys->totpart, totchild;
@@ -1696,7 +1696,7 @@ static void emit_from_particles(Object *flow_ob,
     int bounds_margin = 1;
 
     /* radius based flow */
-    const float solid = sfs->particle_size * 0.5f;
+    const float solid = mfs->particle_size * 0.5f;
     const float smooth = 0.5f; /* add 0.5 cells of linear falloff to reduce aliasing */
     int hires_multiplier = 1;
     KDTree_3d *tree = NULL;
@@ -1731,7 +1731,7 @@ static void emit_from_particles(Object *flow_ob,
     particle_vel = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles_vel");
 
     /* setup particle radius emission if enabled */
-    if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {
+    if (mfs->flags & FLUID_FLOW_USE_PART_SIZE) {
       tree = BLI_kdtree_3d_new(psys->totpart + psys->totchild);
 
       /* check need for high resolution map */
@@ -1773,7 +1773,7 @@ static void emit_from_particles(Object *flow_ob,
       copy_v3_v3(&particle_vel[valid_particles * 3], state.vel);
       mul_mat3_m4_v3(mds->imat, &particle_vel[valid_particles * 3]);
 
-      if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {
+      if (mfs->flags & FLUID_FLOW_USE_PART_SIZE) {
         BLI_kdtree_3d_insert(tree, valid_particles, pos);
       }
 
@@ -1784,9 +1784,9 @@ static void emit_from_particles(Object *flow_ob,
 
     /* set emission map */
     clampBoundsInDomain(mds, em->min, em->max, NULL, NULL, bounds_margin, dt);
-    em_allocateData(em, sfs->flags & FLUID_FLOW_INITVELOCITY, hires_multiplier);
+    em_allocateData(em, mfs->flags & FLUID_FLOW_INITVELOCITY, hires_multiplier);
 
-    if (!(sfs->flags & FLUID_FLOW_USE_PART_SIZE)) {
+    if (!(mfs->flags & FLUID_FLOW_USE_PART_SIZE)) {
       for (p = 0; p < valid_particles; p++) {
         int cell[3];
         size_t i = 0;
@@ -1812,8 +1812,8 @@ static void emit_from_particles(Object *flow_ob,
         /* Add influence to emission map */
         em->influence[index] = 1.0f;
         /* Uses particle velocity as initial velocity for smoke */
-        if (sfs->flags & FLUID_FLOW_INITVELOCITY && (psys->part->phystype != PART_PHYS_NO)) {
-          madd_v3_v3fl(&em->velocity[index * 3], &particle_vel[p * 3], sfs->vel_multi);
+        if (mfs->flags & FLUID_FLOW_INITVELOCITY && (psys->part->phystype != PART_PHYS_NO)) {
+          madd_v3_v3fl(&em->velocity[index * 3], &particle_vel[p * 3], mfs->vel_multi);
         }
       }  // particles loop
     }
@@ -1834,7 +1834,7 @@ static void emit_from_particles(Object *flow_ob,
       BLI_kdtree_3d_balance(tree);
 
       EmitFromParticlesData data = {
-          .sfs = sfs,
+          .mfs = mfs,
           .tree = tree,
           .hires_multiplier = hires_multiplier,
           .hr = hr,
@@ -1854,7 +1854,7 @@ static void emit_from_particles(Object *flow_ob,
       BLI_task_parallel_range(min[2], max[2], &data, emit_from_particles_task_cb, &settings);
     }
 
-    if (sfs->flags & FLUID_FLOW_USE_PART_SIZE) {
+    if (mfs->flags & FLUID_FLOW_USE_PART_SIZE) {
       BLI_kdtree_3d_free(tree);
     }
 
@@ -1936,7 +1936,7 @@ static void update_mesh_distances(int index,
   }
 }
 
-static void sample_mesh(MantaFlowSettings *sfs,
+static void sample_mesh(MantaFlowSettings *mfs,
                         const MVert *mvert,
                         const MLoop *mloop,
                         const MLoopTri *mlooptri,
@@ -1966,11 +1966,11 @@ static void sample_mesh(MantaFlowSettings *sfs,
   hit.index = -1;
   hit.dist = 9999;
   nearest.index = -1;
-  nearest.dist_sq = sfs->surface_distance *
-                    sfs->surface_distance; /* find_nearest uses squared distance */
+  nearest.dist_sq = mfs->surface_distance *
+                    mfs->surface_distance; /* find_nearest uses squared distance */
 
   /* Check volume collision */
-  if (sfs->volume_density) {
+  if (mfs->volume_density) {
     if (BLI_bvhtree_ray_cast(treeData->tree,
                              ray_start,
                              ray_dir,
@@ -1991,7 +1991,7 @@ static void sample_mesh(MantaFlowSettings *sfs,
         BLI_bvhtree_ray_cast(
             treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
         if (hit.index != -1) {
-          volume_factor = sfs->volume_density;
+          volume_factor = mfs->volume_density;
         }
       }
     }
@@ -2005,8 +2005,8 @@ static void sample_mesh(MantaFlowSettings *sfs,
     float n1[3], n2[3], n3[3], hit_normal[3];
 
     /* emit from surface based on distance */
-    if (sfs->surface_distance) {
-      sample_str = sqrtf(nearest.dist_sq) / sfs->surface_distance;
+    if (mfs->surface_distance) {
+      sample_str = sqrtf(nearest.dist_sq) / mfs->surface_distance;
       CLAMP(sample_str, 0.0f, 1.0f);
       sample_str = pow(1.0f - sample_str, 0.5f);
     }
@@ -2020,9 +2020,9 @@ static void sample_mesh(MantaFlowSettings *sfs,
     v3 = mloop[mlooptri[f_index].tri[2]].v;
     interp_weights_tri_v3(weights, mvert[v1].co, mvert[v2].co, mvert[v3].co, nearest.co);
 
-    if (sfs->flags & FLUID_FLOW_INITVELOCITY && velocity_map) {
+    if (mfs->flags & FLUID_FLOW_INITVELOCITY && velocity_map) {
       /* apply normal directional velocity */
-      if (sfs->vel_normal) {
+      if (mfs->vel_normal) {
         /* interpolate vertex normal vectors to get nearest point normal */
         normal_short_to_float_v3(n1, mvert[v1].no);
         normal_short_to_float_v3(n2, mvert[v2].no);
@@ -2032,25 +2032,25 @@ static void sample_mesh(MantaFlowSettings *sfs,
         /* apply normal directional and random velocity
          * - TODO: random disabled for now since it doesn't really work well
          *   as pressure calc smoothens it out. */
-        velocity_map[index * 3] += hit_normal[0] * sfs->vel_normal * 0.25f;
-        velocity_map[index * 3 + 1] += hit_normal[1] * sfs->vel_normal * 0.25f;
-        velocity_map[index * 3 + 2] += hit_normal[2] * sfs->vel_normal * 0.25f;
+        velocity_map[index * 3] += hit_normal[0] * mfs->vel_normal * 0.25f;
+        velocity_map[index * 3 + 1] += hit_normal[1] * mfs->vel_normal * 0.25f;
+        velocity_map[index * 3 + 2] += hit_normal[2] * mfs->vel_normal * 0.25f;
         /* TODO: for fire emitted from mesh surface we can use
          * Vf = Vs + (Ps/Pf - 1)*S to model gaseous expansion from solid to fuel */
       }
       /* apply object velocity */
-      if (has_velocity && sfs->vel_multi) {
+      if (has_velocity && mfs->vel_multi) {
         float hit_vel[3];
         interp_v3_v3v3v3(
             hit_vel, &vert_vel[v1 * 3], &vert_vel[v2 * 3], &vert_vel[v3 * 3], weights);
-        velocity_map[index * 3] += hit_vel[0] * sfs->vel_multi;
-        velocity_map[index * 3 + 1] += hit_vel[1] * sfs->vel_multi;
-        velocity_map[index * 3 + 2] += hit_vel[2] * sfs->vel_multi;
+        velocity_map[index * 3] += hit_vel[0] * mfs->vel_multi;
+        velocity_map[index * 3 + 1] += hit_vel[1] * mfs->vel_multi;
+        velocity_map[index * 3 + 2] += hit_vel[2] * mfs->vel_multi;
         //printf("adding flow object vel: [%f, %f, %f]\n", hit_vel[0], hit_vel[1], hit_vel[2]);
       }
-      velocity_map[index * 3] += sfs->vel_coord[0];
-      velocity_map[index * 3 + 1] += sfs->vel_coord[1];
-      velocity_map[index * 3 + 2] += sfs->vel_coord[2];
+      velocity_map[index * 3] += mfs->vel_coord[0];
+      velocity_map[index * 3 + 1] += mfs->vel_coord[1];
+      velocity_map[index * 3 + 2] += mfs->vel_coord[2];
     }
 
     /* apply vertex group influence if used */
@@ -2062,14 +2062,14 @@ static void sample_mesh(MantaFlowSettings *sfs,
     }
 
     /* apply emission texture */
-    if ((sfs->flags & FLUID_FLOW_TEXTUREEMIT) && sfs->noise_texture) {
+    if ((mfs->flags & FLUID_FLOW_TEXTUREEMIT) && mfs->noise_texture) {
       float tex_co[3] = {0};
       TexResult texres;
 
-      if (sfs->texture_type == FLUID_FLOW_TEXTURE_MAP_AUTO) {
-        tex_co[0] = ((x - flow_center[0]) / base_res[0]) / sfs->texture_size;
-        tex_co[1] = ((y - flow_center[1]) / base_res[1]) / sfs->texture_size;
-        tex_co[2] = ((z - flow_center[2]) / base_res[2] - sfs->texture_offset) / sfs->texture_size;
+      if (mfs->texture_type == FLUID_FLOW_TEXTURE_MAP_AUTO) {
+        tex_co[0] = ((x - flow_center[0]) / base_res[0]) / mfs->texture_size;
+        tex_co[1] = ((y - flow_center[1]) / base_res[1]) / mfs->texture_size;
+        tex_co[2] = ((z - flow_center[2]) / base_res[2] - mfs->texture_offset) / mfs->texture_size;
       }
       else if (mloopuv) {
         const float *uv[3];
@@ -2082,16 +2082,16 @@ static void sample_mesh(MantaFlowSettings *sfs,
         /* map between -1.0f and 1.0f */
         tex_co[0] = tex_co[0] * 2.0f - 1.0f;
         tex_co[1] = tex_co[1] * 2.0f - 1.0f;
-        tex_co[2] = sfs->texture_offset;
+        tex_co[2] = mfs->texture_offset;
       }
       texres.nor = NULL;
-      BKE_texture_get_value(NULL, sfs->noise_texture, tex_co, &texres, false);
+      BKE_texture_get_value(NULL, mfs->noise_texture, tex_co, &texres, false);
       sample_str *= texres.tin;
     }
   }
 
   /* multiply initial velocity by emitter influence */
-  if (sfs->flags & FLUID_FLOW_INITVELOCITY && velocity_map) {
+  if (mfs->flags & FLUID_FLOW_INITVELOCITY && velocity_map) {
     mul_v3_fl(&velocity_map[index * 3], sample_str);
   }
 
@@ -2101,7 +2101,7 @@ static void sample_mesh(MantaFlowSettings *sfs,
 
 typedef struct EmitFromDMData {
   MantaDomainSettings *mds;
-  MantaFlowSettings *sfs;
+  MantaFlowSettings *mfs;
   const MVert *mvert;
   const MLoop *mloop;
   const MLoopTri *mlooptri;
@@ -2144,7 +2144,7 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
         const float ray_start[3] = {((float)lx) + 0.5f, ((float)ly) + 0.5f, ((float)lz) + 0.5f};
 
         /* Emission for smoke and fire. Result in em->influence. Also, calculate invels */
-        sample_mesh(data->sfs,
+        sample_mesh(data->mfs,
                     data->mvert,
                     data->mloop,
                     data->mlooptri,
@@ -2166,7 +2166,7 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
 
         /* Calculate levelset from meshes. Result in em->distances */
         update_mesh_distances(
-            index, em->distances, data->tree, ray_start, data->sfs->surface_distance);
+            index, em->distances, data->tree, ray_start, data->mfs->surface_distance);
       }
 
       /* take high res samples if required */
@@ -2185,9 +2185,9 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
         };
 
         /* Emission for smoke and fire high. Result in em->influence_high */
-        if (data->sfs->type == FLUID_FLOW_TYPE_SMOKE || data->sfs->type == FLUID_FLOW_TYPE_FIRE ||
-            data->sfs->type == FLUID_FLOW_TYPE_SMOKEFIRE) {
-          sample_mesh(data->sfs,
+        if (data->mfs->type == FLUID_FLOW_TYPE_SMOKE || data->mfs->type == FLUID_FLOW_TYPE_FIRE ||
+            data->mfs->type == FLUID_FLOW_TYPE_SMOKEFIRE) {
+          sample_mesh(data->mfs,
                       data->mvert,
                       data->mloop,
                       data->mlooptri,
@@ -2214,9 +2214,9 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
 }
 
 static void emit_from_mesh(
-    Object *flow_ob, MantaDomainSettings *mds, MantaFlowSettings *sfs, EmissionMap *em, float dt)
+    Object *flow_ob, MantaDomainSettings *mds, MantaFlowSettings *mfs, EmissionMap *em, float dt)
 {
-  if (sfs->mesh) {
+  if (mfs->mesh) {
     Mesh *me = NULL;
     MVert *mvert = NULL;
     const MLoopTri *mlooptri = NULL;
@@ -2229,7 +2229,7 @@ static void emit_from_mesh(
     float *vert_vel = NULL;
     bool has_velocity = false;
 
-    int defgrp_index = sfs->vgroup_density - 1;
+    int defgrp_index = mfs->vgroup_density - 1;
     float flow_center[3] = {0};
     int min[3], max[3], res[3];
     int hires_multiplier = 1;
@@ -2237,7 +2237,7 @@ static void emit_from_mesh(
     /* copy mesh for thread safety because we modify it,
      * main issue is its VertArray being modified, then replaced and freed
      */
-    me = BKE_mesh_copy_for_eval(sfs->mesh, true);
+    me = BKE_mesh_copy_for_eval(mfs->mesh, true);
 
     /* Duplicate vertices to modify. */
     if (me->mvert) {
@@ -2251,17 +2251,17 @@ static void emit_from_mesh(
     mlooptri = BKE_mesh_runtime_looptri_ensure(me);
     numverts = me->totvert;
     dvert = CustomData_get_layer(&me->vdata, CD_MDEFORMVERT);
-    mloopuv = CustomData_get_layer_named(&me->ldata, CD_MLOOPUV, sfs->uvlayer_name);
+    mloopuv = CustomData_get_layer_named(&me->ldata, CD_MLOOPUV, mfs->uvlayer_name);
 
-    if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+    if (mfs->flags & FLUID_FLOW_INITVELOCITY) {
       vert_vel = MEM_callocN(sizeof(float) * numverts * 3, "manta_flow_velocity");
 
-      if (sfs->numverts != numverts || !sfs->verts_old) {
-        if (sfs->verts_old) {
-          MEM_freeN(sfs->verts_old);
+      if (mfs->numverts != numverts || !mfs->verts_old) {
+        if (mfs->verts_old) {
+          MEM_freeN(mfs->verts_old);
         }
-        sfs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "manta_flow_verts_old");
-        sfs->numverts = numverts;
+        mfs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "manta_flow_verts_old");
+        mfs->numverts = numverts;
       }
       else {
         has_velocity = true;
@@ -2285,14 +2285,14 @@ static void emit_from_mesh(
       normal_float_to_short_v3(mvert[i].no, n);
 
       /* vert velocity */
-      if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+      if (mfs->flags & FLUID_FLOW_INITVELOCITY) {
         float co[3];
         add_v3fl_v3fl_v3i(co, mvert[i].co, mds->shift);
         if (has_velocity) {
-          sub_v3_v3v3(&vert_vel[i * 3], co, &sfs->verts_old[i * 3]);
+          sub_v3_v3v3(&vert_vel[i * 3], co, &mfs->verts_old[i * 3]);
           mul_v3_fl(&vert_vel[i * 3], mds->dx / dt);
         }
-        copy_v3_v3(&sfs->verts_old[i * 3], co);
+        copy_v3_v3(&mfs->verts_old[i * 3], co);
       }
 
       /* calculate emission map bounds */
@@ -2307,8 +2307,8 @@ static void emit_from_mesh(
     }
 
     /* set emission map */
-    clampBoundsInDomain(mds, em->min, em->max, NULL, NULL, (int)ceil(sfs->surface_distance), dt);
-    em_allocateData(em, sfs->flags & FLUID_FLOW_INITVELOCITY, hires_multiplier);
+    clampBoundsInDomain(mds, em->min, em->max, NULL, NULL, (int)ceil(mfs->surface_distance), dt);
+    em_allocateData(em, mfs->flags & FLUID_FLOW_INITVELOCITY, hires_multiplier);
 
     /* setup loop bounds */
     for (i = 0; i < 3; i++) {
@@ -2322,7 +2322,7 @@ static void emit_from_mesh(
 
       EmitFromDMData data = {
           .mds = mds,
-          .sfs = sfs,
+          .mfs = mfs,
           .mvert = mvert,
           .mloop = mloop,
           .mlooptri = mlooptri,
@@ -2851,7 +2851,7 @@ BLI_INLINE void apply_outflow_fields(int index,
   }
 }
 
-BLI_INLINE void apply_inflow_fields(MantaFlowSettings *sfs,
+BLI_INLINE void apply_inflow_fields(MantaFlowSettings *mfs,
                                     float emission_value,
                                     float distance_value,
                                     int index,
@@ -2876,24 +2876,24 @@ BLI_INLINE void apply_inflow_fields(MantaFlowSettings *sfs,
   }
 
   /* add smoke inflow */
-  int absolute_flow = (sfs->flags & FLUID_FLOW_ABSOLUTE);
+  int absolute_flow = (mfs->flags & FLUID_FLOW_ABSOLUTE);
   float dens_old = (density) ? density[index] : 0.0;
   // float fuel_old = (fuel) ? fuel[index] : 0.0f;  /* UNUSED */
-  float dens_flow = (sfs->type == FLUID_FLOW_TYPE_FIRE) ? 0.0f : emission_value * sfs->density;
-  float fuel_flow = (fuel) ? emission_value * sfs->fuel_amount : 0.0f;
+  float dens_flow = (mfs->type == FLUID_FLOW_TYPE_FIRE) ? 0.0f : emission_value * mfs->density;
+  float fuel_flow = (fuel) ? emission_value * mfs->fuel_amount : 0.0f;
   /* add heat */
   if (heat && emission_value > 0.0f) {
-    heat[index] = ADD_IF_LOWER(heat[index], sfs->temp);
+    heat[index] = ADD_IF_LOWER(heat[index], mfs->temp);
   }
 
   /* set density and fuel - absolute mode */
   if (absolute_flow) {
-    if (density && sfs->type != FLUID_FLOW_TYPE_FIRE) {
+    if (density && mfs->type != FLUID_FLOW_TYPE_FIRE) {
       if (dens_flow > density[index]) {
         density[index] = dens_flow;
       }
     }
-    if (fuel && sfs->type != FLUID_FLOW_TYPE_SMOKE && fuel_flow) {
+    if (fuel && mfs->type != FLUID_FLOW_TYPE_SMOKE && fuel_flow) {
       if (fuel_flow > fuel[index]) {
         fuel[index] = fuel_flow;
       }
@@ -2901,11 +2901,11 @@ BLI_INLINE void apply_inflow_fields(MantaFlowSettings *sfs,
   }
   /* set density and fuel - additive mode */
   else {
-    if (density && sfs->type != FLUID_FLOW_TYPE_FIRE) {
+    if (density && mfs->type != FLUID_FLOW_TYPE_FIRE) {
       density[index] += dens_flow;
       CLAMP(density[index], 0.0f, 1.0f);
     }
-    if (fuel && sfs->type != FLUID_FLOW_TYPE_SMOKE && sfs->fuel_amount) {
+    if (fuel && mfs->type != FLUID_FLOW_TYPE_SMOKE && mfs->fuel_amount) {
       fuel[index] += fuel_flow;
       CLAMP(fuel[index], 0.0f, 10.0f);
     }
@@ -2914,9 +2914,9 @@ BLI_INLINE void apply_inflow_fields(MantaFlowSettings *sfs,
   /* set color */
   if (color_r && dens_flow) {
     float total_dens = density[index] / (dens_old + dens_flow);
-    color_r[index] = (color_r[index] + sfs->color[0] * dens_flow) * total_dens;
-    color_g[index] = (color_g[index] + sfs->color[1] * dens_flow) * total_dens;
-    color_b[index] = (color_b[index] + sfs->color[2] * dens_flow) * total_dens;
+    color_r[index] = (color_r[index] + mfs->color[0] * dens_flow) * total_dens;
+    color_g[index] = (color_g[index] + mfs->color[1] * dens_flow) * total_dens;
+    color_b[index] = (color_b[index] + mfs->color[2] * dens_flow) * total_dens;
   }
 
   /* set fire reaction coordinate */
@@ -2950,14 +2950,14 @@ static void update_flowsflags(MantaDomainSettings *mds, Object **flowobjs, int n
     }
 
     if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
-      MantaFlowSettings *sfs = mmd2->flow;
-      if (!sfs) {
+      MantaFlowSettings *mfs = mmd2->flow;
+      if (!mfs) {
         break;
       }
-      if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+      if (mfs->flags & FLUID_FLOW_INITVELOCITY) {
         active_fields |= FLUID_DOMAIN_ACTIVE_INVEL;
       }
-      if (sfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) {
+      if (mfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) {
         active_fields |= FLUID_DOMAIN_ACTIVE_OUTFLOW;
       }
       /* liquids done from here */
@@ -2966,23 +2966,23 @@ static void update_flowsflags(MantaDomainSettings *mds, Object **flowobjs, int n
       }
 
       /* activate heat field if flow produces any heat */
-      if (sfs->temp) {
+      if (mfs->temp) {
         active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
       }
       /* activate fuel field if flow adds any fuel */
-      if (sfs->fuel_amount &&
-          (sfs->type == FLUID_FLOW_TYPE_FIRE || sfs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
+      if (mfs->fuel_amount &&
+          (mfs->type == FLUID_FLOW_TYPE_FIRE || mfs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
         active_fields |= FLUID_DOMAIN_ACTIVE_FIRE;
       }
       /* activate color field if flows add smoke with varying colors */
-      if (sfs->density &&
-          (sfs->type == FLUID_FLOW_TYPE_SMOKE || sfs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
+      if (mfs->density &&
+          (mfs->type == FLUID_FLOW_TYPE_SMOKE || mfs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
         if (!(active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET)) {
-          copy_v3_v3(mds->active_color, sfs->color);
+          copy_v3_v3(mds->active_color, mfs->color);
           active_fields |= FLUID_DOMAIN_ACTIVE_COLOR_SET;
         }
-        else if (!equals_v3v3(mds->active_color, sfs->color)) {
-          copy_v3_v3(mds->active_color, sfs->color);
+        else if (!equals_v3v3(mds->active_color, mfs->color)) {
+          copy_v3_v3(mds->active_color, mfs->color);
           active_fields |= FLUID_DOMAIN_ACTIVE_COLORS;
         }
       }
@@ -3059,8 +3059,8 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
 
     /* Check for initialized smoke object */
     if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
-      MantaFlowSettings *sfs = mmd2->flow;
-      int subframes = sfs->subframes;
+      MantaFlowSettings *mfs = mmd2->flow;
+      int subframes = mfs->subframes;
       EmissionMap *em = &emaps[flowIndex];
 
       /* Length of one adaptive frame. If using adaptive stepping, length is smaller than actual frame length */
@@ -3116,25 +3116,25 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
             depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
 
         /* Emission from particles */
-        if (sfs->source == FLUID_FLOW_SOURCE_PARTICLES) {
+        if (mfs->source == FLUID_FLOW_SOURCE_PARTICLES) {
           if (subframes) {
-            emit_from_particles(flowobj, mds, sfs, &em_temp, depsgraph, scene, subframe_dt);
+            emit_from_particles(flowobj, mds, mfs, &em_temp, depsgraph, scene, subframe_dt);
           }
           else {
-            emit_from_particles(flowobj, mds, sfs, em, depsgraph, scene, subframe_dt);
+            emit_from_particles(flowobj, mds, mfs, em, depsgraph, scene, subframe_dt);
           }
 
-          if (!(sfs->flags & FLUID_FLOW_USE_PART_SIZE)) {
+          if (!(mfs->flags & FLUID_FLOW_USE_PART_SIZE)) {
             hires_multiplier = 1;
           }
         }
         /* Emission from mesh */
-        else if (sfs->source == FLUID_FLOW_SOURCE_MESH) {
+        else if (mfs->source == FLUID_FLOW_SOURCE_MESH) {
           if (subframes) {
-            emit_from_mesh(flowobj, mds, sfs, &em_temp, subframe_dt);
+            emit_from_mesh(flowobj, mds, mfs, &em_temp, subframe_dt);
           }
           else {
-            emit_from_mesh(flowobj, mds, sfs, em, subframe_dt);
+            emit_from_mesh(flowobj, mds, mfs, em, subframe_dt);
           }
         }
         else {
@@ -3145,7 +3145,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
         if (subframes) {
           /* Combine emission maps */
           em_combineMaps(
-              em, &em_temp, hires_multiplier, !(sfs->flags & FLUID_FLOW_ABSOLUTE), sample_size);
+              em, &em_temp, hires_multiplier, !(mfs->flags & FLUID_FLOW_ABSOLUTE), sample_size);
           em_freeData(&em_temp);
         }
       }
@@ -3226,7 +3226,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
 
     // check for initialized flow object
     if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
-      MantaFlowSettings *sfs = mmd2->flow;
+      MantaFlowSettings *mfs = mmd2->flow;
       EmissionMap *em = &emaps[flowIndex];
       float *velocity_map = em->velocity;
       float *emission_map = em->influence;
@@ -3273,7 +3273,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
               react_in[d_index] = react[d_index];
             }
 
-            if (sfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) {  // outflow
+            if (mfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) {  // outflow
               apply_outflow_fields(d_index,
                                    distance_map[e_index],
                                    density_in,
@@ -3285,8 +3285,8 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                    color_b_in,
                                    phiout_in);
             }
-            else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY && mmd2->time > 2) {
-              apply_inflow_fields(sfs,
+            else if (mfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY && mmd2->time > 2) {
+              apply_inflow_fields(mfs,
                                   0.0f,
                                   9999.0f,
                                   d_index,
@@ -3300,11 +3300,11 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                   phi_in,
                                   emission_in);
             }
-            else if (sfs->behavior == FLUID_FLOW_BEHAVIOR_INFLOW ||
-                     sfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY) {  // inflow
+            else if (mfs->behavior == FLUID_FLOW_BEHAVIOR_INFLOW ||
+                     mfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY) {  // inflow
               /* only apply inflow if enabled */
-              if (sfs->flags & FLUID_FLOW_USE_INFLOW) {
-                apply_inflow_fields(sfs,
+              if (mfs->flags & FLUID_FLOW_USE_INFLOW) {
+                apply_inflow_fields(mfs,
                                     emission_map[e_index],
                                     distance_map[e_index],
                                     d_index,
@@ -3318,7 +3318,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                     phi_in,
                                     emission_in);
                 /* initial velocity */
-                if (sfs->flags & FLUID_FLOW_INITVELOCITY) {
+                if (mfs->flags & FLUID_FLOW_INITVELOCITY) {
                   velx_initial[d_index] = velocity_map[e_index * 3];
                   vely_initial[d_index] = velocity_map[e_index * 3 + 1];
                   velz_initial[d_index] = velocity_map[e_index * 3 + 2];
