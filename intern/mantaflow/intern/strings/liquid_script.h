@@ -156,15 +156,16 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     \n\
     if using_obstacle_s$ID$:\n\
         mantaMsg('Initializing obstacle levelset')\n\
-        phiObsIn_s$ID$.fillHoles(maxsize=3)\n\
+        phiObsIn_s$ID$.fillHoles(maxDepth=int(res_s$ID$), boundaryWidth=2)\n\
         extrapolateLsSimple(phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
         extrapolateLsSimple(phi=phiObsIn_s$ID$, distance=int(res_s$ID$/2), inside=False)\n\
         phiObs_s$ID$.join(phiObsIn_s$ID$)\n\
         \n\
-        # additional sanity check: fill holes in phiObs which can result after joining with phiObsIn\n\
-        phiObs_s$ID$.fillHoles(maxsize=3)\n\
-        extrapolateLsSimple(phi=phiObs_s$ID$, distance=3, inside=True)\n\
-        extrapolateLsSimple(phi=phiObs_s$ID$, distance=3, inside=False)\n\
+        # Using boundaryWidth=2 to not search beginning from walls (just a performance optimization)\n\
+        # Additional sanity check: fill holes in phiObs which can result after joining with phiObsIn\n\
+        phiObs_s$ID$.fillHoles(maxDepth=int(res_s$ID$), boundaryWidth=2)\n\
+        extrapolateLsSimple(phi=phiObs_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
+        extrapolateLsSimple(phi=phiObs_s$ID$, distance=int(res_s$ID$/2), inside=False)\n\
     \n\
     mantaMsg('Initializing fluid levelset')\n\
     extrapolateLsSimple(phi=phiIn_s$ID$, distance=int(res_s$ID$/2), inside=True)\n\
@@ -178,7 +179,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
         phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
     #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
-    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$)\n\
+    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)#, fractions=fractions_s$ID$)\n\
     \n\
     # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
     if using_invel_s$ID$:\n\
@@ -186,7 +187,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
         resampleVec3ToMac(source=invelC_s$ID$, target=invel_s$ID$)\n\
         pVel_pp$ID$.setSource(invel_s$ID$, isMAC=True)\n\
     \n\
-    sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$, refillEmpty=True)\n\
+    sampleLevelsetWithParticles(phi=phiIn_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, discretization=particleNumber_s$ID$, randomness=randomness_s$ID$)\n\
     flags_s$ID$.updateFromLevelset(phi_s$ID$)\n\
     \n\
     mantaMsg('Liquid step / s$ID$.frame: ' + str(s$ID$.frame))\n\
@@ -255,10 +256,10 @@ def liquid_step_$ID$():\n\
         mantaMsg('Viscosity')\n\
         # diffusion param for solve = const * dt / dx^2\n\
         alphaV = viscosity_s$ID$ * s$ID$.timestep * float(res_s$ID$*res_s$ID$)\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$)\n\
         cgSolveDiffusion(flags_s$ID$, vel_s$ID$, alphaV)\n\
     \n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$)\n\
     \n\
     mantaMsg('Calculating curvature')\n\
     getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
@@ -268,10 +269,10 @@ def liquid_step_$ID$():\n\
         PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_sg$ID$, pressure=pressure_s$ID$, tau=tau_sg$ID$, sigma=sigma_sg$ID$, theta=theta_sg$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
-        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$)\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$)#, fractions=fractions_s$ID$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4) #, intoObs=True) # TODO (sebbas): uncomment for fraction support\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$)\n\
     \n\
     extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
     # set source grids for resampling, used in adjustNumber!\n\
@@ -284,7 +285,7 @@ const std::string liquid_step_mesh =
 def liquid_step_mesh_$ID$():\n\
     mantaMsg('Liquid step mesh')\n\
     \n\
-    interpolateGrid(target=phi_sm$ID$, source=phiTmp_s$ID$) # mis-use phiParts as temp grid\n\
+    interpolateGrid(target=phi_sm$ID$, source=phiTmp_s$ID$)\n\
     \n\
     # create surface\n\
     pp_sm$ID$.readParticles(pp_s$ID$)\n\
