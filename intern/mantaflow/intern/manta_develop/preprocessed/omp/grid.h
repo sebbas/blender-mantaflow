@@ -881,10 +881,39 @@ template<class T> class Grid : public GridBase {
     }
   }
 
+  //! permute grid axes, e.g. switch y with z (0,2,1)
+  void permuteAxes(int axis0, int axis1, int axis2);
+  static PyObject *_W_24(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  {
+    try {
+      PbArgs _args(_linargs, _kwds);
+      Grid *pbo = dynamic_cast<Grid *>(Pb::objFromPy(_self));
+      bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+      pbPreparePlugin(pbo->getParent(), "Grid::permuteAxes", !noTiming);
+      PyObject *_retval = 0;
+      {
+        ArgLocker _lock;
+        int axis0 = _args.get<int>("axis0", 0, &_lock);
+        int axis1 = _args.get<int>("axis1", 1, &_lock);
+        int axis2 = _args.get<int>("axis2", 2, &_lock);
+        pbo->_args.copy(_args);
+        _retval = getPyNone();
+        pbo->permuteAxes(axis0, axis1, axis2);
+        pbo->_args.check();
+      }
+      pbFinalizePlugin(pbo->getParent(), "Grid::permuteAxes", !noTiming);
+      return _retval;
+    }
+    catch (std::exception &e) {
+      pbSetError("Grid::permuteAxes", e.what());
+      return 0;
+    }
+  }
+
   // common compound operators
   //! get absolute max value in grid
   Real getMaxAbs() const;
-  static PyObject *_W_24(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_25(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -909,7 +938,7 @@ template<class T> class Grid : public GridBase {
 
   //! get max value in grid
   Real getMax() const;
-  static PyObject *_W_25(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_26(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -934,7 +963,7 @@ template<class T> class Grid : public GridBase {
 
   //! get min value in grid
   Real getMin() const;
-  static PyObject *_W_26(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_27(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -959,7 +988,7 @@ template<class T> class Grid : public GridBase {
 
   //! calculate L1 norm of grid content
   Real getL1(int bnd = 0);
-  static PyObject *_W_27(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_28(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -985,7 +1014,7 @@ template<class T> class Grid : public GridBase {
 
   //! calculate L2 norm of grid content
   Real getL2(int bnd = 0);
-  static PyObject *_W_28(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_29(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1011,7 +1040,7 @@ template<class T> class Grid : public GridBase {
 
   //! set all boundary cells to constant value (Dirichlet)
   void setBound(T value, int boundaryWidth = 1);
-  static PyObject *_W_29(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_30(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1039,7 +1068,7 @@ template<class T> class Grid : public GridBase {
 
   //! set all boundary cells to last inner value (Neumann)
   void setBoundNeumann(int boundaryWidth = 1);
-  static PyObject *_W_30(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_31(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1066,7 +1095,7 @@ template<class T> class Grid : public GridBase {
 
   //! get data pointer of grid
   std::string getDataPointer();
-  static PyObject *_W_31(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_32(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1091,7 +1120,7 @@ template<class T> class Grid : public GridBase {
 
   //! debugging helper, print grid from python. skip boundary of width bnd
   void printGrid(int zSlice = -1, bool printIndex = false, int bnd = 1);
-  static PyObject *_W_32(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_33(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1160,7 +1189,7 @@ class MACGrid : public Grid<Vec3> {
   {
     mType = (GridType)(TypeMAC | TypeVec3);
   }
-  static int _W_33(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static int _W_34(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     PbClass *obj = Pb::objFromPy(_self);
     if (obj)
@@ -1242,7 +1271,7 @@ class MACGrid : public Grid<Vec3> {
   //! set all boundary cells of a MAC grid to certain value (Dirchlet). Respects staggered grid
   //! locations optionally, only set normal components
   void setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly = false);
-  static PyObject *_W_34(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_35(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1283,7 +1312,7 @@ class FlagGrid : public Grid<int> {
   {
     mType = (GridType)(TypeFlags | TypeInt);
   }
-  static int _W_35(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static int _W_36(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     PbClass *obj = Pb::objFromPy(_self);
     if (obj)
@@ -1463,7 +1492,7 @@ class FlagGrid : public Grid<int> {
                   const std::string &inflow = "      ",
                   const std::string &outflow = "      ",
                   Grid<Real> *phiWalls = 0x00);
-  static PyObject *_W_36(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_37(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1497,7 +1526,7 @@ class FlagGrid : public Grid<int> {
 
   //! set fluid flags inside levelset (liquids)
   void updateFromLevelset(LevelsetGrid &levelset);
-  static PyObject *_W_37(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_38(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1524,7 +1553,7 @@ class FlagGrid : public Grid<int> {
 
   //! set all cells (except obs/in/outflow) to type (fluid by default)
   void fillGrid(int type = TypeFluid);
-  static PyObject *_W_38(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_39(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);
@@ -1553,7 +1582,7 @@ class FlagGrid : public Grid<int> {
   //! warning for large grids! only regular int returned (due to python interface)
   //! optionally creates mask in RealGrid (1 where flag matches, 0 otherwise)
   int countCells(int flag, int bnd = 0, Grid<Real> *mask = NULL);
-  static PyObject *_W_39(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
+  static PyObject *_W_40(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
       PbArgs _args(_linargs, _kwds);

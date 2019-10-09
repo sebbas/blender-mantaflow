@@ -205,7 +205,7 @@ class LevelsetGrid : public Grid<Real> {
 
   //! fill holes (pos cells enclosed by neg ones) up to given size with -0.5 (ie not preserving
   //! sdf)
-  void fillHoles(int maxsize = 10);
+  void fillHoles(int maxDepth = 10, int boundaryWidth = 1);
   static PyObject *_W_6(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
@@ -216,10 +216,11 @@ class LevelsetGrid : public Grid<Real> {
       PyObject *_retval = 0;
       {
         ArgLocker _lock;
-        int maxsize = _args.getOpt<int>("maxsize", 0, 10, &_lock);
+        int maxDepth = _args.getOpt<int>("maxDepth", 0, 10, &_lock);
+        int boundaryWidth = _args.getOpt<int>("boundaryWidth", 1, 1, &_lock);
         pbo->_args.copy(_args);
         _retval = getPyNone();
-        pbo->fillHoles(maxsize);
+        pbo->fillHoles(maxDepth, boundaryWidth);
         pbo->_args.check();
       }
       pbFinalizePlugin(pbo->getParent(), "LevelsetGrid::fillHoles", !noTiming);

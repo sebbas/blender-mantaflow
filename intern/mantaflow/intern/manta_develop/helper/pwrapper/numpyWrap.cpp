@@ -64,8 +64,12 @@ void PyArrayContainer::ExtractData(void *_pParentPyArray)
 {
   PyArrayObject *pParent = reinterpret_cast<PyArrayObject *>(pParentPyArray);
 
+  int numDims = PyArray_NDIM(pParent);
+  long *pDims = (long *)PyArray_DIMS(pParent);
+
   pData = PyArray_DATA(pParent);
   TotalSize = PyArray_SIZE(pParent);
+  Dims = std::vector<long>(&pDims[0], &pDims[numDims]);
 
   int iDataType = PyArray_TYPE(pParent);
   switch (iDataType) {

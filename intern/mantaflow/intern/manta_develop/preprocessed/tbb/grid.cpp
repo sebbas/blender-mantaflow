@@ -775,6 +775,84 @@ template<class T> struct knGridStomp : public KernelBase {
   const T &threshold;
 };
 
+template<class T> struct knPermuteAxes : public KernelBase {
+  knPermuteAxes(Grid<T> &self, Grid<T> &target, int axis0, int axis1, int axis2)
+      : KernelBase(&self, 0), self(self), target(target), axis0(axis0), axis1(axis1), axis2(axis2)
+  {
+    runMessage();
+    run();
+  }
+  inline void op(
+      int i, int j, int k, Grid<T> &self, Grid<T> &target, int axis0, int axis1, int axis2) const
+  {
+    int i0 = axis0 == 0 ? i : (axis0 == 1 ? j : k);
+    int i1 = axis1 == 0 ? i : (axis1 == 1 ? j : k);
+    int i2 = axis2 == 0 ? i : (axis2 == 1 ? j : k);
+    target(i, j, k) = self(i0, i1, i2);
+  }
+  inline Grid<T> &getArg0()
+  {
+    return self;
+  }
+  typedef Grid<T> type0;
+  inline Grid<T> &getArg1()
+  {
+    return target;
+  }
+  typedef Grid<T> type1;
+  inline int &getArg2()
+  {
+    return axis0;
+  }
+  typedef int type2;
+  inline int &getArg3()
+  {
+    return axis1;
+  }
+  typedef int type3;
+  inline int &getArg4()
+  {
+    return axis2;
+  }
+  typedef int type4;
+  void runMessage()
+  {
+    debMsg("Executing kernel knPermuteAxes ", 3);
+    debMsg("Kernel range"
+               << " x " << maxX << " y " << maxY << " z " << minZ << " - " << maxZ << " ",
+           4);
+  };
+  void operator()(const tbb::blocked_range<IndexInt> &__r) const
+  {
+    const int _maxX = maxX;
+    const int _maxY = maxY;
+    if (maxZ > 1) {
+      for (int k = __r.begin(); k != (int)__r.end(); k++)
+        for (int j = 0; j < _maxY; j++)
+          for (int i = 0; i < _maxX; i++)
+            op(i, j, k, self, target, axis0, axis1, axis2);
+    }
+    else {
+      const int k = 0;
+      for (int j = __r.begin(); j != (int)__r.end(); j++)
+        for (int i = 0; i < _maxX; i++)
+          op(i, j, k, self, target, axis0, axis1, axis2);
+    }
+  }
+  void run()
+  {
+    if (maxZ > 1)
+      tbb::parallel_for(tbb::blocked_range<IndexInt>(minZ, maxZ), *this);
+    else
+      tbb::parallel_for(tbb::blocked_range<IndexInt>(0, maxY), *this);
+  }
+  Grid<T> &self;
+  Grid<T> &target;
+  int axis0;
+  int axis1;
+  int axis2;
+};
+
 template<class T> Grid<T> &Grid<T>::safeDivide(const Grid<T> &a)
 {
   knGridSafeDiv<T>(*this, a);
@@ -823,6 +901,18 @@ template<class T> void Grid<T>::clamp(Real min, Real max)
 template<class T> void Grid<T>::stomp(const T &threshold)
 {
   knGridStomp<T>(*this, threshold);
+}
+template<class T> void Grid<T>::permuteAxes(int axis0, int axis1, int axis2)
+{
+  if (axis0 == axis1 || axis0 == axis2 || axis1 == axis2 || axis0 > 2 || axis1 > 2 || axis2 > 2 ||
+      axis0 < 0 || axis1 < 0 || axis2 < 0)
+    return;
+  Vec3i size = mParent->getGridSize();
+  assertMsg(mParent->is2D() ? size.x == size.y : size.x == size.y && size.y == size.z,
+            "Grid must be cubic!");
+  Grid<T> tmp(mParent);
+  knPermuteAxes<T>(*this, tmp, axis0, axis1, axis2);
+  this->swap(tmp);
 }
 
 template<> Real Grid<Real>::getMax() const
@@ -921,7 +1011,7 @@ struct knCountCells : public KernelBase {
   {
     if (mask)
       (*mask)(i, j, k) = 0.;
-    if (bnd > 0 && (!flags.isInBounds(Vec3i(i, j, k))))
+    if (bnd > 0 && (!flags.isInBounds(Vec3i(i, j, k), bnd)))
       return;
     if (flags(i, j, k) & flag) {
       cnt++;

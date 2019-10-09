@@ -508,7 +508,10 @@ class Mesh : public PbClass {
   }
 
   //! map mesh to grid with sdf
-  void applyMeshToGrid(GridBase *grid, FlagGrid *respectFlags = 0, Real cutoff = -1.);
+  void applyMeshToGrid(GridBase *grid,
+                       FlagGrid *respectFlags = 0,
+                       Real cutoff = -1.,
+                       Real meshSigma = 2.);
   static PyObject *_W_12(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
@@ -522,9 +525,10 @@ class Mesh : public PbClass {
         GridBase *grid = _args.getPtr<GridBase>("grid", 0, &_lock);
         FlagGrid *respectFlags = _args.getPtrOpt<FlagGrid>("respectFlags", 1, 0, &_lock);
         Real cutoff = _args.getOpt<Real>("cutoff", 2, -1., &_lock);
+        Real meshSigma = _args.getOpt<Real>("meshSigma", 3, 2., &_lock);
         pbo->_args.copy(_args);
         _retval = getPyNone();
-        pbo->applyMeshToGrid(grid, respectFlags, cutoff);
+        pbo->applyMeshToGrid(grid, respectFlags, cutoff, meshSigma);
         pbo->_args.check();
       }
       pbFinalizePlugin(pbo->getParent(), "Mesh::applyMeshToGrid", !noTiming);
