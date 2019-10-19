@@ -187,8 +187,7 @@ ModifierTypeInfo modifierType_Manta = {
     /* structName */ "MantaModifierData",
     /* structSize */ sizeof(MantaModifierData),
     /* type */ eModifierTypeType_Constructive,
-    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_UsesPointCache |
-        eModifierTypeFlag_Single,
+    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_Single,
 
     /* copyData */ copyData,
 

@@ -165,22 +165,23 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
             # TODO (sebas): Clipping var useful for manta openvdb caching?
             # col.prop(domain, "clipping", text="Empty Space")
 
-            col.separator()
+            if domain.cache_type == "MODULAR":
+                col.separator()
+                split = layout.split()
 
-            split = layout.split()
-            bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
-            if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
-                col = split.column()
-                col.operator("manta.bake_data", text="Resume")
-                col = split.column()
-                col.operator("manta.free_data", text="Free")
-            elif domain.cache_baking_data and not domain.cache_baked_data:
-                split.enabled = False
-                split.operator("manta.pause_bake", text="Baking Data - ESC to pause")
-            elif not domain.cache_baked_data and not domain.cache_baking_data:
-                split.operator("manta.bake_data", text="Bake Data")
-            else:
-                split.operator("manta.free_data", text="Free Data")
+                bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
+                if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
+                    col = split.column()
+                    col.operator("manta.bake_data", text="Resume")
+                    col = split.column()
+                    col.operator("manta.free_data", text="Free")
+                elif domain.cache_baking_data and not domain.cache_baked_data:
+                    split.enabled = False
+                    split.operator("manta.pause_bake", text="Baking Data - ESC to pause")
+                elif not domain.cache_baked_data and not domain.cache_baking_data:
+                    split.operator("manta.bake_data", text="Bake Data")
+                else:
+                    split.operator("manta.free_data", text="Free Data")
 
         elif md.manta_type == 'FLOW':
             flow = md.flow_settings
@@ -636,23 +637,25 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
         col.prop(domain, "noise_pos_scale", text="Scale")
         col.prop(domain, "noise_time_anim", text="Time")
 
-        col.separator()
+        if domain.cache_type == "MODULAR":
+            col.separator()
 
-        split = layout.split()
-        split.enabled = domain.cache_baked_data
-        bake_incomplete = (domain.cache_frame_pause_noise < domain.cache_frame_end)
-        if domain.cache_baked_noise and not domain.cache_baking_noise and bake_incomplete:
-            col = split.column()
-            col.operator("manta.bake_noise", text="Resume")
-            col = split.column()
-            col.operator("manta.free_noise", text="Free")
-        elif not domain.cache_baked_noise and domain.cache_baking_noise:
-            split.enabled = False
-            split.operator("manta.pause_bake", text="Baking Noise - ESC to pause")
-        elif not domain.cache_baked_noise and not domain.cache_baking_noise:
-            split.operator("manta.bake_noise", text="Bake Noise")
-        else:
-            split.operator("manta.free_noise", text="Free Noise")
+            split = layout.split()
+            split.enabled = domain.cache_baked_data
+
+            bake_incomplete = (domain.cache_frame_pause_noise < domain.cache_frame_end)
+            if domain.cache_baked_noise and not domain.cache_baking_noise and bake_incomplete:
+                col = split.column()
+                col.operator("manta.bake_noise", text="Resume")
+                col = split.column()
+                col.operator("manta.free_noise", text="Free")
+            elif not domain.cache_baked_noise and domain.cache_baking_noise:
+                split.enabled = False
+                split.operator("manta.pause_bake", text="Baking Noise - ESC to pause")
+            elif not domain.cache_baked_noise and not domain.cache_baking_noise:
+                split.operator("manta.bake_noise", text="Bake Noise")
+            else:
+                split.operator("manta.free_noise", text="Free Noise")
 
 class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Mesh"
@@ -712,23 +715,25 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
         # TODO (sebbas): for now just interpolate any upres grids, ie not sampling highres grids
         #col.prop(domain, "highres_sampling", text="Flow Sampling:")
 
-        col.separator()
+        if domain.cache_type == "MODULAR":
+            col.separator()
 
-        split = layout.split()
-        split.enabled = domain.cache_baked_data
-        bake_incomplete = (domain.cache_frame_pause_mesh < domain.cache_frame_end)
-        if domain.cache_baked_mesh and not domain.cache_baking_mesh and bake_incomplete:
-            col = split.column()
-            col.operator("manta.bake_mesh", text="Resume")
-            col = split.column()
-            col.operator("manta.free_mesh", text="Free")
-        elif not domain.cache_baked_mesh and domain.cache_baking_mesh:
-            split.enabled = False
-            split.operator("manta.pause_bake", text="Baking Mesh - ESC to pause")
-        elif not domain.cache_baked_mesh and not domain.cache_baking_mesh:
-            split.operator("manta.bake_mesh", text="Bake Mesh")
-        else:
-            split.operator("manta.free_mesh", text="Free Mesh")
+            split = layout.split()
+            split.enabled = domain.cache_baked_data
+
+            bake_incomplete = (domain.cache_frame_pause_mesh < domain.cache_frame_end)
+            if domain.cache_baked_mesh and not domain.cache_baking_mesh and bake_incomplete:
+                col = split.column()
+                col.operator("manta.bake_mesh", text="Resume")
+                col = split.column()
+                col.operator("manta.free_mesh", text="Free")
+            elif not domain.cache_baked_mesh and domain.cache_baking_mesh:
+                split.enabled = False
+                split.operator("manta.pause_bake", text="Baking Mesh - ESC to pause")
+            elif not domain.cache_baked_mesh and not domain.cache_baking_mesh:
+                split.operator("manta.bake_mesh", text="Bake Mesh")
+            else:
+                split.operator("manta.free_mesh", text="Free Mesh")
 
 class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
     bl_label = "Particles"
@@ -815,23 +820,25 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.prop(domain, "sndparticle_boundary", text="Particles in Boundary:")
 
-        col.separator()
+        if domain.cache_type == "MODULAR":
+            col.separator()
 
-        split = layout.split()
-        split.enabled = domain.cache_baked_data and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
-        bake_incomplete = (domain.cache_frame_pause_particles < domain.cache_frame_end)
-        if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
-            col = split.column()
-            col.operator("manta.bake_particles", text="Resume")
-            col = split.column()
-            col.operator("manta.free_particles", text="Free")
-        elif not domain.cache_baked_particles and domain.cache_baking_particles:
-            split.enabled = False
-            split.operator("manta.pause_bake", text="Baking Particles - ESC to pause")
-        elif not domain.cache_baked_particles and not domain.cache_baking_particles:
-            split.operator("manta.bake_particles", text="Bake Particles")
-        else:
-            split.operator("manta.free_particles", text="Free Particles")
+            split = layout.split()
+            split.enabled = domain.cache_baked_data and (domain.use_spray_particles or domain.use_bubble_particles or domain.use_foam_particles or domain.use_tracer_particles)
+
+            bake_incomplete = (domain.cache_frame_pause_particles < domain.cache_frame_end)
+            if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
+                col = split.column()
+                col.operator("manta.bake_particles", text="Resume")
+                col = split.column()
+                col.operator("manta.free_particles", text="Free")
+            elif not domain.cache_baked_particles and domain.cache_baking_particles:
+                split.enabled = False
+                split.operator("manta.pause_bake", text="Baking Particles - ESC to pause")
+            elif not domain.cache_baked_particles and not domain.cache_baking_particles:
+                split.operator("manta.bake_particles", text="Bake Particles")
+            else:
+                split.operator("manta.free_particles", text="Free Particles")
 
 class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Diffusion"
@@ -926,22 +933,23 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
         if domain.guiding_source == "DOMAIN":
             col.prop(domain, "guiding_parent", text="Guiding parent")
 
-        col.separator()
+        if domain.cache_type == "MODULAR":
+            col.separator()
 
-        if domain.guiding_source == "EFFECTOR":
-            split = layout.split()
-            bake_incomplete = (domain.cache_frame_pause_guiding < domain.cache_frame_end)
-            if domain.cache_baked_guiding and not domain.cache_baking_guiding and bake_incomplete:
-                col = split.column()
-                col.operator("manta.bake_guiding", text="Resume")
-                col = split.column()
-                col.operator("manta.free_guiding", text="Free")
-            elif not domain.cache_baked_guiding and domain.cache_baking_guiding:
-                split.operator("manta.pause_bake", text="Pause Guiding")
-            elif not domain.cache_baked_guiding and not domain.cache_baking_guiding:
-                split.operator("manta.bake_guiding", text="Bake Guiding")
-            else:
-                split.operator("manta.free_guiding", text="Free Guiding")
+            if domain.guiding_source == "EFFECTOR":
+                split = layout.split()
+                bake_incomplete = (domain.cache_frame_pause_guiding < domain.cache_frame_end)
+                if domain.cache_baked_guiding and not domain.cache_baking_guiding and bake_incomplete:
+                    col = split.column()
+                    col.operator("manta.bake_guiding", text="Resume")
+                    col = split.column()
+                    col.operator("manta.free_guiding", text="Free")
+                elif not domain.cache_baked_guiding and domain.cache_baking_guiding:
+                    split.operator("manta.pause_bake", text="Pause Guiding")
+                elif not domain.cache_baked_guiding and not domain.cache_baking_guiding:
+                    split.operator("manta.bake_guiding", text="Bake Guiding")
+                else:
+                    split.operator("manta.free_guiding", text="Free Guiding")
 
 class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
     bl_label = "Collections"
@@ -998,6 +1006,9 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
         layout.use_property_split = True
 
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
+
+        col = flow.column()
+        col.prop(domain, "cache_type", expand=False)
 
         col = flow.column(align=True)
         col.separator()

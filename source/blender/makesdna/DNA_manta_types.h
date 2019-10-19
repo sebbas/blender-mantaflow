@@ -165,6 +165,7 @@ enum {
 #define FLUID_DOMAIN_BAKED_PARTICLES 128
 #define FLUID_DOMAIN_BAKING_GUIDING 256
 #define FLUID_DOMAIN_BAKED_GUIDING 512
+#define FLUID_DOMAIN_CACHE_OUTDATED 1024
 
 #define FLUID_DOMAIN_DIR_DEFAULT "cache_fluid"
 #define FLUID_DOMAIN_DIR_CONFIG "config"
@@ -176,6 +177,10 @@ enum {
 #define FLUID_DOMAIN_DIR_SCRIPT "script"
 #define FLUID_DOMAIN_SMOKE_SCRIPT "smoke_script.py"
 #define FLUID_DOMAIN_LIQUID_SCRIPT "liquid_script.py"
+
+#define FLUID_DOMAIN_CACHE_REPLAY 0
+#define FLUID_DOMAIN_CACHE_MODULAR 1
+#define FLUID_DOMAIN_CACHE_FINAL 2
 
 /* Deprecated values (i.e. all defines and enums below this line up until typedefs)*/
 /* cache compression */
@@ -349,7 +354,8 @@ typedef struct MantaDomainSettings {
   char cache_noise_format;
   char cache_directory[1024];
   char error[64]; /* Bake error description */
-  char _pad7[4];  /* unused */
+  short cache_type;
+  char _pad7[2];  /* unused */
 
   /* time options */
   float dt;

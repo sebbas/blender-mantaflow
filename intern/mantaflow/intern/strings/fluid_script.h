@@ -38,7 +38,8 @@ const std::string manta_import =
 from manta import *\n\
 import os.path, shutil, math, sys, gc, multiprocessing, platform, time\n\
 \n\
-withMP = False\n\
+withMPBake = False # Bake files asynchronously\n\
+withMPSave = True # Save files asynchronously\n\
 isWindows = platform.system() != 'Darwin' and platform.system() != 'Linux'\n\
 # TODO (sebbas): Use this to simulate Windows multiprocessing (has default mode spawn)\n\
 #try:\n\
@@ -188,7 +189,7 @@ const std::string fluid_time_stepping =
     "\n\
 mantaMsg('Fluid adaptive time stepping')\n\
 s$ID$.frameLength  = frameLength_s$ID$\n\
-s$ID$.timestepMin  = s$ID$.frameLength / 10.\n\
+s$ID$.timestepMin  = s$ID$.frameLength / 5.\n\
 s$ID$.timestepMax  = s$ID$.frameLength\n\
 s$ID$.cfl          = cflCond_s$ID$\n\
 s$ID$.timePerFrame = timePerFrame_s$ID$\n\
@@ -396,6 +397,9 @@ if 'liquid_mesh_dict_s$ID$' in globals(): liquid_mesh_dict_s$ID$.clear()\n\
 if 'liquid_meshvel_dict_s$ID$' in globals(): liquid_meshvel_dict_s$ID$.clear()\n\
 if 'smoke_data_dict_s$ID$' in globals(): smoke_data_dict_s$ID$.clear()\n\
 if 'smoke_noise_dict_s$ID$' in globals(): smoke_noise_dict_s$ID$.clear()\n\
+if 'fluid_particles_dict_s$ID$' in globals(): fluid_particles_dict_s$ID$.clear()\n\
+if 'fluid_guiding_dict_s$ID$' in globals(): fluid_guiding_dict_s$ID$.clear()\n\
+if 'fluid_data_dict_s$ID$' in globals(): fluid_data_dict_s$ID$.clear()\n\
 \n\
 # Delete all childs from objects (e.g. pdata for particles)\n\
 mantaMsg('Release solver childs childs')\n\
@@ -445,7 +449,8 @@ def fluid_cache_get_framenr_formatted_$ID$(framenr):\n\
 
 const std::string fluid_bake_multiprocessing =
     "\n\
-def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, format_noise=None, format_mesh=None, format_particles=None, format_guiding=None, path_data=None, path_noise=None, path_mesh=None, path_particles=None, path_guiding=None):\n\
+def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, format_noise=None, format_mesh=None, format_particles=None, format_guiding=None, path_data=None, path_noise=None, path_mesh=None, path_particles=None, path_guiding=None, dict=None, do_join=True):\n\
+    mantaMsg('Multiprocessing cache')\n\
     if __name__ == '__main__':\n\
         args = (framenr,)\n\
         if format_data:\n\
@@ -468,9 +473,12 @@ def fluid_cache_multiprocessing_start_$ID$(function, framenr, format_data=None, 
             args += (path_particles,)\n\
         if path_guiding:\n\
             args += (path_guiding,)\n\
+        if dict:\n\
+            args += (dict,)\n\
         p$ID$ = multiprocessing.Process(target=function, args=args)\n\
         p$ID$.start()\n\
-        p$ID$.join()\n";
+        if do_join:\n\
+            p$ID$.join()\n";
 
 const std::string fluid_bake_data =
     "\n\
@@ -481,8 +489,6 @@ def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_
     # Must not set 'timeTotal' here. Remember, this function is called from manta.c while-loop\n\
     \n\
     start_time = time.time()\n\
-    if using_guiding_s$ID$:\n\
-        fluid_load_guiding_$ID$(path_guiding, framenr, format_guiding)\n\
     if using_smoke_s$ID$:\n\
         smoke_adaptive_step_$ID$(framenr)\n\
     if using_liquid_s$ID$:\n\
@@ -490,10 +496,10 @@ def bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_
     mantaMsg('--- Step: %s seconds ---' % (time.time() - start_time))\n\
 \n\
 def bake_fluid_data_$ID$(path_data, path_guiding, framenr, format_data, format_particles, format_guiding):\n\
-    if not withMP or isWindows:\n\
+    if not withMPBake or isWindows:\n\
         bake_fluid_process_data_$ID$(framenr, format_data, format_particles, format_guiding, path_data, path_guiding)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, format_guiding=format_guiding, path_data=path_data, path_guiding=path_guiding)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_fluid_process_data_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, format_guiding=format_guiding, path_data=path_data, path_guiding=path_guiding, do_join=False)\n";
 
 const std::string fluid_bake_noise =
     "\n\
@@ -504,13 +510,11 @@ def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_
     sn$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
     mantaMsg('sn$ID$.timeTotal: ' + str(sn$ID$.timeTotal))\n\
     \n\
-    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
-    smoke_load_data_$ID$(path_data, framenr, format_data)\n\
     smoke_step_noise_$ID$(framenr)\n\
     smoke_save_noise_$ID$(path_noise, framenr, format_noise)\n\
 \n\
 def bake_noise_$ID$(path_data, path_noise, framenr, format_data, format_noise):\n\
-    if not withMP or isWindows:\n\
+    if not withMPBake or isWindows:\n\
         bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_noise)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_noise_process_$ID$, framenr=framenr, format_data=format_data, format_noise=format_noise, path_data=path_data, path_noise=path_noise)\n";
@@ -523,19 +527,16 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
     sm$ID$.frame = framenr\n\
     sm$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
     \n\
-    fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
     if using_liquid_s$ID$:\n\
-        liquid_load_data_$ID$(path_data, framenr, format_data)\n\
-        liquid_load_flip_$ID$(path_data, framenr, format_particles)\n\
         liquid_step_mesh_$ID$()\n\
         liquid_save_mesh_$ID$(path_mesh, framenr, format_mesh)\n\
         if using_speedvectors_s$ID$:\n\
             liquid_save_meshvel_$ID$(path_mesh, framenr, format_data)\n\
 \n\
 def bake_mesh_$ID$(path_data, path_mesh, framenr, format_data, format_mesh, format_particles):\n\
-    if not withMP or isWindows:\n\
+    if not withMPBake or isWindows:\n\
         bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, path_data, path_mesh)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_mesh_process_$ID$, framenr=framenr, format_data=format_data, format_mesh=format_mesh, format_particles=format_particles, path_data=path_data, path_mesh=path_mesh)\n";
@@ -553,16 +554,12 @@ def bake_particles_process_$ID$(framenr, format_data, format_particles, path_dat
         # TODO (sebbas): Future update could include smoke particles (e.g. fire sparks)\n\
     if using_liquid_s$ID$:\n\
         liquid_load_data_$ID$(path_data, framenr, format_data)\n\
-        if framenr>1:\n\
-            fluid_load_particles_$ID$(path_particles, framenr-1, format_particles)\n\
-            liquid_load_particles_$ID$(path_particles, framenr-1, format_particles)\n\
-        \n\
         liquid_step_particles_$ID$()\n\
         fluid_save_particles_$ID$(path_particles, framenr, format_particles)\n\
         liquid_save_particles_$ID$(path_particles, framenr, format_particles)\n\
 \n\
 def bake_particles_$ID$(path_data, path_particles, framenr, format_data, format_particles):\n\
-    if not withMP or isWindows:\n\
+    if not withMPBake or isWindows:\n\
         bake_particles_process_$ID$(framenr, format_data, format_particles, path_data, path_particles)\n\
     else:\n\
         fluid_cache_multiprocessing_start_$ID$(function=bake_particles_process_$ID$, framenr=framenr, format_data=format_data, format_particles=format_particles, path_data=path_data, path_particles=path_particles)\n";
@@ -589,10 +586,10 @@ def bake_guiding_process_$ID$(framenr, format_guiding, path_guiding):\n\
     fluid_save_guiding_$ID$(path_guiding, framenr, format_guiding)\n\
 \n\
 def bake_guiding_$ID$(path_guiding, framenr, format_guiding):\n\
-    if not withMP or isWindows:\n\
+    if not withMPBake or isWindows:\n\
         bake_guiding_process_$ID$(framenr, format_guiding, path_guiding)\n\
     else:\n\
-        fluid_cache_multiprocessing_start_$ID$(function=bake_guiding_process_$ID$, framenr=framenr, format_data=format_guiding, path_data=path_guiding)\n";
+        fluid_cache_multiprocessing_start_$ID$(function=bake_guiding_process_$ID$, framenr=framenr, format_guiding=format_guiding, path_guiding=path_guiding)\n";
 
 //////////////////////////////////////////////////////////////////////
 // IMPORT
@@ -648,7 +645,10 @@ def fluid_load_vel_$ID$(path, framenr, file_format):\n\
 
 const std::string fluid_file_export =
     "\n\
-def fluid_file_export_s$ID$(dict, path, framenr, file_format, mode_override=True):\n\
+def fluid_file_export_s$ID$(framenr, file_format, path, dict, mode_override=True, skip_subframes=True):\n\
+    if skip_subframes and ((timePerFrame_s$ID$ + dt0_s$ID$) < frameLength_s$ID$):\n\
+        return\n\
+    mantaMsg('Fluid file export, frame: ' + str(framenr))\n\
     try:\n\
         framenr = fluid_cache_get_framenr_formatted_$ID$(framenr)\n\
         if not os.path.exists(path):\n\
@@ -664,19 +664,30 @@ const std::string fluid_save_particles =
     "\n\
 def fluid_save_particles_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save particles, frame ' + str(framenr))\n\
-    fluid_file_export_s$ID$(dict=fluid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=fluid_particles_dict_s$ID$, framenr=framenr, file_format=file_format, path=path)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=fluid_particles_dict_s$ID$, do_join=False)\n";
 
 const std::string fluid_save_data =
     "\n\
 def fluid_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save data, frame ' + str(framenr))\n\
-    fluid_file_export_s$ID$(dict=fluid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    start_time = time.time()\n\
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(framenr=framenr, file_format=file_format, path=path, dict=fluid_data_dict_s$ID$)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=fluid_data_dict_s$ID$, do_join=False)\n\
+    mantaMsg('--- Save: %s seconds ---' % (time.time() - start_time))\n";
 
 const std::string fluid_save_guiding =
     "\n\
 def fluid_save_guiding_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid save guiding, frame ' + str(framenr))\n\
-    fluid_file_export_s$ID$(dict=fluid_guiding_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=fluid_guiding_dict_s$ID$, framenr=framenr, file_format=file_format, path=path)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=fluid_guiding_dict_s$ID$, do_join=False)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

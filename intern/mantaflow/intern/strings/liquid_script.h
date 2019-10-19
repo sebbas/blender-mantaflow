@@ -386,31 +386,46 @@ const std::string liquid_save_data =
     "\n\
 def liquid_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save data')\n\
-    fluid_file_export_s$ID$(dict=liquid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=liquid_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=liquid_data_dict_s$ID$, do_join=False)\n";
 
 const std::string liquid_save_flip =
     "\n\
 def liquid_save_flip_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save flip')\n\
-    fluid_file_export_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=liquid_flip_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=liquid_flip_dict_s$ID$, do_join=False)\n";
 
 const std::string liquid_save_mesh =
     "\n\
 def liquid_save_mesh_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh')\n\
-    fluid_file_export_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+         fluid_file_export_s$ID$(dict=liquid_mesh_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    else:\n\
+         fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=liquid_mesh_dict_s$ID$, do_join=False)\n";
 
 const std::string liquid_save_meshvel =
     "\n\
 def liquid_save_meshvel_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save mesh vel')\n\
-    fluid_file_export_s$ID$(dict=liquid_meshvel_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=liquid_meshvel_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=liquid_meshvel_dict_s$ID$, do_join=False)\n";
 
 const std::string liquid_save_particles =
     "\n\
 def liquid_save_particles_$ID$(path, framenr, file_format):\n\
     mantaMsg('Liquid save particles')\n\
-    fluid_file_export_s$ID$(dict=liquid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=liquid_particles_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=liquid_particles_dict_s$ID$, do_join=False)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE

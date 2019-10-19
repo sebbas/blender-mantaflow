@@ -397,7 +397,8 @@ void MANTA::initLiquid(MantaModifierData *mmd)
 void MANTA::initMesh(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
-  std::string tmpString = fluid_variables_mesh + fluid_solver_mesh;
+  std::string tmpString = fluid_variables_mesh + fluid_solver_mesh +
+                          liquid_load_mesh + liquid_load_meshvel;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
 
@@ -1157,6 +1158,7 @@ int MANTA::writeConfiguration(MantaModifierData *mmd, int framenr)
   BLI_path_make_safe(cacheDir);
   BLI_dir_create_recursive(cacheDir); /* Create 'config' subdir if it does not exist already */
 
+  ss.str("");
   ss << "config_####" << dformat;
   BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
   BLI_path_frame(targetFile, framenr, 0);
@@ -1206,6 +1208,7 @@ int MANTA::writeData(MantaModifierData *mmd, int framenr)
                 NULL);
   BLI_path_make_safe(cacheDirData);
 
+  ss.str("");
   ss << "fluid_save_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', " << framenr
      << ", '" << dformat << "')";
   pythonCommands.push_back(ss.str());
@@ -1237,7 +1240,7 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
 
   MantaDomainSettings *mds = mmd->domain;
   std::ostringstream ss;
-  char cacheDir[FILE_MAX], targetFile[FILE_MAX];;
+  char cacheDir[FILE_MAX], targetFile[FILE_MAX];
   cacheDir[0] = '\0';
   targetFile[0] = '\0';
   float dummy;
@@ -1251,6 +1254,7 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
                 NULL);
   BLI_path_make_safe(cacheDir);
 
+  ss.str("");
   ss << "config_####" << dformat;
   BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
   BLI_path_frame(targetFile, framenr, 0);
@@ -1293,8 +1297,9 @@ int MANTA::readData(MantaModifierData *mmd, int framenr)
   std::ostringstream ss;
   std::vector<std::string> pythonCommands;
 
-  char cacheDirData[FILE_MAX];
+  char cacheDirData[FILE_MAX], targetFile[FILE_MAX];
   cacheDirData[0] = '\0';
+  targetFile[0] = '\0';
 
   std::string dformat = getCacheFileEnding(mmd->domain->cache_data_format);
   std::string pformat = getCacheFileEnding(mmd->domain->cache_particle_format);
@@ -1307,6 +1312,15 @@ int MANTA::readData(MantaModifierData *mmd, int framenr)
   BLI_path_make_safe(cacheDirData);
 
   if (mUsingSmoke) {
+    /* Exit early if there is nothing present in the cache for this frame */
+    ss.str("");
+    ss << "density_####" << dformat;
+    BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDirData, ss.str().c_str());
+    BLI_path_frame(targetFile, framenr, 0);
+    if (!BLI_exists(targetFile))
+      return 0;
+
+    ss.str("");
     ss << "fluid_load_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', "
        << framenr << ", '" << dformat << "')";
     pythonCommands.push_back(ss.str());
@@ -1314,9 +1328,17 @@ int MANTA::readData(MantaModifierData *mmd, int framenr)
     ss << "smoke_load_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', "
        << framenr << ", '" << dformat << "')";
     pythonCommands.push_back(ss.str());
-    ss.str("");
   }
   if (mUsingLiquid) {
+    /* Exit early if there is nothing present in the cache for this frame */
+    ss.str("");
+    ss << "phiIn_####" << dformat;
+    BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDirData, ss.str().c_str());
+    BLI_path_frame(targetFile, framenr, 0);
+    if (!BLI_exists(targetFile))
+      return 0;
+
+    ss.str("");
     ss << "fluid_load_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', "
        << framenr << ", '" << dformat << "')";
     pythonCommands.push_back(ss.str());
@@ -1328,7 +1350,6 @@ int MANTA::readData(MantaModifierData *mmd, int framenr)
     ss << "liquid_load_flip_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', "
        << framenr << ", '" << pformat << "')";
     pythonCommands.push_back(ss.str());
-    ss.str("");
   }
   runPythonString(pythonCommands);
   updatePointers();
@@ -1346,8 +1367,9 @@ int MANTA::readNoise(MantaModifierData *mmd, int framenr)
   std::ostringstream ss;
   std::vector<std::string> pythonCommands;
 
-  char cacheDirNoise[FILE_MAX];
+  char cacheDirNoise[FILE_MAX], targetFile[FILE_MAX];
   cacheDirNoise[0] = '\0';
+  targetFile[0] = '\0';
 
   std::string nformat = getCacheFileEnding(mmd->domain->cache_noise_format);
 
@@ -1358,7 +1380,16 @@ int MANTA::readNoise(MantaModifierData *mmd, int framenr)
                 NULL);
   BLI_path_make_safe(cacheDirNoise);
 
+  /* Exit early if there is nothing present in the cache for this frame */
+  ss.str("");
+  ss << "density_noise_####" << nformat;
+  BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDirNoise, ss.str().c_str());
+  BLI_path_frame(targetFile, framenr, 0);
+  if (!BLI_exists(targetFile))
+    return 0;
+
   if (mUsingSmoke && mUsingNoise) {
+    ss.str("");
     ss << "smoke_load_noise_" << mCurrentID << "('" << escapeSlashes(cacheDirNoise) << "', "
        << framenr << ", '" << nformat << "')";
     pythonCommands.push_back(ss.str());
@@ -1370,13 +1401,51 @@ int MANTA::readNoise(MantaModifierData *mmd, int framenr)
 
 int MANTA::readMesh(MantaModifierData *mmd, int framenr)
 {
-  // dummmy function, use updateMeshFromFile
   if (with_debug)
-    std::cout << "MANTA::readMesh() - dummmy function, use updateMeshFromFile()" << std::endl;
+    std::cout << "MANTA::readMesh()" << std::endl;
 
   if (!mUsingMesh)
     return 0;
 
+  std::ostringstream ss;
+  std::vector<std::string> pythonCommands;
+
+  char cacheDirMesh[FILE_MAX], targetFile[FILE_MAX];
+  cacheDirMesh[0] = '\0';
+  targetFile[0] = '\0';
+
+  std::string mformat = getCacheFileEnding(mmd->domain->cache_mesh_format);
+
+  BLI_path_join(cacheDirMesh,
+                sizeof(cacheDirMesh),
+                mmd->domain->cache_directory,
+                FLUID_DOMAIN_DIR_MESH,
+                NULL);
+  BLI_path_make_safe(cacheDirMesh);
+
+  if (mUsingLiquid) {
+    /* Exit early if there is nothing present in the cache for this frame */
+    ss.str("");
+    ss << "lMesh_####" << mformat;
+    BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDirMesh, ss.str().c_str());
+    BLI_path_frame(targetFile, framenr, 0);
+    if (!BLI_exists(targetFile))
+      return 0;
+
+    ss.str("");
+    ss << "liquid_load_mesh_" << mCurrentID << "('" << escapeSlashes(cacheDirMesh) << "', "
+       << framenr << ", '" << mformat << "')";
+    pythonCommands.push_back(ss.str());
+
+    if (mUsingMVel) {
+      ss.str("");
+      ss << "liquid_load_meshvel_" << mCurrentID << "('" << escapeSlashes(cacheDirMesh) << "', "
+         << framenr << ", '" << mformat << "')";
+      pythonCommands.push_back(ss.str());
+    }
+  }
+  runPythonString(pythonCommands);
+  updatePointers();
   return 1;
 }
 
@@ -1391,8 +1460,9 @@ int MANTA::readParticles(MantaModifierData *mmd, int framenr)
   std::ostringstream ss;
   std::vector<std::string> pythonCommands;
 
-  char cacheDirParticles[FILE_MAX];
+  char cacheDirParticles[FILE_MAX], targetFile[FILE_MAX];
   cacheDirParticles[0] = '\0';
+  targetFile[0] = '\0';
 
   std::string pformat = getCacheFileEnding(mmd->domain->cache_particle_format);
 
@@ -1403,7 +1473,16 @@ int MANTA::readParticles(MantaModifierData *mmd, int framenr)
                 NULL);
   BLI_path_make_safe(cacheDirParticles);
 
+  /* Exit early if there is nothing present in the cache for this frame */
+  ss.str("");
+  ss << "ppSnd_####" << pformat;
+  BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDirParticles, ss.str().c_str());
+  BLI_path_frame(targetFile, framenr, 0);
+  if (!BLI_exists(targetFile))
+    return 0;
+
   if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
+    ss.str("");
     ss << "fluid_load_particles_" << mCurrentID << "('" << escapeSlashes(cacheDirParticles)
        << "', " << framenr << ", '" << pformat << "')";
     pythonCommands.push_back(ss.str());
@@ -1411,7 +1490,6 @@ int MANTA::readParticles(MantaModifierData *mmd, int framenr)
     ss << "liquid_load_particles_" << mCurrentID << "('" << escapeSlashes(cacheDirParticles)
        << "', " << framenr << ", '" << pformat << "')";
     pythonCommands.push_back(ss.str());
-    ss.str("");
   }
   runPythonString(pythonCommands);
   updatePointers();
@@ -1431,8 +1509,9 @@ int MANTA::readGuiding(MantaModifierData *mmd, int framenr, bool sourceDomain)
   std::ostringstream ss;
   std::vector<std::string> pythonCommands;
 
-  char cacheDirGuiding[FILE_MAX];
+  char cacheDirGuiding[FILE_MAX], targetFile[FILE_MAX];
   cacheDirGuiding[0] = '\0';
+  targetFile[0] = '\0';
 
   std::string gformat = getCacheFileEnding(mmd->domain->cache_data_format);
   const char *subdir = (sourceDomain) ? FLUID_DOMAIN_DIR_DATA : FLUID_DOMAIN_DIR_GUIDING;
@@ -1441,11 +1520,21 @@ int MANTA::readGuiding(MantaModifierData *mmd, int framenr, bool sourceDomain)
       cacheDirGuiding, sizeof(cacheDirGuiding), mmd->domain->cache_directory, subdir, NULL);
   BLI_path_make_safe(cacheDirGuiding);
 
+  /* Exit early if there is nothing present in the cache for this frame */
+  ss.str("");
+  ss << "guidevel_####" << gformat;
+  BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDirGuiding, ss.str().c_str());
+  BLI_path_frame(targetFile, framenr, 0);
+  if (!BLI_exists(targetFile))
+    return 0;
+
   if (sourceDomain) {
+    ss.str("");
     ss << "fluid_load_vel_" << mCurrentID << "('" << escapeSlashes(cacheDirGuiding) << "', "
        << framenr << ", '" << gformat << "')";
   }
   else {
+    ss.str("");
     ss << "fluid_load_guiding_" << mCurrentID << "('" << escapeSlashes(cacheDirGuiding) << "', "
        << framenr << ", '" << gformat << "')";
   }
@@ -1486,6 +1575,7 @@ int MANTA::bakeData(MantaModifierData *mmd, int framenr)
   BLI_path_make_safe(cacheDirData);
   BLI_path_make_safe(cacheDirGuiding);
 
+  ss.str("");
   ss << "bake_fluid_data_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '"
      << escapeSlashes(cacheDirGuiding) << "', " << framenr << ", '" << dformat << "', '" << pformat
      << "', '" << gformat << "')";
@@ -1523,6 +1613,7 @@ int MANTA::bakeNoise(MantaModifierData *mmd, int framenr)
   BLI_path_make_safe(cacheDirData);
   BLI_path_make_safe(cacheDirNoise);
 
+  ss.str("");
   ss << "bake_noise_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '"
      << escapeSlashes(cacheDirNoise) << "', " << framenr << ", '" << dformat << "', '" << nformat
      << "')";
@@ -1561,6 +1652,7 @@ int MANTA::bakeMesh(MantaModifierData *mmd, int framenr)
   BLI_path_make_safe(cacheDirData);
   BLI_path_make_safe(cacheDirMesh);
 
+  ss.str("");
   ss << "bake_mesh_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '"
      << escapeSlashes(cacheDirMesh) << "', " << framenr << ", '" << dformat << "', '" << mformat
      << "', '" << pformat << "')";
@@ -1598,6 +1690,7 @@ int MANTA::bakeParticles(MantaModifierData *mmd, int framenr)
   BLI_path_make_safe(cacheDirData);
   BLI_path_make_safe(cacheDirParticles);
 
+  ss.str("");
   ss << "bake_particles_" << mCurrentID << "('" << escapeSlashes(cacheDirData) << "', '"
      << escapeSlashes(cacheDirParticles) << "', " << framenr << ", '" << dformat << "', '"
      << pformat << "')";
@@ -1627,6 +1720,7 @@ int MANTA::bakeGuiding(MantaModifierData *mmd, int framenr)
                 NULL);
   BLI_path_make_safe(cacheDirGuiding);
 
+  ss.str("");
   ss << "bake_guiding_" << mCurrentID << "('" << escapeSlashes(cacheDirGuiding) << "', " << framenr
      << ", '" << gformat << "')";
   pythonCommands.push_back(ss.str());
@@ -1678,6 +1772,8 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
                 mmd->domain->cache_directory,
                 FLUID_DOMAIN_DIR_SCRIPT,
                 NULL);
+  BLI_path_make_safe(cacheDirScript);
+  BLI_dir_create_recursive(cacheDirScript); /* Create 'script' subdir if it does not exist already */
   BLI_path_join(
       cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_DOMAIN_SMOKE_SCRIPT, NULL);
   BLI_path_make_safe(cacheDirScript);
@@ -1785,6 +1881,8 @@ void MANTA::exportLiquidScript(MantaModifierData *mmd)
                 mmd->domain->cache_directory,
                 FLUID_DOMAIN_DIR_SCRIPT,
                 NULL);
+  BLI_path_make_safe(cacheDirScript);
+  BLI_dir_create_recursive(cacheDirScript); /* Create 'script' subdir if it does not exist already */
   BLI_path_join(
       cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_DOMAIN_LIQUID_SCRIPT, NULL);
   BLI_path_make_safe(cacheDirScript);

@@ -76,7 +76,7 @@ static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), Poin
 {
   MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
   if (settings->mmd && settings->mmd->domain)
-    settings->point_cache[0]->flag |= PTCACHE_OUTDATED;
+    settings->cache_flag |= FLUID_DOMAIN_CACHE_OUTDATED;
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 }
 static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -1045,6 +1045,13 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static EnumPropertyItem cache_types[] = {
+      {FLUID_DOMAIN_CACHE_REPLAY, "REPLAY", 0, "Replay", "Use the timeline to bake the scene. Pausing and resuming possible."},
+      {FLUID_DOMAIN_CACHE_MODULAR, "MODULAR", 0, "Modular", "Bake every stage of the simulation on its own. Can pause and resume bake jobs."},
+      /*{FLUID_DOMAIN_CACHE_FINAL, "FINAL", 0, "Final", "Only bakes cache files that are essential for the final render. Cannot resume bake jobs."},*/
+      {0, NULL, 0, NULL, NULL}
+  };
+
   static const EnumPropertyItem smoke_data_depth_items[] = {
       {16, "16", 0, "Float (Half)", "Half float (16 bit data)"},
       {0, "32", 0, "Float (Full)", "Full float (32 bit data)"}, /* default */
@@ -1937,6 +1944,12 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "File Format", "Select the file format to be used for caching noise data");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
+  prop = RNA_def_property(srna, "cache_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "cache_type");
+  RNA_def_property_enum_items(prop, cache_types);
+  RNA_def_property_ui_text(prop, "Type", "Change the cache type of the simulation");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "cache_directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_maxlength(prop, FILE_MAX);

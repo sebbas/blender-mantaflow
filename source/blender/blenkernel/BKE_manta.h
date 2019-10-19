@@ -45,6 +45,14 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
                         const int flag);
 
 void BKE_manta_reallocate_fluid(struct MantaDomainSettings *mds, int res[3], int free_old);
+void BKE_manta_reallocate_copy_fluid(struct MantaDomainSettings *mds,
+                                     int o_res[3],
+                                     int n_res[3],
+                                     int o_min[3],
+                                     int n_min[3],
+                                     int o_max[3],
+                                     int o_shift[3],
+                                     int n_shift[3]);
 
 float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
 int BKE_manta_get_data_flags(struct MantaDomainSettings *mds);

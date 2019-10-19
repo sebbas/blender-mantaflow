@@ -508,13 +508,21 @@ const std::string smoke_save_data =
     "\n\
 def smoke_save_data_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save data')\n\
-    fluid_file_export_s$ID$(dict=smoke_data_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    start_time = time.time()\n\
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(framenr=framenr, file_format=file_format, path=path, dict=smoke_data_dict_s$ID$,)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=smoke_data_dict_s$ID$, do_join=False)\n\
+    mantaMsg('--- Save: %s seconds ---' % (time.time() - start_time))\n";
 
 const std::string smoke_save_noise =
     "\n\
 def smoke_save_noise_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke save noise')\n\
-    fluid_file_export_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    if not withMPSave or isWindows:\n\
+        fluid_file_export_s$ID$(dict=smoke_noise_dict_s$ID$, framenr=framenr, file_format=file_format, path=path)\n\
+    else:\n\
+        fluid_cache_multiprocessing_start_$ID$(function=fluid_file_export_s$ID$, framenr=framenr, format_data=file_format, path_data=path, dict=smoke_noise_dict_s$ID$, do_join=False)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STANDALONE MODE
