@@ -451,8 +451,11 @@ static void manta_free_startjob(void *customdata,
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
-    /* Reset pause frame */
+    /* Reset pause frames */
     mds->cache_frame_pause_data = 0;
+    mds->cache_frame_pause_noise = 0;
+    mds->cache_frame_pause_mesh = 0;
+    mds->cache_frame_pause_particles = 0;
   }
   else if (STREQ(job->type, "MANTA_OT_free_noise")) {
     mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE);
