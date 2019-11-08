@@ -28,7 +28,9 @@
 
 #include "BLI_strict_flags.h"
 
-#include "eigen_capi.h"
+#ifndef MATH_STANDALONE
+#  include "eigen_capi.h"
+#endif
 
 /********************************* Init **************************************/
 
@@ -1146,15 +1148,17 @@ bool invert_m4(float m[4][4])
  * \return true on success (i.e. can always find a pivot) and false on failure.
  * Mark Segal - 1992.
  *
- * \note this is less performant than #EIG_invert_m4_m4 (Eigen), but e.g.
- * for non-invertible scale matrices, findinging a partial solution can
+ * \note this has worse performance than #EIG_invert_m4_m4 (Eigen), but e.g.
+ * for non-invertible scale matrices, finding a partial solution can
  * be useful to have a valid local transform center, see T57767.
  */
 bool invert_m4_m4_fallback(float inverse[4][4], const float mat[4][4])
 {
+#ifndef MATH_STANDALONE
   if (EIG_invert_m4_m4(inverse, mat)) {
     return true;
   }
+#endif
 
   int i, j, k;
   double temp;
@@ -1222,9 +1226,13 @@ bool invert_m4_m4_fallback(float inverse[4][4], const float mat[4][4])
 
 bool invert_m4_m4(float inverse[4][4], const float mat[4][4])
 {
+#ifndef MATH_STANDALONE
   /* Use optimized matrix inverse from Eigen, since performance
    * impact of this function is significant in complex rigs. */
   return EIG_invert_m4_m4(inverse, mat);
+#else
+  return invert_m4_m4_fallback(inverse, mat);
+#endif
 }
 
 /****************************** Linear Algebra *******************************/

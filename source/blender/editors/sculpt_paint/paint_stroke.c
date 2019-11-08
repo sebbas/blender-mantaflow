@@ -256,6 +256,7 @@ static bool paint_tool_require_inbetween_mouse_events(Brush *brush, ePaintMode m
                SCULPT_TOOL_GRAB,
                SCULPT_TOOL_ROTATE,
                SCULPT_TOOL_THUMB,
+               SCULPT_TOOL_SNAKE_HOOK,
                SCULPT_TOOL_ELASTIC_DEFORM,
                SCULPT_TOOL_POSE)) {
         return false;
@@ -668,7 +669,7 @@ static float paint_space_stroke_spacing(bContext *C,
     return max_ff(0.001f, size_clamp * spacing / 50.f);
   }
   else {
-    return max_ff(1.0, size_clamp * spacing / 50.0f);
+    return max_ff(stroke->zoom_2d, size_clamp * spacing / 50.0f);
   }
 }
 
@@ -862,6 +863,7 @@ PaintStroke *paint_stroke_new(bContext *C,
   UnifiedPaintSettings *ups = &toolsettings->unified_paint_settings;
   Paint *p = BKE_paint_get_active_from_context(C);
   Brush *br = stroke->brush = BKE_paint_brush(p);
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
   float zoomx, zoomy;
 
   ED_view3d_viewcontext_init(C, &stroke->vc, depsgraph);
@@ -887,6 +889,10 @@ PaintStroke *paint_stroke_new(bContext *C,
   ups->overlap_factor = 1.0;
   ups->stroke_active = true;
 
+  if (rv3d) {
+    rv3d->rflag |= RV3D_PAINTING;
+  }
+
   zero_v3(ups->average_stroke_accum);
   ups->average_stroke_counter = 0;
 
@@ -901,19 +907,45 @@ PaintStroke *paint_stroke_new(bContext *C,
   return stroke;
 }
 
-void paint_stroke_data_free(struct wmOperator *op)
+void paint_stroke_free(bContext *C, wmOperator *op)
 {
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  if (rv3d) {
+    rv3d->rflag &= ~RV3D_PAINTING;
+  }
+
   BKE_paint_set_overlay_override(0);
+
+  PaintStroke *stroke = op->customdata;
+  if (stroke == NULL) {
+    return;
+  }
+
+  UnifiedPaintSettings *ups = stroke->ups;
+  ups->draw_anchored = false;
+  ups->stroke_active = false;
+
+  if (stroke->timer) {
+    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
+  }
+
+  if (stroke->rng) {
+    BLI_rng_free(stroke->rng);
+  }
+
+  if (stroke->stroke_cursor) {
+    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
+  }
+
+  BLI_freelistN(&stroke->line);
+
   MEM_SAFE_FREE(op->customdata);
 }
 
-static void stroke_done(struct bContext *C, struct wmOperator *op)
+static void stroke_done(bContext *C, wmOperator *op)
 {
-  struct PaintStroke *stroke = op->customdata;
+  PaintStroke *stroke = op->customdata;
   UnifiedPaintSettings *ups = stroke->ups;
-
-  ups->draw_anchored = false;
-  ups->stroke_active = false;
 
   /* reset rotation here to avoid doing so in cursor display */
   if (!(stroke->brush->mtex.brush_angle_mode & MTEX_ANGLE_RAKE)) {
@@ -934,21 +966,7 @@ static void stroke_done(struct bContext *C, struct wmOperator *op)
     }
   }
 
-  if (stroke->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), stroke->timer);
-  }
-
-  if (stroke->rng) {
-    BLI_rng_free(stroke->rng);
-  }
-
-  if (stroke->stroke_cursor) {
-    WM_paint_cursor_end(CTX_wm_manager(C), stroke->stroke_cursor);
-  }
-
-  BLI_freelistN(&stroke->line);
-
-  paint_stroke_data_free(op);
+  paint_stroke_free(C, op);
 }
 
 /* Returns zero if the stroke dots should not be spaced, non-zero otherwise */

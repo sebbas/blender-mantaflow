@@ -70,6 +70,8 @@
 /* Only for types. */
 #include "BKE_node.h"
 
+#include "DEG_depsgraph_query.h"
+
 #include "../generic/idprop_py_api.h" /* For IDprop lookups. */
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_utildefines.h"
@@ -918,7 +920,10 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
 
   tmp_str = PyUnicode_FromString(id->name + 2);
 
-  if (RNA_struct_is_ID(self->ptr.type) && (id->flag & LIB_PRIVATE_DATA) == 0) {
+  if (DEG_get_original_id(id) != id) {
+    ret = PyUnicode_FromFormat("Evaluated %s %R", BKE_idcode_to_name(GS(id->name)), tmp_str);
+  }
+  else if (RNA_struct_is_ID(self->ptr.type) && (id->flag & LIB_PRIVATE_DATA) == 0) {
     ret = PyUnicode_FromFormat(
         "bpy.data.%s[%R]", BKE_idcode_to_name_plural(GS(id->name)), tmp_str);
   }
@@ -926,14 +931,25 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
     const char *path;
     ID *real_id = NULL;
     path = RNA_path_from_real_ID_to_struct(G_MAIN, &self->ptr, &real_id);
-    if (path) {
-      if (real_id != id) {
+    if (path != NULL) {
+      /* 'real_id' may be NULL in some cases, although the only valid one is evaluated data,
+       * which should have already been caught above.
+       * So assert, but handle it without crashing for release builds. */
+      BLI_assert(real_id != NULL);
+
+      if (real_id != NULL) {
         Py_DECREF(tmp_str);
         tmp_str = PyUnicode_FromString(real_id->name + 2);
+        ret = PyUnicode_FromFormat(
+            "bpy.data.%s[%R].%s", BKE_idcode_to_name_plural(GS(real_id->name)), tmp_str, path);
       }
-      ret = PyUnicode_FromFormat(
-          "bpy.data.%s[%R].%s", BKE_idcode_to_name_plural(GS(real_id->name)), tmp_str, path);
-
+      else {
+        /* Can't find the path, print something useful as a fallback. */
+        ret = PyUnicode_FromFormat("bpy.data.%s[%R]...%s",
+                                   BKE_idcode_to_name_plural(GS(id->name)),
+                                   tmp_str,
+                                   RNA_struct_identifier(self->ptr.type));
+      }
       MEM_freeN((void *)path);
     }
     else {
@@ -1928,7 +1944,7 @@ static int pyrna_py_to_prop(
          * layout.prop(self.properties, "filepath")
          *
          * we need to do this trick.
-         * if the prop is not an operator type and the pyobject is an operator,
+         * if the prop is not an operator type and the PyObject is an operator,
          * use its properties in place of itself.
          *
          * This is so bad that it is almost a good reason to do away with fake
@@ -3985,7 +4001,7 @@ static PyObject *pyrna_struct_type_recast(BPy_StructRNA *self)
 }
 
 /**
- * \note Return value is borrowed, caller must incref.
+ * \note Return value is borrowed, caller must #Py_INCREF.
  */
 static PyObject *pyrna_struct_bl_rna_find_subclass_recursive(PyObject *cls, const char *id)
 {
@@ -6221,10 +6237,10 @@ PyTypeObject pyrna_struct_meta_idprop_Type = {
 
     0, /* tp_itemsize */
     /* methods */
-    NULL, /* tp_dealloc */
-    NULL, /* printfunc tp_print; */
-    NULL, /* getattrfunc tp_getattr; */
-    NULL, /* setattrfunc tp_setattr; */
+    NULL,            /* tp_dealloc */
+    (printfunc)NULL, /* printfunc tp_print; */
+    NULL,            /* getattrfunc tp_getattr; */
+    NULL,            /* setattrfunc tp_setattr; */
     NULL,
     /* tp_compare */ /* deprecated in Python 3.0! */
     NULL,            /* tp_repr */
@@ -6303,7 +6319,7 @@ PyTypeObject pyrna_struct_Type = {
     0,                                           /* tp_itemsize */
     /* methods */
     (destructor)pyrna_struct_dealloc, /* tp_dealloc */
-    NULL,                             /* printfunc tp_print; */
+    (printfunc)NULL,                  /* printfunc tp_print; */
     NULL,                             /* getattrfunc tp_getattr; */
     NULL,                             /* setattrfunc tp_setattr; */
     NULL,
@@ -6392,7 +6408,7 @@ PyTypeObject pyrna_prop_Type = {
     0,                                         /* tp_itemsize */
     /* methods */
     (destructor)pyrna_prop_dealloc, /* tp_dealloc */
-    NULL,                           /* printfunc tp_print; */
+    (printfunc)NULL,                /* printfunc tp_print; */
     NULL,                           /* getattrfunc tp_getattr; */
     NULL,                           /* setattrfunc tp_setattr; */
     NULL,
@@ -6476,7 +6492,7 @@ PyTypeObject pyrna_prop_array_Type = {
     0,                                               /* tp_itemsize */
     /* methods */
     (destructor)pyrna_prop_array_dealloc, /* tp_dealloc */
-    NULL,                                 /* printfunc tp_print; */
+    (printfunc)NULL,                      /* printfunc tp_print; */
     NULL,                                 /* getattrfunc tp_getattr; */
     NULL,                                 /* setattrfunc tp_setattr; */
     NULL,
@@ -6559,7 +6575,7 @@ PyTypeObject pyrna_prop_collection_Type = {
     0,                                                    /* tp_itemsize */
     /* methods */
     (destructor)pyrna_prop_dealloc, /* tp_dealloc */
-    NULL,                           /* printfunc tp_print; */
+    (printfunc)NULL,                /* printfunc tp_print; */
     NULL,                           /* getattrfunc tp_getattr; */
     NULL,                           /* setattrfunc tp_setattr; */
     NULL,
@@ -6645,7 +6661,7 @@ static PyTypeObject pyrna_prop_collection_idprop_Type = {
     0,                                                           /* tp_itemsize */
     /* methods */
     (destructor)pyrna_prop_dealloc, /* tp_dealloc */
-    NULL,                           /* printfunc tp_print; */
+    (printfunc)NULL,                /* printfunc tp_print; */
     NULL,                           /* getattrfunc tp_getattr; */
     NULL,                           /* setattrfunc tp_setattr; */
     NULL,
@@ -6730,10 +6746,10 @@ PyTypeObject pyrna_func_Type = {
     sizeof(BPy_FunctionRNA),                   /* tp_basicsize */
     0,                                         /* tp_itemsize */
     /* methods */
-    NULL, /* tp_dealloc */
-    NULL, /* printfunc tp_print; */
-    NULL, /* getattrfunc tp_getattr; */
-    NULL, /* setattrfunc tp_setattr; */
+    NULL,            /* tp_dealloc */
+    (printfunc)NULL, /* printfunc tp_print; */
+    NULL,            /* getattrfunc tp_getattr; */
+    NULL,            /* setattrfunc tp_setattr; */
     NULL,
     /* tp_compare */           /* DEPRECATED in Python 3.0! */
     (reprfunc)pyrna_func_repr, /* tp_repr */
@@ -6827,7 +6843,7 @@ static PyTypeObject pyrna_prop_collection_iter_Type = {
     0,                                                         /* tp_itemsize */
     /* methods */
     (destructor)pyrna_prop_collection_iter_dealloc, /* tp_dealloc */
-    NULL,                                           /* printfunc tp_print; */
+    (printfunc)NULL,                                /* printfunc tp_print; */
     NULL,                                           /* getattrfunc tp_getattr; */
     NULL,                                           /* setattrfunc tp_setattr; */
     NULL,
@@ -7192,7 +7208,7 @@ static PyObject *pyrna_srna_Subtype(StructRNA *srna)
 #endif
 
     /* Newclass will now have 2 ref's, ???,
-     * probably 1 is internal since decrefing here segfaults. */
+     * probably 1 is internal since #Py_DECREF here segfaults. */
 
     /* PyC_ObSpit("new class ref", newclass); */
 

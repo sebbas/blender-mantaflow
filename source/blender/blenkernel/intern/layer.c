@@ -44,6 +44,7 @@
 #include "DNA_object_types.h"
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
@@ -56,9 +57,10 @@
 #include "MEM_guardedalloc.h"
 
 /* Set of flags which are dependent on a collection settings. */
-static const short g_base_collection_flags = (BASE_VISIBLE | BASE_SELECTABLE |
-                                              BASE_ENABLED_VIEWPORT | BASE_ENABLED_RENDER |
-                                              BASE_HOLDOUT | BASE_INDIRECT_ONLY);
+static const short g_base_collection_flags = (BASE_VISIBLE_DEPSGRAPH | BASE_VISIBLE_VIEWLAYER |
+                                              BASE_SELECTABLE | BASE_ENABLED_VIEWPORT |
+                                              BASE_ENABLED_RENDER | BASE_HOLDOUT |
+                                              BASE_INDIRECT_ONLY);
 
 /* prototype */
 static void object_bases_iterator_next(BLI_Iterator *iter, const int flag);
@@ -237,7 +239,7 @@ void BKE_view_layer_free_ex(ViewLayer *view_layer, const bool do_id_user)
   BKE_freestyle_config_free(&view_layer->freestyle_config, do_id_user);
 
   if (view_layer->id_properties) {
-    IDP_FreeProperty(view_layer->id_properties);
+    IDP_FreeProperty_ex(view_layer->id_properties, do_id_user);
   }
 
   MEM_SAFE_FREE(view_layer->object_bases_array);
@@ -735,9 +737,15 @@ static short layer_collection_sync(ViewLayer *view_layer,
       lc->runtime_flag = child_runtime_flag;
     }
 
-    if (((child_restrict & COLLECTION_RESTRICT_VIEWPORT) == 0) &&
+    /* We separate restrict viewport and visible view layer because a layer collection can be
+     * hidden in the view layer yet (locally) visible in a viewport (if it is not restricted).*/
+    if (child_restrict & COLLECTION_RESTRICT_VIEWPORT) {
+      lc->runtime_flag |= LAYER_COLLECTION_RESTRICT_VIEWPORT;
+    }
+
+    if (((lc->runtime_flag & LAYER_COLLECTION_RESTRICT_VIEWPORT) == 0) &&
         ((child_layer_restrict & LAYER_COLLECTION_HIDE) == 0)) {
-      lc->runtime_flag |= LAYER_COLLECTION_VISIBLE;
+      lc->runtime_flag |= LAYER_COLLECTION_VISIBLE_VIEW_LAYER;
     }
 
     /* Sync objects, except if collection was excluded. */
@@ -771,12 +779,12 @@ static short layer_collection_sync(ViewLayer *view_layer,
       }
 
       if ((child_restrict & COLLECTION_RESTRICT_VIEWPORT) == 0) {
-        base->flag_from_collection |= BASE_ENABLED_VIEWPORT;
+        base->flag_from_collection |= (BASE_ENABLED_VIEWPORT | BASE_VISIBLE_DEPSGRAPH);
         if ((child_layer_restrict & LAYER_COLLECTION_HIDE) == 0) {
-          base->flag_from_collection |= BASE_VISIBLE;
-          if (((child_restrict & COLLECTION_RESTRICT_SELECT) == 0)) {
-            base->flag_from_collection |= BASE_SELECTABLE;
-          }
+          base->flag_from_collection |= BASE_VISIBLE_VIEWLAYER;
+        }
+        if (((child_restrict & COLLECTION_RESTRICT_SELECT) == 0)) {
+          base->flag_from_collection |= BASE_SELECTABLE;
         }
       }
 
@@ -974,7 +982,7 @@ bool BKE_layer_collection_has_selected_objects(ViewLayer *view_layer, LayerColle
     for (CollectionObject *cob = lc->collection->gobject.first; cob; cob = cob->next) {
       Base *base = BKE_view_layer_base_find(view_layer, cob->ob);
 
-      if (base && (base->flag & BASE_SELECTED) && (base->flag & BASE_VISIBLE)) {
+      if (base && (base->flag & BASE_SELECTED) && (base->flag & BASE_VISIBLE_DEPSGRAPH)) {
         return true;
       }
     }
@@ -1026,6 +1034,60 @@ void BKE_base_set_visible(Scene *scene, ViewLayer *view_layer, Base *base, bool 
   BKE_layer_collection_sync(scene, view_layer);
 }
 
+bool BKE_base_is_visible(const View3D *v3d, const Base *base)
+{
+  if ((base->flag & BASE_VISIBLE_DEPSGRAPH) == 0) {
+    return false;
+  }
+
+  if (v3d == NULL) {
+    return base->flag & BASE_VISIBLE_VIEWLAYER;
+  }
+
+  if ((v3d->localvd) && ((v3d->local_view_uuid & base->local_view_bits) == 0)) {
+    return false;
+  }
+
+  if (((1 << (base->object->type)) & v3d->object_type_exclude_viewport) != 0) {
+    return false;
+  }
+
+  if (v3d->flag & V3D_LOCAL_COLLECTIONS) {
+    return (v3d->local_collections_uuid & base->local_collections_bits) != 0;
+  }
+
+  return base->flag & BASE_VISIBLE_VIEWLAYER;
+}
+
+bool BKE_object_is_visible_in_viewport(const struct View3D *v3d, const struct Object *ob)
+{
+  BLI_assert(v3d != NULL);
+
+  if (ob->restrictflag & OB_RESTRICT_VIEWPORT) {
+    return false;
+  }
+
+  if ((v3d->object_type_exclude_viewport & (1 << ob->type)) != 0) {
+    return false;
+  }
+
+  if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
+    return false;
+  }
+
+  if ((v3d->flag & V3D_LOCAL_COLLECTIONS) &&
+      ((v3d->local_collections_uuid & ob->runtime.local_collections_bits) == 0)) {
+    return false;
+  }
+
+  /* If not using local view or local collection the object may still be in a hidden collection. */
+  if (((v3d->localvd) == NULL) && ((v3d->flag & V3D_LOCAL_COLLECTIONS) == 0)) {
+    return (ob->base_flag & BASE_VISIBLE_VIEWLAYER) != 0;
+  }
+
+  return true;
+}
+
 static void layer_collection_flag_set_recursive(LayerCollection *lc, const int flag)
 {
   lc->flag |= flag;
@@ -1050,13 +1112,13 @@ static void layer_collection_flag_unset_recursive(LayerCollection *lc, const int
  * If the collection or any of its parents is disabled, make it enabled.
  * Don't change the children disable state though.
  */
-void BKE_layer_collection_isolate(Scene *scene,
-                                  ViewLayer *view_layer,
-                                  LayerCollection *lc,
-                                  bool extend)
+void BKE_layer_collection_isolate_global(Scene *scene,
+                                         ViewLayer *view_layer,
+                                         LayerCollection *lc,
+                                         bool extend)
 {
   LayerCollection *lc_master = view_layer->layer_collections.first;
-  bool hide_it = extend && (lc->runtime_flag & LAYER_COLLECTION_VISIBLE);
+  bool hide_it = extend && (lc->runtime_flag & LAYER_COLLECTION_VISIBLE_VIEW_LAYER);
 
   if (!extend) {
     /* Hide all collections . */
@@ -1163,9 +1225,9 @@ void BKE_layer_collection_local_sync(ViewLayer *view_layer, View3D *v3d)
 /**
  * Isolate the collection locally
  *
- * Same as BKE_layer_collection_local_isolate but for a viewport
+ * Same as BKE_layer_collection_isolate_local but for a viewport
  */
-void BKE_layer_collection_local_isolate(ViewLayer *view_layer,
+void BKE_layer_collection_isolate_local(ViewLayer *view_layer,
                                         View3D *v3d,
                                         LayerCollection *lc,
                                         bool extend)
@@ -1436,12 +1498,12 @@ static void objects_iterator_end(BLI_Iterator *iter)
 
 void BKE_view_layer_selected_objects_iterator_begin(BLI_Iterator *iter, void *data_in)
 {
-  objects_iterator_begin(iter, data_in, BASE_VISIBLE | BASE_SELECTED);
+  objects_iterator_begin(iter, data_in, BASE_VISIBLE_DEPSGRAPH | BASE_SELECTED);
 }
 
 void BKE_view_layer_selected_objects_iterator_next(BLI_Iterator *iter)
 {
-  objects_iterator_next(iter, BASE_VISIBLE | BASE_SELECTED);
+  objects_iterator_next(iter, BASE_VISIBLE_DEPSGRAPH | BASE_SELECTED);
 }
 
 void BKE_view_layer_selected_objects_iterator_end(BLI_Iterator *iter)
@@ -1478,7 +1540,7 @@ void BKE_view_layer_visible_objects_iterator_end(BLI_Iterator *iter)
 
 void BKE_view_layer_selected_editable_objects_iterator_begin(BLI_Iterator *iter, void *data_in)
 {
-  objects_iterator_begin(iter, data_in, BASE_VISIBLE | BASE_SELECTED);
+  objects_iterator_begin(iter, data_in, BASE_VISIBLE_DEPSGRAPH | BASE_SELECTED);
   if (iter->valid) {
     if (BKE_object_is_libdata((Object *)iter->current) == false) {
       // First object is valid (selectable and not libdata) -> all good.
@@ -1495,7 +1557,7 @@ void BKE_view_layer_selected_editable_objects_iterator_next(BLI_Iterator *iter)
 {
   // Search while there are objects and the one we have is not editable (editable = not libdata).
   do {
-    objects_iterator_next(iter, BASE_VISIBLE | BASE_SELECTED);
+    objects_iterator_next(iter, BASE_VISIBLE_DEPSGRAPH | BASE_SELECTED);
   } while (iter->valid && BKE_object_is_libdata((Object *)iter->current) != false);
 }
 
@@ -1512,12 +1574,12 @@ void BKE_view_layer_selected_editable_objects_iterator_end(BLI_Iterator *iter)
 
 void BKE_view_layer_selected_bases_iterator_begin(BLI_Iterator *iter, void *data_in)
 {
-  objects_iterator_begin(iter, data_in, BASE_VISIBLE | BASE_SELECTED);
+  objects_iterator_begin(iter, data_in, BASE_VISIBLE_DEPSGRAPH | BASE_SELECTED);
 }
 
 void BKE_view_layer_selected_bases_iterator_next(BLI_Iterator *iter)
 {
-  object_bases_iterator_next(iter, BASE_VISIBLE | BASE_SELECTED);
+  object_bases_iterator_next(iter, BASE_VISIBLE_DEPSGRAPH | BASE_SELECTED);
 }
 
 void BKE_view_layer_selected_bases_iterator_end(BLI_Iterator *iter)
@@ -1576,7 +1638,7 @@ void BKE_view_layer_bases_in_mode_iterator_begin(BLI_Iterator *iter, void *data_
     data->object_type = base->object->type;
   }
 
-  if (!base_is_in_mode(data, base)) {
+  if (!(base_is_in_mode(data, base) && BKE_base_is_visible(data->v3d, base))) {
     BKE_view_layer_bases_in_mode_iterator_next(iter);
   }
 }
@@ -1589,7 +1651,7 @@ void BKE_view_layer_bases_in_mode_iterator_next(BLI_Iterator *iter)
   if (base == data->base_active) {
     /* first step */
     base = data->view_layer->object_bases.first;
-    if (base == data->base_active) {
+    if ((base == data->base_active) && BKE_base_is_visible(data->v3d, base)) {
       base = base->next;
     }
   }
@@ -1598,7 +1660,8 @@ void BKE_view_layer_bases_in_mode_iterator_next(BLI_Iterator *iter)
   }
 
   while (base) {
-    if ((base != data->base_active) && base_is_in_mode(data, base)) {
+    if ((base != data->base_active) && base_is_in_mode(data, base) &&
+        BKE_base_is_visible(data->v3d, base)) {
       iter->current = base;
       return;
     }
@@ -1617,7 +1680,8 @@ void BKE_view_layer_bases_in_mode_iterator_end(BLI_Iterator *UNUSED(iter))
 /* Evaluation  */
 
 /* Applies object's restrict flags on top of flags coming from the collection
- * and stores those in base->flag. BASE_VISIBLE is based on viewport visibility. */
+ * and stores those in base->flag. BASE_VISIBLE_DEPSGRAPH ignores viewport flags visibility
+ * (i.e., restriction and local collection). */
 void BKE_base_eval_flags(Base *base)
 {
   /* Apply collection flags. */
@@ -1640,7 +1704,7 @@ void BKE_base_eval_flags(Base *base)
    * can change these again, but for tools we always want the viewport
    * visibility to be in sync regardless if depsgraph was evaluated. */
   if (!(base->flag & BASE_ENABLED_VIEWPORT) || (base->flag & BASE_HIDDEN)) {
-    base->flag &= ~(BASE_VISIBLE | BASE_SELECTABLE);
+    base->flag &= ~(BASE_VISIBLE_DEPSGRAPH | BASE_VISIBLE_VIEWLAYER | BASE_SELECTABLE);
   }
 
   /* Deselect unselectable objects. */

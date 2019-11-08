@@ -47,7 +47,7 @@
 #include "WM_types.h"
 
 const EnumPropertyItem rna_enum_mesh_delimit_mode_items[] = {
-    {BMO_DELIM_NORMAL, "NORMAL", 0, "Regular", "Delimit by face directions"},
+    {BMO_DELIM_NORMAL, "NORMAL", 0, "Normal", "Delimit by face directions"},
     {BMO_DELIM_MATERIAL, "MATERIAL", 0, "Material", "Delimit by face material"},
     {BMO_DELIM_SEAM, "SEAM", 0, "Seam", "Delimit by edge seams"},
     {BMO_DELIM_SHARP, "SHARP", 0, "Sharp", "Delimit by sharp edges"},
@@ -2232,13 +2232,13 @@ static void rna_def_mesh_vertices(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "Mesh");
   RNA_def_struct_ui_text(srna, "Mesh Vertices", "Collection of mesh vertices");
 
-  func = RNA_def_function(srna, "add", "ED_mesh_vertices_add");
+  func = RNA_def_function(srna, "add", "ED_mesh_verts_add");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_int(
       func, "count", 0, 0, INT_MAX, "Count", "Number of vertices to add", 0, INT_MAX);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
 #  if 0 /* BMESH_TODO Remove until BMesh merge */
-  func = RNA_def_function(srna, "remove", "ED_mesh_vertices_remove");
+  func = RNA_def_function(srna, "remove", "ED_mesh_verts_remove");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_int(func, "count", 0, 0, INT_MAX, "Count", "Number of vertices to remove", 0, INT_MAX);
 #  endif
@@ -2995,12 +2995,36 @@ static void rna_def_mesh(BlenderRNA *brna)
                            "values preserve finer details");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
 
-  prop = RNA_def_property(srna, "remesh_smooth_normals", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "remesh_voxel_adaptivity", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, NULL, "remesh_voxel_adaptivity");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 4);
+  RNA_def_property_ui_text(
+      prop,
+      "Adaptivity",
+      "Reduces the final face count by simplifying geometry where detail is not needed, "
+      "generating triangles. A value greater than 0 disables Fix Poles");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "use_remesh_smooth_normals", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_SMOOTH_NORMALS);
   RNA_def_property_ui_text(prop, "Smooth Normals", "Smooth the normals of the remesher result");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
 
-  prop = RNA_def_property(srna, "remesh_preserve_paint_mask", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_remesh_fix_poles", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_FIX_POLES);
+  RNA_def_property_ui_text(prop, "Fix Poles", "Produces less poles and a better topology flow");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "use_remesh_preserve_volume", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_REPROJECT_VOLUME);
+  RNA_def_property_ui_text(
+      prop,
+      "Preserve Volume",
+      "Projects the mesh to preserve the volume and details of the original mesh");
+  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
+
+  prop = RNA_def_property(srna, "use_remesh_preserve_paint_mask", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_REMESH_REPROJECT_PAINT_MASK);
   RNA_def_property_boolean_default(prop, false);
   RNA_def_property_ui_text(prop, "Preserve Paint Mask", "Keep the current mask on the new mesh");

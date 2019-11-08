@@ -513,6 +513,16 @@ if(UNIX AND NOT APPLE)
       DESTINATION "."
     )
 
+    if(EXISTS ${LIBDIR}/mesa)
+      install(DIRECTORY ${LIBDIR}/mesa/lib DESTINATION ".")
+
+      install(
+        PROGRAMS
+        ${CMAKE_SOURCE_DIR}/release/bin/blender-softwaregl
+        DESTINATION "."
+      )
+    endif()
+
     set(BLENDER_TEXT_FILES_DESTINATION ".")
   else()
     # main blender binary
@@ -674,6 +684,13 @@ elseif(WIN32)
 
   set(BLENDER_TEXT_FILES_DESTINATION ".")
 
+  if(WITH_OPENMP AND MSVC_CLANG)
+    install(
+          FILES ${CLANG_OPENMP_DLL}
+          DESTINATION "."
+    )
+  endif()
+
   if(WITH_PYTHON)
     string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
 
@@ -748,13 +765,13 @@ elseif(WIN32)
 
       if(WINDOWS_PYTHON_DEBUG)
         install(
-          FILES ${LIBDIR}/python/lib/python${_PYTHON_VERSION_NO_DOTS}.pdb
+          FILES ${LIBDIR}/python/37/libs/python${_PYTHON_VERSION_NO_DOTS}.pdb
           DESTINATION "."
           CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
         )
 
         install(
-          FILES ${LIBDIR}/python/lib/python${_PYTHON_VERSION_NO_DOTS}_d.pdb
+          FILES ${LIBDIR}/python/37/libs/python${_PYTHON_VERSION_NO_DOTS}_d.pdb
           DESTINATION "."
           CONFIGURATIONS Debug
         )
@@ -837,8 +854,10 @@ elseif(WIN32)
     )
   endif()
 elseif(APPLE)
-  # Uppercase name for app bundle
-  set_target_properties(blender PROPERTIES OUTPUT_NAME Blender)
+  if(NOT WITH_PYTHON_MODULE)
+    # Uppercase name for app bundle
+    set_target_properties(blender PROPERTIES OUTPUT_NAME Blender)
+  endif()
 
   # handy install macro to exclude files, we use \$ escape for the "to"
   # argument when calling so ${BUILD_TYPE} does not get expanded
@@ -1023,7 +1042,7 @@ setup_liblinks(blender)
 # vcpkg substitutes our libs with theirs, which will cause issues when you
 # you run these builds on other systems due to missing dlls. So we opt out
 # the use of vcpkg
-if (WIN32)
+if(WIN32)
   set_target_properties(blender PROPERTIES VS_GLOBAL_VcpkgEnabled "false")
 endif()
 

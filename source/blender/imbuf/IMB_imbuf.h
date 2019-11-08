@@ -228,6 +228,8 @@ void IMB_blend_color_float(float dst[4],
 
 void IMB_rect_crop(struct ImBuf *ibuf, const struct rcti *crop);
 
+void IMB_rect_size_set(struct ImBuf *ibuf, const uint size[2]);
+
 void IMB_rectclip(struct ImBuf *dbuf,
                   const struct ImBuf *sbuf,
                   int *destx,
@@ -697,6 +699,8 @@ void imb_freemipmapImBuf(struct ImBuf *ibuf);
 
 bool imb_addtilesImBuf(struct ImBuf *ibuf);
 void imb_freetilesImBuf(struct ImBuf *ibuf);
+
+void imb_freerectImbuf_all(struct ImBuf *ibuf);
 
 /* threaded processors */
 void IMB_processor_apply_threaded(

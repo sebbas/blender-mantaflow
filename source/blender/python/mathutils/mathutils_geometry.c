@@ -810,7 +810,8 @@ static PyObject *M_Geometry_intersect_point_line(PyObject *UNUSED(self), PyObjec
 PyDoc_STRVAR(M_Geometry_intersect_point_tri_doc,
              ".. function:: intersect_point_tri(pt, tri_p1, tri_p2, tri_p3)\n"
              "\n"
-             "   Takes 4 vectors: one is the point and the next 3 define the triangle.\n"
+             "   Takes 4 vectors: one is the point and the next 3 define the triangle. Projects "
+             "the point onto the triangle plane and checks if it is within the triangle.\n"
              "\n"
              "   :arg pt: Point\n"
              "   :type pt: :class:`mathutils.Vector`\n"
@@ -851,6 +852,49 @@ static PyObject *M_Geometry_intersect_point_tri(PyObject *UNUSED(self), PyObject
   else {
     Py_RETURN_NONE;
   }
+}
+
+PyDoc_STRVAR(M_Geometry_closest_point_on_tri_doc,
+             ".. function:: closest_point_on_tri(pt, tri_p1, tri_p2, tri_p3)\n"
+             "\n"
+             "   Takes 4 vectors: one is the point and the next 3 define the triangle.\n"
+             "\n"
+             "   :arg pt: Point\n"
+             "   :type pt: :class:`mathutils.Vector`\n"
+             "   :arg tri_p1: First point of the triangle\n"
+             "   :type tri_p1: :class:`mathutils.Vector`\n"
+             "   :arg tri_p2: Second point of the triangle\n"
+             "   :type tri_p2: :class:`mathutils.Vector`\n"
+             "   :arg tri_p3: Third point of the triangle\n"
+             "   :type tri_p3: :class:`mathutils.Vector`\n"
+             "   :return: The closest point of the triangle.\n"
+             "   :rtype: :class:`mathutils.Vector`\n");
+static PyObject *M_Geometry_closest_point_on_tri(PyObject *UNUSED(self), PyObject *args)
+{
+  const char *error_prefix = "closest_point_on_tri";
+  PyObject *py_pt, *py_tri[3];
+  float pt[3], tri[3][3];
+  float vi[3];
+  int i;
+
+  if (!PyArg_ParseTuple(args, "OOOO:closest_point_on_tri", &py_pt, UNPACK3_EX(&, py_tri, ))) {
+    return NULL;
+  }
+
+  if (mathutils_array_parse(pt, 2, 3 | MU_ARRAY_SPILL | MU_ARRAY_ZERO, py_pt, error_prefix) ==
+      -1) {
+    return NULL;
+  }
+  for (i = 0; i < ARRAY_SIZE(tri); i++) {
+    if (mathutils_array_parse(
+            tri[i], 2, 3 | MU_ARRAY_SPILL | MU_ARRAY_ZERO, py_tri[i], error_prefix) == -1) {
+      return NULL;
+    }
+  }
+
+  closest_on_tri_to_point_v3(vi, pt, UNPACK3(tri));
+
+  return Vector_CreatePyObject(vi, 3, NULL);
 }
 
 PyDoc_STRVAR(
@@ -1201,8 +1245,8 @@ static PyObject *M_Geometry_interpolate_bezier(PyObject *UNUSED(self), PyObject 
 PyDoc_STRVAR(M_Geometry_tessellate_polygon_doc,
              ".. function:: tessellate_polygon(veclist_list)\n"
              "\n"
-             "   Takes a list of polylines (each point a vector) and returns the point indices "
-             "for a polyline filled with triangles.\n"
+             "   Takes a list of polylines (each point a pair or triplet of numbers) and returns "
+             "the point indices for a polyline filled with triangles.\n"
              "\n"
              "   :arg veclist_list: list of polylines\n"
              "   :rtype: list\n");
@@ -1211,13 +1255,15 @@ static PyObject *M_Geometry_tessellate_polygon(PyObject *UNUSED(self), PyObject 
 {
   PyObject *tri_list; /*return this list of tri's */
   PyObject *polyLine, *polyVec;
-  int i, len_polylines, len_polypoints, ls_error = 0;
+  int i, len_polylines, len_polypoints;
+  bool list_parse_error = false;
+  bool is_2d = true;
 
   /* Display #ListBase. */
   ListBase dispbase = {NULL, NULL};
   DispList *dl;
   float *fp; /*pointer to the array of malloced dl->verts to set the points from the vectors */
-  int index, *dl_face, totpoints = 0;
+  int totpoints = 0;
 
   if (!PySequence_Check(polyLineSeq)) {
     PyErr_SetString(PyExc_TypeError, "expected a sequence of poly lines");
@@ -1238,15 +1284,6 @@ static PyObject *M_Geometry_tessellate_polygon(PyObject *UNUSED(self), PyObject 
 
     len_polypoints = PySequence_Size(polyLine);
     if (len_polypoints > 0) { /* don't bother adding edges as polylines */
-#  if 0
-      if (EXPP_check_sequence_consistency(polyLine, &vector_Type) != 1) {
-        freedisplist(&dispbase);
-        Py_DECREF(polyLine);
-        PyErr_SetString(PyExc_TypeError,
-                        "A point in one of the polylines is not a mathutils.Vector type");
-        return NULL;
-      }
-#  endif
       dl = MEM_callocN(sizeof(DispList), "poly disp");
       BLI_addtail(&dispbase, dl);
       dl->type = DL_INDEX3;
@@ -1254,49 +1291,38 @@ static PyObject *M_Geometry_tessellate_polygon(PyObject *UNUSED(self), PyObject 
       dl->type = DL_POLY;
       dl->parts = 1; /* no faces, 1 edge loop */
       dl->col = 0;   /* no material */
-      dl->verts = fp = MEM_callocN(sizeof(float) * 3 * len_polypoints, "dl verts");
-      dl->index = MEM_callocN(sizeof(int) * 3 * len_polypoints, "dl index");
+      dl->verts = fp = MEM_mallocN(sizeof(float[3]) * len_polypoints, "dl verts");
+      dl->index = MEM_callocN(sizeof(int[3]) * len_polypoints, "dl index");
 
-      for (index = 0; index < len_polypoints; index++, fp += 3) {
+      for (int index = 0; index < len_polypoints; index++, fp += 3) {
         polyVec = PySequence_GetItem(polyLine, index);
-        if (VectorObject_Check(polyVec)) {
+        const int polyVec_len = mathutils_array_parse(
+            fp, 2, 3 | MU_ARRAY_SPILL, polyVec, "tessellate_polygon: parse coord");
+        Py_DECREF(polyVec);
 
-          if (BaseMath_ReadCallback((VectorObject *)polyVec) == -1) {
-            ls_error = 1;
-          }
-
-          fp[0] = ((VectorObject *)polyVec)->vec[0];
-          fp[1] = ((VectorObject *)polyVec)->vec[1];
-          if (((VectorObject *)polyVec)->size > 2) {
-            fp[2] = ((VectorObject *)polyVec)->vec[2];
-          }
-          else {
-            /* if its a 2d vector then set the z to be zero */
-            fp[2] = 0.0f;
-          }
+        if (UNLIKELY(polyVec_len == -1)) {
+          list_parse_error = true;
         }
-        else {
-          ls_error = 1;
+        else if (polyVec_len == 2) {
+          fp[2] = 0.0f;
+        }
+        else if (polyVec_len == 3) {
+          is_2d = false;
         }
 
         totpoints++;
-        Py_DECREF(polyVec);
       }
     }
     Py_DECREF(polyLine);
   }
 
-  if (ls_error) {
+  if (list_parse_error) {
     BKE_displist_free(&dispbase); /* possible some dl was allocated */
-    PyErr_SetString(PyExc_TypeError,
-                    "A point in one of the polylines "
-                    "is not a mathutils.Vector type");
     return NULL;
   }
   else if (totpoints) {
     /* now make the list to return */
-    /* TODO, add normal arg */
-    BKE_displist_fill(&dispbase, &dispbase, NULL, false);
+    BKE_displist_fill(&dispbase, &dispbase, is_2d ? ((const float[3]){0, 0, -1}) : NULL, false);
 
     /* The faces are stored in a new DisplayList
      * that's added to the head of the #ListBase. */
@@ -1309,12 +1335,10 @@ static PyObject *M_Geometry_tessellate_polygon(PyObject *UNUSED(self), PyObject 
       return NULL;
     }
 
-    index = 0;
-    dl_face = dl->index;
-    while (index < dl->parts) {
+    int *dl_face = dl->index;
+    for (int index = 0; index < dl->parts; index++) {
       PyList_SET_ITEM(tri_list, index, PyC_Tuple_Pack_I32(dl_face[0], dl_face[1], dl_face[2]));
       dl_face += 3;
-      index++;
     }
     BKE_displist_free(&dispbase);
   }
@@ -1703,6 +1727,10 @@ static PyMethodDef M_Geometry_methods[] = {
      (PyCFunction)M_Geometry_intersect_point_tri,
      METH_VARARGS,
      M_Geometry_intersect_point_tri_doc},
+    {"closest_point_on_tri",
+     (PyCFunction)M_Geometry_closest_point_on_tri,
+     METH_VARARGS,
+     M_Geometry_closest_point_on_tri_doc},
     {"intersect_point_tri_2d",
      (PyCFunction)M_Geometry_intersect_point_tri_2d,
      METH_VARARGS,

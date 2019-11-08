@@ -427,9 +427,9 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
   gpd->pixfactor = GP_DEFAULT_PIX_FACTOR;
 
   /* grid settings */
-  ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f);  // Color
-  ARRAY_SET_ITEMS(gpd->grid.scale, 1.0f, 1.0f);        // Scale
-  gpd->grid.lines = GP_DEFAULT_GRID_LINES;             // Number of lines
+  ARRAY_SET_ITEMS(gpd->grid.color, 0.5f, 0.5f, 0.5f); /* Color */
+  ARRAY_SET_ITEMS(gpd->grid.scale, 1.0f, 1.0f);       /* Scale */
+  gpd->grid.lines = GP_DEFAULT_GRID_LINES;            /* Number of lines */
 
   /* onion-skinning settings (datablock level) */
   gpd->onion_flag |= (GP_ONION_GHOST_PREVCOL | GP_ONION_GHOST_NEXTCOL);
@@ -664,7 +664,7 @@ bGPdata *BKE_gpencil_copy(Main *bmain, const bGPdata *gpd)
 }
 
 /* make a copy of a given gpencil datablock */
-// XXX: Should this be deprecated?
+/* XXX: Should this be deprecated? */
 bGPdata *BKE_gpencil_data_duplicate(Main *bmain, const bGPdata *gpd_src, bool internal_copy)
 {
   bGPdata *gpd_dst;
@@ -1397,6 +1397,7 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
   bGPdata *gpd = ob->data;
   MDeformVert *dvert = NULL;
   const int def_nr = BLI_findindex(&ob->defbase, defgroup);
+  const int totgrp = BLI_listbase_count(&ob->defbase);
 
   /* Remove points data */
   if (gpd) {
@@ -1411,9 +1412,9 @@ void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
                 defvert_remove_group(dvert, dw);
               }
               else {
-                /* reorganize weights in other strokes */
-                for (int g = 0; g < gps->dvert->totweight; g++) {
-                  dw = &dvert->dw[g];
+                /* Reorganize weights for other groups after deleted one. */
+                for (int g = 0; g < totgrp; g++) {
+                  dw = defvert_find_index(dvert, g);
                   if ((dw != NULL) && (dw->def_nr > def_nr)) {
                     dw->def_nr--;
                   }
@@ -1760,7 +1761,6 @@ bool BKE_gpencil_sample_stroke(bGPDstroke *gps, const float dist, const bool sel
 bool BKE_gpencil_smooth_stroke(bGPDstroke *gps, int i, float inf)
 {
   bGPDspoint *pt = &gps->points[i];
-  // float pressure = 0.0f;
   float sco[3] = {0.0f};
 
   /* Do nothing if not enough points to smooth out */

@@ -277,7 +277,9 @@ typedef struct bNode {
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag;
   /** Used at runtime to tag derivatives branches. EEVEE only. */
-  short branch_tag;
+  char branch_tag;
+  /** Used at runtime when iterating over node branches. */
+  char iter_flag;
   /** Runtime during drawing. */
   struct uiBlock *block;
 
@@ -433,7 +435,7 @@ typedef struct bNodeTree {
   int flag;
   /** Update flags. */
   int update;
-  /** Flag to prevent reentrant update calls. */
+  /** Flag to prevent re-entrant update calls. */
   short is_updating;
   /** Generic temporary flag for recursion check (DFS/BFS). */
   short done;

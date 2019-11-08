@@ -373,6 +373,12 @@ class NODE_PT_material_slots(Panel):
             col.operator("object.material_slot_move", icon='TRIA_UP', text="").direction = 'UP'
             col.operator("object.material_slot_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
+        if ob.mode == 'EDIT':
+            row = layout.row(align=True)
+            row.operator("object.material_slot_assign", text="Assign")
+            row.operator("object.material_slot_select", text="Select")
+            row.operator("object.material_slot_deselect", text="Deselect")
+
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
     """Predefined node color"""
@@ -412,6 +418,9 @@ class NODE_MT_context_menu(Menu):
         # If something is selected
         layout.operator_context = 'INVOKE_DEFAULT'
         layout.operator("node.duplicate_move")
+        props = layout.operator("wm.call_panel", text="Rename...")
+        props.name = "TOPBAR_PT_name"
+        props.keep_open = False
         layout.operator("node.delete")
         layout.operator("node.clipboard_copy", text="Copy")
         layout.operator("node.clipboard_paste", text="Paste")

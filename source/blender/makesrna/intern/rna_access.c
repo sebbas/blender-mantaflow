@@ -393,7 +393,7 @@ bool RNA_struct_idprops_check(StructRNA *srna)
   return (srna && srna->idproperties);
 }
 
-static IDProperty *rna_idproperty_find(PointerRNA *ptr, const char *name)
+IDProperty *rna_idproperty_find(PointerRNA *ptr, const char *name)
 {
   IDProperty *group = RNA_struct_idprops(ptr, 0);
 
@@ -2058,18 +2058,18 @@ int RNA_property_ui_icon(PropertyRNA *prop)
   return rna_ensure_property(prop)->icon;
 }
 
-bool RNA_property_editable(PointerRNA *ptr, PropertyRNA *prop)
+bool RNA_property_editable(PointerRNA *ptr, PropertyRNA *prop_orig)
 {
   ID *id = ptr->owner_id;
   int flag;
   const char *dummy_info;
 
-  prop = rna_ensure_property(prop);
+  PropertyRNA *prop = rna_ensure_property(prop_orig);
   flag = prop->editable ? prop->editable(ptr, &dummy_info) : prop->flag;
 
   return ((flag & PROP_EDITABLE) && (flag & PROP_REGISTER) == 0 &&
           (!id || ((!ID_IS_LINKED(id) || (prop->flag & PROP_LIB_EXCEPTION)) &&
-                   (!id->override_library || RNA_property_overridable_get(ptr, prop)))));
+                   (!id->override_library || RNA_property_overridable_get(ptr, prop_orig)))));
 }
 
 /**

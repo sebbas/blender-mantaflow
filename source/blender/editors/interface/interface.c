@@ -786,6 +786,8 @@ static bool ui_but_update_from_old_block(const bContext *C,
     oldbut->flag = (oldbut->flag & ~flag_copy) | (but->flag & flag_copy);
     oldbut->drawflag = (oldbut->drawflag & ~drawflag_copy) | (but->drawflag & drawflag_copy);
 
+    SWAP(ListBase, but->extra_op_icons, oldbut->extra_op_icons);
+
     /* copy hardmin for list rows to prevent 'sticking' highlight to mouse position
      * when scrolling without moving mouse (see [#28432]) */
     if (ELEM(oldbut->type, UI_BTYPE_ROW, UI_BTYPE_LISTROW)) {
@@ -2622,10 +2624,10 @@ void ui_but_string_get_ex(uiBut *but,
       BLI_assert(0);
     }
 
-    if (!buf) {
+    if (buf == NULL) {
       str[0] = '\0';
     }
-    else if (buf && buf != str) {
+    else if (buf != str) {
       BLI_assert(maxlen <= buf_len + 1);
       /* string was too long, we have to truncate */
       if (UI_but_is_utf8(but)) {
@@ -3389,7 +3391,7 @@ static void ui_but_build_drawstr_float(uiBut *but, double value)
   if (value == (double)FLT_MAX) {
     STR_CONCAT(but->drawstr, slen, "inf");
   }
-  else if (value == (double)-FLT_MIN) {
+  else if (value == (double)-FLT_MAX) {
     STR_CONCAT(but->drawstr, slen, "-inf");
   }
   else if (subtype == PROP_PERCENTAGE) {
@@ -6688,4 +6690,9 @@ void UI_exit(void)
 {
   ui_resources_free();
   ui_but_clipboard_free();
+}
+
+void UI_interface_tag_script_reload(void)
+{
+  ui_interface_tag_script_reload_queries();
 }

@@ -75,7 +75,8 @@
         V3D_SHADING_VERTEX_COLOR))
 
 #define IS_NAVIGATING(wpd) \
-  ((DRW_context_state_get()->rv3d) && (DRW_context_state_get()->rv3d->rflag & RV3D_NAVIGATING))
+  ((DRW_context_state_get()->rv3d) && \
+   (DRW_context_state_get()->rv3d->rflag & (RV3D_NAVIGATING | RV3D_PAINTING)))
 
 #define OBJECT_OUTLINE_ENABLED(wpd) (wpd->shading.flag & V3D_SHADING_OBJECT_OUTLINE)
 #define OBJECT_ID_PASS_ENABLED(wpd) (OBJECT_OUTLINE_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
@@ -193,7 +194,8 @@ typedef struct WORKBENCH_UBO_World {
   float background_alpha;
   float curvature_ridge;
   float curvature_valley;
-  int pad[3];
+  float background_dither_factor;
+  int pad[2];
 } WORKBENCH_UBO_World;
 BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_World, 16)
 
@@ -403,6 +405,13 @@ BLI_INLINE eGPUTextureFormat workbench_color_texture_format(const WORKBENCH_Priv
     result = GPU_RGBA8;
   }
   return result;
+}
+
+BLI_INLINE bool workbench_background_dither_factor(const WORKBENCH_PrivateData *wpd)
+{
+  /* Only apply dithering when rendering on a RGBA8 texture.
+   * The dithering will remove banding when using a gradient as background */
+  return workbench_color_texture_format(wpd) == GPU_RGBA8;
 }
 
 /* workbench_deferred.c */

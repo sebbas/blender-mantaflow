@@ -57,7 +57,8 @@ class TEXT_HT_header(Header):
         syntax.prop(st, "show_syntax_highlight", text="")
 
         if text:
-            is_osl = text.name.endswith((".osl", ".osl"))
+            text_name = text.name
+            is_osl = text_name.endswith((".osl", ".oso"))
 
             row = layout.row()
             if is_osl:
@@ -65,7 +66,7 @@ class TEXT_HT_header(Header):
                 row.operator("node.shader_script_update")
             else:
                 row = layout.row()
-                row.active = text.name.endswith(".py")
+                row.active = text_name.endswith(".py")
                 row.prop(text, "use_module")
 
                 row = layout.row()
@@ -193,10 +194,8 @@ class TEXT_PT_find(Panel):
 class TEXT_MT_view_navigation(Menu):
     bl_label = "Navigation"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
-
-        st = context.space_data
 
         layout.operator("text.move", text="Top").type = 'FILE_TOP'
         layout.operator("text.move", text="Bottom").type = 'FILE_BOTTOM'
@@ -384,9 +383,8 @@ class TEXT_MT_edit(Menu):
     def poll(cls, context):
         return context.space_data.text is not None
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
-        st = context.space_data
 
         layout.operator("ed.undo")
         layout.operator("ed.redo")

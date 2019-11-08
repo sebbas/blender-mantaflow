@@ -102,6 +102,8 @@ void WM_init_opengl(struct Main *bmain);
 void WM_check(struct bContext *C);
 void WM_reinit_gizmomap_all(struct Main *bmain);
 
+void WM_script_tag_reload(void);
+
 uint *WM_window_pixels_read(struct wmWindowManager *wm, struct wmWindow *win, int r_size[2]);
 
 int WM_window_pixels_x(const struct wmWindow *win);
@@ -154,8 +156,14 @@ void WM_opengl_context_activate(void *context);
 void WM_opengl_context_release(void *context);
 
 struct wmWindow *WM_window_open(struct bContext *C, const struct rcti *rect);
-struct wmWindow *WM_window_open_temp(
-    struct bContext *C, const char *title, int x, int y, int sizex, int sizey, int space_type);
+struct wmWindow *WM_window_open_temp(struct bContext *C,
+                                     const char *title,
+                                     int x,
+                                     int y,
+                                     int sizex,
+                                     int sizey,
+                                     int space_type,
+                                     bool dialog);
 void WM_window_set_dpi(wmWindow *win);
 
 bool WM_stereo3d_enabled(struct wmWindow *win, bool only_fullscreen_test);
@@ -234,6 +242,10 @@ void WM_event_set_keymap_handler_post_callback(struct wmEventHandler_Keymap *han
                                                void *user_data);
 wmKeyMap *WM_event_get_keymap_from_handler(wmWindowManager *wm,
                                            struct wmEventHandler_Keymap *handler);
+
+wmKeyMapItem *WM_event_match_keymap_item(struct bContext *C,
+                                         wmKeyMap *keymap,
+                                         const struct wmEvent *event);
 
 typedef int (*wmUIHandlerFunc)(struct bContext *C, const struct wmEvent *event, void *userdata);
 typedef void (*wmUIHandlerRemoveFunc)(struct bContext *C, void *userdata);
@@ -327,6 +339,12 @@ void WM_event_timer_sleep(struct wmWindowManager *wm,
 
 /* operator api, default callbacks */
 /* invoke callback, uses enum property named "type" */
+int WM_generic_select_modal(struct bContext *C,
+                            struct wmOperator *op,
+                            const struct wmEvent *event);
+int WM_generic_select_invoke(struct bContext *C,
+                             struct wmOperator *op,
+                             const struct wmEvent *event);
 void WM_operator_view3d_unit_defaults(struct bContext *C, struct wmOperator *op);
 int WM_operator_smooth_viewtx_get(const struct wmOperator *op);
 int WM_menu_invoke_ex(struct bContext *C, struct wmOperator *op, int opcontext);
@@ -466,6 +484,7 @@ void WM_operator_properties_select_random(struct wmOperatorType *ot);
 int WM_operator_properties_select_random_seed_increment_get(wmOperator *op);
 void WM_operator_properties_select_operation(struct wmOperatorType *ot);
 void WM_operator_properties_select_operation_simple(struct wmOperatorType *ot);
+void WM_operator_properties_generic_select(struct wmOperatorType *ot);
 struct CheckerIntervalParams {
   int nth; /* bypass when set to zero */
   int skip;

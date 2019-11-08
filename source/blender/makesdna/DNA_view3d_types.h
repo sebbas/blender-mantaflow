@@ -38,7 +38,6 @@ struct wmTimer;
 #include "DNA_image_types.h"
 #include "DNA_object_types.h"
 #include "DNA_movieclip_types.h"
-#include "DNA_gpu_types.h"
 
 typedef struct RegionView3D {
 
@@ -301,10 +300,6 @@ typedef struct View3D {
   /** Actually only used to define the opacity of the grease pencil vertex in edit mode. */
   float vertex_opacity;
 
-  /* note, 'fx_settings.dof' is currently _not_ allocated,
-   * instead set (temporarily) from camera */
-  struct GPUFXSettings fx_settings;
-
   /* XXX deprecated? */
   /** Grease-Pencil Data (annotation layers). */
   struct bGPdata *gpd DNA_DEPRECATED;
@@ -351,6 +346,7 @@ typedef struct View3D {
 #define RV3D_CLIPPING (1 << 2)
 #define RV3D_NAVIGATING (1 << 3)
 #define RV3D_GPULIGHT_UPDATE (1 << 4)
+#define RV3D_PAINTING (1 << 5)
 /*#define RV3D_IS_GAME_ENGINE       (1 << 5) */ /* UNUSED */
 /**
  * Disable zbuffer offset, skip calls to #ED_view3d_polygon_offset.

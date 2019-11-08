@@ -289,7 +289,7 @@ bool BKE_sequencer_input_have_to_preprocess(const SeqRenderData *context,
                                             struct Sequence *seq,
                                             float cfra);
 
-void BKE_sequencer_proxy_rebuild_context(struct Main *bmain,
+bool BKE_sequencer_proxy_rebuild_context(struct Main *bmain,
                                          struct Depsgraph *depsgraph,
                                          struct Scene *scene,
                                          struct Sequence *seq,
@@ -351,6 +351,7 @@ void BKE_sequencer_prefetch_start(const SeqRenderData *context, float cfra, floa
 void BKE_sequencer_prefetch_stop(struct Scene *scene);
 void BKE_sequencer_prefetch_free(struct Scene *scene);
 bool BKE_sequencer_prefetch_need_redraw(struct Main *bmain, struct Scene *scene);
+bool BKE_sequencer_prefetch_job_is_running(struct Scene *scene);
 void BKE_sequencer_prefetch_get_time_range(struct Scene *scene, int *start, int *end);
 SeqRenderData *BKE_sequencer_prefetch_get_original_context(const SeqRenderData *context);
 struct Sequence *BKE_sequencer_prefetch_get_original_sequence(struct Sequence *seq,

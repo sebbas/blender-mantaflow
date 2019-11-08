@@ -394,6 +394,8 @@ typedef struct ThemeSpace {
   /** NLA - warning color for duplicate instances of tweaking strip. */
   unsigned char nla_tweakdupli[4];
 
+  /** NLA "Track" */
+  unsigned char nla_track[4];
   /** NLA "Transition" strips. */
   unsigned char nla_transition[4], nla_transition_sel[4];
   /** NLA "Meta" strips. */
@@ -414,7 +416,6 @@ typedef struct ThemeSpace {
   unsigned char metadatabg[4];
   unsigned char metadatatext[4];
 
-  char _pad2[4];
 } ThemeSpace;
 
 /* set of colors for use as a custom color set for Objects/Bones wire drawing */
@@ -577,6 +578,33 @@ typedef struct UserDef_SpaceData {
   char _pad0[6];
 } UserDef_SpaceData;
 
+/**
+ * Storage for UI data that to keep it even after the window was closed. (Similar to
+ * #UserDef_SpaceData.)
+ */
+typedef struct UserDef_FileSpaceData {
+  int display_type;   /* FileSelectParams.display */
+  int thumbnail_size; /* FileSelectParams.thumbnail_size */
+  int sort_type;      /* FileSelectParams.sort */
+  int details_flags;  /* FileSelectParams.details_flags */
+  int flag;           /* FileSelectParams.flag */
+  int filter_id;      /* FileSelectParams.filter_id */
+
+  /** Info used when creating the file browser in a temporary window. */
+  int temp_win_sizex;
+  int temp_win_sizey;
+} UserDef_FileSpaceData;
+
+/**
+ * Store UI data here instead of the space
+ * since the space is typically a window which is freed.
+ */
+typedef struct UserDef_Experimental {
+  /** #eUserPref_Experimental_Flag options. */
+  int flag;
+  char _pad0[4];
+} UserDef_Experimental;
+
 typedef struct UserDef {
   /** UserDef has separate do-version handling, and can be read from other files. */
   int versionfile, subversionfile;
@@ -588,7 +616,8 @@ typedef struct UserDef {
   /** #eUserPref_PrefFlag preferences for the preferences. */
   char pref_flag;
   char savetime;
-  char _pad4[4];
+  char mouse_emulate_3_button_modifier;
+  char _pad4[3];
   /** FILE_MAXDIR length. */
   char tempdir[768];
   char fontdir[768];
@@ -708,11 +737,13 @@ typedef struct UserDef {
   short curssize;
   /** #eColorPicker_Types. */
   short color_picker_type;
+  /** Curve smoothing type for newly added F-Curves. */
+  char auto_smoothing_new;
   /** Interpolation mode for newly added F-Curves. */
   char ipo_new;
   /** Handle types for newly added keyframes. */
   char keyhandles_new;
-  char _pad11[3];
+  char _pad11[2];
   /** #eZoomFrame_Mode. */
   char view_frame_type;
 
@@ -823,6 +854,9 @@ typedef struct UserDef {
 
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;
+  UserDef_FileSpaceData file_space_data;
+
+  UserDef_Experimental experimental;
 
   /** Runtime data (keep last). */
   UserDef_Runtime runtime;
@@ -856,6 +890,7 @@ typedef enum eUserPref_Section {
   USER_SECTION_ANIMATION = 13,
   USER_SECTION_NAVIGATION = 14,
   USER_SECTION_FILE_PATHS = 15,
+  USER_SECTION_EXPERIMENTAL = 16,
 } eUserPref_Section;
 
 /** #UserDef_SpaceData.flag (State of the user preferences UI). */
@@ -864,6 +899,11 @@ typedef enum eUserPref_SpaceData_Flag {
   USER_SPACEDATA_INPUT_HIDE_UI_KEYCONFIG = (1 << 0),
   USER_SPACEDATA_ADDONS_SHOW_ONLY_ENABLED = (1 << 1),
 } eUserPref_SpaceData_Flag;
+
+/** #UserDef_Experimental.flag. */
+typedef enum eUserPref_Experimental_Flag {
+  USER_EXPERIMENTAL_ALL = (1 << 0),
+} eUserPref_Experimental_Flag;
 
 /** #UserDef.flag */
 typedef enum eUserPref_Flag {
@@ -972,7 +1012,11 @@ typedef enum eUserpref_UI_Flag {
   USER_ZOOM_HORIZ = (1 << 26), /* for CONTINUE and DOLLY zoom */
   USER_SPLASH_DISABLE = (1 << 27),
   USER_HIDE_RECENT = (1 << 28),
-  USER_SHOW_THUMBNAILS = (1 << 29),
+#ifdef DNA_DEPRECATED
+  USER_SHOW_THUMBNAILS =
+      (1 << 29), /* deprecated - We're just trying if there's much desire for this feature, or if
+                    we can make it go for good. Should be cleared if so - Julian, Oct. 2019 */
+#endif
   USER_SAVE_PROMPT = (1 << 30),
   USER_HIDE_SYSTEM_BOOKMARKS = (1u << 31),
 } eUserpref_UI_Flag;
@@ -1064,9 +1108,9 @@ typedef enum eDupli_ID_Flags {
   USER_DUP_FONT = (1 << 3),
   USER_DUP_MBALL = (1 << 4),
   USER_DUP_LAMP = (1 << 5),
-  USER_DUP_IPO = (1 << 6),
+  /* USER_DUP_FCURVE = (1 << 6), */ /* UNUSED, keep because we may implement. */
   USER_DUP_MAT = (1 << 7),
-  USER_DUP_TEX = (1 << 8),
+  /* USER_DUP_TEX = (1 << 8), */ /* UNUSED, keep because we may implement. */
   USER_DUP_ARM = (1 << 9),
   USER_DUP_ACT = (1 << 10),
   USER_DUP_PSYS = (1 << 11),
@@ -1216,6 +1260,11 @@ typedef enum eUserpref_TempSpaceDisplayType {
   USER_TEMP_SPACE_DISPLAY_FULLSCREEN,
   USER_TEMP_SPACE_DISPLAY_WINDOW,
 } eUserpref_TempSpaceDisplayType;
+
+typedef enum eUserpref_EmulateMMBMod {
+  USER_EMU_MMB_MOD_ALT = 0,
+  USER_EMU_MMB_MOD_OSKEY = 1,
+} eUserpref_EmulateMMBMod;
 
 #ifdef __cplusplus
 }

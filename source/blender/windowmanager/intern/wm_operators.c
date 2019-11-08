@@ -41,6 +41,7 @@
 #include "CLG_log.h"
 
 #include "DNA_ID.h"
+#include "DNA_brush_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_scene_types.h"
@@ -58,6 +59,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_brush.h"
+#include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
@@ -427,21 +429,11 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
     } \
     (void)0
 
-#  define CTX_TEST_PTR_DATA_TYPE(C, member, rna_type, rna_ptr, dataptr_cmp) \
+#  define TEST_PTR_DATA_TYPE(member, rna_type, rna_ptr, dataptr_cmp) \
     { \
       const char *ctx_member = member; \
-      if (RNA_struct_is_a((ptr)->type, &(rna_type)) && (ptr)->data == (dataptr_cmp)) { \
+      if (RNA_struct_is_a((rna_ptr)->type, &(rna_type)) && (rna_ptr)->data == (dataptr_cmp)) { \
         member_id = ctx_member; \
-        break; \
-      } \
-    } \
-    (void)0
-
-#  define CTX_TEST_SPACE_TYPE(space_data_type, member_full, dataptr_cmp) \
-    { \
-      const char *ctx_member_full = member_full; \
-      if (space_data->spacetype == space_data_type && ptr->data == dataptr_cmp) { \
-        member_id = ctx_member_full; \
         break; \
       } \
     } \
@@ -482,19 +474,50 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
 
         SpaceLink *space_data = CTX_wm_space_data(C);
 
-        CTX_TEST_PTR_DATA_TYPE(C, "space_data", RNA_Space, ptr, space_data);
-        CTX_TEST_PTR_DATA_TYPE(C, "space_data", RNA_View3DOverlay, ptr, space_data);
-        CTX_TEST_PTR_DATA_TYPE(C, "space_data", RNA_View3DShading, ptr, space_data);
-        CTX_TEST_PTR_DATA_TYPE(C, "area", RNA_Area, ptr, CTX_wm_area(C));
-        CTX_TEST_PTR_DATA_TYPE(C, "region", RNA_Region, ptr, CTX_wm_region(C));
+        TEST_PTR_DATA_TYPE("space_data", RNA_Space, ptr, space_data);
+        TEST_PTR_DATA_TYPE("area", RNA_Area, ptr, CTX_wm_area(C));
+        TEST_PTR_DATA_TYPE("region", RNA_Region, ptr, CTX_wm_region(C));
 
-        CTX_TEST_SPACE_TYPE(SPACE_IMAGE, "space_data.uv_editor", space_data);
-        CTX_TEST_SPACE_TYPE(
-            SPACE_VIEW3D, "space_data.fx_settings", &(CTX_wm_view3d(C)->fx_settings));
-        CTX_TEST_SPACE_TYPE(SPACE_NLA, "space_data.dopesheet", CTX_wm_space_nla(C)->ads);
-        CTX_TEST_SPACE_TYPE(SPACE_GRAPH, "space_data.dopesheet", CTX_wm_space_graph(C)->ads);
-        CTX_TEST_SPACE_TYPE(SPACE_ACTION, "space_data.dopesheet", &(CTX_wm_space_action(C)->ads));
-        CTX_TEST_SPACE_TYPE(SPACE_FILE, "space_data.params", CTX_wm_space_file(C)->params);
+        switch (space_data->spacetype) {
+          case SPACE_VIEW3D: {
+            const View3D *v3d = (View3D *)space_data;
+            const View3DShading *shading = &v3d->shading;
+
+            TEST_PTR_DATA_TYPE("space_data", RNA_View3DOverlay, ptr, v3d);
+            TEST_PTR_DATA_TYPE("space_data", RNA_View3DShading, ptr, shading);
+            break;
+          }
+          case SPACE_GRAPH: {
+            const SpaceGraph *sipo = (SpaceGraph *)space_data;
+            const bDopeSheet *ads = sipo->ads;
+            TEST_PTR_DATA_TYPE("space_data", RNA_DopeSheet, ptr, ads);
+            break;
+          }
+          case SPACE_FILE: {
+            const SpaceFile *sfile = (SpaceFile *)space_data;
+            const FileSelectParams *params = sfile->params;
+            TEST_PTR_DATA_TYPE("space_data", RNA_FileSelectParams, ptr, params);
+            break;
+          }
+          case SPACE_IMAGE: {
+            const SpaceImage *sima = (SpaceImage *)space_data;
+            TEST_PTR_DATA_TYPE("space_data", RNA_SpaceUVEditor, ptr, sima);
+            break;
+          }
+          case SPACE_NLA: {
+            const SpaceNla *snla = (SpaceNla *)space_data;
+            const bDopeSheet *ads = snla->ads;
+            TEST_PTR_DATA_TYPE("space_data", RNA_DopeSheet, ptr, ads);
+            break;
+          }
+          case SPACE_ACTION: {
+            const SpaceAction *sact = (SpaceAction *)space_data;
+            const bDopeSheet *ads = &sact->ads;
+            TEST_PTR_DATA_TYPE("space_data", RNA_DopeSheet, ptr, ads);
+            break;
+          }
+        }
+
         break;
       }
       default:
@@ -502,7 +525,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
     }
 #  undef CTX_TEST_PTR_ID
 #  undef CTX_TEST_PTR_ID_CAST
-#  undef CTX_TEST_SPACE_TYPE
+#  undef TEST_PTR_DATA_TYPE
   }
 
   return member_id;
@@ -697,6 +720,82 @@ void WM_operator_properties_free(PointerRNA *ptr)
 /* -------------------------------------------------------------------- */
 /** \name Default Operator Callbacks
  * \{ */
+
+int WM_generic_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  PropertyRNA *wait_to_deselect_prop = RNA_struct_find_property(op->ptr,
+                                                                "wait_to_deselect_others");
+  const short init_event_type = (short)POINTER_AS_INT(op->customdata);
+  int ret_value = 0;
+
+  /* get settings from RNA properties for operator */
+  int mval[2];
+  mval[0] = RNA_int_get(op->ptr, "mouse_x");
+  mval[1] = RNA_int_get(op->ptr, "mouse_y");
+
+  if (init_event_type == 0) {
+    if (event->val == KM_PRESS) {
+      RNA_property_boolean_set(op->ptr, wait_to_deselect_prop, true);
+
+      ret_value = op->type->exec(C, op);
+      OPERATOR_RETVAL_CHECK(ret_value);
+
+      op->customdata = POINTER_FROM_INT((int)event->type);
+      if (ret_value & OPERATOR_RUNNING_MODAL) {
+        WM_event_add_modal_handler(C, op);
+      }
+      return ret_value | OPERATOR_PASS_THROUGH;
+    }
+    else {
+      /* If we are in init phase, and cannot validate init of modal operations,
+       * just fall back to basic exec.
+       */
+      RNA_property_boolean_set(op->ptr, wait_to_deselect_prop, false);
+
+      ret_value = op->type->exec(C, op);
+      OPERATOR_RETVAL_CHECK(ret_value);
+
+      return ret_value | OPERATOR_PASS_THROUGH;
+    }
+  }
+  else if (event->type == init_event_type && event->val == KM_RELEASE) {
+    RNA_property_boolean_set(op->ptr, wait_to_deselect_prop, false);
+
+    ret_value = op->type->exec(C, op);
+    OPERATOR_RETVAL_CHECK(ret_value);
+
+    return ret_value | OPERATOR_PASS_THROUGH;
+  }
+  else if (ELEM(event->type, MOUSEMOVE, INBETWEEN_MOUSEMOVE)) {
+    const int drag_delta[2] = {
+        mval[0] - event->mval[0],
+        mval[1] - event->mval[1],
+    };
+    /* If user moves mouse more than defined threshold, we consider select operator as
+     * finished. Otherwise, it is still running until we get an 'release' event. In any
+     * case, we pass through event, but select op is not finished yet. */
+    if (WM_event_drag_test_with_delta(event, drag_delta)) {
+      return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+    }
+    else {
+      /* Important not to return anything other than PASS_THROUGH here,
+       * otherwise it prevents underlying tweak detection code to work properly. */
+      return OPERATOR_PASS_THROUGH;
+    }
+  }
+
+  return OPERATOR_RUNNING_MODAL | OPERATOR_PASS_THROUGH;
+}
+
+int WM_generic_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  RNA_int_set(op->ptr, "mouse_x", event->mval[0]);
+  RNA_int_set(op->ptr, "mouse_y", event->mval[1]);
+
+  op->customdata = POINTER_FROM_INT(0);
+
+  return op->type->modal(C, op, event);
+}
 
 void WM_operator_view3d_unit_defaults(struct bContext *C, struct wmOperator *op)
 {
@@ -1862,6 +1961,7 @@ typedef struct {
   StructRNA *image_id_srna;
   float initial_value, current_value, min_value, max_value;
   int initial_mouse[2];
+  int initial_co[2];
   int slow_mouse[2];
   bool slow_mode;
   Dial *dial;
@@ -1924,6 +2024,9 @@ static void radial_control_set_initial_mouse(RadialControl *rc, const wmEvent *e
   rc->initial_mouse[0] = event->x;
   rc->initial_mouse[1] = event->y;
 
+  rc->initial_co[0] = event->x;
+  rc->initial_co[1] = event->y;
+
   switch (rc->subtype) {
     case PROP_NONE:
     case PROP_DISTANCE:
@@ -1935,7 +2038,7 @@ static void radial_control_set_initial_mouse(RadialControl *rc, const wmEvent *e
              WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
       break;
     case PROP_FACTOR:
-      d[0] = (1 - rc->initial_value) * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
+      d[0] = rc->initial_value * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
              WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
       break;
     case PROP_ANGLE:
@@ -1962,8 +2065,10 @@ static void radial_control_set_tex(RadialControl *rc)
 
   switch (RNA_type_to_ID_code(rc->image_id_ptr.type)) {
     case ID_BR:
-      if ((ibuf = BKE_brush_gen_radial_control_imbuf(rc->image_id_ptr.data,
-                                                     rc->use_secondary_tex))) {
+      if ((ibuf = BKE_brush_gen_radial_control_imbuf(
+               rc->image_id_ptr.data,
+               rc->use_secondary_tex,
+               !ELEM(rc->subtype, PROP_NONE, PROP_PIXEL, PROP_DISTANCE)))) {
         glGenTextures(1, &rc->gltex);
         glBindTexture(GL_TEXTURE_2D, rc->gltex);
         glTexImage2D(
@@ -2061,6 +2166,22 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
   immUnbindProgram();
 }
 
+static void radial_control_paint_curve(uint pos, Brush *br, float radius, int line_segments)
+{
+  GPU_line_width(2.0f);
+  immUniformColor4f(0.8f, 0.8f, 0.8f, 0.85f);
+  float step = (radius * 2.0f) / (float)line_segments;
+  BKE_curvemapping_initialize(br->curve);
+  immBegin(GPU_PRIM_LINES, line_segments * 2);
+  for (int i = 0; i < line_segments; i++) {
+    float h1 = BKE_brush_curve_strength_clamped(br, fabsf((i * step) - radius), radius);
+    immVertex2f(pos, -radius + (i * step), h1 * radius);
+    float h2 = BKE_brush_curve_strength_clamped(br, fabsf(((i + 1) * step) - radius), radius);
+    immVertex2f(pos, -radius + ((i + 1) * step), h2 * radius);
+  }
+  immEnd();
+}
+
 static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void *customdata)
 {
   RadialControl *rc = customdata;
@@ -2094,7 +2215,7 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
       alpha = 0.75;
       break;
     case PROP_FACTOR:
-      r1 = (1 - rc->current_value) * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
+      r1 = rc->current_value * WM_RADIAL_CONTROL_DISPLAY_WIDTH +
            WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
       r2 = tex_radius = WM_RADIAL_CONTROL_DISPLAY_SIZE;
       rmin = WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE;
@@ -2115,9 +2236,17 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
       break;
   }
 
-  /* Keep cursor in the original place */
-  x = rc->initial_mouse[0];
-  y = rc->initial_mouse[1];
+  if (rc->subtype == PROP_ANGLE) {
+    /* Use the initial mouse position to draw the rotation preview. This avoids starting the
+     * rotation in a random direction */
+    x = rc->initial_mouse[0];
+    y = rc->initial_mouse[1];
+  }
+  else {
+    /* Keep cursor in the original place */
+    x = rc->initial_co[0];
+    y = rc->initial_co[1];
+  }
   GPU_matrix_translate_2f((float)x, (float)y);
 
   GPU_blend(true);
@@ -2141,7 +2270,6 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  immUniformColor3fvAlpha(col, 0.5f);
 
   if (rc->subtype == PROP_ANGLE) {
     GPU_matrix_push();
@@ -2164,24 +2292,39 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
   }
 
   /* draw circles on top */
-  imm_draw_circle_wire_2d(pos, 0.0f, 0.0f, r1, 40);
-  imm_draw_circle_wire_2d(pos, 0.0f, 0.0f, r2, 40);
+  GPU_line_width(2.0f);
+  immUniformColor3fvAlpha(col, 0.8f);
+  imm_draw_circle_wire_2d(pos, 0.0f, 0.0f, r1, 80);
+
+  GPU_line_width(1.0f);
+  immUniformColor3fvAlpha(col, 0.5f);
+  imm_draw_circle_wire_2d(pos, 0.0f, 0.0f, r2, 80);
   if (rmin > 0.0f) {
-    imm_draw_circle_wire_2d(pos, 0.0, 0.0f, rmin, 40);
+    /* Inner fill circle to increase the contrast of the value */
+    float black[3] = {0.0f};
+    immUniformColor3fvAlpha(black, 0.2f);
+    imm_draw_circle_fill_2d(pos, 0.0, 0.0f, rmin, 80);
+
+    immUniformColor3fvAlpha(col, 0.5f);
+    imm_draw_circle_wire_2d(pos, 0.0, 0.0f, rmin, 80);
   }
+
+  /* draw curve falloff preview */
+  if (RNA_type_to_ID_code(rc->image_id_ptr.type) == ID_BR && rc->subtype == PROP_FACTOR) {
+    Brush *br = rc->image_id_ptr.data;
+    if (br) {
+      radial_control_paint_curve(pos, br, r2, 120);
+    }
+  }
+
   immUnbindProgram();
 
-  BLF_size(fontid, 1.5 * fstyle_points * U.pixelsize, U.dpi);
-  BLF_enable(fontid, BLF_SHADOW);
-  BLF_shadow(fontid, 3, (const float[4]){0.0f, 0.0f, 0.0f, 0.5f});
-  BLF_shadow_offset(fontid, 1, -1);
+  BLF_size(fontid, 1.75f * fstyle_points * U.pixelsize, U.dpi);
 
   /* draw value */
   BLF_width_and_height(fontid, str, strdrawlen, &strwidth, &strheight);
   BLF_position(fontid, -0.5f * strwidth, -0.5f * strheight, 0.0f);
   BLF_draw(fontid, str, strdrawlen);
-
-  BLF_disable(fontid, BLF_SHADOW);
 
   GPU_blend(false);
   GPU_line_smooth(false);
@@ -2575,38 +2718,38 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
             }
             else {
               delta[0] = rc->initial_mouse[0] - rc->slow_mouse[0];
-              delta[1] = rc->initial_mouse[1] - rc->slow_mouse[1];
+              delta[1] = 0.0f;
 
               if (rc->zoom_prop) {
                 RNA_property_float_get_array(&rc->zoom_ptr, rc->zoom_prop, zoom);
                 delta[0] /= zoom[0];
-                delta[1] /= zoom[1];
               }
 
               dist = len_v2(delta);
 
               delta[0] = event->x - rc->slow_mouse[0];
-              delta[1] = event->y - rc->slow_mouse[1];
 
               if (rc->zoom_prop) {
                 delta[0] /= zoom[0];
-                delta[1] /= zoom[1];
               }
 
-              dist = dist + 0.1f * (delta[0] + delta[1]);
+              dist = dist + 0.1f * (delta[0]);
             }
           }
           else {
             delta[0] = rc->initial_mouse[0] - event->x;
             delta[1] = rc->initial_mouse[1] - event->y;
-
             if (rc->zoom_prop) {
               RNA_property_float_get_array(&rc->zoom_ptr, rc->zoom_prop, zoom);
               delta[0] /= zoom[0];
               delta[1] /= zoom[1];
             }
-
-            dist = len_v2(delta);
+            if (rc->subtype == PROP_ANGLE) {
+              dist = len_v2(delta);
+            }
+            else {
+              dist = clamp_f(-delta[0], 0.0f, FLT_MAX);
+            }
           }
 
           /* calculate new value and apply snapping  */
@@ -2633,6 +2776,8 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
               if (snap) {
                 new_value = ((int)ceil(new_value * 10.f) * 10.0f) / 100.f;
               }
+              /* Invert new value to increase the factor moving the mouse to the right */
+              new_value = 1 - new_value;
               break;
             case PROP_ANGLE:
               new_value = atan2f(delta[1], delta[0]) + (float)M_PI + angle_precision;

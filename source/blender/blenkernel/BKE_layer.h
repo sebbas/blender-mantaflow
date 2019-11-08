@@ -114,11 +114,13 @@ void BKE_base_set_visible(struct Scene *scene,
                           struct ViewLayer *view_layer,
                           struct Base *base,
                           bool extend);
-void BKE_layer_collection_isolate(struct Scene *scene,
-                                  struct ViewLayer *view_layer,
-                                  struct LayerCollection *lc,
-                                  bool extend);
-void BKE_layer_collection_local_isolate(struct ViewLayer *view_layer,
+bool BKE_base_is_visible(const struct View3D *v3d, const struct Base *base);
+bool BKE_object_is_visible_in_viewport(const struct View3D *v3d, const struct Object *ob);
+void BKE_layer_collection_isolate_global(struct Scene *scene,
+                                         struct ViewLayer *view_layer,
+                                         struct LayerCollection *lc,
+                                         bool extend);
+void BKE_layer_collection_isolate_local(struct ViewLayer *view_layer,
                                         struct View3D *v3d,
                                         struct LayerCollection *lc,
                                         bool extend);

@@ -2338,24 +2338,22 @@ static int wm_handler_fileselect_do(bContext *C,
                                     int val)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  SpaceFile *sfile;
   int action = WM_HANDLER_CONTINUE;
 
   switch (val) {
     case EVT_FILESELECT_FULL_OPEN: {
       wmWindow *win = CTX_wm_window(C);
-      const int sizex = 1020 * UI_DPI_FAC;
-      const int sizey = 600 * UI_DPI_FAC;
       ScrArea *area;
 
       if ((area = ED_screen_temp_space_open(C,
                                             IFACE_("Blender File View"),
                                             WM_window_pixels_x(win) / 2,
                                             WM_window_pixels_y(win) / 2,
-                                            sizex,
-                                            sizey,
+                                            U.file_space_data.temp_win_sizex * UI_DPI_FAC,
+                                            U.file_space_data.temp_win_sizey * UI_DPI_FAC,
                                             SPACE_FILE,
-                                            U.filebrowser_display_type))) {
+                                            U.filebrowser_display_type,
+                                            true))) {
         ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
 
         BLI_assert(area->spacetype == SPACE_FILE);
@@ -2365,10 +2363,10 @@ static int wm_handler_fileselect_do(bContext *C,
         region_header->alignment = RGN_ALIGN_BOTTOM;
 
         /* settings for filebrowser, sfile is not operator owner but sends events */
-        sfile = (SpaceFile *)area->spacedata.first;
+        SpaceFile *sfile = (SpaceFile *)area->spacedata.first;
         sfile->op = handler->op;
 
-        ED_fileselect_set_params(sfile);
+        ED_fileselect_set_params_from_userdef(sfile);
       }
       else {
         BKE_report(&wm->reports, RPT_ERROR, "Failed to open window!");
@@ -2402,6 +2400,15 @@ static int wm_handler_fileselect_do(bContext *C,
           ScrArea *file_sa = screen->areabase.first;
 
           if (screen->temp && (file_sa->spacetype == SPACE_FILE)) {
+            int win_size[2];
+
+            /* Get DPI/pixelsize independent size to be stored in preferences. */
+            WM_window_set_dpi(temp_win); /* Ensure the DPI is taken from the right window. */
+            win_size[0] = WM_window_pixels_x(temp_win) / UI_DPI_FAC;
+            win_size[1] = WM_window_pixels_y(temp_win) / UI_DPI_FAC;
+
+            ED_fileselect_params_to_userdef(file_sa->spacedata.first, win_size);
+
             if (BLI_listbase_is_single(&file_sa->spacedata)) {
               BLI_assert(ctx_win != temp_win);
 
@@ -2430,6 +2437,7 @@ static int wm_handler_fileselect_do(bContext *C,
         }
 
         if (!temp_win && ctx_sa->full) {
+          ED_fileselect_params_to_userdef(ctx_sa->spacedata.first, NULL);
           ED_screen_full_prevspace(C, ctx_sa);
         }
       }
@@ -2730,7 +2738,10 @@ static int wm_handlers_do_intern(bContext *C, wmEvent *event, ListBase *handlers
         /* Clear the tool-tip whenever a key binding is handled, without this tool-tips
          * are kept when a modal operators starts (annoying but otherwise harmless). */
         if (action & WM_HANDLER_BREAK) {
-          WM_tooltip_clear(C, CTX_wm_window(C));
+          /* Window may be gone after file read. */
+          if (CTX_wm_window(C) != NULL) {
+            WM_tooltip_clear(C, CTX_wm_window(C));
+          }
         }
       }
       else if (handler_base->type == WM_HANDLER_TYPE_UI) {
@@ -3714,7 +3725,7 @@ wmEventHandler_Keymap *WM_event_add_keymap_handler(ListBase *handlers, wmKeyMap 
   return handler;
 }
 
-/** Follow #wmEventHandler_KeymapDynamicFn signiture. */
+/** Follow #wmEventHandler_KeymapDynamicFn signature. */
 wmKeyMap *WM_event_get_keymap_from_toolsystem(wmWindowManager *wm, wmEventHandler_Keymap *handler)
 {
   ScrArea *sa = handler->dynamic.user_data;
@@ -4203,19 +4214,31 @@ static void wm_eventemulation(wmEvent *event, bool test_only)
   if (U.flag & USER_TWOBUTTONMOUSE) {
 
     if (event->type == LEFTMOUSE) {
-      if (event->val == KM_PRESS && event->alt) {
-        event->type = MIDDLEMOUSE;
-        event->alt = 0;
+      short *mod = (
+#if !defined(WIN32)
+          (U.mouse_emulate_3_button_modifier == USER_EMU_MMB_MOD_OSKEY) ? &event->oskey :
+                                                                          &event->alt
+#else
+          /* Disable for WIN32 for now because it accesses the start menu. */
+          &event->alt
+#endif
+      );
 
-        if (!test_only) {
-          emulating_event = MIDDLEMOUSE;
+      if (event->val == KM_PRESS) {
+        if (*mod) {
+          *mod = 0;
+          event->type = MIDDLEMOUSE;
+
+          if (!test_only) {
+            emulating_event = MIDDLEMOUSE;
+          }
         }
       }
       else if (event->val == KM_RELEASE) {
         /* only send middle-mouse release if emulated */
         if (emulating_event == MIDDLEMOUSE) {
           event->type = MIDDLEMOUSE;
-          event->alt = 0;
+          *mod = 0;
         }
 
         if (!test_only) {
@@ -4979,6 +5002,19 @@ wmKeyMap *WM_event_get_keymap_from_handler(wmWindowManager *wm, wmEventHandler_K
   return keymap;
 }
 
+wmKeyMapItem *WM_event_match_keymap_item(bContext *C, wmKeyMap *keymap, const wmEvent *event)
+{
+  for (wmKeyMapItem *kmi = keymap->items.first; kmi; kmi = kmi->next) {
+    if (wm_eventmatch(event, kmi)) {
+      wmOperatorType *ot = WM_operatortype_find(kmi->idname, 0);
+      if (WM_operator_poll_context(C, ot, WM_OP_INVOKE_DEFAULT)) {
+        return kmi;
+      }
+    }
+  }
+  return NULL;
+}
+
 static wmKeyMapItem *wm_kmi_from_event(bContext *C,
                                        wmWindowManager *wm,
                                        ListBase *handlers,
@@ -4994,13 +5030,9 @@ static wmKeyMapItem *wm_kmi_from_event(bContext *C,
         wmEventHandler_Keymap *handler = (wmEventHandler_Keymap *)handler_base;
         wmKeyMap *keymap = WM_event_get_keymap_from_handler(wm, handler);
         if (keymap && WM_keymap_poll(C, keymap)) {
-          for (wmKeyMapItem *kmi = keymap->items.first; kmi; kmi = kmi->next) {
-            if (wm_eventmatch(event, kmi)) {
-              wmOperatorType *ot = WM_operatortype_find(kmi->idname, 0);
-              if (WM_operator_poll_context(C, ot, WM_OP_INVOKE_DEFAULT)) {
-                return kmi;
-              }
-            }
+          wmKeyMapItem *kmi = WM_event_match_keymap_item(C, keymap, event);
+          if (kmi != NULL) {
+            return kmi;
           }
         }
       }
@@ -5295,17 +5327,7 @@ bool WM_window_modal_keymap_status_draw(bContext *UNUSED(C), wmWindow *win, uiLa
           /* Assume release events just disable something which was toggled on. */
           continue;
         }
-        int icon_mod[4];
-#ifdef WITH_HEADLESS
-        int icon = 0;
-#else
-        int icon = UI_icon_from_keymap_item(kmi, icon_mod);
-#endif
-        if (icon != 0) {
-          for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
-            uiItemL(row, "", icon_mod[j]);
-          }
-          uiItemL(row, items[i].name, icon);
+        if (uiTemplateEventFromKeymapItem(row, items[i].name, kmi, false)) {
           show_text = false;
         }
       }

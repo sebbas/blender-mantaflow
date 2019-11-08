@@ -77,6 +77,7 @@ static UndoSculpt *sculpt_undo_get_nodes(void);
 static void update_cb(PBVHNode *node, void *rebuild)
 {
   BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_update_mask(node);
   if (*((bool *)rebuild)) {
     BKE_pbvh_node_mark_rebuild_draw(node);
   }
@@ -86,6 +87,7 @@ static void update_cb(PBVHNode *node, void *rebuild)
 struct PartialUpdateData {
   PBVH *pbvh;
   bool rebuild;
+  char *modified_grids;
 };
 
 /**
@@ -94,8 +96,24 @@ struct PartialUpdateData {
 static void update_cb_partial(PBVHNode *node, void *userdata)
 {
   struct PartialUpdateData *data = userdata;
-  if (BKE_pbvh_node_vert_update_check_any(data->pbvh, node)) {
-    update_cb(node, &(data->rebuild));
+  if (BKE_pbvh_type(data->pbvh) == PBVH_GRIDS) {
+    int *node_grid_indices;
+    int totgrid;
+    bool update = false;
+    BKE_pbvh_node_get_grids(data->pbvh, node, &node_grid_indices, &totgrid, NULL, NULL, NULL);
+    for (int i = 0; i < totgrid; i++) {
+      if (data->modified_grids[node_grid_indices[i]] == 1) {
+        update = true;
+      }
+    }
+    if (update) {
+      update_cb(node, &(data->rebuild));
+    }
+  }
+  else {
+    if (BKE_pbvh_node_vert_update_check_any(data->pbvh, node)) {
+      update_cb(node, &(data->rebuild));
+    }
   }
 }
 
@@ -135,7 +153,7 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
   if (unode->maxvert) {
     /* regular mesh restore */
 
-    if (ss->kb && !STREQ(ss->kb->name, unode->shapeName)) {
+    if (ss->shapekey_active && !STREQ(ss->shapekey_active->name, unode->shapeName)) {
       /* shape key has been changed before calling undo operator */
 
       Key *key = BKE_key_from_object(ob);
@@ -157,12 +175,12 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
     index = unode->index;
     mvert = ss->mvert;
 
-    if (ss->kb) {
+    if (ss->shapekey_active) {
       float(*vertCos)[3];
-      vertCos = BKE_keyblock_convert_to_vertcos(ob, ss->kb);
+      vertCos = BKE_keyblock_convert_to_vertcos(ob, ss->shapekey_active);
 
       if (unode->orig_co) {
-        if (ss->modifiers_active) {
+        if (ss->deform_modifiers_active) {
           for (int i = 0; i < unode->totvert; i++) {
             sculpt_undo_restore_deformed(ss, unode, i, index[i], vertCos[index[i]]);
           }
@@ -180,36 +198,33 @@ static bool sculpt_undo_restore_coords(bContext *C, Depsgraph *depsgraph, Sculpt
       }
 
       /* propagate new coords to keyblock */
-      sculpt_vertcos_to_key(ob, ss->kb, vertCos);
+      sculpt_vertcos_to_key(ob, ss->shapekey_active, vertCos);
 
       /* pbvh uses it's own mvert array, so coords should be */
       /* propagated to pbvh here */
-      BKE_pbvh_vert_coords_apply(ss->pbvh, vertCos, ss->kb->totelem);
+      BKE_pbvh_vert_coords_apply(ss->pbvh, vertCos, ss->shapekey_active->totelem);
 
       MEM_freeN(vertCos);
     }
     else {
       if (unode->orig_co) {
-        if (ss->modifiers_active) {
+        if (ss->deform_modifiers_active) {
           for (int i = 0; i < unode->totvert; i++) {
-            if (sculpt_undo_restore_deformed(ss, unode, i, index[i], mvert[index[i]].co)) {
-              mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
-            }
+            sculpt_undo_restore_deformed(ss, unode, i, index[i], mvert[index[i]].co);
+            mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
           }
         }
         else {
           for (int i = 0; i < unode->totvert; i++) {
-            if (test_swap_v3_v3(mvert[index[i]].co, unode->orig_co[i])) {
-              mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
-            }
+            swap_v3_v3(mvert[index[i]].co, unode->orig_co[i]);
+            mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
           }
         }
       }
       else {
         for (int i = 0; i < unode->totvert; i++) {
-          if (test_swap_v3_v3(mvert[index[i]].co, unode->co[i])) {
-            mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
-          }
+          swap_v3_v3(mvert[index[i]].co, unode->co[i]);
+          mvert[index[i]].flag |= ME_VERT_PBVH_UPDATE;
         }
       }
     }
@@ -346,10 +361,9 @@ static void sculpt_undo_bmesh_restore_generic(bContext *C,
 
     BKE_pbvh_search_gather(ss->pbvh, NULL, NULL, &nodes, &totnode);
 
-    TaskParallelSettings settings;
-    BLI_parallel_range_settings_defaults(&settings);
-    settings.use_threading = ((sd->flags & SCULPT_USE_OPENMP) && totnode > SCULPT_THREADED_LIMIT);
-    BLI_task_parallel_range(
+    PBVHParallelSettings settings;
+    BKE_pbvh_parallel_range_settings(&settings, (sd->flags & SCULPT_USE_OPENMP), totnode);
+    BKE_pbvh_parallel_range(
         0, totnode, nodes, sculpt_undo_bmesh_restore_generic_task_cb, &settings);
 
     if (nodes) {
@@ -484,9 +498,8 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
   SculptUndoNode *unode;
-  bool update = false, rebuild = false;
+  bool update = false, rebuild = false, update_mask = false;
   bool need_mask = false;
-  bool partial_update = true;
 
   for (unode = lb->first; unode; unode = unode->next) {
     /* restore pivot */
@@ -528,6 +541,9 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     return;
   }
 
+  char *undo_modified_grids = NULL;
+  bool use_multires_undo = false;
+
   for (unode = lb->first; unode; unode = unode->next) {
 
     if (!STREQ(unode->idname, ob->id.name)) {
@@ -547,8 +563,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
         continue;
       }
 
-      /* multi-res can't do partial updates since it doesn't flag edited vertices */
-      partial_update = false;
+      use_multires_undo = true;
     }
 
     switch (unode->type) {
@@ -565,6 +580,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
       case SCULPT_UNDO_MASK:
         if (sculpt_undo_restore_mask(C, unode)) {
           update = true;
+          update_mask = true;
         }
         break;
 
@@ -578,22 +594,33 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     }
   }
 
+  if (use_multires_undo) {
+    int max_grid;
+    unode = lb->first;
+    max_grid = unode->maxgrid;
+    undo_modified_grids = MEM_callocN(sizeof(char) * max_grid, "undo_grids");
+    for (unode = lb->first; unode; unode = unode->next) {
+      for (int i = 0; i < unode->totgrid; i++) {
+        undo_modified_grids[unode->grids[i]] = 1;
+      }
+    }
+  }
+
   if (update || rebuild) {
     bool tag_update = false;
     /* we update all nodes still, should be more clever, but also
      * needs to work correct when exiting/entering sculpt mode and
      * the nodes get recreated, though in that case it could do all */
-    if (partial_update) {
-      struct PartialUpdateData data = {
-          .rebuild = rebuild,
-          .pbvh = ss->pbvh,
-      };
-      BKE_pbvh_search_callback(ss->pbvh, NULL, NULL, update_cb_partial, &data);
-    }
-    else {
-      BKE_pbvh_search_callback(ss->pbvh, NULL, NULL, update_cb, &rebuild);
-    }
+    struct PartialUpdateData data = {
+        .rebuild = rebuild,
+        .pbvh = ss->pbvh,
+        .modified_grids = undo_modified_grids,
+    };
+    BKE_pbvh_search_callback(ss->pbvh, NULL, NULL, update_cb_partial, &data);
     BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
+    if (update_mask) {
+      BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateMask);
+    }
 
     if (BKE_sculpt_multires_active(scene, ob)) {
       if (rebuild) {
@@ -606,7 +633,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
 
     tag_update |= ((Mesh *)ob->data)->id.us > 1 || !BKE_sculptsession_use_pbvh_draw(ob, v3d);
 
-    if (ss->kb || ss->modifiers_active) {
+    if (ss->shapekey_active || ss->deform_modifiers_active) {
       Mesh *mesh = ob->data;
       BKE_mesh_calc_normals(mesh);
 
@@ -621,6 +648,8 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
       sculpt_update_object_bounding_box(ob);
     }
   }
+
+  MEM_SAFE_FREE(undo_modified_grids);
 }
 
 static void sculpt_undo_free_list(ListBase *lb)
@@ -807,7 +836,7 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
     unode->index = MEM_mapallocN(sizeof(int) * allvert, "SculptUndoNode.index");
   }
 
-  if (ss->modifiers_active) {
+  if (ss->deform_modifiers_active) {
     unode->orig_co = MEM_callocN(allvert * sizeof(*unode->orig_co), "undoSculpt orig_cos");
   }
 
@@ -829,7 +858,7 @@ static void sculpt_undo_store_coords(Object *ob, SculptUndoNode *unode)
       normal_float_to_short_v3(unode->no[vd.i], vd.fno);
     }
 
-    if (ss->modifiers_active) {
+    if (ss->deform_modifiers_active) {
       copy_v3_v3(unode->orig_co[vd.i], ss->orig_cos[unode->index[vd.i]]);
     }
   }
@@ -998,6 +1027,8 @@ SculptUndoNode *sculpt_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
   /* list is manipulated by multiple threads, so we lock */
   BLI_thread_lock(LOCK_CUSTOM1);
 
+  ss->needs_flush_to_id = 1;
+
   if (ss->bm || ELEM(type, SCULPT_UNDO_DYNTOPO_BEGIN, SCULPT_UNDO_DYNTOPO_END)) {
     /* Dynamic topology stores only one undo node per stroke,
      * regardless of the number of PBVH nodes modified */
@@ -1058,8 +1089,8 @@ SculptUndoNode *sculpt_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
   copy_v3_v3(unode->pivot_rot, ss->pivot_rot);
 
   /* store active shape key */
-  if (ss->kb) {
-    BLI_strncpy(unode->shapeName, ss->kb->name, sizeof(ss->kb->name));
+  if (ss->shapekey_active) {
+    BLI_strncpy(unode->shapeName, ss->shapekey_active->name, sizeof(ss->shapekey_active->name));
   }
   else {
     unode->shapeName[0] = '\0';
@@ -1113,17 +1144,6 @@ typedef struct SculptUndoStep {
   UndoSculpt data;
 } SculptUndoStep;
 
-static bool sculpt_undosys_poll(bContext *C)
-{
-  Object *obact = CTX_data_active_object(C);
-  if (obact && obact->type == OB_MESH) {
-    if (obact && (obact->mode & OB_MODE_SCULPT)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static void sculpt_undosys_step_encode_init(struct bContext *UNUSED(C), UndoStep *us_p)
 {
   SculptUndoStep *us = (SculptUndoStep *)us_p;
@@ -1132,7 +1152,7 @@ static void sculpt_undosys_step_encode_init(struct bContext *UNUSED(C), UndoStep
 }
 
 static bool sculpt_undosys_step_encode(struct bContext *UNUSED(C),
-                                       struct Main *UNUSED(bmain),
+                                       struct Main *bmain,
                                        UndoStep *us_p)
 {
   /* dummy, encoding is done along the way by adding tiles
@@ -1145,6 +1165,11 @@ static bool sculpt_undosys_step_encode(struct bContext *UNUSED(C),
     us->step.use_memfile_step = true;
   }
   us->step.is_applied = true;
+
+  if (!BLI_listbase_is_empty(&us->data.nodes)) {
+    bmain->is_memfile_undo_flush_needed = true;
+  }
+
   return true;
 }
 
@@ -1227,7 +1252,11 @@ static void sculpt_undosys_step_decode(
         me->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
         ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, true, NULL);
       }
-      BLI_assert(sculpt_undosys_poll(C));
+
+      if (ob->sculpt) {
+        ob->sculpt->needs_flush_to_id = 1;
+      }
+      bmain->is_memfile_undo_flush_needed = true;
     }
     else {
       BLI_assert(0);
@@ -1266,7 +1295,6 @@ void ED_sculpt_undo_geometry_end(struct Object *ob)
 void ED_sculpt_undosys_type(UndoType *ut)
 {
   ut->name = "Sculpt";
-  ut->poll = sculpt_undosys_poll;
   ut->step_encode_init = sculpt_undosys_step_encode_init;
   ut->step_encode = sculpt_undosys_step_encode;
   ut->step_decode = sculpt_undosys_step_decode;

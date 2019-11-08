@@ -29,6 +29,7 @@
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
 #include "GPU_extensions.h"
+#include "GPU_platform.h"
 #include "GPU_matrix.h"
 #include "GPU_shader.h"
 
@@ -212,7 +213,9 @@ int GPU_batch_vertbuf_add_ex(GPUBatch *batch, GPUVertBuf *verts, bool own_vbo)
     if (batch->verts[v] == NULL) {
 #if TRUST_NO_ONE
       /* for now all VertexBuffers must have same vertex_len */
-      assert(verts->vertex_len == batch->verts[0]->vertex_len);
+      if (batch->verts[0] != NULL) {
+        assert(verts->vertex_len == batch->verts[0]->vertex_len);
+      }
 #endif
       batch->verts[v] = verts;
       /* TODO: mark dirty so we can keep attribute bindings up-to-date */
@@ -718,8 +721,11 @@ void GPU_draw_primitive(GPUPrimType prim_type, int v_count)
 #if 0
 #  define USE_MULTI_DRAW_INDIRECT 0
 #else
+/* TODO: partial workaround for NVIDIA driver bug on recent GTX/RTX cards,
+ * that breaks instancing when using indirect draw-call (see T70011). */
 #  define USE_MULTI_DRAW_INDIRECT \
-    (GL_ARB_multi_draw_indirect && GPU_arb_base_instance_is_supported())
+    (GL_ARB_multi_draw_indirect && GPU_arb_base_instance_is_supported() && \
+     !GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL))
 #endif
 
 typedef struct GPUDrawCommand {
@@ -807,6 +813,10 @@ void GPU_draw_list_command_add(
 {
   BLI_assert(list->commands);
 
+  if (v_count == 0 || i_count == 0) {
+    return;
+  }
+
   if (list->base_index != UINT_MAX) {
     GPUDrawCommandIndexed *cmd = list->commands_indexed + list->cmd_len;
     cmd->v_first = v_first;
@@ -848,16 +858,19 @@ void GPU_draw_list_submit(GPUDrawList *list)
   uintptr_t offset = list->cmd_offset;
   uint cmd_len = list->cmd_len;
   size_t bytes_used = cmd_len * sizeof(GPUDrawCommandIndexed);
-  list->cmd_offset += bytes_used;
   list->cmd_len = 0; /* Avoid reuse. */
 
-  if (USE_MULTI_DRAW_INDIRECT) {
+  /* Only do multi-draw indirect if doing more than 2 drawcall.
+   * This avoids the overhead of buffer mapping if scene is
+   * not very instance friendly. */
+  if (USE_MULTI_DRAW_INDIRECT && cmd_len > 2) {
     GLenum prim = batch->gl_prim_type;
 
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, list->buffer_id);
     glFlushMappedBufferRange(GL_DRAW_INDIRECT_BUFFER, 0, bytes_used);
     glUnmapBuffer(GL_DRAW_INDIRECT_BUFFER);
     list->commands = NULL; /* Unmapped */
+    list->cmd_offset += bytes_used;
 
     if (batch->elem) {
       glMultiDrawElementsIndirect(prim, INDEX_TYPE(batch->elem), (void *)offset, cmd_len, 0);
@@ -871,6 +884,8 @@ void GPU_draw_list_submit(GPUDrawList *list)
     if (batch->elem) {
       GPUDrawCommandIndexed *cmd = list->commands_indexed;
       for (int i = 0; i < cmd_len; i++, cmd++) {
+        /* Index start was added by Draw manager. Avoid counting it twice. */
+        cmd->v_first -= batch->elem->index_start;
         GPU_batch_draw_advanced(batch, cmd->v_first, cmd->v_count, cmd->i_first, cmd->i_count);
       }
     }

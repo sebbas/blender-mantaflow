@@ -108,9 +108,7 @@ class VIEW3D_MT_tools_projectpaint_clone(Menu):
             props.value = i
 
 
-def brush_texpaint_common(panel, context, layout, brush, _settings, projpaint=False):
-    capabilities = brush.image_paint_capabilities
-
+def brush_texpaint_common(panel, context, layout, brush, _settings, *, projpaint=False):
     col = layout.column()
 
     if brush.image_tool == 'FILL' and not projpaint:
@@ -134,7 +132,7 @@ def brush_texpaint_common(panel, context, layout, brush, _settings, projpaint=Fa
         brush_basic_texpaint_settings(col, context, brush)
 
 
-def brush_texpaint_common_clone(_panel, context, layout, _brush, settings, projpaint=False):
+def brush_texpaint_common_clone(_panel, context, layout, _brush, settings, *, projpaint=False):
     ob = context.active_object
     col = layout.column()
 
@@ -162,7 +160,7 @@ def brush_texpaint_common_clone(_panel, context, layout, _brush, settings, projp
         col.menu("VIEW3D_MT_tools_projectpaint_clone", text=clone_text, translate=False)
 
 
-def brush_texpaint_common_color(_panel, context, layout, brush, _settings, projpaint=False):
+def brush_texpaint_common_color(_panel, context, layout, brush, _settings, *, projpaint=False):
     UnifiedPaintPanel.prop_unified_color_picker(layout, context, brush, "color", value_slider=True)
 
     row = layout.row(align=True)
@@ -172,7 +170,7 @@ def brush_texpaint_common_color(_panel, context, layout, brush, _settings, projp
     row.operator("paint.brush_colors_flip", icon='FILE_REFRESH', text="", emboss=False)
 
 
-def brush_texpaint_common_gradient(_panel, context, layout, brush, _settings, projpaint=False):
+def brush_texpaint_common_gradient(_panel, context, layout, brush, _settings, *, projpaint=False):
     layout.template_color_ramp(brush, "gradient", expand=True)
 
     layout.use_property_split = True
@@ -188,7 +186,7 @@ def brush_texpaint_common_gradient(_panel, context, layout, brush, _settings, pr
         col.prop(brush, "gradient_fill_mode")
 
 
-def brush_texpaint_common_options(_panel, _context, layout, brush, _settings, projpaint=False):
+def brush_texpaint_common_options(_panel, _context, layout, brush, _settings, *, projpaint=False):
     capabilities = brush.image_paint_capabilities
 
     col = layout.column()
@@ -201,6 +199,8 @@ def brush_texpaint_common_options(_panel, _context, layout, brush, _settings, pr
 
     if projpaint:
         col.prop(brush, "use_alpha")
+    else:
+        col.prop(brush, "use_paint_antialiasing")
 
 
 # Used in both the View3D toolbar and texture properties
@@ -367,7 +367,7 @@ def brush_basic_sculpt_settings(layout, context, brush, *, compact=False):
         layout.row().prop(brush, "direction", expand=True, **({"text": ""} if compact else {}))
 
 
-def brush_basic_gpencil_paint_settings(layout, _context, brush, *, compact=True):
+def brush_basic_gpencil_paint_settings(layout, _context, brush, tool, *, compact=True, is_toolbar=False):
     gp_settings = brush.gpencil_settings
 
     # Brush details
@@ -395,6 +395,23 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, *, compact=True)
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_draw_mode", text="Boundary")
         row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
+        # Fill options
+        if is_toolbar:
+            settings = _context.tool_settings.gpencil_sculpt
+            row = layout.row(align=True)
+            sub = row.row(align=True)
+            sub.popover(
+                panel="TOPBAR_PT_gpencil_fill",
+                text="Fill Options",
+            )
+        else:
+            row = layout.row(align=True)
+            row.prop(gp_settings, "fill_factor", text="Resolution")
+            if gp_settings.fill_draw_mode != 'STROKE':
+                row = layout.row(align=True)
+                row.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
+                row = layout.row(align=True)
+                row.prop(gp_settings, "fill_threshold", text="Threshold")
     else:  # brush.gpencil_tool == 'DRAW':
         row = layout.row(align=True)
         row.prop(brush, "size", text="Radius")
@@ -402,6 +419,33 @@ def brush_basic_gpencil_paint_settings(layout, _context, brush, *, compact=True)
         row = layout.row(align=True)
         row.prop(gp_settings, "pen_strength", slider=True)
         row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+
+    # FIXME: tools must use their own UI drawing!
+    if tool.idname in {
+            "builtin.arc",
+            "builtin.curve",
+            "builtin.line",
+            "builtin.box",
+            "builtin.circle",
+            "builtin.polyline",
+    }:
+        settings = _context.tool_settings.gpencil_sculpt
+        if is_toolbar:
+            row = layout.row(align=True)
+            row.prop(settings, "use_thickness_curve", text="", icon='CURVE_DATA')
+            sub = row.row(align=True)
+            sub.active = settings.use_thickness_curve
+            sub.popover(
+                panel="TOPBAR_PT_gpencil_primitive",
+                text="Thickness Profile",
+            )
+        else:
+            row = layout.row(align=True)
+            row.prop(settings, "use_thickness_curve", text="Use Thickness Profile")
+            sub = row.row(align=True)
+            if settings.use_thickness_curve:
+                # Curve
+                layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
 def brush_basic_gpencil_sculpt_settings(layout, context, brush, *, compact=False):

@@ -694,6 +694,7 @@ static void init_event_icons(void)
   INIT_EVENT_ICON(ICON_EVENT_PAGEUP, PAGEUPKEY, KM_ANY);
   INIT_EVENT_ICON(ICON_EVENT_PAGEDOWN, PAGEDOWNKEY, KM_ANY);
   INIT_EVENT_ICON(ICON_EVENT_RETURN, RETKEY, KM_ANY);
+  INIT_EVENT_ICON(ICON_EVENT_SPACEKEY, SPACEKEY, KM_ANY);
 
   g_di_event_list = di_next;
 
@@ -1583,7 +1584,6 @@ static struct {
   IconTextureDrawCall normal;
   IconTextureDrawCall border;
   bool enabled;
-  float mat[4][4];
 } g_icon_draw_cache = {{{{{0}}}}};
 
 void UI_icon_draw_cache_begin(void)

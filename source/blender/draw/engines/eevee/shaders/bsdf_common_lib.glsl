@@ -140,6 +140,10 @@ float min_v3(vec3 v)
 {
   return min(v.x, min(v.y, v.z));
 }
+float min_v4(vec4 v)
+{
+  return min(min(v.x, v.y), min(v.z, v.w));
+}
 float max_v2(vec2 v)
 {
   return max(v.x, v.y);
@@ -147,6 +151,10 @@ float max_v2(vec2 v)
 float max_v3(vec3 v)
 {
   return max(v.x, max(v.y, v.z));
+}
+float max_v4(vec4 v)
+{
+  return max(max(v.x, v.y), max(v.z, v.w));
 }
 
 float sum(vec2 v)
@@ -918,14 +926,15 @@ void main()
   Closure cl = nodetree_exec();
 
   float holdout = 1.0 - saturate(cl.holdout);
+  float transmit = saturate(avg(cl.transmittance));
+  float alpha = 1.0 - transmit;
 
 #    ifdef USE_ALPHA_BLEND
   vec2 uvs = gl_FragCoord.xy * volCoordScale.zw;
   vec3 vol_transmit, vol_scatter;
   volumetric_resolve(uvs, gl_FragCoord.z, vol_transmit, vol_scatter);
 
-  float transmit = saturate(avg(cl.transmittance));
-  outRadiance = vec4(cl.radiance * vol_transmit + vol_scatter, (1.0 - transmit) * holdout);
+  outRadiance = vec4(cl.radiance * vol_transmit + vol_scatter, alpha * holdout);
   outTransmittance = vec4(cl.transmittance, transmit * holdout);
 #    else
   outRadiance = vec4(cl.radiance, holdout);
@@ -952,6 +961,15 @@ void main()
 #      endif
 
   outRadiance.rgb += cl.sss_irradiance.rgb * cl.sss_albedo.rgb * fac;
+#    endif
+
+#    ifndef USE_ALPHA_BLEND
+  float alpha_div = 1.0 / max(1e-8, alpha);
+  outRadiance.rgb *= alpha_div;
+  ssrData.rgb *= alpha_div;
+#      ifdef USE_SSS
+  sssAlbedo.rgb *= alpha_div;
+#      endif
 #    endif
 }
 

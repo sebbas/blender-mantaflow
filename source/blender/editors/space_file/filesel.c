@@ -49,6 +49,8 @@
 #include "BLI_utildefines.h"
 #include "BLI_fnmatch.h"
 
+#include "BLO_readfile.h"
+
 #include "BLT_translation.h"
 
 #include "BKE_appdir.h"
@@ -101,10 +103,9 @@ short ED_fileselect_set_params(SpaceFile *sfile)
                       sizeof(sfile->params->dir),
                       sizeof(sfile->params->file));
     sfile->params->filter_glob[0] = '\0';
-    /* set the default thumbnails size */
-    sfile->params->thumbnail_size = 128;
-    /* Show size column by default. */
-    sfile->params->details_flags = FILE_DETAILS_SIZE | FILE_DETAILS_DATETIME;
+    sfile->params->thumbnail_size = U_default.file_space_data.thumbnail_size;
+    sfile->params->details_flags = U_default.file_space_data.details_flags;
+    sfile->params->filter_id = U_default.file_space_data.filter_id;
   }
 
   params = sfile->params;
@@ -244,15 +245,6 @@ short ED_fileselect_set_params(SpaceFile *sfile)
       }
     }
 
-    /* For now, always init filterid to 'all true' */
-    params->filter_id = FILTER_ID_AC | FILTER_ID_AR | FILTER_ID_BR | FILTER_ID_CA | FILTER_ID_CU |
-                        FILTER_ID_GD | FILTER_ID_GR | FILTER_ID_IM | FILTER_ID_LA | FILTER_ID_LS |
-                        FILTER_ID_LT | FILTER_ID_MA | FILTER_ID_MB | FILTER_ID_MC | FILTER_ID_ME |
-                        FILTER_ID_MSK | FILTER_ID_NT | FILTER_ID_OB | FILTER_ID_PA |
-                        FILTER_ID_PAL | FILTER_ID_PC | FILTER_ID_SCE | FILTER_ID_SPK |
-                        FILTER_ID_SO | FILTER_ID_TE | FILTER_ID_TXT | FILTER_ID_VF | FILTER_ID_WO |
-                        FILTER_ID_CF | FILTER_ID_WS | FILTER_ID_LP;
-
     if (U.uiflag & USER_HIDE_DOT) {
       params->flag |= FILE_HIDE_DOT;
     }
@@ -274,26 +266,11 @@ short ED_fileselect_set_params(SpaceFile *sfile)
       params->sort = RNA_property_enum_get(op->ptr, prop);
     }
     else {
-      params->sort = FILE_SORT_ALPHA;
+      params->sort = U_default.file_space_data.sort_type;
     }
 
     if (params->display == FILE_DEFAULTDISPLAY) {
-      if (params->display_previous == FILE_DEFAULTDISPLAY) {
-        if (U.uiflag & USER_SHOW_THUMBNAILS) {
-          if (params->filter & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT)) {
-            params->display = FILE_IMGDISPLAY;
-          }
-          else {
-            params->display = FILE_VERTICALDISPLAY;
-          }
-        }
-        else {
-          params->display = FILE_VERTICALDISPLAY;
-        }
-      }
-      else {
-        params->display = params->display_previous;
-      }
+      params->display = U_default.file_space_data.display_type;
     }
 
     if (is_relative_path) {
@@ -307,10 +284,9 @@ short ED_fileselect_set_params(SpaceFile *sfile)
   else {
     /* default values, if no operator */
     params->type = FILE_UNIX;
-    params->flag |= FILE_HIDE_DOT;
+    params->flag |= U_default.file_space_data.flag;
     params->flag &= ~FILE_DIRSEL_ONLY;
     params->display = FILE_VERTICALDISPLAY;
-    params->display_previous = FILE_DEFAULTDISPLAY;
     params->sort = FILE_SORT_ALPHA;
     params->filter = 0;
     params->filter_glob[0] = '\0';
@@ -344,6 +320,65 @@ short ED_fileselect_set_params(SpaceFile *sfile)
   }
 
   return 1;
+}
+
+/* The subset of FileSelectParams.flag items we store into preferences. */
+#define PARAMS_FLAGS_REMEMBERED (FILE_HIDE_DOT | FILE_SORT_INVERT)
+
+void ED_fileselect_set_params_from_userdef(SpaceFile *sfile)
+{
+  wmOperator *op = sfile->op;
+  UserDef_FileSpaceData *sfile_udata = &U.file_space_data;
+
+  ED_fileselect_set_params(sfile);
+
+  if (!op) {
+    return;
+  }
+
+  if (!RNA_struct_property_is_set(op->ptr, "display_type")) {
+    sfile->params->display = sfile_udata->display_type;
+  }
+  if (!RNA_struct_property_is_set(op->ptr, "sort_method")) {
+    sfile->params->sort = sfile_udata->sort_type;
+  }
+  sfile->params->thumbnail_size = sfile_udata->thumbnail_size;
+  sfile->params->details_flags = sfile_udata->details_flags;
+  sfile->params->filter_id = sfile_udata->filter_id;
+
+  /* Combine flags we take from params with the flags we take from userdef. */
+  sfile->params->flag = (sfile->params->flag & ~PARAMS_FLAGS_REMEMBERED) |
+                        (sfile_udata->flag & PARAMS_FLAGS_REMEMBERED);
+}
+
+/**
+ * Update the user-preference data for the file space. In fact, this also contains some
+ * non-FileSelectParams data, but we can safely ignore this.
+ *
+ * \param temp_win_size: If the browser was opened in a temporary window,
+ * pass its size here so we can store that in the preferences. Otherwise NULL.
+ */
+void ED_fileselect_params_to_userdef(SpaceFile *sfile, int temp_win_size[2])
+{
+  UserDef_FileSpaceData *sfile_udata_new = &U.file_space_data;
+  UserDef_FileSpaceData sfile_udata_old = U.file_space_data;
+
+  sfile_udata_new->display_type = sfile->params->display;
+  sfile_udata_new->thumbnail_size = sfile->params->thumbnail_size;
+  sfile_udata_new->sort_type = sfile->params->sort;
+  sfile_udata_new->details_flags = sfile->params->details_flags;
+  sfile_udata_new->flag = sfile->params->flag & PARAMS_FLAGS_REMEMBERED;
+  sfile_udata_new->filter_id = sfile->params->filter_id;
+
+  if (temp_win_size) {
+    sfile_udata_new->temp_win_sizex = temp_win_size[0];
+    sfile_udata_new->temp_win_sizey = temp_win_size[1];
+  }
+
+  /* Tag prefs as dirty if something has changed. */
+  if (memcmp(sfile_udata_new, &sfile_udata_old, sizeof(sfile_udata_old)) != 0) {
+    U.runtime.is_dirty = true;
+  }
 }
 
 void ED_fileselect_reset_params(SpaceFile *sfile)
@@ -766,7 +801,6 @@ void ED_fileselect_init_layout(struct SpaceFile *sfile, ARegion *ar)
                     layout->tile_border_x * 2;
     layout->flag = FILE_LAYOUT_HOR;
   }
-  params->display_previous = params->display;
   layout->dirty = false;
 }
 
@@ -923,6 +957,17 @@ void ED_fileselect_exit(wmWindowManager *wm, ScrArea *sa, SpaceFile *sfile)
     return;
   }
   if (sfile->op) {
+    wmWindow *temp_win = WM_window_is_temp_screen(wm->winactive) ? wm->winactive : NULL;
+    int win_size[2];
+
+    if (temp_win) {
+      /* Get DPI/pixelsize independent size to be stored in preferences. */
+      WM_window_set_dpi(temp_win); /* Ensure the DPI is taken from the right window. */
+      win_size[0] = WM_window_pixels_x(temp_win) / UI_DPI_FAC;
+      win_size[1] = WM_window_pixels_y(temp_win) / UI_DPI_FAC;
+    }
+    ED_fileselect_params_to_userdef(sfile, temp_win ? win_size : NULL);
+
     WM_event_fileselect_event(wm, sfile->op, EVT_FILESELECT_EXTERNAL_CANCEL);
     sfile->op = NULL;
   }

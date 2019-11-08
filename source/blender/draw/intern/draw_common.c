@@ -83,6 +83,7 @@ void DRW_globals_update(void)
   UI_GetThemeColor4fv(TH_VNORMAL, gb->colorVNormal);
   UI_GetThemeColor4fv(TH_LNORMAL, gb->colorLNormal);
   UI_GetThemeColor4fv(TH_FACE_DOT, gb->colorFaceDot);
+  UI_GetThemeColor4fv(TH_SKIN_ROOT, gb->colorSkinRoot);
   UI_GetThemeColor4fv(TH_BACK, gb->colorBackground);
 
   /* Custom median color to slightly affect the edit mesh colors. */
@@ -277,7 +278,6 @@ static struct {
   struct GPUVertFormat *instance_scaled;
   struct GPUVertFormat *instance_sized;
   struct GPUVertFormat *instance_outline;
-  struct GPUVertFormat *instance;
   struct GPUVertFormat *instance_camera;
   struct GPUVertFormat *instance_distance_lines;
   struct GPUVertFormat *instance_spot;

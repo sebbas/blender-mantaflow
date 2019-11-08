@@ -51,6 +51,7 @@
 
 #include "BKE_collection.h"
 #include "BKE_effect.h"
+#include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
@@ -61,7 +62,6 @@
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #ifdef WITH_BULLET
-#  include "BKE_global.h"
 #  include "BKE_library.h"
 #  include "BKE_library_query.h"
 #endif
@@ -174,12 +174,21 @@ void BKE_rigidbody_free_object(Object *ob, RigidBodyWorld *rbw)
   /* free physics references */
   if (is_orig) {
     if (rbo->shared->physics_object) {
-      BLI_assert(rbw);
-      if (rbw) {
+      if (rbw != NULL) {
         /* We can only remove the body from the world if the world is known.
          * The world is generally only unknown if it's an evaluated copy of
          * an object that's being freed, in which case this code isn't run anyway. */
         RB_dworld_remove_body(rbw->shared->physics_world, rbo->shared->physics_object);
+      }
+      else {
+        /* We have no access to 'owner' RBW when deleting the object ID itself... No choice bu to
+         * loop over all scenes then. */
+        for (Scene *scene = G_MAIN->scenes.first; scene != NULL; scene = scene->id.next) {
+          RigidBodyWorld *scene_rbw = scene->rigidbody_world;
+          if (scene_rbw != NULL) {
+            RB_dworld_remove_body(scene_rbw->shared->physics_world, rbo->shared->physics_object);
+          }
+        }
       }
 
       RB_body_delete(rbo->shared->physics_object);
@@ -1415,7 +1424,7 @@ bool BKE_rigidbody_add_object(Main *bmain, Scene *scene, Object *ob, int type, R
   return true;
 }
 
-void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob)
+void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob, const bool free_us)
 {
   RigidBodyWorld *rbw = scene->rigidbody_world;
   RigidBodyCon *rbc;
@@ -1438,8 +1447,13 @@ void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob)
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->constraints, obt) {
         if (obt && obt->rigidbody_constraint) {
           rbc = obt->rigidbody_constraint;
-          if (ELEM(ob, rbc->ob1, rbc->ob2)) {
-            BKE_rigidbody_remove_constraint(scene, obt);
+          if (rbc->ob1 == ob) {
+            rbc->ob1 = NULL;
+            DEG_id_tag_update(&obt->id, ID_RECALC_COPY_ON_WRITE);
+          }
+          if (rbc->ob2 == ob) {
+            rbc->ob2 = NULL;
+            DEG_id_tag_update(&obt->id, ID_RECALC_COPY_ON_WRITE);
           }
         }
       }
@@ -1454,7 +1468,7 @@ void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob)
        * when we remove them from RB simulation. */
       BKE_collection_object_add(bmain, scene->master_collection, ob);
     }
-    BKE_collection_object_remove(bmain, rbw->group, ob, false);
+    BKE_collection_object_remove(bmain, rbw->group, ob, free_us);
   }
 
   /* remove object's settings */
@@ -1468,15 +1482,24 @@ void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob)
   DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 }
 
-void BKE_rigidbody_remove_constraint(Scene *scene, Object *ob)
+void BKE_rigidbody_remove_constraint(Main *bmain, Scene *scene, Object *ob, const bool free_us)
 {
   RigidBodyWorld *rbw = scene->rigidbody_world;
   RigidBodyCon *rbc = ob->rigidbody_constraint;
 
-  /* remove from rigidbody world, free object won't do this */
-  if (rbw && rbw->shared->physics_world && rbc->physics_constraint) {
-    RB_dworld_remove_constraint(rbw->shared->physics_world, rbc->physics_constraint);
+  if (rbw != NULL) {
+    /* Remove from RBW constraints collection. */
+    if (rbw->constraints != NULL) {
+      BKE_collection_object_remove(bmain, rbw->constraints, ob, free_us);
+      DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_COPY_ON_WRITE);
+    }
+
+    /* remove from rigidbody world, free object won't do this */
+    if (rbw->shared->physics_world && rbc->physics_constraint) {
+      RB_dworld_remove_constraint(rbw->shared->physics_world, rbc->physics_constraint);
+    }
   }
+
   /* remove object's settings */
   BKE_rigidbody_free_constraint(ob);
 
@@ -1657,9 +1680,12 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
   float ctime = DEG_get_ctime(depsgraph);
 
   /* update world */
-  if (rebuild) {
-    BKE_rigidbody_validate_sim_world(scene, rbw, true);
+  /* Note physics_world can get NULL when undoing the deletion of the last object in it (see
+   * T70667). */
+  if (rebuild || rbw->shared->physics_world == NULL) {
+    BKE_rigidbody_validate_sim_world(scene, rbw, rebuild);
   }
+
   rigidbody_update_sim_world(scene, rbw);
 
   /* XXX TODO For rebuild: remove all constraints first.
@@ -2086,10 +2112,10 @@ bool BKE_rigidbody_add_object(Main *bmain, Scene *scene, Object *ob, int type, R
   return false;
 }
 
-void BKE_rigidbody_remove_object(struct Main *bmain, Scene *scene, Object *ob)
+void BKE_rigidbody_remove_object(struct Main *bmain, Scene *scene, Object *ob, const bool free_us)
 {
 }
-void BKE_rigidbody_remove_constraint(Scene *scene, Object *ob)
+void BKE_rigidbody_remove_constraint(Main *bmain, Scene *scene, Object *ob, const bool free_us)
 {
 }
 void BKE_rigidbody_sync_transforms(RigidBodyWorld *rbw, Object *ob, float ctime)

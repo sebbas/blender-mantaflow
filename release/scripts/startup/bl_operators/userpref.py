@@ -114,7 +114,8 @@ class PREFERENCES_OT_copy_prev(Operator):
 
         shutil.copytree(self._old_path(), self._new_path(), symlinks=True)
 
-        # reload recent-files.txt
+        # reload preferences and recent-files.txt
+        bpy.ops.wm.read_userpref()
         bpy.ops.wm.read_history()
 
         # don't loose users work if they open the splash later.
@@ -1031,7 +1032,7 @@ class PREFERENCES_OT_studiolight_uninstall(Operator):
     """Delete Studio Light"""
     bl_idname = "preferences.studiolight_uninstall"
     bl_label = "Uninstall Studio Light"
-    index: bpy.props.IntProperty()
+    index: IntProperty()
 
     def execute(self, context):
         import os
@@ -1054,7 +1055,7 @@ class PREFERENCES_OT_studiolight_copy_settings(Operator):
     """Copy Studio Light settings to the Studio light editor"""
     bl_idname = "preferences.studiolight_copy_settings"
     bl_label = "Copy Studio Light settings"
-    index: bpy.props.IntProperty()
+    index: IntProperty()
 
     def execute(self, context):
         prefs = context.preferences

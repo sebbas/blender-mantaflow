@@ -1298,7 +1298,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active_smooth_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "active_smooth");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Active Smooth", "Amount of smoothing while drawing ");
+  RNA_def_property_ui_text(prop, "Active Smooth", "Amount of smoothing while drawing");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
@@ -1306,7 +1306,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "era_strength_f");
   RNA_def_property_range(prop, 0.0, 100.0);
   RNA_def_property_ui_range(prop, 0.0, 100.0, 10, 1);
-  RNA_def_property_ui_text(prop, "Affect Stroke Strength", "Amount of erasing for strength ");
+  RNA_def_property_ui_text(prop, "Affect Stroke Strength", "Amount of erasing for strength");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
@@ -1314,7 +1314,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "era_thickness_f");
   RNA_def_property_range(prop, 0.0, 100.0);
   RNA_def_property_ui_range(prop, 0.0, 100.0, 10, 1);
-  RNA_def_property_ui_text(prop, "Affect Stroke Thickness", "Amount of erasing for thickness ");
+  RNA_def_property_ui_text(prop, "Affect Stroke Thickness", "Amount of erasing for thickness");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, NULL);
 
@@ -1452,81 +1452,77 @@ static void rna_def_brush(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem prop_blend_items[] = {
-      {IMB_BLEND_MIX, "MIX", 0, "Mix", "Use mix blending mode while painting"},
+      {IMB_BLEND_MIX, "MIX", 0, "Mix", "Use Mix blending mode while painting"},
       {0, "", ICON_NONE, NULL, NULL},
-      {IMB_BLEND_DARKEN, "DARKEN", 0, "Darken", "Use darken blending mode while painting"},
-      {IMB_BLEND_MUL, "MUL", 0, "Multiply", "Use multiply blending mode while painting"},
+      {IMB_BLEND_DARKEN, "DARKEN", 0, "Darken", "Use Darken blending mode while painting"},
+      {IMB_BLEND_MUL, "MUL", 0, "Multiply", "Use Multiply blending mode while painting"},
       {IMB_BLEND_COLORBURN,
        "COLORBURN",
        0,
-       "Color burn",
-       "Use color burn blending mode while painting"},
+       "Color Burn",
+       "Use Color Burn blending mode while painting"},
       {IMB_BLEND_LINEARBURN,
        "LINEARBURN",
        0,
-       "Linear burn",
-       "Use linear burn blending mode while painting"},
+       "Linear Burn",
+       "Use Linear Burn blending mode while painting"},
       {0, "", ICON_NONE, NULL, NULL},
-      {IMB_BLEND_LIGHTEN, "LIGHTEN", 0, "Lighten", "Use lighten blending mode while painting"},
-      {IMB_BLEND_SCREEN, "SCREEN", 0, "Screen", "Use screen blending mode while painting"},
+      {IMB_BLEND_LIGHTEN, "LIGHTEN", 0, "Lighten", "Use Lighten blending mode while painting"},
+      {IMB_BLEND_SCREEN, "SCREEN", 0, "Screen", "Use Screen blending mode while painting"},
       {IMB_BLEND_COLORDODGE,
        "COLORDODGE",
        0,
-       "Color dodge",
-       "Use color dodge blending mode while painting"},
-      {IMB_BLEND_ADD, "ADD", 0, "Add", "Use add blending mode while painting"},
+       "Color Dodge",
+       "Use Color Dodge blending mode while painting"},
+      {IMB_BLEND_ADD, "ADD", 0, "Add", "Use Add blending mode while painting"},
       {0, "", ICON_NONE, NULL, NULL},
-      {IMB_BLEND_OVERLAY, "OVERLAY", 0, "Overlay", "Use overlay blending mode while painting"},
+      {IMB_BLEND_OVERLAY, "OVERLAY", 0, "Overlay", "Use Overlay blending mode while painting"},
       {IMB_BLEND_SOFTLIGHT,
        "SOFTLIGHT",
        0,
-       "Soft light",
-       "Use softlight blending mode while painting"},
+       "Soft Light",
+       "Use Soft Light blending mode while painting"},
       {IMB_BLEND_HARDLIGHT,
        "HARDLIGHT",
        0,
-       "Hard light",
-       "Use hard light blending mode while painting"},
+       "Hard Light",
+       "Use Hard Light blending mode while painting"},
       {IMB_BLEND_VIVIDLIGHT,
        "VIVIDLIGHT",
        0,
-       "Vivid light",
-       "Use vividlight blending mode while painting"},
+       "Vivid Light",
+       "Use Vivid Light blending mode while painting"},
       {IMB_BLEND_LINEARLIGHT,
        "LINEARLIGHT",
        0,
-       "Linear light",
-       "Use linearlight blending mode while painting"},
+       "Linear Light",
+       "Use Linear Light blending mode while painting"},
       {IMB_BLEND_PINLIGHT,
        "PINLIGHT",
        0,
-       "Pin light",
-       "Use pinlight blending mode while painting"},
+       "Pin Light",
+       "Use Pin Light blending mode while painting"},
       {0, "", ICON_NONE, NULL, NULL},
       {IMB_BLEND_DIFFERENCE,
        "DIFFERENCE",
        0,
        "Difference",
-       "Use difference blending mode while painting"},
+       "Use Difference blending mode while painting"},
       {IMB_BLEND_EXCLUSION,
        "EXCLUSION",
        0,
        "Exclusion",
-       "Use exclusion blending mode while painting"},
-      {IMB_BLEND_SUB, "SUB", 0, "Subtract", "Use subtract blending mode while painting"},
+       "Use Exclusion blending mode while painting"},
+      {IMB_BLEND_SUB, "SUB", 0, "Subtract", "Use Subtract blending mode while painting"},
       {0, "", ICON_NONE, NULL, NULL},
-      {IMB_BLEND_HUE, "HUE", 0, "Hue", "Use hue blending mode while painting"},
+      {IMB_BLEND_HUE, "HUE", 0, "Hue", "Use Hue blending mode while painting"},
       {IMB_BLEND_SATURATION,
        "SATURATION",
        0,
        "Saturation",
-       "Use saturation blending mode while painting"},
-      {IMB_BLEND_COLOR, "COLOR", 0, "Color", "Use color blending mode while painting"},
-      {IMB_BLEND_LUMINOSITY,
-       "LUMINOSITY",
-       0,
-       "Luminosity",
-       "Use luminosity blending mode while painting"},
+       "Use Saturation blending mode while painting"},
+      {IMB_BLEND_COLOR, "COLOR", 0, "Color", "Use Color blending mode while painting"},
+      {IMB_BLEND_LUMINOSITY, "LUMINOSITY", 0, "Value", "Use Value blending mode while painting"},
       {0, "", ICON_NONE, NULL, NULL},
       {IMB_BLEND_ERASE_ALPHA, "ERASE_ALPHA", 0, "Erase Alpha", "Erase alpha while painting"},
       {IMB_BLEND_ADD_ALPHA, "ADD_ALPHA", 0, "Add Alpha", "Add alpha while painting"},
@@ -1610,15 +1606,11 @@ static void rna_def_brush(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem brush_elastic_deform_type_items[] = {
-      {BRUSH_ELASTIC_DEFORM_GRAB, "ELASTIC_DEFORM_GRAB", 0, "Grab", ""},
-      {BRUSH_ELASTIC_DEFORM_GRAB_BISCALE, "ELASTIC_DEFORM_GRAB_BISCALE", 0, "Bi-scale Grab", ""},
-      {BRUSH_ELASTIC_DEFORM_GRAB_TRISCALE,
-       "ELASTIC_DEFORM_GRAB_TRISCALE",
-       0,
-       "Tri-scale Grab",
-       ""},
-      {BRUSH_ELASTIC_DEFORM_SCALE, "ELASTIC_DEFORM_SCALE", 0, "Scale", ""},
-      {BRUSH_ELASTIC_DEFORM_TWIST, "ELASTIC_DEFORM_TWIST", 0, "Twist", ""},
+      {BRUSH_ELASTIC_DEFORM_GRAB, "GRAB", 0, "Grab", ""},
+      {BRUSH_ELASTIC_DEFORM_GRAB_BISCALE, "GRAB_BISCALE", 0, "Bi-scale Grab", ""},
+      {BRUSH_ELASTIC_DEFORM_GRAB_TRISCALE, "GRAB_TRISCALE", 0, "Tri-scale Grab", ""},
+      {BRUSH_ELASTIC_DEFORM_SCALE, "SCALE", 0, "Scale", ""},
+      {BRUSH_ELASTIC_DEFORM_TWIST, "TWIST", 0, "Twist", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1669,7 +1661,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "gpencil_tool", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "gpencil_tool");
   RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
-  RNA_def_property_ui_text(prop, "Type", "Category of the brush");
+  RNA_def_property_ui_text(prop, "Grease Pencil Draw Tool", "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   /** End per mode tool properties. */
 
@@ -1718,7 +1710,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "unprojected_radius", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_funcs(prop, NULL, "rna_Brush_set_unprojected_radius", NULL);
   RNA_def_property_range(prop, 0.001, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0.001, 1, 0, -1);
+  RNA_def_property_ui_range(prop, 0.001, 1, 1, -1);
   RNA_def_property_ui_text(prop, "Unprojected Radius", "Radius of brush in Blender units");
   RNA_def_property_update(prop, 0, "rna_Brush_size_update");
 
@@ -1863,6 +1855,13 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Crease Brush Pinch Factor", "How much the crease brush pinches");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
+  prop = RNA_def_property(srna, "pose_offset", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "pose_offset");
+  RNA_def_property_range(prop, 0.0f, 2.0f);
+  RNA_def_property_ui_text(
+      prop, "Pose Origin Offset", "Offset of the pose origin in relation to the brush radius");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
   prop = RNA_def_property(srna, "auto_smooth_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "autosmooth_factor");
   RNA_def_property_float_default(prop, 0);
@@ -1886,8 +1885,8 @@ static void rna_def_brush(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "normal_radius_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "normal_radius_factor");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.001, 3);
+  RNA_def_property_range(prop, 0.0f, 2.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 2.0f, 0.001, 3);
   RNA_def_property_ui_text(prop,
                            "Normal Radius",
                            "Ratio between the brush radius and the radius that is going to be "
@@ -1960,7 +1959,7 @@ static void rna_def_brush(BlenderRNA *brna)
   /* flag */
   /* This is an enum but its unlikely we add other shapes, so expose as a boolean. */
   prop = RNA_def_property(srna, "use_projected", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "falloff_shape", BRUSH_AIRBRUSH);
+  RNA_def_property_boolean_sdna(prop, NULL, "falloff_shape", PAINT_FALLOFF_SHAPE_TUBE);
   RNA_def_property_ui_text(
       prop, "2D Falloff", "Apply brush influence in 2D circle instead of a sphere");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
@@ -2006,6 +2005,11 @@ static void rna_def_brush(BlenderRNA *brna)
       prop,
       "Grab Active Vertex",
       "Apply the maximum grab strength to the active vertex instead of the cursor location");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "use_paint_antialiasing", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "sampling_flag", BRUSH_PAINT_ANTIALIASING);
+  RNA_def_property_ui_text(prop, "Antialasing", "Smooths the edges of the strokes");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "use_pressure_strength", PROP_BOOLEAN, PROP_NONE);
@@ -2412,7 +2416,7 @@ static void rna_def_operator_stroke_element(BlenderRNA *brna)
   prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_NONE);
   RNA_def_property_flag(prop, PROP_IDPROPERTY);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_ui_text(prop, "Brush Size", "Brush Size in screen space");
+  RNA_def_property_ui_text(prop, "Brush Size", "Brush size in screen space");
 
   prop = RNA_def_property(srna, "pen_flip", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_IDPROPERTY);

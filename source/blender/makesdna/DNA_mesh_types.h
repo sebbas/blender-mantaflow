@@ -190,8 +190,9 @@ typedef struct Mesh {
   short totcol;
 
   float remesh_voxel_size;
+  float remesh_voxel_adaptivity;
   char remesh_mode;
-  char _pad1[7];
+  char _pad1[3];
   /** Deprecated multiresolution modeling data, only keep for loading old files. */
   struct Multires *mr DNA_DEPRECATED;
 
@@ -251,6 +252,8 @@ enum {
   ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,
   ME_REMESH_SMOOTH_NORMALS = 1 << 11,
   ME_REMESH_REPROJECT_PAINT_MASK = 1 << 12,
+  ME_REMESH_FIX_POLES = 1 << 13,
+  ME_REMESH_REPROJECT_VOLUME = 1 << 14,
 };
 
 /* me->cd_flag */

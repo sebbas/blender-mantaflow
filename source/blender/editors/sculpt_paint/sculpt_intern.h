@@ -44,6 +44,13 @@ bool sculpt_mode_poll_view3d(struct bContext *C);
 bool sculpt_poll(struct bContext *C);
 bool sculpt_poll_view3d(struct bContext *C);
 
+/* Updates */
+
+typedef enum SculptUpdateType {
+  SCULPT_UPDATE_COORDS = 1 << 0,
+  SCULPT_UPDATE_MASK = 1 << 1,
+} SculptUpdateType;
+
 /* Stroke */
 
 typedef struct SculptCursorGeometryInfo {
@@ -63,11 +70,12 @@ void sculpt_pose_calc_pose_data(struct Sculpt *sd,
                                 struct SculptSession *ss,
                                 float initial_location[3],
                                 float radius,
+                                float pose_offset,
                                 float *r_pose_origin,
                                 float *r_pose_factor);
 
 /* Sculpt PBVH abstraction API */
-float *sculpt_vertex_co_get(struct SculptSession *ss, int index);
+const float *sculpt_vertex_co_get(struct SculptSession *ss, int index);
 
 /* Dynamic topology */
 void sculpt_pbvh_clear(Object *ob);
@@ -186,23 +194,20 @@ typedef struct SculptThreadedTaskData {
 
   int filter_type;
   float filter_strength;
-  int *node_mask;
 
-  /* 0=towards view, 1=flipped */
-  float (*area_cos)[3];
-  float (*area_nos)[3];
-  int *count;
+  bool use_area_cos;
+  bool use_area_nos;
   bool any_vertex_sampled;
 
   float *prev_mask;
 
   float *pose_origin;
   float *pose_initial_co;
+  float *pose_factor;
   float (*transform_rot)[4], (*transform_trans)[4], (*transform_trans_inv)[4];
 
   float max_distance_squared;
   float nearest_vertex_search_co[3];
-  int nearest_vertex_index;
 
   int mask_expand_update_it;
   bool mask_expand_invert_mask;
@@ -210,6 +215,10 @@ typedef struct SculptThreadedTaskData {
   bool mask_expand_keep_prev_mask;
 
   float transform_mats[8][4][4];
+
+  float dirty_mask_min;
+  float dirty_mask_max;
+  bool dirty_mask_dirty_only;
 
   ThreadMutex mutex;
 
@@ -240,6 +249,7 @@ typedef struct {
   float radius_squared;
   float *center;
   bool original;
+  bool ignore_fully_masked;
 } SculptSearchSphereData;
 
 typedef struct {
@@ -247,6 +257,7 @@ typedef struct {
   struct SculptSession *ss;
   float radius_squared;
   bool original;
+  bool ignore_fully_masked;
   struct DistRayAABB_Precalc *dist_ray_to_aabb_precalc;
 } SculptSearchCircleData;
 
@@ -399,6 +410,7 @@ typedef struct FilterCache {
   int mask_update_last_it;
   int *mask_update_it;
   float *normal_factor;
+  float *edge_factor;
   float *prev_mask;
   float mask_expand_initial_co[3];
 } FilterCache;
@@ -419,7 +431,5 @@ void sculpt_vertcos_to_key(Object *ob, KeyBlock *kb, const float (*vertCos)[3]);
 void sculpt_update_object_bounding_box(struct Object *ob);
 
 bool sculpt_get_redraw_rect(struct ARegion *ar, struct RegionView3D *rv3d, Object *ob, rcti *rect);
-
-#define SCULPT_THREADED_LIMIT 4
 
 #endif

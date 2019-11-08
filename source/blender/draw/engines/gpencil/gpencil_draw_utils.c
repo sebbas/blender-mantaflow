@@ -37,7 +37,6 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_gpencil_modifier_types.h"
 
 /* If builtin shaders are needed */
 #include "GPU_shader.h"
@@ -140,20 +139,15 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
   }
 
   Object *ob = cache_ob->ob;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const bool main_onion = draw_ctx->v3d != NULL ?
-                              (draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) :
-                              true;
+  const bool main_onion = stl->storage->is_main_onion;
   const bool playing = stl->storage->is_playing;
-  const bool overlay = draw_ctx->v3d != NULL ?
-                           (bool)((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) :
-                           true;
+  const bool overlay = stl->storage->is_main_overlay;
   const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
                         main_onion && !playing && gpencil_onion_active(gpd);
 
   const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
 
-  /* Onion skining. */
+  /* Onion skinning. */
   const int step = gpd->gstep;
   const int mode = gpd->onion_mode;
   const short onion_keytype = gpd->onion_keytype;
@@ -168,6 +162,32 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
     if (gpl->flag & GP_LAYER_HIDE) {
       idx_eval++;
       continue;
+    }
+
+    /* Relative onion mode needs to find the frame range before. */
+    int frame_from = -9999;
+    int frame_to = 9999;
+    if ((is_onion) && (mode == GP_ONION_MODE_RELATIVE)) {
+      /* 1) Found first Frame. */
+      int idx = 0;
+      if (gpl->actframe) {
+        for (bGPDframe *gf = gpl->actframe->prev; gf; gf = gf->prev) {
+          idx++;
+          frame_from = gf->framenum;
+          if (idx >= step) {
+            break;
+          }
+        }
+        /* 2) Found last Frame. */
+        idx = 0;
+        for (bGPDframe *gf = gpl->actframe->next; gf; gf = gf->next) {
+          idx++;
+          frame_to = gf->framenum;
+          if (idx >= gpd->gstep_next) {
+            break;
+          }
+        }
+      }
     }
 
     /* If multiedit or onion skin need to count all frames of the layer. */
@@ -192,21 +212,32 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
           }
         }
         else {
-          /* Only selected frames. */
-          if ((mode == GP_ONION_MODE_SELECTED) && ((gpf->flag & GP_FRAME_SELECT) == 0)) {
-            continue;
-          }
-          /* Verify keyframe type. */
-          if ((onion_keytype > -1) && (gpf->key_type != onion_keytype)) {
-            continue;
-          }
-          /* Absolute range. */
-          if (mode == GP_ONION_MODE_ABSOLUTE) {
-            if ((gpl->actframe) && (abs(gpl->actframe->framenum - gpf->framenum) > step)) {
+          bool select = ((is_multiedit) &&
+                         ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)));
+
+          if (!select) {
+            /* Only selected frames. */
+            if ((mode == GP_ONION_MODE_SELECTED) && ((gpf->flag & GP_FRAME_SELECT) == 0)) {
               continue;
             }
+            /* Verify keyframe type. */
+            if ((onion_keytype > -1) && (gpf->key_type != onion_keytype)) {
+              continue;
+            }
+            /* Absolute range. */
+            if (mode == GP_ONION_MODE_ABSOLUTE) {
+              if ((gpl->actframe) && (abs(gpl->actframe->framenum - gpf->framenum) > step)) {
+                continue;
+              }
+            }
+            /* Relative range. */
+            if (mode == GP_ONION_MODE_RELATIVE) {
+              if ((gpf->framenum < frame_from) || (gpf->framenum > frame_to)) {
+                continue;
+              }
+            }
           }
-          /* For relative range it takes too much time compute, so use all frames. */
+
           cache_ob->tot_vertex += gps->totpoints + 3;
           cache_ob->tot_triangles += gps->totpoints - 1;
         }
@@ -225,23 +256,6 @@ static void gpencil_calc_vertex(GPENCIL_StorageList *stl,
   cache->b_point.tot_vertex = cache_ob->tot_vertex;
   cache->b_edit.tot_vertex = cache_ob->tot_vertex;
   cache->b_edlin.tot_vertex = cache_ob->tot_vertex;
-
-  /* some modifiers can change the number of points */
-  int factor = 0;
-  GpencilModifierData *md;
-  for (md = ob->greasepencil_modifiers.first; md; md = md->next) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifierType_getInfo(md->type);
-    /* only modifiers that change size */
-    if (mti && mti->getDuplicationFactor) {
-      factor = mti->getDuplicationFactor(md);
-
-      cache->b_fill.tot_vertex *= factor;
-      cache->b_stroke.tot_vertex *= factor;
-      cache->b_point.tot_vertex *= factor;
-      cache->b_edit.tot_vertex *= factor;
-      cache->b_edlin.tot_vertex *= factor;
-    }
-  }
 }
 
 /* Helper for doing all the checks on whether a stroke can be drawn */
@@ -1114,11 +1128,12 @@ static void gpencil_add_editpoints_vertexdata(GpencilBatchCache *cache,
      */
     const bool show_points = (show_sculpt_points) || (is_weight_paint) ||
                              (GPENCIL_EDIT_MODE(gpd) &&
-                              (ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE));
+                              ((ts->gpencil_selectmode_edit != GP_SELECTMODE_STROKE) ||
+                               (gps->totpoints == 1)));
 
     if (cache->is_dirty) {
       if ((obact == ob) && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) &&
-          (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES)) {
+          (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) && (gps->totpoints > 1)) {
 
         /* line of the original stroke */
         gpencil_get_edlin_geom(&cache->b_edlin, gps, edit_alpha, hide_select);
@@ -1245,9 +1260,11 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
           gpencil_add_fill_vertexdata(
               cache, ob, gpl, gpf, gps, opacity, tintcolor, false, custonion);
         }
-        /* stroke */
-        /* No fill strokes, must show stroke always */
-        if (((gp_style->flag & GP_STYLE_STROKE_SHOW) || (gps->flag & GP_STROKE_NOFILL)) &&
+        /* stroke
+         * No fill strokes, must show stroke always or if the total points is lower than 3,
+         * because the stroke cannot be filled and it would be invisible. */
+        if (((gp_style->flag & GP_STYLE_STROKE_SHOW) || (gps->flag & GP_STROKE_NOFILL) ||
+             (gps->totpoints < 3)) &&
             ((gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) ||
              (gpl->blend_mode == eGplBlendMode_Regular))) {
           /* recalc strokes uv (geometry can be changed by modifiers) */
@@ -1267,12 +1284,14 @@ static void gpencil_draw_strokes(GpencilBatchCache *cache,
         if (!stl->g_data->shgrps_edit_line) {
           stl->g_data->shgrps_edit_line = DRW_shgroup_create(e_data->gpencil_line_sh,
                                                              psl->edit_pass);
+          DRW_shgroup_uniform_mat4(stl->g_data->shgrps_edit_line, "gpModelMatrix", ob->obmat);
         }
         if (!stl->g_data->shgrps_edit_point) {
           stl->g_data->shgrps_edit_point = DRW_shgroup_create(e_data->gpencil_edit_point_sh,
                                                               psl->edit_pass);
           const float *viewport_size = DRW_viewport_size_get();
           DRW_shgroup_uniform_vec2(stl->g_data->shgrps_edit_point, "Viewport", viewport_size, 1);
+          DRW_shgroup_uniform_mat4(stl->g_data->shgrps_edit_point, "gpModelMatrix", ob->obmat);
         }
 
         gpencil_add_editpoints_vertexdata(cache, ob, gpd, gpl, gpf, gps);
@@ -1355,19 +1374,19 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
   int idx;
   float fac = 1.0f;
   int step = 0;
-  int mode = 0;
   bool colflag = false;
-  bGPDframe *gpf_loop = NULL;
+  const int mode = gpd->onion_mode;
+  bGPDframe *gpf_loop = ((gpd->onion_flag & GP_ONION_LOOP) && (mode != GP_ONION_MODE_SELECTED)) ?
+                            gpl->frames.first :
+                            NULL;
   int last = gpf->framenum;
 
-  colflag = (bool)gpd->onion_flag & GP_ONION_GHOST_PREVCOL;
+  colflag = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
   const short onion_keytype = gpd->onion_keytype;
-
   /* -------------------------------
    * 1) Draw Previous Frames First
    * ------------------------------- */
   step = gpd->gstep;
-  mode = gpd->onion_mode;
 
   if (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) {
     copy_v3_v3(color, gpd->gcolor_prev);
@@ -1416,7 +1435,7 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
     }
 
     /* if loop option, save the frame to use later */
-    if ((mode != GP_ONION_MODE_ABSOLUTE) && (gpd->onion_flag & GP_ONION_LOOP)) {
+    if ((mode == GP_ONION_MODE_SELECTED) && (gpd->onion_flag & GP_ONION_LOOP)) {
       gpf_loop = gf;
     }
 
@@ -1427,7 +1446,6 @@ static void gpencil_draw_onionskins(GpencilBatchCache *cache,
    * 2) Now draw next frames
    * ------------------------------- */
   step = gpd->gstep_next;
-  mode = gpd->onion_mode;
 
   if (gpd->onion_flag & GP_ONION_GHOST_NEXTCOL) {
     copy_v3_v3(color, gpd->gcolor_next);
@@ -1782,8 +1800,8 @@ static void gpencil_shgroups_create(GPENCIL_e_data *e_data,
   const bool overlay = draw_ctx->v3d != NULL ?
                            (bool)((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) :
                            true;
-  const bool main_onion = v3d != NULL ? (v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) : true;
-  const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && main_onion &&
+  const bool screen_onion = v3d != NULL ? (v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) : true;
+  const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && screen_onion &&
                         overlay && gpencil_onion_active(gpd);
 
   int start_stroke = 0;
@@ -2063,13 +2081,9 @@ void gpencil_populate_datablock(GPENCIL_e_data *e_data,
   bGPdata *gpd_eval = (bGPdata *)ob->data;
   bGPdata *gpd = (bGPdata *)DEG_get_original_id(&gpd_eval->id);
 
-  const bool main_onion = draw_ctx->v3d != NULL ?
-                              (draw_ctx->v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) :
-                              true;
+  const bool main_onion = stl->storage->is_main_onion;
   const bool playing = stl->storage->is_playing;
-  const bool overlay = draw_ctx->v3d != NULL ?
-                           (bool)((draw_ctx->v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) :
-                           true;
+  const bool overlay = stl->storage->is_main_overlay;
   const bool do_onion = (bool)((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && overlay &&
                         main_onion && !playing && gpencil_onion_active(gpd);
 

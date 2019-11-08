@@ -892,7 +892,7 @@ class GreasePencilMaterialsPanel:
             if is_view3d and brush is not None:
                 gp_settings = brush.gpencil_settings
                 if gp_settings.use_material_pin is False:
-                    if ob.active_material_index > 0:
+                    if ob.active_material_index >= 0:
                         ma = ob.material_slots[ob.active_material_index].material
                 else:
                     ma = gp_settings.material
@@ -950,6 +950,7 @@ class GPENCIL_UL_layer(UIList):
                 icon_value=icon,
             )
 
+
 class GreasePencilSimplifyPanel:
 
     def draw_header(self, context):
@@ -976,6 +977,7 @@ class GreasePencilSimplifyPanel:
         sub = col.column()
         sub.active = rd.simplify_gpencil_view_fill
         sub.prop(rd, "simplify_gpencil_remove_lines", text="Lines")
+
 
 classes = (
     GPENCIL_MT_pie_tool_palette,

@@ -25,6 +25,13 @@
 #include "BLI_bitmap.h"
 #include "BLI_ghash.h"
 
+/* For embedding CCGKey in iterator. */
+#include "BKE_ccg.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct BMLog;
 struct BMesh;
 struct CCGElem;
@@ -33,6 +40,7 @@ struct CustomData;
 struct DMFlagMat;
 struct GPU_PBVH_Buffers;
 struct IsectRayPrecalc;
+struct Mesh;
 struct MLoop;
 struct MLoopTri;
 struct MPoly;
@@ -40,6 +48,8 @@ struct MVert;
 struct PBVH;
 struct PBVHNode;
 struct SubdivCCG;
+struct TaskParallelSettings;
+struct TaskParallelTLS;
 
 typedef struct PBVH PBVH;
 typedef struct PBVHNode PBVHNode;
@@ -49,19 +59,27 @@ typedef struct {
 } PBVHProxyNode;
 
 typedef enum {
-  PBVH_Leaf = 1,
+  PBVH_Leaf = 1 << 0,
 
-  PBVH_UpdateNormals = 2,
-  PBVH_UpdateBB = 4,
-  PBVH_UpdateOriginalBB = 8,
-  PBVH_UpdateDrawBuffers = 16,
-  PBVH_UpdateRedraw = 32,
+  PBVH_UpdateNormals = 1 << 1,
+  PBVH_UpdateBB = 1 << 2,
+  PBVH_UpdateOriginalBB = 1 << 3,
+  PBVH_UpdateDrawBuffers = 1 << 4,
+  PBVH_UpdateRedraw = 1 << 5,
+  PBVH_UpdateMask = 1 << 6,
 
-  PBVH_RebuildDrawBuffers = 64,
-  PBVH_FullyHidden = 128,
+  PBVH_RebuildDrawBuffers = 1 << 7,
+  PBVH_FullyHidden = 1 << 8,
+  PBVH_FullyMasked = 1 << 9,
+  PBVH_FullyUnmasked = 1 << 10,
 
-  PBVH_UpdateTopology = 256,
+  PBVH_UpdateTopology = 1 << 11,
 } PBVHNodeFlags;
+
+typedef struct PBVHFrustumPlanes {
+  float (*planes)[4];
+  int num_planes;
+} PBVHFrustumPlanes;
 
 /* Callbacks */
 
@@ -77,6 +95,7 @@ typedef void (*BKE_pbvh_SearchNearestCallback)(PBVHNode *node, void *data, float
 
 PBVH *BKE_pbvh_new(void);
 void BKE_pbvh_build_mesh(PBVH *bvh,
+                         const struct Mesh *mesh,
                          const struct MPoly *mpoly,
                          const struct MLoop *mloop,
                          struct MVert *verts,
@@ -167,7 +186,9 @@ bool BKE_pbvh_node_find_nearest_to_ray(PBVH *bvh,
 /* Drawing */
 
 void BKE_pbvh_draw_cb(PBVH *bvh,
-                      float (*planes)[4],
+                      bool show_vcol,
+                      bool update_only_visible,
+                      PBVHFrustumPlanes *frustum,
                       void (*draw_fn)(void *user_data, struct GPU_PBVH_Buffers *buffers),
                       void *user_data);
 
@@ -198,9 +219,10 @@ int BKE_pbvh_count_grid_quads(BLI_bitmap **grid_hidden,
                               int gridsize);
 
 /* multires level, only valid for type == PBVH_GRIDS */
-void BKE_pbvh_get_grid_key(const PBVH *pbvh, struct CCGKey *key);
+const struct CCGKey *BKE_pbvh_get_grid_key(const PBVH *pbvh);
 
-struct CCGElem **BKE_pbvh_get_grids(const PBVH *pbvh, int *num_grids);
+struct CCGElem **BKE_pbvh_get_grids(const PBVH *pbvh);
+int BKE_pbvh_get_grid_num_vertices(const PBVH *pbvh);
 
 /* Only valid for type == PBVH_BMESH */
 struct BMesh *BKE_pbvh_get_bmesh(PBVH *pbvh);
@@ -221,11 +243,16 @@ bool BKE_pbvh_bmesh_update_topology(PBVH *bvh,
 /* Node Access */
 
 void BKE_pbvh_node_mark_update(PBVHNode *node);
+void BKE_pbvh_node_mark_update_mask(PBVHNode *node);
 void BKE_pbvh_node_mark_rebuild_draw(PBVHNode *node);
 void BKE_pbvh_node_mark_redraw(PBVHNode *node);
 void BKE_pbvh_node_mark_normals_update(PBVHNode *node);
 void BKE_pbvh_node_mark_topology_update(PBVHNode *node);
 void BKE_pbvh_node_fully_hidden_set(PBVHNode *node, int fully_hidden);
+void BKE_pbvh_node_fully_masked_set(PBVHNode *node, int fully_masked);
+bool BKE_pbvh_node_fully_masked_get(PBVHNode *node);
+void BKE_pbvh_node_fully_unmasked_set(PBVHNode *node, int fully_masked);
+bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node);
 
 void BKE_pbvh_node_get_grids(PBVH *bvh,
                              PBVHNode *node,
@@ -245,22 +272,22 @@ void BKE_pbvh_node_get_original_BB(PBVHNode *node, float bb_min[3], float bb_max
 
 float BKE_pbvh_node_get_tmin(PBVHNode *node);
 
-/* test if AABB is at least partially inside the planes' volume */
-bool BKE_pbvh_node_planes_contain_AABB(PBVHNode *node, void *data);
-/* test if AABB is at least partially outside the planes' volume */
-bool BKE_pbvh_node_planes_exclude_AABB(PBVHNode *node, void *data);
+/* test if AABB is at least partially inside the PBVHFrustumPlanes volume */
+bool BKE_pbvh_node_frustum_contain_AABB(PBVHNode *node, void *frustum);
+/* test if AABB is at least partially outside the PBVHFrustumPlanes volume */
+bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, void *frustum);
 
 struct GSet *BKE_pbvh_bmesh_node_unique_verts(PBVHNode *node);
 struct GSet *BKE_pbvh_bmesh_node_other_verts(PBVHNode *node);
 struct GSet *BKE_pbvh_bmesh_node_faces(PBVHNode *node);
-void BKE_pbvh_bmesh_node_save_orig(PBVHNode *node);
+void BKE_pbvh_bmesh_node_save_orig(struct BMesh *bm, PBVHNode *node);
 void BKE_pbvh_bmesh_after_stroke(PBVH *bvh);
 
 /* Update Bounding Box/Redraw and clear flags */
 
 void BKE_pbvh_update_bounds(PBVH *bvh, int flags);
+void BKE_pbvh_update_vertex_data(PBVH *bvh, int flags);
 void BKE_pbvh_update_normals(PBVH *bvh, struct SubdivCCG *subdiv_ccg);
-void BKE_pbvh_update_draw_buffers(PBVH *bvh, bool show_vcol);
 void BKE_pbvh_redraw_BB(PBVH *bvh, float bb_min[3], float bb_max[3]);
 void BKE_pbvh_get_grid_updates(PBVH *bvh, bool clear, void ***r_gridfaces, int *r_totface);
 void BKE_pbvh_grids_update(PBVH *bvh,
@@ -304,9 +331,9 @@ typedef struct PBVHVertexIter {
   int index;
 
   /* grid */
+  struct CCGKey key;
   struct CCGElem **grids;
   struct CCGElem *grid;
-  struct CCGKey *key;
   BLI_bitmap **grid_hidden, *gh;
   int *grid_indices;
   int totgrid;
@@ -343,6 +370,7 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node, PBVHVertexIter *vi, int mo
     if (vi.grids) { \
       vi.width = vi.gridsize; \
       vi.height = vi.gridsize; \
+      vi.index = vi.grid_indices[vi.g] * vi.key.grid_area - 1; \
       vi.grid = vi.grids[vi.grid_indices[vi.g]]; \
       if (mode == PBVH_ITER_UNIQUE) \
         vi.gh = vi.grid_hidden[vi.grid_indices[vi.g]]; \
@@ -355,10 +383,11 @@ void pbvh_vertex_iter_init(PBVH *bvh, PBVHNode *node, PBVHVertexIter *vi, int mo
     for (vi.gy = 0; vi.gy < vi.height; vi.gy++) { \
       for (vi.gx = 0; vi.gx < vi.width; vi.gx++, vi.i++) { \
         if (vi.grid) { \
-          vi.co = CCG_elem_co(vi.key, vi.grid); \
-          vi.fno = CCG_elem_no(vi.key, vi.grid); \
-          vi.mask = vi.key->has_mask ? CCG_elem_mask(vi.key, vi.grid) : NULL; \
-          vi.grid = CCG_elem_next(vi.key, vi.grid); \
+          vi.co = CCG_elem_co(&vi.key, vi.grid); \
+          vi.fno = CCG_elem_no(&vi.key, vi.grid); \
+          vi.mask = vi.key.has_mask ? CCG_elem_mask(&vi.key, vi.grid) : NULL; \
+          vi.grid = CCG_elem_next(&vi.key, vi.grid); \
+          vi.index++; \
           if (vi.gh) { \
             if (BLI_BITMAP_TEST(vi.gh, vi.gy * vi.gridsize + vi.gx)) \
               continue; \
@@ -413,5 +442,34 @@ bool BKE_pbvh_node_vert_update_check_any(PBVH *bvh, PBVHNode *node);
 
 bool pbvh_has_mask(PBVH *bvh);
 void pbvh_show_mask_set(PBVH *bvh, bool show_mask);
+
+/* Parallelization */
+typedef void (*PBVHParallelRangeFunc)(void *__restrict userdata,
+                                      const int iter,
+                                      const struct TaskParallelTLS *__restrict tls);
+typedef void (*PBVHParallelReduceFunc)(const void *__restrict userdata,
+                                       void *__restrict chunk_join,
+                                       void *__restrict chunk);
+
+typedef struct PBVHParallelSettings {
+  bool use_threading;
+  void *userdata_chunk;
+  size_t userdata_chunk_size;
+  PBVHParallelReduceFunc func_reduce;
+} PBVHParallelSettings;
+
+void BKE_pbvh_parallel_range_settings(struct PBVHParallelSettings *settings,
+                                      bool use_threading,
+                                      int totnode);
+
+void BKE_pbvh_parallel_range(const int start,
+                             const int stop,
+                             void *userdata,
+                             PBVHParallelRangeFunc func,
+                             const struct PBVHParallelSettings *settings);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __BKE_PBVH_H__ */

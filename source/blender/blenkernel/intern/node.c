@@ -947,6 +947,68 @@ void nodeChainIter(const bNodeTree *ntree,
   }
 }
 
+static void iter_backwards_ex(const bNodeTree *ntree,
+                              const bNode *node_start,
+                              bool (*callback)(bNode *, bNode *, void *),
+                              void *userdata,
+                              char recursion_mask)
+{
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node_start->inputs) {
+    bNodeLink *link = sock->link;
+    if (link == NULL) {
+      continue;
+    }
+    if ((link->flag & NODE_LINK_VALID) == 0) {
+      /* Skip links marked as cyclic. */
+      continue;
+    }
+    if (link->fromnode->iter_flag & recursion_mask) {
+      continue;
+    }
+    else {
+      link->fromnode->iter_flag |= recursion_mask;
+    }
+
+    if (!callback(link->fromnode, link->tonode, userdata)) {
+      return;
+    }
+    iter_backwards_ex(ntree, link->fromnode, callback, userdata, recursion_mask);
+  }
+}
+
+/**
+ * Iterate over a chain of nodes, starting with \a node_start, executing
+ * \a callback for each node (which can return false to end iterator).
+ *
+ * Faster than nodeChainIter. Iter only once per node.
+ * Can be called recursively (using another nodeChainIterBackwards) by
+ * setting the recursion_lvl accordingly.
+ *
+ * \note Needs updated socket links (ntreeUpdateTree).
+ * \note Recursive
+ */
+void nodeChainIterBackwards(const bNodeTree *ntree,
+                            const bNode *node_start,
+                            bool (*callback)(bNode *, bNode *, void *),
+                            void *userdata,
+                            int recursion_lvl)
+{
+  if (!node_start) {
+    return;
+  }
+
+  /* Limited by iter_flag type. */
+  BLI_assert(recursion_lvl < 8);
+  char recursion_mask = (1 << recursion_lvl);
+
+  /* Reset flag. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    node->iter_flag &= ~recursion_mask;
+  }
+
+  iter_backwards_ex(ntree, node_start, callback, userdata, recursion_mask);
+}
+
 /**
  * Iterate over all parents of \a node, executing \a callback for each parent
  * (which can return false to end iterator)
@@ -3348,7 +3410,7 @@ void ntreeUpdateTree(Main *bmain, bNodeTree *ntree)
     return;
   }
 
-  /* avoid reentrant updates, can be caused by RNA update callbacks */
+  /* Avoid re-entrant updates, can be caused by RNA update callbacks. */
   if (ntree->is_updating) {
     return;
   }
@@ -3409,7 +3471,7 @@ void ntreeUpdateTree(Main *bmain, bNodeTree *ntree)
 
 void nodeUpdate(bNodeTree *ntree, bNode *node)
 {
-  /* avoid reentrant updates, can be caused by RNA update callbacks */
+  /* Avoid re-entrant updates, can be caused by RNA update callbacks. */
   if (ntree->is_updating) {
     return;
   }
@@ -3436,7 +3498,7 @@ bool nodeUpdateID(bNodeTree *ntree, ID *id)
     return changed;
   }
 
-  /* avoid reentrant updates, can be caused by RNA update callbacks */
+  /* Avoid re-entrant updates, can be caused by RNA update callbacks. */
   if (ntree->is_updating) {
     return changed;
   }

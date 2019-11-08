@@ -62,13 +62,11 @@
 
 /* Get (or add relevant data to be able to do so) F-Curve from the driver stack,
  * for the given Animation Data block. This assumes that all the destinations are valid.
- *
- * - add: 0 - don't add anything if not found,
- *        1 - add new Driver FCurve (with keyframes for visual tweaking),
- *        2 - add new Driver FCurve (with generator, for script backwards compatibility)
- *        -1 - add new Driver FCurve without driver stuff (for pasting)
  */
-FCurve *verify_driver_fcurve(ID *id, const char rna_path[], const int array_index, short add)
+FCurve *verify_driver_fcurve(ID *id,
+                             const char rna_path[],
+                             const int array_index,
+                             eDriverFCurveCreationMode creation_mode)
 {
   AnimData *adt;
   FCurve *fcu;
@@ -80,7 +78,7 @@ FCurve *verify_driver_fcurve(ID *id, const char rna_path[], const int array_inde
 
   /* init animdata if none available yet */
   adt = BKE_animdata_from_id(id);
-  if ((adt == NULL) && (add)) {
+  if (adt == NULL && creation_mode != DRIVER_FCURVE_LOOKUP_ONLY) {
     adt = BKE_animdata_add_id(id);
   }
   if (adt == NULL) {
@@ -94,9 +92,9 @@ FCurve *verify_driver_fcurve(ID *id, const char rna_path[], const int array_inde
    */
   fcu = list_find_fcurve(&adt->drivers, rna_path, array_index);
 
-  if ((fcu == NULL) && (add)) {
+  if (fcu == NULL && creation_mode != DRIVER_FCURVE_LOOKUP_ONLY) {
     /* use default settings to make a F-Curve */
-    fcu = alloc_driver_fcurve(rna_path, array_index, add);
+    fcu = alloc_driver_fcurve(rna_path, array_index, creation_mode);
 
     /* just add F-Curve to end of driver list */
     BLI_addtail(&adt->drivers, fcu);
@@ -106,12 +104,14 @@ FCurve *verify_driver_fcurve(ID *id, const char rna_path[], const int array_inde
   return fcu;
 }
 
-struct FCurve *alloc_driver_fcurve(const char rna_path[], const int array_index, short add)
+struct FCurve *alloc_driver_fcurve(const char rna_path[],
+                                   const int array_index,
+                                   eDriverFCurveCreationMode creation_mode)
 {
   FCurve *fcu = MEM_callocN(sizeof(FCurve), "FCurve");
 
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-  fcu->auto_smoothing = FCURVE_SMOOTH_CONT_ACCEL;
+  fcu->auto_smoothing = U.auto_smoothing_new;
 
   /* store path - make copy, and store that */
   if (rna_path) {
@@ -119,18 +119,12 @@ struct FCurve *alloc_driver_fcurve(const char rna_path[], const int array_index,
   }
   fcu->array_index = array_index;
 
-  /* If add is negative, don't init this data yet,
-   * since it will be filled in by the pasted driver. */
-  if (add > 0) {
-    BezTriple *bezt;
-    size_t i;
-
+  if (!ELEM(creation_mode, DRIVER_FCURVE_LOOKUP_ONLY, DRIVER_FCURVE_EMPTY)) {
     /* add some new driver data */
     fcu->driver = MEM_callocN(sizeof(ChannelDriver), "ChannelDriver");
 
     /* F-Modifier or Keyframes? */
-    // FIXME: replace these magic numbers with defines
-    if (add == 2) {
+    if (creation_mode == DRIVER_FCURVE_GENERATOR) {
       /* Python API Backwards compatibility hack:
        * Create FModifier so that old scripts won't break
        * for now before 2.7 series -- (September 4, 2013)
@@ -142,14 +136,10 @@ struct FCurve *alloc_driver_fcurve(const char rna_path[], const int array_index,
        * - These are configured to 0,0 and 1,1 to give a 1-1 mapping
        *   which can be easily tweaked from there.
        */
-      insert_vert_fcurve(fcu, 0.0f, 0.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
-      insert_vert_fcurve(fcu, 1.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST);
-
-      /* configure this curve to extrapolate */
-      for (i = 0, bezt = fcu->bezt; (i < fcu->totvert) && bezt; i++, bezt++) {
-        bezt->h1 = bezt->h2 = HD_VECT;
-      }
-
+      insert_vert_fcurve(
+          fcu, 0.0f, 0.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST | INSERTKEY_NO_USERPREF);
+      insert_vert_fcurve(
+          fcu, 1.0f, 1.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_FAST | INSERTKEY_NO_USERPREF);
       fcu->extend = FCURVE_EXTRAPOLATE_LINEAR;
       calchandles_fcurve(fcu);
     }
@@ -177,7 +167,8 @@ static int add_driver_with_target(ReportList *UNUSED(reports),
                                   int driver_type)
 {
   FCurve *fcu;
-  short add_mode = (flag & CREATEDRIVER_WITH_FMODIFIER) ? 2 : 1;
+  short add_mode = (flag & CREATEDRIVER_WITH_FMODIFIER) ? DRIVER_FCURVE_GENERATOR :
+                                                          DRIVER_FCURVE_KEYFRAMES;
   const char *prop_name = RNA_property_identifier(src_prop);
 
   /* Create F-Curve with Driver */
@@ -593,7 +584,7 @@ bool ANIM_remove_driver(ReportList *UNUSED(reports),
        * Note: here is one of the places where we don't want new F-Curve + Driver added!
        *      so 'add' var must be 0
        */
-      fcu = verify_driver_fcurve(id, rna_path, array_index, 0);
+      fcu = verify_driver_fcurve(id, rna_path, array_index, DRIVER_FCURVE_LOOKUP_ONLY);
       if (fcu) {
         BLI_remlink(&adt->drivers, fcu);
         free_fcurve(fcu);
@@ -653,7 +644,7 @@ bool ANIM_copy_driver(
   }
 
   /* try to get F-Curve with Driver */
-  fcu = verify_driver_fcurve(id, rna_path, array_index, 0);
+  fcu = verify_driver_fcurve(id, rna_path, array_index, DRIVER_FCURVE_LOOKUP_ONLY);
 
   /* clear copy/paste buffer first (for consistency with other copy/paste buffers) */
   ANIM_drivers_copybuf_free();
@@ -711,7 +702,7 @@ bool ANIM_paste_driver(
   }
 
   /* create Driver F-Curve, but without data which will be copied across... */
-  fcu = verify_driver_fcurve(id, rna_path, array_index, -1);
+  fcu = verify_driver_fcurve(id, rna_path, array_index, DRIVER_FCURVE_EMPTY);
 
   if (fcu) {
     /* copy across the curve data from the buffer curve
@@ -855,7 +846,7 @@ void ANIM_copy_as_driver(struct ID *target_id, const char *target_path, const ch
   ANIM_driver_vars_copybuf_free();
 
   /* Create a dummy driver F-Curve. */
-  FCurve *fcu = alloc_driver_fcurve(NULL, 0, 1);
+  FCurve *fcu = alloc_driver_fcurve(NULL, 0, DRIVER_FCURVE_KEYFRAMES);
   ChannelDriver *driver = fcu->driver;
 
   /* Create a variable. */

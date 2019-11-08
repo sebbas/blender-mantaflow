@@ -371,7 +371,6 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_OBCENTER_DIA:
           cp = &ts->obcenter_dia;
           break;
-          break;
         case TH_EDGE:
           cp = ts->edge;
           break;
@@ -841,6 +840,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           cp = ts->nla_tweakdupli;
           break;
 
+        case TH_NLA_TRACK:
+          cp = ts->nla_track;
+          break;
         case TH_NLA_TRANSITION:
           cp = ts->nla_transition;
           break;

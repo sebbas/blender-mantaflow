@@ -216,6 +216,8 @@ class device_memory {
   device_ptr device_pointer;
   void *host_pointer;
   void *shared_pointer;
+  /* reference counter for shared_pointer */
+  int shared_counter;
 
   virtual ~device_memory();
 
@@ -224,6 +226,7 @@ class device_memory {
 
  protected:
   friend class CUDADevice;
+  friend class OptiXDevice;
 
   /* Only create through subclasses. */
   device_memory(Device *device, const char *name, MemoryType type);

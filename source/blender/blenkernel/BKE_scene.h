@@ -75,7 +75,10 @@ void BKE_scene_free(struct Scene *sce);
 void BKE_scene_init(struct Scene *sce);
 struct Scene *BKE_scene_add(struct Main *bmain, const char *name);
 
-void BKE_scene_remove_rigidbody_object(struct Main *bmain, struct Scene *scene, struct Object *ob);
+void BKE_scene_remove_rigidbody_object(struct Main *bmain,
+                                       struct Scene *scene,
+                                       struct Object *ob,
+                                       const bool free_us);
 
 bool BKE_scene_object_find(struct Scene *scene, struct Object *ob);
 struct Object *BKE_scene_object_find_by_name(struct Scene *scene, const char *name);
@@ -122,7 +125,7 @@ struct Scene *BKE_scene_find_from_collection(const struct Main *bmain,
 #ifdef DURIAN_CAMERA_SWITCH
 struct Object *BKE_scene_camera_switch_find(struct Scene *scene);  // DURIAN_CAMERA_SWITCH
 #endif
-int BKE_scene_camera_switch_update(struct Scene *scene);
+bool BKE_scene_camera_switch_update(struct Scene *scene);
 
 char *BKE_scene_find_marker_name(struct Scene *scene, int frame);
 char *BKE_scene_find_last_marker_name(struct Scene *scene, int frame);

@@ -204,10 +204,11 @@ static PointerRNA rna_ParticleBrush_curve_get(PointerRNA *ptr)
 
 static void rna_ParticleEdit_redo(bContext *C, PointerRNA *UNUSED(ptr))
 {
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = OBACT(view_layer);
-  PTCacheEdit *edit = PE_get_current(scene, ob);
+  PTCacheEdit *edit = PE_get_current(depsgraph, scene, ob);
 
   if (!edit) {
     return;
@@ -259,8 +260,9 @@ static const EnumPropertyItem *rna_ParticleEdit_tool_itemf(bContext *C,
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = OBACT(view_layer);
 #  if 0
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = CTX_data_scene(C);
-  PTCacheEdit *edit = PE_get_current(scene, ob);
+  PTCacheEdit *edit = PE_get_current(depsgraph, scene, ob);
   ParticleSystem *psys = edit ? edit->psys : NULL;
 #  else
   /* use this rather than PE_get_current() - because the editing cache is
@@ -285,14 +287,14 @@ static bool rna_ParticleEdit_editable_get(PointerRNA *ptr)
 {
   ParticleEditSettings *pset = (ParticleEditSettings *)ptr->data;
 
-  return (pset->object && pset->scene && PE_get_current(pset->scene, pset->object));
+  return (pset->object && pset->scene && PE_get_current(NULL, pset->scene, pset->object));
 }
 static bool rna_ParticleEdit_hair_get(PointerRNA *ptr)
 {
   ParticleEditSettings *pset = (ParticleEditSettings *)ptr->data;
 
   if (pset->scene) {
-    PTCacheEdit *edit = PE_get_current(pset->scene, pset->object);
+    PTCacheEdit *edit = PE_get_current(NULL, pset->scene, pset->object);
 
     return (edit && edit->psys);
   }
@@ -646,7 +648,7 @@ static void rna_def_paint(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "input_samples", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "num_input_samples");
-  RNA_def_property_ui_range(prop, 1, PAINT_MAX_INPUT_SAMPLES, 0, -1);
+  RNA_def_property_ui_range(prop, 1, PAINT_MAX_INPUT_SAMPLES, 1, -1);
   RNA_def_property_ui_text(
       prop, "Input Samples", "Average multiple input samples together to smooth the brush stroke");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
@@ -1021,7 +1023,7 @@ static void rna_def_image_paint(BlenderRNA *brna)
   /* integers */
 
   prop = RNA_def_property(srna, "seam_bleed", PROP_INT, PROP_PIXEL);
-  RNA_def_property_ui_range(prop, 0, 8, 0, -1);
+  RNA_def_property_ui_range(prop, 0, 8, 1, -1);
   RNA_def_property_ui_text(
       prop, "Bleed", "Extend paint beyond the faces UVs to reduce seams (in pixels, slower)");
 

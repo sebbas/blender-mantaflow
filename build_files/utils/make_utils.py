@@ -3,6 +3,7 @@
 # Utility functions for make update and make tests.
 
 import re
+import shutil
 import subprocess
 import sys
 
@@ -34,7 +35,7 @@ def check_output(cmd, exit_on_error=True):
 
     return output.strip()
 
-def git_branch_release_version(git_command):
+def git_branch(git_command):
     # Test if we are building a specific release version.
     try:
         branch = subprocess.check_output([git_command, "rev-parse", "--abbrev-ref", "HEAD"])
@@ -42,7 +43,9 @@ def git_branch_release_version(git_command):
         sys.stderr.write("Failed to get Blender git branch\n")
         sys.exit(1)
 
-    branch = branch.strip().decode('utf8')
+    return branch.strip().decode('utf8')
+
+def git_branch_release_version(branch):
     release_version = re.search("^blender-v(.*)-release$", branch)
     if release_version:
         release_version = release_version.group(1)
@@ -54,3 +57,10 @@ def svn_libraries_base_url(release_version):
     else:
         svn_branch = "trunk"
     return "https://svn.blender.org/svnroot/bf-blender/" + svn_branch + "/lib/"
+
+def command_missing(command):
+    # Support running with Python 2 for macOS
+    if sys.version_info >= (3, 0):
+        return shutil.which(command) is None
+    else:
+        return False

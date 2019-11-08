@@ -113,10 +113,10 @@ void imapaint_region_tiles(
 
   IMB_rectclip(ibuf, NULL, &x, &y, &srcx, &srcy, &w, &h);
 
-  *tw = ((x + w - 1) >> IMAPAINT_TILE_BITS);
-  *th = ((y + h - 1) >> IMAPAINT_TILE_BITS);
-  *tx = (x >> IMAPAINT_TILE_BITS);
-  *ty = (y >> IMAPAINT_TILE_BITS);
+  *tw = ((x + w - 1) >> ED_IMAGE_UNDO_TILE_BITS);
+  *th = ((y + h - 1) >> ED_IMAGE_UNDO_TILE_BITS);
+  *tx = (x >> ED_IMAGE_UNDO_TILE_BITS);
+  *ty = (y >> ED_IMAGE_UNDO_TILE_BITS);
 }
 
 void ED_imapaint_dirty_region(Image *ima, ImBuf *ibuf, int x, int y, int w, int h, bool find_old)
@@ -147,11 +147,12 @@ void ED_imapaint_dirty_region(Image *ima, ImBuf *ibuf, int x, int y, int w, int 
 
   imapaint_region_tiles(ibuf, x, y, w, h, &tilex, &tiley, &tilew, &tileh);
 
-  ListBase *undo_tiles = ED_image_undo_get_tiles();
+  ListBase *undo_tiles = ED_image_paint_tile_list_get();
 
   for (ty = tiley; ty <= tileh; ty++) {
     for (tx = tilex; tx <= tilew; tx++) {
-      image_undo_push_tile(undo_tiles, ima, ibuf, &tmpibuf, tx, ty, NULL, NULL, false, find_old);
+      ED_image_paint_tile_push(
+          undo_tiles, ima, ibuf, &tmpibuf, tx, ty, NULL, NULL, false, find_old);
     }
   }
 
@@ -539,7 +540,7 @@ static void paint_stroke_update_step(bContext *C, struct PaintStroke *stroke, Po
   RNA_float_get_array(itemptr, "mouse", mouse);
   pressure = RNA_float_get(itemptr, "pressure");
   eraser = RNA_boolean_get(itemptr, "pen_flip");
-  size = max_ff(1.0f, RNA_float_get(itemptr, "size"));
+  size = RNA_float_get(itemptr, "size");
 
   /* stroking with fill tool only acts on stroke end */
   if (brush->imagepaint_tool == PAINT_TOOL_FILL) {
@@ -700,7 +701,7 @@ static int paint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
                                     event->type);
 
   if ((retval = op->type->modal(C, op, event)) == OPERATOR_FINISHED) {
-    paint_stroke_data_free(op);
+    paint_stroke_free(C, op);
     return OPERATOR_FINISHED;
   }
   /* add modal handler */
@@ -758,17 +759,14 @@ void PAINT_OT_image_paint(wmOperatorType *ot)
   paint_stroke_operator_properties(ot);
 }
 
-int get_imapaint_zoom(bContext *C, float *zoomx, float *zoomy)
+bool get_imapaint_zoom(bContext *C, float *zoomx, float *zoomy)
 {
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
-
-  if (!rv3d) {
-    SpaceImage *sima = CTX_wm_space_image(C);
-
+  ScrArea *sa = CTX_wm_area(C);
+  if (sa && sa->spacetype == SPACE_IMAGE) {
+    SpaceImage *sima = sa->spacedata.first;
     if (sima->mode == SI_MODE_PAINT) {
       ARegion *ar = CTX_wm_region(C);
       ED_space_image_get_zoom(sima, ar, zoomx, zoomy);
-
       return 1;
     }
   }
@@ -1023,7 +1021,7 @@ static int sample_color_invoke(bContext *C, wmOperator *op, const wmEvent *event
                                   !RNA_boolean_get(op->ptr, "merged");
 
   paint_sample_color(C, ar, event->mval[0], event->mval[1], use_sample_texture, false);
-  WM_cursor_modal_set(win, BC_EYEDROPPER_CURSOR);
+  WM_cursor_modal_set(win, WM_CURSOR_EYEDROPPER);
 
   WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
 

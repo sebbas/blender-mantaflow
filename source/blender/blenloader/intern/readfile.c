@@ -2829,6 +2829,12 @@ static PackedFile *direct_link_packedfile(FileData *fd, PackedFile *oldpf)
 
   if (pf) {
     pf->data = newpackedadr(fd, pf->data);
+    if (pf->data == NULL) {
+      /* We cannot allow a PackedFile with a NULL data field,
+       * the whole code assumes this is not possible. See T70315. */
+      printf("%s: NULL packedfile data, cleaning up...\n", __func__);
+      MEM_SAFE_FREE(pf);
+    }
   }
 
   return pf;
@@ -3856,6 +3862,8 @@ static void direct_link_armature(FileData *fd, bArmature *arm)
   link_list(fd, &arm->bonebase);
   arm->bonehash = NULL;
   arm->edbo = NULL;
+  /* Must always be cleared (armatures don't have their own edit-data). */
+  arm->needs_flush_to_id = 0;
 
   arm->adt = newdataadr(fd, arm->adt);
   direct_link_animdata(fd, arm->adt);
@@ -4073,6 +4081,8 @@ static void direct_link_mball(FileData *fd, MetaBall *mb)
 
   BLI_listbase_clear(&mb->disp);
   mb->editelems = NULL;
+  /* Must always be cleared (meta's don't have their own edit-data). */
+  mb->needs_flush_to_id = 0;
   /*  mb->edit_elems.first= mb->edit_elems.last= NULL;*/
   mb->lastelem = NULL;
   mb->batch_cache = NULL;
@@ -7151,6 +7161,8 @@ static void direct_link_region(FileData *fd, ARegion *ar, int spacetype)
         rv3d->render_engine = NULL;
         rv3d->sms = NULL;
         rv3d->smooth_timer = NULL;
+
+        rv3d->rflag &= ~(RV3D_NAVIGATING | RV3D_PAINTING);
       }
     }
   }
@@ -7248,13 +7260,6 @@ static void direct_link_area(FileData *fd, ScrArea *area)
         v3d->shading.type = OB_SOLID;
       }
       v3d->shading.prev_type = OB_SOLID;
-
-      if (v3d->fx_settings.dof) {
-        v3d->fx_settings.dof = newdataadr(fd, v3d->fx_settings.dof);
-      }
-      if (v3d->fx_settings.ssao) {
-        v3d->fx_settings.ssao = newdataadr(fd, v3d->fx_settings.ssao);
-      }
 
       direct_link_view3dshading(fd, &v3d->shading);
 
@@ -8231,9 +8236,9 @@ void blo_lib_link_restore(Main *oldmain,
   }
 
   /* Restore all ID pointers in Main database itself
-   * (especially IDProperties might point to some worspace of other 'weirdly unchanged' ID
+   * (especially IDProperties might point to some word-space of other 'weirdly unchanged' ID
    * pointers, see T69146).
-   * Note that this will re;ap again a few pointers in workspaces or so,
+   * Note that this will re-apply again a few pointers in workspaces or so,
    * but since we are remapping final ones already set above,
    * that is just some minor harmless double-processing. */
   lib_link_main_data_restore(id_map, newmain);
@@ -10092,7 +10097,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
     }
     else {
       /* Convert any previously read weak link to regular link
-       * to signal that we want to read this datablock. */
+       * to signal that we want to read this data-block. */
       if (id->tag & LIB_TAG_ID_LINK_PLACEHOLDER) {
         id->flag &= ~LIB_INDIRECT_WEAK_LINK;
       }
@@ -10142,7 +10147,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
     }
     else {
       /* Convert any previously read weak link to regular link
-       * to signal that we want to read this datablock. */
+       * to signal that we want to read this data-block. */
       if (id->tag & LIB_TAG_ID_LINK_PLACEHOLDER) {
         id->flag &= ~LIB_INDIRECT_WEAK_LINK;
       }
@@ -11993,7 +11998,7 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 
   Main *main_newid = BKE_main_new();
   for (Main *mainptr = mainl->next; mainptr; mainptr = mainptr->next) {
-    /* Drop weak links for which no datablock was found. */
+    /* Drop weak links for which no data-block was found. */
     read_library_clear_weak_links(basefd, mainlist, mainptr);
 
     /* Do versioning for newly added linked data-locks. If no data-locks

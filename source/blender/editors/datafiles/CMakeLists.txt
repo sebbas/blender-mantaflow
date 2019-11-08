@@ -692,6 +692,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_circle
   ops.gpencil.primitive_curve
   ops.gpencil.primitive_line
+  ops.gpencil.primitive_polyline
   ops.gpencil.radius
   ops.gpencil.sculpt_clone
   ops.gpencil.sculpt_grab
@@ -727,6 +728,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.mesh.spin.duplicate
   ops.mesh.vertices_smooth
   ops.node.links_cut
+  ops.paint.eyedropper_add
   ops.paint.vertex_color_fill
   ops.paint.weight_fill
   ops.paint.weight_gradient
@@ -776,20 +778,20 @@ if(WITH_BLENDER)
     data_to_c_simple(../../../../release/datafiles/splash.png SRC)
     data_to_c_simple(../../../../release/datafiles/splash_2x.png SRC)
     # XXX These are handy, but give nasty "false changes" in svn :/
-    #svg_to_png(../../../../release/datafiles/blender_icons.svg
-               #../../../../release/datafiles/blender_icons16.png
-               #90 SRC)
+    # svg_to_png(../../../../release/datafiles/blender_icons.svg
+    #            ../../../../release/datafiles/blender_icons16.png
+    #            90 SRC)
 
     data_to_c_simple_icons(../../../../release/datafiles/blender_icons16 "icon16_" "${ICON_NAMES}" SRC)
-    #data_to_c_simple(../../../../release/datafiles/blender_icons16.png SRC)
-    #svg_to_png(../../../../release/datafiles/blender_icons.svg
-               #../../../../release/datafiles/blender_icons32.png
-               #180 SRC)
+    # data_to_c_simple(../../../../release/datafiles/blender_icons16.png SRC)
+    # svg_to_png(../../../../release/datafiles/blender_icons.svg
+    #            ../../../../release/datafiles/blender_icons32.png
+    #            180 SRC)
     data_to_c_simple_icons(../../../../release/datafiles/blender_icons32 "icon32_" "${ICON_NAMES}" SRC)
-    #data_to_c_simple(../../../../release/datafiles/blender_icons32.png SRC)
-    #svg_to_png(../../../../release/datafiles/prvicons.svg
-               #../../../../release/datafiles/prvicons.png
-               #90 SRC)
+    # data_to_c_simple(../../../../release/datafiles/blender_icons32.png SRC)
+    # svg_to_png(../../../../release/datafiles/prvicons.svg
+    #            ../../../../release/datafiles/prvicons.png
+    #            90 SRC)
     data_to_c_simple(../../../../release/datafiles/prvicons.png SRC)
 
     # brushes

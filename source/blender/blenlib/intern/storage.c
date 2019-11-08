@@ -180,8 +180,8 @@ double BLI_dir_free_space(const char *dir)
  */
 size_t BLI_file_descriptor_size(int file)
 {
-  struct stat st;
-  if ((file < 0) || (fstat(file, &st) == -1)) {
+  BLI_stat_t st;
+  if ((file < 0) || (BLI_fstat(file, &st) == -1)) {
     return -1;
   }
   return st.st_size;
@@ -209,7 +209,6 @@ int BLI_exists(const char *name)
   BLI_stat_t st;
   wchar_t *tmp_16 = alloc_utf16_from_8(name, 1);
   int len, res;
-  unsigned int old_error_mode;
 
   len = wcslen(tmp_16);
   /* in Windows #stat doesn't recognize dir ending on a slash
@@ -230,13 +229,7 @@ int BLI_exists(const char *name)
     tmp_16[3] = L'\0';
   }
 
-  /* change error mode so user does not get a "no disk in drive" popup
-   * when looking for a file on an empty CD/DVD drive */
-  old_error_mode = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
-
   res = BLI_wstat(tmp_16, &st);
-
-  SetErrorMode(old_error_mode);
 
   free(tmp_16);
   if (res == -1) {
@@ -253,6 +246,15 @@ int BLI_exists(const char *name)
 }
 
 #ifdef WIN32
+int BLI_fstat(int fd, BLI_stat_t *buffer)
+{
+#  if defined(_MSC_VER)
+  return _fstat64(fd, buffer);
+#  else
+  return _fstat(fd, buffer);
+#  endif
+}
+
 int BLI_stat(const char *path, BLI_stat_t *buffer)
 {
   int r;
@@ -273,6 +275,11 @@ int BLI_wstat(const wchar_t *path, BLI_stat_t *buffer)
 #  endif
 }
 #else
+int BLI_fstat(int fd, struct stat *buffer)
+{
+  return fstat(fd, buffer);
+}
+
 int BLI_stat(const char *path, struct stat *buffer)
 {
   return stat(path, buffer);
@@ -305,8 +312,8 @@ static void *file_read_data_as_mem_impl(FILE *fp,
                                         size_t pad_bytes,
                                         size_t *r_size)
 {
-  struct stat st;
-  if (fstat(fileno(fp), &st) == -1) {
+  BLI_stat_t st;
+  if (BLI_fstat(fileno(fp), &st) == -1) {
     return NULL;
   }
   if (S_ISDIR(st.st_mode)) {

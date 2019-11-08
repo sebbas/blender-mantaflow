@@ -30,6 +30,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_rand.h"
 #include "BLI_utildefines.h"
 #include "BLI_linklist_stack.h"
 
@@ -542,20 +543,20 @@ void ED_region_do_draw(bContext *C, ARegion *ar)
   region_draw_azones(sa, ar);
 
   /* for debugging unneeded area redraws and partial redraw */
-#if 0
-  GPU_blend(true);
-  GPUVertFormat *format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  immUniformColor4f(drand48(), drand48(), drand48(), 0.1f);
-  immRectf(pos,
-           ar->drawrct.xmin - ar->winrct.xmin,
-           ar->drawrct.ymin - ar->winrct.ymin,
-           ar->drawrct.xmax - ar->winrct.xmin,
-           ar->drawrct.ymax - ar->winrct.ymin);
-  immUnbindProgram();
-  GPU_blend(false);
-#endif
+  if (G.debug_value == 888) {
+    GPU_blend(true);
+    GPUVertFormat *format = immVertexFormat();
+    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+    immUniformColor4f(BLI_thread_frand(0), BLI_thread_frand(0), BLI_thread_frand(0), 0.1f);
+    immRectf(pos,
+             ar->drawrct.xmin - ar->winrct.xmin,
+             ar->drawrct.ymin - ar->winrct.ymin,
+             ar->drawrct.xmax - ar->winrct.xmin,
+             ar->drawrct.ymax - ar->winrct.ymin);
+    immUnbindProgram();
+    GPU_blend(false);
+  }
 
   memset(&ar->drawrct, 0, sizeof(ar->drawrct));
 
@@ -1826,7 +1827,7 @@ void ED_region_cursor_set(wmWindow *win, ScrArea *sa, ARegion *ar)
     if (WM_cursor_set_from_tool(win, sa, ar)) {
       return;
     }
-    WM_cursor_set(win, CURSOR_STD);
+    WM_cursor_set(win, WM_CURSOR_DEFAULT);
   }
 }
 
@@ -1946,7 +1947,7 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
 
   if (sa->spacetype != type) {
     SpaceType *st;
-    SpaceLink *slold;
+    SpaceLink *slold = sa->spacedata.first;
     SpaceLink *sl;
     /* store sa->type->exit callback */
     void *sa_exit = sa->type ? sa->type->exit : NULL;
@@ -1962,7 +1963,7 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
      */
     int header_alignment = ED_area_header_alignment_or_fallback(sa, -1);
     const bool sync_header_alignment = ((header_alignment != -1) &&
-                                        (sa->flag & AREA_FLAG_TEMP_TYPE) == 0);
+                                        ((slold->link_flag & SPACE_FLAG_TYPE_TEMPORARY) == 0));
 
     /* in some cases (opening temp space) we don't want to
      * call area exit callback, so we temporarily unset it */
@@ -1978,7 +1979,6 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
     }
 
     st = BKE_spacetype_from_id(type);
-    slold = sa->spacedata.first;
 
     sa->spacetype = type;
     sa->type = st;
@@ -2009,6 +2009,10 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
       slold->regionbase = sa->regionbase;
       sa->regionbase = sl->regionbase;
       BLI_listbase_clear(&sl->regionbase);
+      /* SPACE_FLAG_TYPE_WAS_ACTIVE is only used to go back to a previously active space that is
+       * overlapped by temporary ones. It's now properly activated, so the flag should be cleared
+       * at this point. */
+      sl->link_flag &= ~SPACE_FLAG_TYPE_WAS_ACTIVE;
 
       /* put in front of list */
       BLI_remlink(&sa->spacedata, sl);
@@ -2072,23 +2076,45 @@ void ED_area_newspace(bContext *C, ScrArea *sa, int type, const bool skip_ar_exi
   ED_area_tag_redraw(sa);
 }
 
-void ED_area_prevspace(bContext *C, ScrArea *sa)
+static SpaceLink *area_get_prevspace(ScrArea *sa)
 {
   SpaceLink *sl = sa->spacedata.first;
 
-  if (sl && sl->next) {
-    ED_area_newspace(C, sa, sl->next->spacetype, false);
+  /* First toggle to the next temporary space in the list. */
+  for (SpaceLink *sl_iter = sl->next; sl_iter; sl_iter = sl_iter->next) {
+    if (sl_iter->link_flag & SPACE_FLAG_TYPE_TEMPORARY) {
+      return sl_iter;
+    }
+  }
 
-    /* keep old spacedata but move it to end, so calling
-     * ED_area_prevspace once more won't open it again */
-    BLI_remlink(&sa->spacedata, sl);
-    BLI_addtail(&sa->spacedata, sl);
+  /* No temporary space, find the item marked as last active. */
+  for (SpaceLink *sl_iter = sl->next; sl_iter; sl_iter = sl_iter->next) {
+    if (sl_iter->link_flag & SPACE_FLAG_TYPE_WAS_ACTIVE) {
+      return sl_iter;
+    }
+  }
+
+  /* If neither is found, we can just return to the regular previous one. */
+  return sl->next;
+}
+
+void ED_area_prevspace(bContext *C, ScrArea *sa)
+{
+  SpaceLink *sl = sa->spacedata.first;
+  SpaceLink *prevspace = sl ? area_get_prevspace(sa) : NULL;
+
+  if (prevspace) {
+    ED_area_newspace(C, sa, prevspace->spacetype, false);
+    /* We've exited the space, so it can't be considered temporary anymore. */
+    sl->link_flag &= ~SPACE_FLAG_TYPE_TEMPORARY;
   }
   else {
     /* no change */
     return;
   }
-  sa->flag &= ~(AREA_FLAG_STACKED_FULLSCREEN | AREA_FLAG_TEMP_TYPE);
+  /* If this is a stacked fullscreen, changing to previous area exits it (meaning we're still in a
+   * fullscreen, but not in a stacked one). */
+  sa->flag &= ~AREA_FLAG_STACKED_FULLSCREEN;
 
   ED_area_tag_redraw(sa);
 
@@ -2868,7 +2894,7 @@ void ED_region_info_draw(ARegion *ar,
                          float fill_color[4],
                          const bool full_redraw)
 {
-  ED_region_info_draw_multiline(ar, (const char * [2]){text, NULL}, fill_color, full_redraw);
+  ED_region_info_draw_multiline(ar, (const char *[2]){text, NULL}, fill_color, full_redraw);
 }
 
 #define MAX_METADATA_STR 1024
@@ -3336,13 +3362,17 @@ const rcti *ED_region_visible_rect(ARegion *ar)
 
 /* Cache display helpers */
 
-void ED_region_cache_draw_background(const ARegion *ar)
+void ED_region_cache_draw_background(ARegion *ar)
 {
+  /* Local coordinate visible rect inside region, to accommodate overlapping ui. */
+  const rcti *rect_visible = ED_region_visible_rect(ar);
+  const int region_bottom = rect_visible->ymin;
+
   uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
   immUniformColor4ub(128, 128, 255, 64);
-  immRecti(pos, 0, 0, ar->winx, 8 * UI_DPI_FAC);
+  immRecti(pos, 0, region_bottom, ar->winx, region_bottom + 8 * UI_DPI_FAC);
   immUnbindProgram();
 }
 
@@ -3372,9 +3402,13 @@ void ED_region_cache_draw_curfra_label(const int framenr, const float x, const f
 }
 
 void ED_region_cache_draw_cached_segments(
-    const ARegion *ar, const int num_segments, const int *points, const int sfra, const int efra)
+    ARegion *ar, const int num_segments, const int *points, const int sfra, const int efra)
 {
   if (num_segments) {
+    /* Local coordinate visible rect inside region, to accommodate overlapping ui. */
+    const rcti *rect_visible = ED_region_visible_rect(ar);
+    const int region_bottom = rect_visible->ymin;
+
     uint pos = GPU_vertformat_attr_add(
         immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
@@ -3384,7 +3418,7 @@ void ED_region_cache_draw_cached_segments(
       float x1 = (float)(points[a * 2] - sfra) / (efra - sfra + 1) * ar->winx;
       float x2 = (float)(points[a * 2 + 1] - sfra + 1) / (efra - sfra + 1) * ar->winx;
 
-      immRecti(pos, x1, 0, x2, 8 * UI_DPI_FAC);
+      immRecti(pos, x1, region_bottom, x2, region_bottom + 8 * UI_DPI_FAC);
       /* TODO(merwin): use primitive restart to draw multiple rects more efficiently */
     }
 

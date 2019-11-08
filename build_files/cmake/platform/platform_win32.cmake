@@ -35,6 +35,22 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   else()
     message("Unable to detect the Visual Studio redist directory, copying of the runtime dlls will not work, try running from the visual studio developer prompt.")
   endif()
+  # 1) CMake has issues detecting openmp support in clang-cl so we have to provide
+  #    the right switches here.
+  # 2) While the /openmp switch *should* work, it currently doesn't as for clang 9.0.0
+  if(WITH_OPENMP)
+    set(OPENMP_CUSTOM ON)
+    set(OPENMP_FOUND ON)
+    set(OpenMP_C_FLAGS "/clang:-fopenmp")
+    set(OpenMP_CXX_FLAGS "/clang:-fopenmp")
+    GET_FILENAME_COMPONENT(LLVMROOT "[HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\LLVM\\LLVM;]" ABSOLUTE CACHE)
+    set(CLANG_OPENMP_DLL "${LLVMROOT}/bin/libomp.dll")
+    set(CLANG_OPENMP_LIB "${LLVMROOT}/lib/libomp.lib")
+    if(NOT EXISTS "${CLANG_OPENMP_DLL}")
+      message(FATAL_ERROR "Clang OpenMP library (${CLANG_OPENMP_DLL}) not found.")
+    endif()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} \"${CLANG_OPENMP_LIB}\"")
+  endif()
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ${WINDOWS_USE_VISUAL_STUDIO_PROJECT_FOLDERS})
@@ -96,7 +112,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
 set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /SAFESEH:NO")
 
 list(APPEND PLATFORM_LINKLIBS
-  ws2_32 vfw32 winmm kernel32 user32 gdi32 comdlg32
+  ws2_32 vfw32 winmm kernel32 user32 gdi32 comdlg32 Comctl32
   advapi32 shfolder shell32 ole32 oleaut32 uuid psapi Dbghelp
 )
 
@@ -144,7 +160,7 @@ set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} /MT")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MT")
 
-#JMC is available on msvc 15.8 (1915) and up
+# JMC is available on msvc 15.8 (1915) and up
 if(MSVC_VERSION GREATER 1914 AND NOT MSVC_CLANG)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /JMC")
 endif()
@@ -475,25 +491,20 @@ endif()
 
 if(WITH_OPENVDB)
   set(BLOSC_LIBRARIES optimized ${LIBDIR}/blosc/lib/libblosc.lib debug ${LIBDIR}/blosc/lib/libblosc_d.lib)
-  set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
-  set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
   set(OPENVDB ${LIBDIR}/openVDB)
   set(OPENVDB_LIBPATH ${OPENVDB}/lib)
-  set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include ${TBB_INCLUDE_DIR})
-  set(OPENVDB_LIBRARIES optimized ${OPENVDB_LIBPATH}/openvdb.lib debug ${OPENVDB_LIBPATH}/openvdb_d.lib ${TBB_LIBRARIES} ${BLOSC_LIBRARIES})
+  set(OPENVDB_INCLUDE_DIRS ${OPENVDB}/include)
+  set(OPENVDB_LIBRARIES optimized ${OPENVDB_LIBPATH}/openvdb.lib debug ${OPENVDB_LIBPATH}/openvdb_d.lib ${BLOSC_LIBRARIES})
   set(OPENVDB_DEFINITIONS -DNOMINMAX)
 endif()
 
 if(WITH_OPENIMAGEDENOISE)
-  set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
-  set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
   set(OPENIMAGEDENOISE ${LIBDIR}/OpenImageDenoise)
   set(OPENIMAGEDENOISE_LIBPATH ${LIBDIR}/OpenImageDenoise/lib)
-  set(OPENIMAGEDENOISE_INCLUDE_DIRS ${OPENIMAGEDENOISE}/include ${TBB_INCLUDE_DIR})
+  set(OPENIMAGEDENOISE_INCLUDE_DIRS ${OPENIMAGEDENOISE}/include)
   set(OPENIMAGEDENOISE_LIBRARIES
     optimized ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise.lib ${OPENIMAGEDENOISE_LIBPATH}/common.lib ${OPENIMAGEDENOISE_LIBPATH}/mkldnn.lib
-    debug ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise_d.lib ${OPENIMAGEDENOISE_LIBPATH}/common_d.lib ${OPENIMAGEDENOISE_LIBPATH}/mkldnn_d.lib
-    ${TBB_LIBRARIES})
+    debug ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise_d.lib ${OPENIMAGEDENOISE_LIBPATH}/common_d.lib ${OPENIMAGEDENOISE_LIBPATH}/mkldnn_d.lib)
   set(OPENIMAGEDENOISE_DEFINITIONS)
 endif()
 
@@ -558,17 +569,33 @@ if(WITH_SYSTEM_AUDASPACE)
   set(AUDASPACE_PY_LIBRARIES ${LIBDIR}/audaspace/lib/audaspace-py.lib)
 endif()
 
-if(WITH_MOD_MANTA)
-  if(NOT WITH_OPENMP OR NOT WITH_MANTA_OMP)
-    set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
-    set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
+if(WITH_TBB)
+  set(TBB_LIBRARIES optimized ${LIBDIR}/tbb/lib/tbb.lib debug ${LIBDIR}/tbb/lib/tbb_debug.lib)
+  set(TBB_INCLUDE_DIR ${LIBDIR}/tbb/include)
+  set(TBB_INCLUDE_DIRS ${TBB_INCLUDE_DIR})
+else()
+  if(WITH_OPENIMAGEDENOISE)
+    message(STATUS "TBB disabled, also disabling OpenImageDenoise")
+    set(WITH_OPENIMAGEDENOISE OFF)
+  endif()
+  if(WITH_OPENVDB)
+    message(STATUS "TBB disabled, also disabling OpenVDB")
+    set(WITH_OPENVDB OFF)
+  endif()
+  if(WITH_MOD_MANTA)
+    message(STATUS "TBB disabled, using OpenMP for Mantaflow")
+    if(NOT WITH_OPENMP)
+      message(STATUS "OpenMP disabled, also disabling Mantaflow")
+    else()
+      set(WITH_MANTA_OMP ON)
+    endif()
   endif()
 endif()
 
 # used in many places so include globally, like OpenGL
 blender_include_dirs_sys("${PTHREADS_INCLUDE_DIRS}")
 
-#find signtool
+# Find signtool.
 set(ProgramFilesX86_NAME "ProgramFiles(x86)") #env dislikes the ( )
 find_program(SIGNTOOL_EXE signtool
   HINTS

@@ -1772,7 +1772,7 @@ class CYCLES_RENDER_PT_bake(CyclesButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return not use_optix(context)
+        return CyclesButtonsPanel.poll(context) and not use_optix(context)
 
     def draw(self, context):
         layout = self.layout
@@ -2166,7 +2166,7 @@ def draw_pause(self, context):
 
         if view.shading.type == 'RENDERED':
             cscene = scene.cycles
-            layout.prop(cscene, "preview_pause", icon='PAUSE', text="")
+            layout.prop(cscene, "preview_pause", icon='PLAY' if cscene.preview_pause else 'PAUSE', text="")
 
 
 def get_panels():

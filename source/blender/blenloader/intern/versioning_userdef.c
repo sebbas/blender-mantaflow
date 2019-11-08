@@ -29,10 +29,13 @@
 #include "DNA_curve_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_space_types.h"
+#include "DNA_anim_types.h"
 
 #include "BKE_addon.h"
 #include "BKE_colorband.h"
 #include "BKE_main.h"
+#include "BKE_idprop.h"
 #include "BKE_keyconfig.h"
 
 #include "BLO_readfile.h" /* Own include. */
@@ -145,14 +148,19 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_outliner.active);
   }
 
-  /**
-   * Include next version bump.
-   */
-  {
+  if (!USER_VERSION_ATLEAST(281, 14)) {
     FROM_DEFAULT_V4_UCHAR(space_file.execution_buts);
     FROM_DEFAULT_V4_UCHAR(tui.icon_folder);
     FROM_DEFAULT_V4_UCHAR(space_clip.path_keyframe_before);
     FROM_DEFAULT_V4_UCHAR(space_clip.path_keyframe_after);
+    copy_v4_v4_uchar(btheme->space_nla.nla_track, btheme->space_nla.header);
+  }
+
+  /**
+   * Include next version bump.
+   */
+  {
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.anim_preview_range);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -190,6 +198,18 @@ static void do_version_select_mouse(UserDef *userdef, wmKeyMapItem *kmi)
     default:
       break;
   }
+}
+
+static bool keymap_item_has_invalid_wm_context_data_path(wmKeyMapItem *kmi,
+                                                         void *UNUSED(user_data))
+{
+  if (STRPREFIX(kmi->idname, "WM_OT_context_") && kmi->properties) {
+    IDProperty *idprop = IDP_GetPropertyFromGroup(kmi->properties, "data_path");
+    if (idprop && (idprop->type == IDP_STRING) && STRPREFIX(idprop->data.pointer, "(null)")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /* patching UserDef struct and Themes */
@@ -620,6 +640,29 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
   if (!USER_VERSION_ATLEAST(281, 12)) {
     userdef->render_display_type = USER_RENDER_DISPLAY_WINDOW;
     userdef->filebrowser_display_type = USER_TEMP_SPACE_DISPLAY_WINDOW;
+  }
+
+  if (!USER_VERSION_ATLEAST(281, 13)) {
+    userdef->auto_smoothing_new = FCURVE_SMOOTH_CONT_ACCEL;
+
+    if (userdef->file_space_data.display_type == FILE_DEFAULTDISPLAY) {
+      memcpy(
+          &userdef->file_space_data, &U_default.file_space_data, sizeof(userdef->file_space_data));
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(281, 16)) {
+    BKE_keyconfig_pref_filter_items(userdef,
+                                    &((struct wmKeyConfigFilterItemParams){
+                                        .check_item = true,
+                                        .check_diff_item_add = true,
+                                    }),
+                                    keymap_item_has_invalid_wm_context_data_path,
+                                    NULL);
+  }
+
+  if (!USER_VERSION_ATLEAST(282, 1)) {
+    userdef->file_space_data.filter_id = U_default.file_space_data.filter_id;
   }
 
   /**

@@ -410,7 +410,7 @@ static void load_tex_cursor_task_cb(void *__restrict userdata,
     if (len <= 1.0f) {
       float avg = BKE_brush_curve_strength_clamped(br, len, 1.0f); /* Falloff curve */
 
-      buffer[index] = 255 - (GLubyte)(255 * avg);
+      buffer[index] = (GLubyte)(255 * avg);
     }
     else {
       buffer[index] = 0;
@@ -1224,9 +1224,13 @@ static bool paint_use_2d_cursor(ePaintMode mode)
 
 static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 {
+  ARegion *ar = CTX_wm_region(C);
+  if (ar && ar->regiontype != RGN_TYPE_WINDOW) {
+    return;
+  }
+
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = CTX_data_scene(C);
-  ARegion *ar = CTX_wm_region(C);
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
@@ -1261,7 +1265,7 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
   /* set various defaults */
   const float *outline_col = brush->add_col;
-  const float outline_alpha = 0.5f;
+  const float outline_alpha = 0.7f;
   float translation[2] = {x, y};
   float final_radius = (BKE_brush_size_get(scene, brush) * zoomx);
 
@@ -1271,6 +1275,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
   if (!ups->stroke_active) {
     paint_calculate_rake_rotation(ups, brush, translation);
   }
+
+  /* draw overlay */
+  bool alpha_overlay_active = paint_draw_alpha_overlay(ups, brush, &vc, x, y, zoomx, mode);
 
   if (ups->draw_anchored) {
     final_radius = ups->anchored_size;
@@ -1294,9 +1301,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
     if (ups->stroke_active && BKE_brush_use_size_pressure(scene, brush)) {
       imm_draw_circle_wire_2d(
           pos, translation[0], translation[1], final_radius * ups->size_pressure_value, 40);
+      /* outer at half alpha */
+      immUniformColor3fvAlpha(outline_col, outline_alpha * 0.5f);
     }
-    /* outer at half alpha */
-    immUniformColor3fvAlpha(outline_col, outline_alpha * 0.5f);
 
     GPU_line_width(1.0f);
     imm_draw_circle_wire_2d(pos, translation[0], translation[1], final_radius, 40);
@@ -1304,9 +1311,6 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
   else { /* 3d painting */
     uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-    /* draw overlay */
-    bool alpha_overlay_active = paint_draw_alpha_overlay(ups, brush, &vc, x, y, zoomx, mode);
 
     /* TODO: as sculpt and other paint modes are unified, this
      * special mode of drawing will go away */
@@ -1352,29 +1356,24 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
 
     SculptCursorGeometryInfo gi;
     float mouse[2] = {x - ar->winrct.xmin, y - ar->winrct.ymin};
+    int prev_active_vertex_index = -1;
     bool is_cursor_over_mesh = false;
 
     /* Update the active vertex */
-    if ((mode == PAINT_MODE_SCULPT) && !ups->stroke_active) {
+    if ((mode == PAINT_MODE_SCULPT) && ss && !ups->stroke_active) {
+      prev_active_vertex_index = ss->active_vertex_index;
       is_cursor_over_mesh = sculpt_cursor_geometry_info_update(
-          C, &gi, mouse, !(brush->falloff_shape & BRUSH_AIRBRUSH));
+          C, &gi, mouse, (brush->falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE));
     }
+    /* Use special paint crosshair cursor in all paint modes*/
+    wmWindow *win = CTX_wm_window(C);
+    WM_cursor_set(win, WM_CURSOR_PAINT);
 
-    if ((mode == PAINT_MODE_SCULPT) && ss && !is_multires &&
-        !(brush->falloff_shape & BRUSH_AIRBRUSH)) {
+    if ((mode == PAINT_MODE_SCULPT) && ss &&
+        (brush->falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE)) {
       Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-      wmWindow *win = CTX_wm_window(C);
-
-      /* Update WM mouse cursor, disable when the 3D brush cursor is enabled */
-      if (sd->paint.brush->overlay_flags & BRUSH_OVERLAY_CURSOR) {
-        WM_cursor_set(win, CURSOR_STD);
-      }
-      else {
-        WM_cursor_set(win, CURSOR_EDIT);
-      }
 
       if (!ups->stroke_active) {
-        int prev_active_vertex_index = ss->active_vertex_index;
         bool update_previews = false;
         if (is_cursor_over_mesh && !alpha_overlay_active) {
 
@@ -1399,12 +1398,12 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
           }
 
           /* Draw pose brush origin */
-          if (brush->sculpt_tool == SCULPT_TOOL_POSE && !is_multires) {
+          if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
             immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
             if (update_previews) {
               BKE_sculpt_update_object_for_edit(depsgraph, vc.obact, true, false);
               sculpt_pose_calc_pose_data(
-                  sd, vc.obact, ss, gi.location, rds, ss->pose_origin, NULL);
+                  sd, vc.obact, ss, gi.location, rds, brush->pose_offset, ss->pose_origin, NULL);
             }
             cursor_draw_point_screen_space(pos, ar, ss->pose_origin, vc.obact->obmat, 5);
           }
@@ -1433,21 +1432,26 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
           GPU_matrix_mul(cursor_trans);
           GPU_matrix_mul(cursor_rot);
           immUniformColor3fvAlpha(outline_col, outline_alpha);
-          imm_draw_circle_wire_3d(pos, 0, 0, rds, 40);
+          GPU_line_width(2.0f);
+          imm_draw_circle_wire_3d(pos, 0, 0, rds, 80);
+          GPU_line_width(1.0f);
+          immUniformColor3fvAlpha(outline_col, outline_alpha * 0.5f);
+          imm_draw_circle_wire_3d(pos, 0, 0, rds * clamp_f(brush->alpha, 0.0f, 1.0f), 80);
           GPU_matrix_pop();
 
           /* Update and draw dynamic mesh preview lines */
           GPU_matrix_push();
           GPU_matrix_mul(vc.obact->obmat);
-          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) {
-            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->modifiers_active) {
+          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) &&
+              !is_multires) {
+            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->deform_modifiers_active) {
               sculpt_geometry_preview_lines_update(C, ss, rds);
               sculpt_geometry_preview_lines_draw(pos, ss);
             }
           }
 
           /* Draw pose brush line preview */
-          if (brush->sculpt_tool == SCULPT_TOOL_POSE && !is_multires) {
+          if (brush->sculpt_tool == SCULPT_TOOL_POSE) {
             immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
             GPU_line_width(2.0f);
             immBegin(GPU_PRIM_LINES, 2);
@@ -1466,7 +1470,15 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
           /* Draw default cursor when the mouse is not over the mesh or there are no supported
            * overlays active */
           GPU_line_width(1.0f);
-          imm_draw_circle_wire_3d(pos, translation[0], translation[1], final_radius, 40);
+          /* Reduce alpha to increase the contrast when the cursor is over the mesh */
+          immUniformColor3fvAlpha(outline_col, outline_alpha * 0.8);
+          imm_draw_circle_wire_3d(pos, translation[0], translation[1], final_radius, 80);
+          immUniformColor3fvAlpha(outline_col, outline_alpha * 0.35f);
+          imm_draw_circle_wire_3d(pos,
+                                  translation[0],
+                                  translation[1],
+                                  final_radius * clamp_f(brush->alpha, 0.0f, 1.0f),
+                                  80);
         }
       }
       else {
@@ -1483,8 +1495,9 @@ static void paint_draw_cursor(bContext *C, int x, int y, void *UNUSED(unused))
               pos, ar, cursor_location, sd, vc.obact, ss->cache->radius);
 
           /* Draw cached dynamic mesh preview lines */
-          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) {
-            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->modifiers_active) {
+          if (brush->sculpt_tool == SCULPT_TOOL_GRAB && (brush->flag & BRUSH_GRAB_ACTIVE_VERTEX) &&
+              !is_multires) {
+            if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES && ss->deform_modifiers_active) {
               GPU_matrix_push_projection();
               ED_view3d_draw_setup_view(CTX_wm_window(C),
                                         CTX_data_depsgraph_pointer(C),

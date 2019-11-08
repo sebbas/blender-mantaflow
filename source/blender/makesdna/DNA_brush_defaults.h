@@ -34,13 +34,14 @@
   { \
     .blend = 0, \
     .flag = (BRUSH_ALPHA_PRESSURE | BRUSH_SPACE | BRUSH_SPACE_ATTEN), \
+    .sampling_flag = (BRUSH_PAINT_ANTIALIASING), \
  \
     .ob_mode = OB_MODE_ALL_PAINT, \
  \
     /* BRUSH SCULPT TOOL SETTINGS */ \
     .weight = 1.0f, /* weight of brush 0 - 1.0 */ \
     .size = 35,     /* radius of the brush in pixels */ \
-    .alpha = 0.5f,  /* brush strength/intensity probably variable should be renamed? */ \
+    .alpha = 1.0f,  /* brush strength/intensity probably variable should be renamed? */ \
     .autosmooth_factor = 0.0f, \
     .topology_rake_factor = 0.0f, \
     .crease_pinch_factor = 0.5f, \

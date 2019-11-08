@@ -2395,60 +2395,49 @@ void FILE_OT_filenum(struct wmOperatorType *ot)
   RNA_def_int(ot->srna, "increment", 1, -100, 100, "Increment", "", -100, 100);
 }
 
-static int file_rename_exec(bContext *C, wmOperator *UNUSED(op))
+static void file_rename_state_activate(SpaceFile *sfile, int file_idx, bool require_selected)
 {
-  ScrArea *sa = CTX_wm_area(C);
-  SpaceFile *sfile = (SpaceFile *)CTX_wm_space_data(C);
+  const int numfiles = filelist_files_ensure(sfile->files);
 
-  if (sfile->params) {
-    int idx = sfile->params->highlight_file;
-    int numfiles = filelist_files_ensure(sfile->files);
-    if ((0 <= idx) && (idx < numfiles)) {
-      FileDirEntry *file = filelist_file(sfile->files, idx);
+  if ((file_idx >= 0) && (file_idx < numfiles)) {
+    FileDirEntry *file = filelist_file(sfile->files, file_idx);
+
+    if ((require_selected == false) ||
+        (filelist_entry_select_get(sfile->files, file, CHECK_ALL) & FILE_SEL_SELECTED)) {
       filelist_entry_select_index_set(
-          sfile->files, idx, FILE_SEL_ADD, FILE_SEL_EDITING, CHECK_ALL);
+          sfile->files, file_idx, FILE_SEL_ADD, FILE_SEL_EDITING, CHECK_ALL);
       BLI_strncpy(sfile->params->renamefile, file->relpath, FILE_MAXFILE);
       /* We can skip the pending state,
        * as we can directly set FILE_SEL_EDITING on the expected entry here. */
       sfile->params->rename_flag = FILE_PARAMS_RENAME_ACTIVE;
     }
+  }
+}
+
+static int file_rename_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
+{
+  ScrArea *sa = CTX_wm_area(C);
+  SpaceFile *sfile = (SpaceFile *)CTX_wm_space_data(C);
+
+  if (sfile->params) {
+    file_rename_state_activate(sfile, sfile->params->active_file, true);
     ED_area_tag_redraw(sa);
   }
 
   return OPERATOR_FINISHED;
 }
 
-static bool file_rename_poll(bContext *C)
+static int file_rename_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  bool poll = ED_operator_file_active(C);
-  SpaceFile *sfile = CTX_wm_space_file(C);
+  ScrArea *sa = CTX_wm_area(C);
+  SpaceFile *sfile = (SpaceFile *)CTX_wm_space_data(C);
 
-  if (sfile && sfile->params) {
-    int idx = sfile->params->highlight_file;
-    int numfiles = filelist_files_ensure(sfile->files);
-
-    if ((0 <= idx) && (idx < numfiles)) {
-      FileDirEntry *file = filelist_file(sfile->files, idx);
-      if (FILENAME_IS_CURRPAR(file->relpath)) {
-        poll = false;
-      }
-    }
-
-    if (sfile->params->highlight_file < 0) {
-      poll = false;
-    }
-    else {
-      char dir[FILE_MAX_LIBEXTRA];
-      if (filelist_islibrary(sfile->files, dir, NULL)) {
-        poll = false;
-      }
-    }
-  }
-  else {
-    poll = false;
+  if (sfile->params) {
+    file_rename_state_activate(sfile, sfile->params->highlight_file, false);
+    ED_area_tag_redraw(sa);
   }
 
-  return poll;
+  return OPERATOR_FINISHED;
 }
 
 void FILE_OT_rename(struct wmOperatorType *ot)
@@ -2459,8 +2448,9 @@ void FILE_OT_rename(struct wmOperatorType *ot)
   ot->idname = "FILE_OT_rename";
 
   /* api callbacks */
+  ot->invoke = file_rename_invoke;
   ot->exec = file_rename_exec;
-  ot->poll = file_rename_poll;
+  ot->poll = ED_operator_file_active;
 }
 
 static bool file_delete_poll(bContext *C)
@@ -2504,23 +2494,29 @@ int file_delete_exec(bContext *C, wmOperator *op)
   int numfiles = filelist_files_ensure(sfile->files);
   int i;
 
+  const char *error_message = NULL;
   bool report_error = false;
   errno = 0;
   for (i = 0; i < numfiles; i++) {
     if (filelist_entry_select_index_get(sfile->files, i, CHECK_FILES)) {
       file = filelist_file(sfile->files, i);
       BLI_make_file_string(BKE_main_blendfile_path(bmain), str, sfile->params->dir, file->relpath);
-      if (BLI_delete(str, false, false) != 0 || BLI_exists(str)) {
+      if (BLI_delete_soft(str, &error_message) != 0 || BLI_exists(str)) {
         report_error = true;
       }
     }
   }
 
   if (report_error) {
-    BKE_reportf(op->reports,
-                RPT_ERROR,
-                "Could not delete file: %s",
-                errno ? strerror(errno) : "unknown error");
+    if (error_message != NULL) {
+      BKE_reportf(op->reports, RPT_ERROR, "Could not delete file or directory: %s", error_message);
+    }
+    else {
+      BKE_reportf(op->reports,
+                  RPT_ERROR,
+                  "Could not delete file or directory: %s",
+                  errno ? strerror(errno) : "unknown error");
+    }
   }
 
   ED_fileselect_clear(wm, sa, sfile);
@@ -2533,7 +2529,7 @@ void FILE_OT_delete(struct wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Delete Selected Files";
-  ot->description = "Delete selected files";
+  ot->description = "Move selected files to the trash or recycle bin";
   ot->idname = "FILE_OT_delete";
 
   /* api callbacks */

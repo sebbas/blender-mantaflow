@@ -245,8 +245,9 @@ typedef struct Brush {
   float weight;
   /** Brush diameter. */
   int size;
-  /** General purpose flag. */
+  /** General purpose flags. */
   int flag;
+  int sampling_flag;
   /** Pressure influence for mask. */
   int mask_pressure;
   /** Jitter the position of the brush. */
@@ -283,7 +284,7 @@ typedef struct Brush {
   /** Source for fill tool color gradient application. */
   char gradient_fill_mode;
 
-  char _pad;
+  char _pad[5];
   /** Projection shape (sphere, circle). */
   char falloff_shape;
   float falloff_angle;
@@ -321,10 +322,11 @@ typedef struct Brush {
   int curve_preset;
   int automasking_flags;
 
-  char _pad1[4];
-
   int elastic_deform_type;
   float elastic_deform_volume_preservation;
+
+  /* pose */
+  float pose_offset;
 
   /* overlay */
   int texture_overlay_alpha;
@@ -434,6 +436,11 @@ typedef enum eBrushFlags {
   BRUSH_CURVE = (1u << 31),
 } eBrushFlags;
 
+/* Brush.sampling_flag */
+typedef enum eBrushSamplingFlags {
+  BRUSH_PAINT_ANTIALIASING = (1 << 0),
+} eBrushSamplingFlags;
+
 typedef enum {
   BRUSH_MASK_PRESSURE_RAMP = (1 << 1),
   BRUSH_MASK_PRESSURE_CUTOFF = (1 << 2),
@@ -498,9 +505,11 @@ typedef enum eBrushUVSculptTool {
        SCULPT_TOOL_CLAY, \
        SCULPT_TOOL_CLAY_STRIPS, \
        SCULPT_TOOL_ROTATE, \
+       SCULPT_TOOL_SCRAPE, \
        SCULPT_TOOL_FLATTEN)
 
-#define SCULPT_TOOL_HAS_NORMAL_WEIGHT(t) ELEM(t, SCULPT_TOOL_GRAB, SCULPT_TOOL_SNAKE_HOOK)
+#define SCULPT_TOOL_HAS_NORMAL_WEIGHT(t) \
+  ELEM(t, SCULPT_TOOL_GRAB, SCULPT_TOOL_SNAKE_HOOK, SCULPT_TOOL_ELASTIC_DEFORM)
 
 #define SCULPT_TOOL_HAS_RAKE(t) ELEM(t, SCULPT_TOOL_SNAKE_HOOK)
 

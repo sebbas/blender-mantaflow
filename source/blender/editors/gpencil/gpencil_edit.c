@@ -355,7 +355,7 @@ static int gpencil_paintmode_toggle_exec(bContext *C, wmOperator *op)
     Paint *paint = &ts->gp_paint->paint;
     /* if not exist, create a new one */
     if ((paint->brush == NULL) || (paint->brush->gpencil_settings == NULL)) {
-      BKE_brush_gpencil_presets(C);
+      BKE_brush_gpencil_presets(bmain, ts);
     }
     BKE_paint_toolslots_brush_validate(bmain, &ts->gp_paint->paint);
   }
@@ -1538,6 +1538,7 @@ void GPENCIL_OT_move_to_layer(wmOperatorType *ot)
 
   /* GPencil layer to use. */
   ot->prop = RNA_def_int(ot->srna, "layer", 0, 0, INT_MAX, "Grease Pencil Layer", "", 0, INT_MAX);
+  RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 /* ********************* Add Blank Frame *************************** */

@@ -143,6 +143,8 @@ typedef struct GPENCIL_Storage {
   bool is_playing;
   bool is_render;
   bool is_mat_preview;
+  bool is_main_overlay;
+  bool is_main_onion;
   bool background_ready;
   int is_xray;
   bool is_ontop;
@@ -153,6 +155,7 @@ typedef struct GPENCIL_Storage {
   int do_select_outline;
   float select_color[4];
   short multisamples;
+  float grid_matrix[4][4];
 
   short framebuffer_flag; /* flag what framebuffer need to create */
 

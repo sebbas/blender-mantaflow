@@ -81,6 +81,7 @@
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_effect.h"
+#include "BKE_font.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_modifier.h"
 #include "BKE_icons.h"
@@ -625,6 +626,54 @@ bool BKE_object_data_is_in_editmode(const ID *id)
   }
 }
 
+char *BKE_object_data_editmode_flush_ptr_get(struct ID *id)
+{
+  const short type = GS(id->name);
+  switch (type) {
+    case ID_ME: {
+      BMEditMesh *em = ((Mesh *)id)->edit_mesh;
+      if (em != NULL) {
+        return &em->needs_flush_to_id;
+      }
+      break;
+    }
+    case ID_CU: {
+      if (((Curve *)id)->vfont != NULL) {
+        EditFont *ef = ((Curve *)id)->editfont;
+        if (ef != NULL) {
+          return &ef->needs_flush_to_id;
+        }
+      }
+      else {
+        EditNurb *editnurb = ((Curve *)id)->editnurb;
+        if (editnurb) {
+          return &editnurb->needs_flush_to_id;
+        }
+      }
+      break;
+    }
+    case ID_MB: {
+      MetaBall *mb = (MetaBall *)id;
+      return &mb->needs_flush_to_id;
+    }
+    case ID_LT: {
+      EditLatt *editlatt = ((Lattice *)id)->editlatt;
+      if (editlatt) {
+        return &editlatt->needs_flush_to_id;
+      }
+      break;
+    }
+    case ID_AR: {
+      bArmature *arm = (bArmature *)id;
+      return &arm->needs_flush_to_id;
+    }
+    default:
+      BLI_assert(0);
+      return NULL;
+  }
+  return NULL;
+}
+
 bool BKE_object_is_in_wpaint_select_vert(const Object *ob)
 {
   if (ob->type == OB_MESH) {
@@ -676,7 +725,7 @@ bool BKE_object_is_mode_compat(const struct Object *ob, eObjectMode object_mode)
  */
 int BKE_object_visibility(const Object *ob, const int dag_eval_mode)
 {
-  if ((ob->base_flag & BASE_VISIBLE) == 0) {
+  if ((ob->base_flag & BASE_VISIBLE_DEPSGRAPH) == 0) {
     return 0;
   }
 

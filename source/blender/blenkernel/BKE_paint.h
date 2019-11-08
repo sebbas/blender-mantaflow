@@ -220,7 +220,7 @@ typedef struct SculptSession {
   struct MPoly *mpoly;
   struct MLoop *mloop;
   int totvert, totpoly;
-  struct KeyBlock *kb;
+  struct KeyBlock *shapekey_active;
   float *vmask;
 
   /* Mesh connectivity */
@@ -243,10 +243,10 @@ typedef struct SculptSession {
   bool show_mask;
 
   /* Painting on deformed mesh */
-  bool modifiers_active;       /* object is deformed with some modifiers */
-  float (*orig_cos)[3];        /* coords of undeformed mesh */
-  float (*deform_cos)[3];      /* coords of deformed mesh but without stroke displacement */
-  float (*deform_imats)[3][3]; /* crazyspace deformation matrices */
+  bool deform_modifiers_active; /* object is deformed with some modifiers */
+  float (*orig_cos)[3];         /* coords of undeformed mesh */
+  float (*deform_cos)[3];       /* coords of deformed mesh but without stroke displacement */
+  float (*deform_imats)[3][3];  /* crazyspace deformation matrices */
 
   /* Used to cache the render of the active texture */
   unsigned int texcache_side, *texcache, texcache_actual;
@@ -306,6 +306,13 @@ typedef struct SculptSession {
 
   /* This flag prevents PBVH from being freed when creating the vp_handle for texture paint. */
   bool building_vp_handle;
+
+  /**
+   * ID data is older than sculpt-mode data.
+   * Set #Main.is_memfile_undo_flush_needed when enabling.
+   */
+  char needs_flush_to_id;
+
 } SculptSession;
 
 void BKE_sculptsession_free(struct Object *ob);

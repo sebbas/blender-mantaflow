@@ -164,7 +164,7 @@ struct DRWTextStore *DRW_text_cache_ensure(void)
 
 bool DRW_object_is_renderable(const Object *ob)
 {
-  BLI_assert((ob->base_flag & BASE_VISIBLE) != 0);
+  BLI_assert((ob->base_flag & BASE_VISIBLE_DEPSGRAPH) != 0);
 
   if (ob->type == OB_MESH) {
     if ((ob == DST.draw_ctx.object_edit) || BKE_object_is_in_editmode(ob)) {
@@ -1171,7 +1171,7 @@ static void drw_engines_cache_finish(void)
   MEM_freeN(DST.vedata_array);
 }
 
-static void drw_engines_draw_background(void)
+static bool drw_engines_draw_background(void)
 {
   for (LinkData *link = DST.enabled_engines.first; link; link = link->next) {
     DrawEngineType *engine = link->data;
@@ -1185,10 +1185,20 @@ static void drw_engines_draw_background(void)
       DRW_stats_group_end();
 
       PROFILE_END_UPDATE(data->background_time, stime);
-      return;
+      return true;
     }
   }
 
+  /* No draw engines draw the background. We clear the background.
+   * We draw the background after drawing of the scene so the camera background
+   * images can be drawn using ALPHA Under. Otherwise the background always
+   * interfered with the alpha blending. */
+  DRW_clear_background();
+  return false;
+}
+
+static void drw_draw_background_alpha_under(void)
+{
   /* No draw_background found, doing default background */
   const bool do_alpha_checker = !DRW_state_draw_background();
   DRW_draw_background(do_alpha_checker);
@@ -1565,20 +1575,6 @@ void DRW_draw_view(const bContext *C)
   DRW_draw_render_loop_ex(depsgraph, engine_type, ar, v3d, viewport, C);
 }
 
-static bool is_object_visible_in_viewport(View3D *v3d, Object *ob)
-{
-  if (v3d->localvd && ((v3d->local_view_uuid & ob->base_local_view_bits) == 0)) {
-    return false;
-  }
-
-  if ((v3d->flag & V3D_LOCAL_COLLECTIONS) &&
-      ((v3d->local_collections_uuid & ob->runtime.local_collections_bits) == 0)) {
-    return false;
-  }
-
-  return true;
-}
-
 /**
  * Used for both regular and off-screen drawing.
  * Need to reset DST before calling this function
@@ -1654,7 +1650,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
         if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
           continue;
         }
-        if (!is_object_visible_in_viewport(v3d, ob)) {
+        if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
           continue;
         }
         DST.dupli_parent = data_.dupli_parent;
@@ -1685,7 +1681,7 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
 
   DRW_hair_update();
 
-  drw_engines_draw_background();
+  const bool background_drawn = drw_engines_draw_background();
 
   GPU_framebuffer_bind(DST.default_framebuffer);
 
@@ -1695,6 +1691,10 @@ void DRW_draw_render_loop_ex(struct Depsgraph *depsgraph,
   }
 
   drw_engines_draw_scene();
+
+  if (!background_drawn) {
+    drw_draw_background_alpha_under();
+  }
 
   /* Fix 3D view being "laggy" on macos and win+nvidia. (See T56996, T61474) */
   GPU_flush();
@@ -2350,7 +2350,7 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
                                               v3d->object_type_exclude_select);
       bool filter_exclude = false;
       DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (depsgraph, ob) {
-        if (!is_object_visible_in_viewport(v3d, ob)) {
+        if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
           continue;
         }
         if ((ob->base_flag & BASE_SELECTABLE) &&
@@ -2500,7 +2500,7 @@ static void drw_draw_depth_loop_imp(struct Depsgraph *depsgraph,
       if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
         continue;
       }
-      if (!is_object_visible_in_viewport(v3d, ob)) {
+      if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
         continue;
       }
       DST.dupli_parent = data_.dupli_parent;
@@ -2630,7 +2630,13 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *ar, View3D *v3d, const rc
 
     drw_engines_cache_finish();
 
+#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug. (See T69377) */
     DRW_render_instance_buffer_finish();
+#else
+    DST.buffer_finish_called = true;
+    // DRW_instance_buffer_finish(DST.idatalist);
+    drw_resource_buffer_finish(DST.vmempool);
+#endif
   }
 
   /* Start Drawing */

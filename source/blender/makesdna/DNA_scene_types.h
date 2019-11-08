@@ -39,7 +39,6 @@ extern "C" {
 #include "DNA_listBase.h"
 #include "DNA_ID.h"
 #include "DNA_freestyle_types.h"
-#include "DNA_gpu_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_material_types.h"
@@ -1976,14 +1975,7 @@ extern const char *RE_engine_id_CYCLES;
 #define MINAFRAME -1048574
 #define MINAFRAMEF -1048574.0f
 
-#define BASE_VISIBLE(v3d, base) \
-  (((v3d == NULL) || ((v3d)->localvd == NULL) || \
-    ((v3d)->local_view_uuid & (base)->local_view_bits)) && \
-   ((v3d == NULL) || (((v3d)->flag & V3D_LOCAL_COLLECTIONS) == 0) || \
-    ((v3d)->local_collections_uuid & (base)->local_collections_bits)) && \
-   ((v3d == NULL) || \
-    (((1 << (base)->object->type) & (v3d)->object_type_exclude_viewport) == 0)) && \
-   (((base)->flag & BASE_VISIBLE) != 0))
+#define BASE_VISIBLE(v3d, base) BKE_base_is_visible(v3d, base)
 #define BASE_SELECTABLE(v3d, base) \
   (BASE_VISIBLE(v3d, base) && \
    ((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0)) && \
@@ -2043,6 +2035,7 @@ enum {
 #define SCE_SNAP_PROJECT (1 << 3)
 #define SCE_SNAP_NO_SELF (1 << 4)
 #define SCE_SNAP_ABS_GRID (1 << 5)
+#define SCE_SNAP_BACKFACE_CULLING (1 << 6)
 
 /* ToolSettings.snap_target */
 #define SCE_SNAP_TARGET_CLOSEST 0

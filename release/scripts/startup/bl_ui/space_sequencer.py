@@ -176,12 +176,14 @@ class SEQUENCER_MT_range(Menu):
         layout = self.layout
 
         layout.operator("anim.previewrange_set", text="Set Preview Range")
+        layout.operator("sequencer.set_range_to_strips", text="Set Preview Range to Strips").preview = True
         layout.operator("anim.previewrange_clear", text="Clear Preview Range")
 
         layout.separator()
 
         layout.operator("anim.start_frame_set", text="Set Start Frame")
         layout.operator("anim.end_frame_set", text="Set End Frame")
+        layout.operator("sequencer.set_range_to_strips", text="Set Frame Range to Strips")
 
 
 class SEQUENCER_MT_preview_zoom(Menu):
@@ -264,6 +266,7 @@ class SEQUENCER_MT_view(Menu):
             layout.separator()
             layout.operator_context = 'INVOKE_DEFAULT'
 
+            layout.prop(st, "show_seconds")
             layout.prop(st, "show_strip_offset")
             layout.prop(st, "show_marker_lines")
 
@@ -315,8 +318,10 @@ class SEQUENCER_MT_select_channel(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("sequencer.select_active_side", text="Left").side = 'LEFT'
-        layout.operator("sequencer.select_active_side", text="Right").side = 'RIGHT'
+        layout.operator("sequencer.select_side", text="Left").side = 'LEFT'
+        layout.operator("sequencer.select_side", text="Right").side = 'RIGHT'
+        layout.separator()
+        layout.operator("sequencer.select_side", text="Both Sides").side = 'BOTH'
 
 
 class SEQUENCER_MT_select_linked(Menu):
@@ -741,12 +746,19 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.operator("sequencer.copy", text="Copy", icon='COPYDOWN')
         layout.operator("sequencer.paste", text="Paste", icon='PASTEDOWN')
         layout.operator("sequencer.duplicate_move")
+        props = layout.operator("wm.call_panel", text="Rename...")
+        props.name = "TOPBAR_PT_name"
+        props.keep_open = False
         layout.operator("sequencer.delete", text="Delete...")
 
         layout.separator()
 
         layout.operator("sequencer.slip", text="Slip Strip Contents")
         layout.operator("sequencer.snap")
+
+        layout.separator()
+
+        layout.operator("sequencer.set_range_to_strips", text="Set Preview Range to Strips").preview = True
 
         layout.separator()
 
@@ -1002,10 +1014,8 @@ class SEQUENCER_PT_effect(SequencerButtonsPanel, Panel):
             flow.prop(strip, "clamp", slider=True)
             flow.prop(strip, "boost_factor")
             flow.prop(strip, "blur_radius")
-
-            row = layout.row()
-            row.prop(strip, "quality", slider=True)
-            row.prop(strip, "use_only_boost")
+            flow.prop(strip, "quality", slider=True)
+            flow.prop(strip, "use_only_boost")
 
         elif strip_type == 'SPEED':
             layout.prop(strip, "use_default_fade", text="Stretch to input strip length")
@@ -1571,10 +1581,13 @@ class SEQUENCER_PT_adjust_sound(SequencerButtonsPanel, Panel):
 
         col.prop(strip, "volume", text="Volume")
         col.prop(strip, "pitch")
+
+        col = layout.column()
         col.prop(strip, "pan")
+        col.enabled = sound is not None and sound.use_mono
 
         if sound is not None:
-
+            col = layout.column()
             if st.waveform_display_type == 'DEFAULT_WAVEFORMS':
                 col.prop(strip, "show_waveform")
             col.prop(sound, "use_mono")

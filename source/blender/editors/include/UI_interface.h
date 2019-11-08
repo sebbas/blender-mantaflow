@@ -2021,6 +2021,12 @@ void uiTemplateEditModeSelection(uiLayout *layout, struct bContext *C);
 void uiTemplateReportsBanner(uiLayout *layout, struct bContext *C);
 void uiTemplateInputStatus(uiLayout *layout, struct bContext *C);
 void uiTemplateKeymapItemProperties(uiLayout *layout, struct PointerRNA *ptr);
+
+bool uiTemplateEventFromKeymapItem(struct uiLayout *layout,
+                                   const char *text,
+                                   const struct wmKeyMapItem *kmi,
+                                   bool text_fallback);
+
 void uiTemplateComponentMenu(uiLayout *layout,
                              struct PointerRNA *ptr,
                              const char *propname,
@@ -2453,6 +2459,8 @@ void UI_widgetbase_draw_cache_end(void);
 /* Use for resetting the theme. */
 void UI_theme_init_default(void);
 void UI_style_init_default(void);
+
+void UI_interface_tag_script_reload(void);
 
 /* Special drawing for toolbar, mainly workarounds for inflexible icon sizing. */
 #define USE_UI_TOOLBAR_HACK

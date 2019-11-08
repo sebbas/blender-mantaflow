@@ -24,11 +24,13 @@
 
 #include "BKE_gpencil.h"
 #include "BKE_library.h"
+#include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_shader_fx.h"
 
 #include "DNA_gpencil_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
 #include "draw_mode_engines.h"
@@ -305,6 +307,43 @@ static void GPENCIL_engine_free(void)
   GPENCIL_delete_fx_shaders(&e_data);
 }
 
+/* Helper: Check if the main overlay and onion switches are enabled in any screen.
+ *
+ * This is required to generate the onion skin and limit the times the cache is updated because the
+ * cache is generated only in the first screen and if the first screen has the onion disabled the
+ * cache for onion skin is not generated. The loop adds time, but always is faster than regenerate
+ * the cache all the times.
+ */
+static void gpencil_check_screen_switches(const DRWContextState *draw_ctx,
+                                          GPENCIL_StorageList *stl)
+{
+  stl->storage->is_main_overlay = false;
+  stl->storage->is_main_onion = false;
+  /* Check if main onion switch is enabled in any screen. */
+  Main *bmain = CTX_data_main(draw_ctx->evil_C);
+
+  for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+    for (const ScrArea *sa = screen->areabase.first; sa; sa = sa->next) {
+      if (sa && sa->spacetype == SPACE_VIEW3D) {
+        View3D *v3d = sa->spacedata.first;
+        if (v3d == NULL) {
+          continue;
+        }
+        if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
+          stl->storage->is_main_overlay = true;
+        }
+        if (v3d->gp_flag & V3D_GP_SHOW_ONION_SKIN) {
+          stl->storage->is_main_onion = true;
+        }
+      }
+      /* If found, don't need loop more. */
+      if ((stl->storage->is_main_overlay) && (stl->storage->is_main_onion)) {
+        return;
+      }
+    }
+  }
+}
+
 void GPENCIL_cache_init(void *vedata)
 {
   GPENCIL_PassList *psl = ((GPENCIL_Data *)vedata)->psl;
@@ -315,6 +354,7 @@ void GPENCIL_cache_init(void *vedata)
   ToolSettings *ts = scene->toolsettings;
   View3D *v3d = draw_ctx->v3d;
   Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
+  const View3DCursor *cursor = &scene->cursor;
 
   /* Special handling for when active object is GP object (e.g. for draw mode) */
   Object *obact = draw_ctx->obact;
@@ -390,10 +430,15 @@ void GPENCIL_cache_init(void *vedata)
         stl->storage->reset_cache = true;
       }
       stl->storage->is_playing = playing;
+
+      /* Found if main overlay and onion switches are enabled in any screen. */
+      gpencil_check_screen_switches(draw_ctx, stl);
     }
     else {
       stl->storage->is_playing = false;
       stl->storage->reset_cache = false;
+      stl->storage->is_main_overlay = false;
+      stl->storage->is_main_onion = false;
     }
     /* save render state */
     stl->storage->is_render = DRW_state_is_image_render();
@@ -540,11 +585,42 @@ void GPENCIL_cache_init(void *vedata)
     }
 
     /* grid pass */
-    if (v3d) {
+    if ((v3d) && (obact) && (obact->type == OB_GPENCIL)) {
       psl->grid_pass = DRW_pass_create("GPencil Grid Pass",
                                        DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
                                            DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
       stl->g_data->shgrps_grid = DRW_shgroup_create(e_data.gpencil_line_sh, psl->grid_pass);
+
+      /* define grid orientation */
+      switch (ts->gp_sculpt.lock_axis) {
+        case GP_LOCKAXIS_VIEW: {
+          /* align always to view */
+          invert_m4_m4(stl->storage->grid_matrix, draw_ctx->rv3d->viewmat);
+          /* copy ob location */
+          copy_v3_v3(stl->storage->grid_matrix[3], obact->obmat[3]);
+          break;
+        }
+        case GP_LOCKAXIS_CURSOR: {
+          float scale[3] = {1.0f, 1.0f, 1.0f};
+          loc_eul_size_to_mat4(
+              stl->storage->grid_matrix, cursor->location, cursor->rotation_euler, scale);
+          break;
+        }
+        default: {
+          copy_m4_m4(stl->storage->grid_matrix, obact->obmat);
+          break;
+        }
+      }
+
+      /* Move the origin to Object or Cursor */
+      if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+        copy_v3_v3(stl->storage->grid_matrix[3], cursor->location);
+      }
+      else {
+        copy_v3_v3(stl->storage->grid_matrix[3], obact->obmat[3]);
+      }
+      DRW_shgroup_uniform_mat4(
+          stl->g_data->shgrps_grid, "gpModelMatrix", stl->storage->grid_matrix);
     }
 
     /* blend layers pass */
@@ -615,8 +691,6 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
   Scene *scene = draw_ctx->scene;
   ToolSettings *ts = scene->toolsettings;
   View3D *v3d = draw_ctx->v3d;
-  const View3DCursor *cursor = &scene->cursor;
-  float grid_matrix[4][4];
 
   if (ob->type == OB_GPENCIL && ob->data) {
     bGPdata *gpd = (bGPdata *)ob->data;
@@ -677,36 +751,7 @@ void GPENCIL_cache_populate(void *vedata, Object *ob)
         ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) == 0)) {
 
       stl->g_data->batch_grid = gpencil_get_grid(ob);
-
-      /* define grid orientation */
-      switch (ts->gp_sculpt.lock_axis) {
-        case GP_LOCKAXIS_VIEW: {
-          /* align always to view */
-          invert_m4_m4(grid_matrix, draw_ctx->rv3d->viewmat);
-          /* copy ob location */
-          copy_v3_v3(grid_matrix[3], ob->obmat[3]);
-          break;
-        }
-        case GP_LOCKAXIS_CURSOR: {
-          float scale[3] = {1.0f, 1.0f, 1.0f};
-          loc_eul_size_to_mat4(grid_matrix, cursor->location, cursor->rotation_euler, scale);
-          break;
-        }
-        default: {
-          copy_m4_m4(grid_matrix, ob->obmat);
-          break;
-        }
-      }
-
-      /* Move the origin to Object or Cursor */
-      if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
-        copy_v3_v3(grid_matrix[3], cursor->location);
-      }
-      else {
-        copy_v3_v3(grid_matrix[3], ob->obmat[3]);
-      }
-
-      DRW_shgroup_call_obmat(stl->g_data->shgrps_grid, stl->g_data->batch_grid, grid_matrix);
+      DRW_shgroup_call(stl->g_data->shgrps_grid, stl->g_data->batch_grid, NULL);
     }
   }
 }
