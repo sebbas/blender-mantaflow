@@ -889,7 +889,9 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     tmds->fluid_group = mds->fluid_group;
     tmds->eff_group = mds->eff_group;
     tmds->coll_group = mds->coll_group;
-    MEM_freeN(tmds->effector_weights);
+    if (tmds->effector_weights) {
+      MEM_freeN(tmds->effector_weights);
+    }
     tmds->effector_weights = MEM_dupallocN(mds->effector_weights);
 
     /* adaptive domain options */
@@ -1359,7 +1361,6 @@ static void obstacles_from_mesh(Object *coll_ob,
     }
     /* free bvh tree */
     free_bvhtree_from_mesh(&treeData);
-    BKE_id_free(NULL, me);
 
     if (vert_vel) {
       MEM_freeN(vert_vel);
@@ -1367,6 +1368,7 @@ static void obstacles_from_mesh(Object *coll_ob,
     if (me->mvert) {
       MEM_freeN(me->mvert);
     }
+    BKE_id_free(NULL, me);
   }
 }
 
@@ -2560,7 +2562,6 @@ static void emit_from_mesh(
     if (vert_vel) {
       MEM_freeN(vert_vel);
     }
-
     if (me->mvert) {
       MEM_freeN(me->mvert);
     }
