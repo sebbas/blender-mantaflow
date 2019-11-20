@@ -772,6 +772,8 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       /* time options */
       mmd->domain->time_scale = 1.0;
       mmd->domain->cfl_condition = 4.0;
+      mmd->domain->timesteps_minimum = 1;
+      mmd->domain->timesteps_maximum = 4;
 
       /* display options */
       mmd->domain->slice_method = FLUID_DOMAIN_SLICE_VIEW_ALIGNED;
@@ -1006,6 +1008,8 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     /* time options */
     tmds->time_scale = mds->time_scale;
     tmds->cfl_condition = mds->cfl_condition;
+    tmds->timesteps_minimum = mds->timesteps_minimum;
+    tmds->timesteps_maximum = mds->timesteps_maximum;
 
     /* display options */
     tmds->slice_method = mds->slice_method;

@@ -669,6 +669,10 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
     ss << mmd->domain->cfl_condition;
   else if (varName == "DT")
     ss << mmd->domain->dt;
+  else if (varName == "TIMESTEPS_MIN")
+    ss << mmd->domain->timesteps_minimum;
+  else if (varName == "TIMESTEPS_MAX")
+    ss << mmd->domain->timesteps_maximum;
   else if (varName == "TIME_TOTAL")
     ss << mmd->domain->time_total;
   else if (varName == "TIME_PER_FRAME")

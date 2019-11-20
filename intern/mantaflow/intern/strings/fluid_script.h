@@ -123,6 +123,8 @@ timePerFrame_s$ID$ = $TIME_PER_FRAME$\n\
 frameLength_s$ID$  = $FRAME_LENGTH$\n\
 dt0_s$ID$          = $DT$\n\
 cflCond_s$ID$      = $CFL$\n\
+timestepsMin_s$ID$ = $TIMESTEPS_MIN$\n\
+timestepsMax_s$ID$ = $TIMESTEPS_MAX$\n\
 \n\
 # Fluid diffusion / viscosity\n\
 domainSize_s$ID$ = $FLUID_DOMAIN_SIZE$ # longest domain side in meters\n\
@@ -189,8 +191,8 @@ const std::string fluid_time_stepping =
     "\n\
 mantaMsg('Fluid adaptive time stepping')\n\
 s$ID$.frameLength  = frameLength_s$ID$\n\
-s$ID$.timestepMin  = s$ID$.frameLength / 5.\n\
-s$ID$.timestepMax  = s$ID$.frameLength\n\
+s$ID$.timestepMin  = s$ID$.frameLength / max(1, timestepsMax_s$ID$)\n\
+s$ID$.timestepMax  = s$ID$.frameLength / max(1, timestepsMin_s$ID$)\n\
 s$ID$.cfl          = cflCond_s$ID$\n\
 s$ID$.timePerFrame = timePerFrame_s$ID$\n\
 s$ID$.timestep     = dt0_s$ID$\n\
@@ -201,8 +203,8 @@ const std::string fluid_time_stepping_noise =
     "\n\
 mantaMsg('Fluid adaptive time stepping noise')\n\
 sn$ID$.frameLength = frameLength_s$ID$\n\
-sn$ID$.timestepMin = sn$ID$.frameLength / 10.\n\
-sn$ID$.timestepMax = sn$ID$.frameLength\n\
+sn$ID$.timestepMin = s$ID$.timestepMin\n\
+sn$ID$.timestepMax = s$ID$.timestepMax\n\
 sn$ID$.cfl         = cflCond_s$ID$\n\
 sn$ID$.timestep    = dt0_s$ID$\n\
 sn$ID$.timeTotal   = timeTotal_s$ID$\n\

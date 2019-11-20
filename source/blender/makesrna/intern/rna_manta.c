@@ -2027,6 +2027,22 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Adaptive stepping", "Enable adaptive time-stepping");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
+  prop = RNA_def_property(srna, "timesteps_minimum", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 1, 100);
+  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
+  RNA_def_property_ui_text(prop,
+                           "Minimum",
+                           "Minimum number of simulation steps to perform for one frame");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
+  prop = RNA_def_property(srna, "timesteps_maximum", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 1, 100);
+  RNA_def_property_ui_range(prop, 0, 100, 1, -1);
+  RNA_def_property_ui_text(prop,
+                           "Maximum",
+                           "Maximum number of simulation steps to perform for one frame");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
   /* display settings */
 
   prop = RNA_def_property(srna, "slice_method", PROP_ENUM, PROP_NONE);

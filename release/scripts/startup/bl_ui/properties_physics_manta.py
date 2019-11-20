@@ -149,9 +149,15 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
 
             col = flow.column()
             col.prop(domain, "resolution_max", text="Resolution Divisions")
-            col.prop(domain, "use_adaptive_stepping", text="Use Adaptive Stepping")
             col.prop(domain, "time_scale", text="Time Scale")
             col.prop(domain, "cfl_condition", text="CFL Number")
+
+            col = flow.column()
+            col.prop(domain, "use_adaptive_stepping", text="Use Adaptive Stepping")
+            col1 = col.column(align=True)
+            col1.enabled = domain.use_adaptive_stepping
+            col1.prop(domain, "timesteps_maximum", text="Timesteps Maximum")
+            col1.prop(domain, "timesteps_minimum", text="Minimum")
 
             col.separator()
 

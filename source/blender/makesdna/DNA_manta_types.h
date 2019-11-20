@@ -364,6 +364,8 @@ typedef struct MantaDomainSettings {
   float frame_length;
   float time_scale;
   float cfl_condition;
+  int timesteps_minimum;
+  int timesteps_maximum;
 
   /* display options */
   char slice_method, axis_slice_method;
