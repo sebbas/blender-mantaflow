@@ -65,6 +65,7 @@ cd $BLENDER_INSTALLATION
 MANTA_SRC=blender/intern/mantaflow/intern/manta_develop
 
 cd $MANTA_SRC
+echo "Applying clang format to Mantaflow source files"
 find . -iname *.h -o -iname *.cpp -o -iname *.reg | xargs clang-format -i -style=file
 
 # ==================== 5) CHECK CMAKE SETUP ==============================================
