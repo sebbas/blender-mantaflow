@@ -360,6 +360,11 @@ bool psys_check_enabled(Object *ob, ParticleSystem *psys, const bool use_render_
   }
 
   psmd = psys_get_modifier(ob, psys);
+
+  if (!psmd) {
+    return 0;
+  }
+
   if (use_render_params) {
     if (!(psmd->modifier.mode & eModifierMode_Render)) {
       return 0;
