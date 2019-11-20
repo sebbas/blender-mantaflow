@@ -46,8 +46,12 @@ maxParticles_s$ID$     = $PARTICLE_MAXIMUM$\n\
 radiusFactor_s$ID$     = $PARTICLE_RADIUS$\n\
 using_mesh_s$ID$       = $USING_MESH$\n\
 using_final_mesh_s$ID$ = $USING_IMPROVED_MESH$\n\
+using_fractions_s$ID$  = $USING_FRACTIONS$\n\
+fracThreshold_s$ID$    = $FRACTIONS_THRESHOLD$\n\
+flipRatio_s$ID$        = $FLIP_RATIO$\n\
 concaveUpper_s$ID$     = $MESH_CONCAVE_UPPER$\n\
 concaveLower_s$ID$     = $MESH_CONCAVE_LOWER$\n\
+meshRadiusFactor_s$ID$ = $MESH_PARTICLE_RADIUS$\n\
 smoothenPos_s$ID$      = $MESH_SMOOTHEN_POS$\n\
 smoothenNeg_s$ID$      = $MESH_SMOOTHEN_NEG$\n\
 randomness_s$ID$       = $PARTICLE_RANDOMNESS$\n\
@@ -84,10 +88,10 @@ phiParts_s$ID$   = s$ID$.create(LevelsetGrid)\n\
 phi_s$ID$        = s$ID$.create(LevelsetGrid)\n\
 phiTmp_s$ID$     = s$ID$.create(LevelsetGrid)\n\
 curvature_s$ID$  = s$ID$.create(RealGrid)\n\
-fractions_s$ID$  = 0 # s$ID$.create(MACGrid) # TODO (sebbas): disabling fractions for now - not fracwallbcs not supporting obvels yet\n\
 velOld_s$ID$     = s$ID$.create(MACGrid)\n\
 velParts_s$ID$   = s$ID$.create(MACGrid)\n\
 mapWeights_s$ID$ = s$ID$.create(MACGrid)\n\
+fractions_s$ID$  = None # allocated dynamically\n\
 \n\
 pp_s$ID$         = s$ID$.create(BasicParticleSystem)\n\
 pVel_pp$ID$      = pp_s$ID$.create(PdataVec3)\n\
@@ -152,7 +156,7 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     \n\
     fluid_pre_step_$ID$()\n\
     \n\
-    flags_s$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$) # TODO (sebbas): bwidth=1 for fraction support\n\
+    flags_s$ID$.initDomain(boundaryWidth=1 if using_fractions_s$ID$ else 0, phiWalls=phiObs_s$ID$, outflow=boundConditions_s$ID$)\n\
     \n\
     if using_obstacle_s$ID$:\n\
         mantaMsg('Initializing obstacle levelset')\n\
@@ -178,8 +182,9 @@ def liquid_adaptive_step_$ID$(framenr):\n\
     if using_outflow_s$ID$:\n\
         phiOut_s$ID$.join(phiOutIn_s$ID$)\n\
     \n\
-    #updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$) # TODO (sebbas): uncomment for fraction support\n\
-    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$)#, fractions=fractions_s$ID$)\n\
+    if using_fractions_s$ID$:\n\
+        updateFractions(flags=flags_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$, boundaryWidth=boundaryWidth_s$ID$, fracThreshold=fracThreshold_s$ID$)\n\
+    setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, fractions=fractions_s$ID$, phiIn=phiIn_s$ID$)\n\
     \n\
     # add initial velocity: set invel as source grid to ensure const vels in inflow region, sampling makes use of this\n\
     if using_invel_s$ID$:\n\
@@ -217,7 +222,7 @@ def liquid_step_$ID$():\n\
     \n\
     # create level set of particles\n\
     gridParticleIndex(parts=pp_s$ID$, flags=flags_s$ID$, indexSys=pindex_s$ID$, index=gpi_s$ID$)\n\
-    unionParticleLevelset(pp_s$ID$, pindex_s$ID$, flags_s$ID$, gpi_s$ID$, phiParts_s$ID$)\n\
+    unionParticleLevelset(parts=pp_s$ID$, indexSys=pindex_s$ID$, flags=flags_s$ID$, index=gpi_s$ID$, phi=phiParts_s$ID$, radiusFactor=radiusFactor_s$ID$)\n\
     \n\
     # combine level set of particles with grid level set\n\
     phi_s$ID$.addConst(1.) # shrink slightly\n\
@@ -249,17 +254,17 @@ def liquid_step_$ID$():\n\
         extrapolateVec3Simple(vel=obvelC_s$ID$, phi=phiObsIn_s$ID$, distance=3, inside=False)\n\
         resampleVec3ToMac(source=obvelC_s$ID$, target=obvel_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2) #, intoObs=True) # TODO (sebbas): uncomment for fraction support\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=2, intoObs=True if using_fractions_s$ID$ else False)\n\
     \n\
     # vel diffusion / viscosity!\n\
     if viscosity_s$ID$ > 0.:\n\
         mantaMsg('Viscosity')\n\
         # diffusion param for solve = const * dt / dx^2\n\
         alphaV = viscosity_s$ID$ * s$ID$.timestep * float(res_s$ID$*res_s$ID$)\n\
-        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$)\n\
+        setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=None if using_fractions_s$ID$ else obvel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
         cgSolveDiffusion(flags_s$ID$, vel_s$ID$, alphaV)\n\
     \n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=None if using_fractions_s$ID$ else obvel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
     mantaMsg('Calculating curvature')\n\
     getLaplacian(laplacian=curvature_s$ID$, grid=phi_s$ID$)\n\
@@ -269,16 +274,17 @@ def liquid_step_$ID$():\n\
         PD_fluid_guiding(vel=vel_s$ID$, velT=velT_s$ID$, flags=flags_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$, weight=weightGuide_s$ID$, blurRadius=beta_sg$ID$, pressure=pressure_s$ID$, tau=tau_sg$ID$, sigma=sigma_sg$ID$, theta=theta_sg$ID$, zeroPressureFixing=not doOpen_s$ID$)\n\
     else:\n\
         mantaMsg('Pressure')\n\
-        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$)#, fractions=fractions_s$ID$)\n\
+        solvePressure(flags=flags_s$ID$, vel=vel_s$ID$, pressure=pressure_s$ID$, phi=phi_s$ID$, curv=curvature_s$ID$, surfTens=surfaceTension_s$ID$, fractions=fractions_s$ID$, obvel=obvel_s$ID$ if using_fractions_s$ID$ else None)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4) #, intoObs=True) # TODO (sebbas): uncomment for fraction support\n\
-    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=obvel_s$ID$ if using_obstacle_s$ID$ else None, phiObs=phiObs_s$ID$)#, fractions=fractions_s$ID$)\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=4, intoObs=True if using_fractions_s$ID$ else False)\n\
+    setWallBcs(flags=flags_s$ID$, vel=vel_s$ID$, obvel=None if using_fractions_s$ID$ else obvel_s$ID$, phiObs=phiObs_s$ID$, fractions=fractions_s$ID$)\n\
     \n\
-    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25 )) ) # TODO (sebbas): extrapolation because of no fractions\n\
+    extrapolateMACSimple(flags=flags_s$ID$, vel=vel_s$ID$, distance=(int(maxVel_s$ID$*1.25)))\n\
+    \n\
     # set source grids for resampling, used in adjustNumber!\n\
     pVel_pp$ID$.setSource(vel_s$ID$, isMAC=True)\n\
-    adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=1., narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
-    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=0.97)\n";
+    adjustNumber(parts=pp_s$ID$, vel=vel_s$ID$, flags=flags_s$ID$, minParticles=minParticles_s$ID$, maxParticles=maxParticles_s$ID$, phi=phi_s$ID$, exclude=phiObs_s$ID$, radiusFactor=radiusFactor_s$ID$, narrowBand=adjustedNarrowBandWidth_s$ID$)\n\
+    flipVelocityUpdate(vel=vel_s$ID$, velOld=velOld_s$ID$, flags=flags_s$ID$, parts=pp_s$ID$, partVel=pVel_pp$ID$, flipRatio=flipRatio_s$ID$)\n";
 
 const std::string liquid_step_mesh =
     "\n\
@@ -293,16 +299,16 @@ def liquid_step_mesh_$ID$():\n\
     \n\
     if using_final_mesh_s$ID$:\n\
         mantaMsg('Liquid using improved particle levelset')\n\
-        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, concaveLower_s$ID$, concaveUpper_s$ID$)\n\
+        improvedParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, meshRadiusFactor_s$ID$, smoothenPos_s$ID$, smoothenNeg_s$ID$, concaveLower_s$ID$, concaveUpper_s$ID$)\n\
     else:\n\
         mantaMsg('Liquid using union particle levelset')\n\
-        unionParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, radiusFactor_s$ID$)\n\
+        unionParticleLevelset(pp_sm$ID$, pindex_sm$ID$, flags_sm$ID$, gpi_sm$ID$, phiParts_sm$ID$, meshRadiusFactor_s$ID$)\n\
     \n\
     phi_sm$ID$.addConst(1.) # shrink slightly\n\
     phi_sm$ID$.join(phiParts_sm$ID$)\n\
     extrapolateLsSimple(phi=phi_sm$ID$, distance=narrowBandWidth_s$ID$+2, inside=True)\n\
     extrapolateLsSimple(phi=phi_sm$ID$, distance=3)\n\
-    phi_sm$ID$.setBoundNeumann(boundaryWidth_s$ID$) # make sure no particles are placed at outer boundary\n\
+    phi_sm$ID$.setBoundNeumann(0) # make sure no particles are placed at outer boundary\n\
     \n\
     # Vert vel vector needs to pull data from vel grid with correct dim\n\
     if using_speedvectors_s$ID$:\n\

@@ -33,6 +33,7 @@ class MANTA_MT_presets(Menu):
     preset_operator = "script.execute_preset"
     draw = Menu.draw_preset
 
+
 class PhysicButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -168,7 +169,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 sub.prop(domain, "gravity", text="Using Scene Gravity", icon='SCENE_DATA')
             else:
                 col.prop(domain, "gravity", text="Gravity")
-            # TODO (sebas): Clipping var useful for manta openvdb caching?
+            # TODO (sebbas): Clipping var useful for manta openvdb caching?
             # col.prop(domain, "clipping", text="Empty Space")
 
             if domain.cache_type == "MODULAR":
@@ -232,12 +233,14 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
 
             col = flow.column()
 
+            col.prop(effec, "use_plane_init", text="Is Planar")
             col.prop(effec, "surface_distance", text="Surface Thickness")
 
             if effec.effec_type == "GUIDE":
                 col.prop(effec, "velocity_factor", text="Velocity Factor")
                 col = flow.column()
                 col.prop(effec, "guiding_mode", text="Guiding Mode")
+
 
 class PHYSICS_PT_manta_borders(PhysicButtonsPanel, Panel):
     bl_label = "Border Collisions"
@@ -277,6 +280,7 @@ class PHYSICS_PT_manta_borders(PhysicButtonsPanel, Panel):
         col.prop(domain, "use_collision_border_top", text="Top")
         col = flow.column()
         col.prop(domain, "use_collision_border_bottom", text="Bottom")
+
 
 class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Smoke"
@@ -393,6 +397,7 @@ class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.prop(domain, "flame_smoke_color", text="Flame Color")
 
+
 class PHYSICS_PT_manta_liquid(PhysicButtonsPanel, Panel):
     bl_label = "Liquid"
     bl_parent_id = 'PHYSICS_PT_manta_fluid'
@@ -404,6 +409,10 @@ class PHYSICS_PT_manta_liquid(PhysicButtonsPanel, Panel):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw_header(self, context):
+        md = context.manta.domain_settings
+        self.layout.prop(md, "use_flip_particles", text="")
 
     def draw(self, context):
         layout = self.layout
@@ -419,19 +428,30 @@ class PHYSICS_PT_manta_liquid(PhysicButtonsPanel, Panel):
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
         col = flow.column()
-        col1 = col.column(align=True)
+        col0 = col.column()
+        col0.enabled = not baking_any and not baked_data
+        col0.prop(domain, "simulation_method", expand=False)
+        col0.prop(domain, "flip_ratio", text="FLIP Ratio")
+        col0.prop(domain, "particle_radius", text="Particle Radius")
+
+        col1 = flow.column(align=True)
         col1.enabled = not baking_any and not baked_data
         col1.prop(domain, "particle_maximum", text="Particles Maximum")
         col1.prop(domain, "particle_minimum", text="Minimum")
 
         col1 = flow.column()
         col1.enabled = not baking_any and not baked_data
-        col1.prop(domain, "particle_number", text="Particle Sampling Number")
+        col1.prop(domain, "particle_number", text="Particle Sampling")
         col1.prop(domain, "particle_band_width", text="Narrow Band Width")
         col1.prop(domain, "particle_randomness", text="Particle Randomness")
-        col2 = col.column()
-        col2.enabled = not baking_any
-        col2.prop(domain, "use_flip_particles", text="Show FLIP")
+
+        col2 = flow.column()
+        col2.enabled = not baking_any and not baked_data
+        col2.prop(domain, "use_fractions", text="Fractional Obstacles")
+        col3 = col2.column()
+        col3.enabled = domain.use_fractions and col2.enabled
+        col3.prop(domain, "fractions_threshold", text="Obstacle-Fluid Threshold")
+
 
 class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Flow Source"
@@ -462,6 +482,7 @@ class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
 
         col = grid.column()
         if flow.flow_source == 'MESH':
+            col.prop(flow, "use_plane_init", text="Is Planar")
             col.prop(flow, "surface_distance", text="Surface Thickness")
             if flow.flow_type in {'SMOKE', 'BOTH', 'FIRE'}:
                 col = grid.column()
@@ -472,6 +493,7 @@ class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
             sub = col.column()
             sub.active = flow.use_particle_size
             sub.prop(flow, "particle_size")
+
 
 class PHYSICS_PT_manta_flow_initial_velocity(PhysicButtonsPanel, Panel):
     bl_label = "Initial Velocity"
@@ -555,6 +577,7 @@ class PHYSICS_PT_manta_flow_texture(PhysicButtonsPanel, Panel):
 
         sub.prop(flow_smoke, "texture_offset")
 
+
 class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
     bl_label = "Adaptive Domain"
     bl_parent_id = 'PHYSICS_PT_manta'
@@ -597,6 +620,7 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "adapt_threshold", text="Threshold")
+
 
 class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
     bl_label = "Noise"
@@ -663,6 +687,7 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
             else:
                 split.operator("manta.free_noise", text="Free Noise")
 
+
 class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Mesh"
     bl_parent_id = 'PHYSICS_PT_manta'
@@ -701,10 +726,10 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
         col = flow.column()
 
         col.prop(domain, "mesh_scale", text="Upres Factor")
-        col.prop(domain, "particle_radius", text="Particle Radius")
+        col.prop(domain, "mesh_particle_radius", text="Particle Radius")
 
         col = flow.column()
-        col.prop(domain, "use_speed_vectors", text="Use Speed vectors")
+        col.prop(domain, "use_speed_vectors", text="Use Speed Vectors")
 
         col.separator()
         col.prop(domain, "mesh_generator", text="Mesh Generator")
@@ -740,6 +765,7 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
                 split.operator("manta.bake_mesh", text="Bake Mesh")
             else:
                 split.operator("manta.free_mesh", text="Free Mesh")
+
 
 class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
     bl_label = "Particles"
@@ -846,6 +872,7 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
             else:
                 split.operator("manta.free_particles", text="Free Particles")
 
+
 class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Diffusion"
     bl_parent_id = 'PHYSICS_PT_manta'
@@ -893,7 +920,8 @@ class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "domain_size", text="Real World Size")
-        col.prop(domain, "surface_tension", text="Surface tension")
+        col.prop(domain, "surface_tension", text="Surface Tension")
+
 
 class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Guiding"
@@ -937,7 +965,7 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.prop(domain, "guiding_source", text="Velocity Source")
         if domain.guiding_source == "DOMAIN":
-            col.prop(domain, "guiding_parent", text="Guiding parent")
+            col.prop(domain, "guiding_parent", text="Guiding Parent")
 
         if domain.cache_type == "MODULAR":
             col.separator()
@@ -956,6 +984,7 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
                     split.operator("manta.bake_guiding", text="Bake Guiding")
                 else:
                     split.operator("manta.free_guiding", text="Free Guiding")
+
 
 class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
     bl_label = "Collections"
@@ -983,6 +1012,7 @@ class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
 
         # col.prop(domain, "effector_group", text="Forces")
         col.prop(domain, "collision_group", text="Effector")
+
 
 class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     bl_label = "Cache"
@@ -1027,20 +1057,49 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.enabled = not baking_any and not baked_any
-        col.prop(domain, "cache_data_format", text="Data file format")
+        col.prop(domain, "cache_data_format", text="Data File Format")
 
         if md.domain_settings.domain_type in {'GAS'}:
             if domain.use_noise:
-                col.prop(domain, "cache_noise_format", text="Noise file format")
+                col.prop(domain, "cache_noise_format", text="Noise File Format")
 
         if md.domain_settings.domain_type in {'LIQUID'}:
             # File format for all particle systemes (FLIP and secondary)
-            col.prop(domain, "cache_particle_format", text="Particle file format")
+            col.prop(domain, "cache_particle_format", text="Particle File Format")
 
             if domain.use_mesh:
-                col.prop(domain, "cache_mesh_format", text="Mesh file format")
+                col.prop(domain, "cache_mesh_format", text="Mesh File Format")
 
+
+class PHYSICS_PT_manta_export(PhysicButtonsPanel, Panel):
+    bl_label = "Advanced"
+    bl_parent_id = 'PHYSICS_PT_manta_cache'
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        if not PhysicButtonsPanel.poll_fluid_domain(context):
+            return False
+
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        md = context.manta
+        domain = context.manta.domain_settings
+
+        baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
+        baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
+
+        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
+        flow.enabled = not baking_any and not baked_any
+
+        col = flow.column()
         col.prop(domain, "export_manta_script", text="Export Mantaflow Script")
+
 
 class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Field Weights"
@@ -1058,6 +1117,7 @@ class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
     def draw(self, context):
         domain = context.manta.domain_settings
         effector_weights_ui(self, domain.effector_weights, 'SMOKE')
+
 
 class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
     bl_label = "Viewport Display"
@@ -1182,6 +1242,7 @@ classes = (
     PHYSICS_PT_manta_guiding,
     PHYSICS_PT_manta_collections,
     PHYSICS_PT_manta_cache,
+    PHYSICS_PT_manta_export,
     PHYSICS_PT_manta_field_weights,
     PHYSICS_PT_manta_viewport_display,
     PHYSICS_PT_manta_viewport_display_color,

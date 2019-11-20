@@ -1184,6 +1184,12 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
        "Create one particle system that contains all three secondary particle types"},
       {0, NULL, 0, NULL, NULL}};
 
+  static EnumPropertyItem simulation_methods[] = {
+      {FLUID_DOMAIN_METHOD_FLIP, "FLIP", 0, "FLIP", "Use FLIP as the simulation method"},
+      /*{FLUID_DOMAIN_METHOD_APIC, "APIC", 0, "APIC", "Use APIC as the simulation method"},*/
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "MantaDomainSettings", NULL);
   RNA_def_struct_ui_text(srna, "Domain Settings", "Fluid domain settings");
   RNA_def_struct_sdna(srna, "MantaDomainSettings");
@@ -1489,7 +1495,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_range(prop, 1, 10, 1, -1);
   RNA_def_property_ui_text(prop,
-                           "Noise scale",
+                           "Noise Scale",
                            "Scale underlying noise grids by this factor. Noise grids have size "
                            "factor times base resolution");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -1510,6 +1516,17 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /* liquid domain options */
+
+  prop = RNA_def_property(srna, "simulation_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "simulation_method");
+  RNA_def_property_enum_items(prop, simulation_methods);
+  RNA_def_property_ui_text(prop, "Simulation Method", "Change the underlying simulation method");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
+  prop = RNA_def_property(srna, "flip_ratio", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_ui_text(prop, "FLIP Ratio", "PIC/FLIP Ratio. A value of 1.0 will result in a completely FLIP based simulation. Use a lower value for simulations which should produce smaller splashes");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
@@ -1541,7 +1558,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "particle_radius", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(
-      prop, "Radius", "Particle radius factor (higher value results in larger particles)");
+      prop, "Radius", "Particle radius factor. Use this parameter when the simulation appears to leak volume");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_band_width", PROP_FLOAT, PROP_NONE);
@@ -1557,6 +1574,23 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "FLIP", "Create FLIP particle system");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_Manta_flip_parts_update");
+
+  prop = RNA_def_property(srna, "use_fractions", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_FRACTIONS);
+  RNA_def_property_ui_text(prop,
+                           "Fractional Obstacles",
+                           "Fractional obstacles improve and smoothen the fluid-obstacle boundary.");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
+
+  prop = RNA_def_property(srna, "fractions_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.001, 1.0);
+  RNA_def_property_ui_range(prop, 0.01, 1.0, 0.05, -1);
+  RNA_def_property_ui_text(prop,
+                           "Obstacle-Fluid Threshold ",
+                           "Determines how much fluid is allowed in an obstacle cell "
+                           "(higher values will tag a boundary cell as an obstacle easier "
+                           "and reduce the boundary smoothening effect)");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   /*  diffusion options */
 
@@ -1659,6 +1693,12 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
       "Generate speed vectors (will be loaded automatically during render for motion blur)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
+  prop = RNA_def_property(srna, "mesh_particle_radius", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0, 10.0);
+  RNA_def_property_ui_text(
+      prop, "Radius", "Particle radius factor (higher value results in larger (meshed) particles)");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   /*  secondary particles options */
 
@@ -2003,7 +2043,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Export Mantaflow Script",
-      "Generate and export Mantaflow script from current domain settings during bake");
+      "Generate and export Mantaflow script from current domain settings during bake. This is only needed if you plan to analyse the cache (e.g. view grids, velocity vectors, particles) in Mantaflow directly (outside of Blender) after baking the simulation");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
@@ -2351,10 +2391,17 @@ static void rna_def_manta_flow_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Volume", "Factor for smoke emitted from inside the mesh volume");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
-  prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_DISTANCE);
+  prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Surface", "Maximum distance from mesh surface to emit fluid");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
+  prop = RNA_def_property(srna, "use_plane_init", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_USE_PLANE_INIT);
+  RNA_def_property_ui_text(prop,
+                           "Is Planar",
+                           "Treat this object as a planar, unclosed mesh");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "particle_size", PROP_FLOAT, PROP_NONE);
@@ -2375,7 +2422,7 @@ static void rna_def_manta_flow_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "subframes", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 50);
+  RNA_def_property_range(prop, 0, 200);
   RNA_def_property_ui_range(prop, 0, 10, 1, -1);
   RNA_def_property_ui_text(prop,
                            "Subframes",
@@ -2478,8 +2525,16 @@ static void rna_def_manta_effec_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
+  RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
   RNA_def_property_ui_text(
-      prop, "Distance", "Distance around mesh surface to consider as effector");
+      prop, "Surface", "Distance around mesh surface to consider as effector");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+
+  prop = RNA_def_property(srna, "use_plane_init", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_USE_PLANE_INIT);
+  RNA_def_property_ui_text(prop,
+                           "Is Planar",
+                           "Treat this object as a planar, unclosed mesh");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);

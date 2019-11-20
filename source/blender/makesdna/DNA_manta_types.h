@@ -40,6 +40,7 @@ enum {
   FLUID_DOMAIN_USE_GUIDING = (1 << 10),         /* use guiding */
   FLUID_DOMAIN_USE_SPEED_VECTORS = (1 << 11),   /* generate mesh speed vectors */
   FLUID_DOMAIN_EXPORT_MANTA_SCRIPT = (1 << 12), /* export mantaflow script during bake */
+  FLUID_DOMAIN_USE_FRACTIONS = (1 << 13),       /* use second order obstacles */
 };
 
 /* border collisions */
@@ -153,6 +154,10 @@ enum {
 #define FLUID_DOMAIN_PARTICLE_BUBBLE (1 << 2)
 #define FLUID_DOMAIN_PARTICLE_FOAM (1 << 3)
 #define FLUID_DOMAIN_PARTICLE_TRACER (1 << 4)
+
+/* liquid simulation methods */
+#define FLUID_DOMAIN_METHOD_FLIP (1 << 0)
+#define FLUID_DOMAIN_METHOD_APIC (1 << 1)
 
 /* cache options */
 #define FLUID_DOMAIN_BAKING_DATA 1
@@ -293,6 +298,10 @@ typedef struct MantaDomainSettings {
   int particle_maximum;
   float particle_radius;
   float particle_band_width;
+  float fractions_threshold;
+  float flip_ratio;
+  short simulation_method;
+  char _pad4[6];
 
   /* diffusion options*/
   float surface_tension;
@@ -303,12 +312,13 @@ typedef struct MantaDomainSettings {
   /* mesh options */
   float mesh_concave_upper;
   float mesh_concave_lower;
+  float mesh_particle_radius;
   int mesh_smoothen_pos;
   int mesh_smoothen_neg;
   int mesh_scale;
   int totvert;
   short mesh_generator;
-  char _pad4[6]; /* unused */
+  char _pad5[2]; /* unused */
 
   /* secondary particle options */
   int particle_type;
@@ -329,7 +339,7 @@ typedef struct MantaDomainSettings {
   int sndparticle_update_radius;
   char sndparticle_boundary;
   char sndparticle_combined_export;
-  char _pad5[6]; /* unused */
+  char _pad6[6]; /* unused */
 
   /* fluid guiding options */
   float guiding_alpha;      /* guiding weight scalar (determines strength) */
@@ -337,7 +347,7 @@ typedef struct MantaDomainSettings {
   float guiding_vel_factor; /* multiply guiding velocity by this factor */
   int *guide_res;           /* res for velocity guide grids - independent from base res */
   short guiding_source;
-  char _pad6[6]; /* unused */
+  char _pad7[6]; /* unused */
 
   /* cache options */
   int cache_frame_start;
@@ -355,7 +365,7 @@ typedef struct MantaDomainSettings {
   char cache_directory[1024];
   char error[64]; /* Bake error description */
   short cache_type;
-  char _pad7[2];  /* unused */
+  char _pad8[2];  /* unused */
 
   /* time options */
   float dt;
@@ -384,13 +394,13 @@ typedef struct MantaDomainSettings {
 
   /* view options */
   int viewsettings;
-  char _pad8[4]; /* unused */
+  char _pad9[4]; /* unused */
 
   /* OpenVDB cache options */
   int openvdb_comp;
   float clipping;
   char data_depth;
-  char _pad9[7]; /* unused */
+  char _pad10[7]; /* unused */
 
   /* pointcache options */
   /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading
@@ -400,7 +410,7 @@ typedef struct MantaDomainSettings {
   int cache_comp;
   int cache_high_comp;
   char cache_file_format;
-  char _pad10[7]; /* unused */
+  char _pad11[7]; /* unused */
 
 } MantaDomainSettings;
 
@@ -435,6 +445,8 @@ enum {
   FLUID_FLOW_USE_PART_SIZE = (1 << 4),
   /* Control when to apply inflow. */
   FLUID_FLOW_USE_INFLOW = (1 << 5),
+  /* Control when to apply inflow. */
+  FLUID_FLOW_USE_PLANE_INIT = (1 << 6),
 };
 
 typedef struct MantaFlowSettings {
@@ -501,11 +513,14 @@ typedef struct MantaCollSettings {
   float *verts_old;
   int numverts;
   float surface_distance; /* thickness of mesh surface, used in obstacle sdf */
+  int flags;
   short type;
+  char _pad1[2];
 
   /* guiding options */
+  float vel_multi; /* Multiplier for object velocity */
   short guiding_mode;
-  float vel_multi;  // Multiplier for object velocity
+  char _pad2[2];
 } MantaCollSettings;
 
 #endif

@@ -112,6 +112,7 @@ using_noise_s$ID$        = $USING_NOISE$\n\
 using_adaptTime_s$ID$    = $USING_ADAPTIVETIME$\n\
 using_obstacle_s$ID$     = $USING_OBSTACLE$\n\
 using_guiding_s$ID$      = $USING_GUIDING$\n\
+using_fractions_s$ID$    = $USING_FRACTIONS$\n\
 using_invel_s$ID$        = $USING_INVEL$\n\
 using_outflow_s$ID$      = $USING_OUTFLOW$\n\
 using_sndparts_s$ID$     = $USING_SNDPARTS$\n\
@@ -137,19 +138,19 @@ const std::string fluid_variables_noise =
     "\n\
 mantaMsg('Fluid variables noise')\n\
 upres_sn$ID$  = $NOISE_SCALE$\n\
-gs_sn$ID$     = vec3($NOISE_RESX$, $NOISE_RESY$, $NOISE_RESZ$)\n";
+gs_sn$ID$     = vec3(upres_sn$ID$*gs_s$ID$.x, upres_sn$ID$*gs_s$ID$.y, upres_sn$ID$*gs_s$ID$.z)\n";
 
 const std::string fluid_variables_mesh =
     "\n\
 mantaMsg('Fluid variables mesh')\n\
 upres_sm$ID$  = $MESH_SCALE$\n\
-gs_sm$ID$     = vec3($MESH_RESX$, $MESH_RESY$, $MESH_RESZ$)\n";
+gs_sm$ID$     = vec3(upres_sm$ID$*gs_s$ID$.x, upres_sm$ID$*gs_s$ID$.y, upres_sm$ID$*gs_s$ID$.z)\n";
 
 const std::string fluid_variables_particles =
     "\n\
 mantaMsg('Fluid variables particles')\n\
 upres_sp$ID$  = $PARTICLE_SCALE$\n\
-gs_sp$ID$     = vec3($PARTICLE_RESX$, $PARTICLE_RESY$, $PARTICLE_RESZ$)\n";
+gs_sp$ID$     = vec3(upres_sp$ID$*gs_s$ID$.x, upres_sp$ID$*gs_s$ID$.y, upres_sp$ID$*gs_s$ID$.z)\n";
 
 const std::string fluid_variables_guiding =
     "\n\
@@ -170,6 +171,10 @@ using_obstacle_s$ID$ = True\n";
 const std::string fluid_with_guiding =
     "\n\
 using_guiding_s$ID$ = True\n";
+
+const std::string fluid_with_fractions =
+    "\n\
+using_fractions_s$ID$ = True\n";
 
 const std::string fluid_with_invel =
     "\n\
@@ -247,7 +252,7 @@ forces_s$ID$      = s$ID$.create(Vec3Grid)\n\
 x_force_s$ID$     = s$ID$.create(RealGrid)\n\
 y_force_s$ID$     = s$ID$.create(RealGrid)\n\
 z_force_s$ID$     = s$ID$.create(RealGrid)\n\
-obvel_s$ID$       = 0\n\
+obvel_s$ID$       = None\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_data_dict_s$ID$ = dict(vel=vel_s$ID$, phiObs=phiObs_s$ID$, phiIn=phiIn_s$ID$, phiOut=phiOut_s$ID$, flags=flags_s$ID$)\n";
@@ -283,6 +288,11 @@ guidevel_sg$ID$   = sg$ID$.create(MACGrid)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 fluid_guiding_dict_s$ID$ = dict(guidevel=guidevel_sg$ID$)\n";
+
+const std::string fluid_alloc_fractions =
+    "\n\
+mantaMsg('Allocating fractions data')\n\
+fractions_s$ID$ = s$ID$.create(MACGrid)\n";
 
 const std::string fluid_alloc_invel =
     "\n\

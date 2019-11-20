@@ -700,12 +700,15 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->domain->noise_type = FLUID_NOISE_TYPE_WAVELET;
 
       /* liquid domain options */
+      mmd->domain->simulation_method = FLUID_DOMAIN_METHOD_FLIP;
+      mmd->domain->flip_ratio = 0.97f;
       mmd->domain->particle_randomness = 0.1f;
       mmd->domain->particle_number = 2;
       mmd->domain->particle_minimum = 8;
       mmd->domain->particle_maximum = 16;
-      mmd->domain->particle_radius = 1.8f;
+      mmd->domain->particle_radius = 1.5f;
       mmd->domain->particle_band_width = 3.0f;
+      mmd->domain->fractions_threshold = 0.05f;
 
       /* diffusion options*/
       mmd->domain->surface_tension = 0.0f;
@@ -717,6 +720,7 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->domain->mesh_velocities = NULL;
       mmd->domain->mesh_concave_upper = 3.5f;
       mmd->domain->mesh_concave_lower = 0.4f;
+      mmd->domain->mesh_particle_radius = 2.0;
       mmd->domain->mesh_smoothen_pos = 1;
       mmd->domain->mesh_smoothen_neg = 1;
       mmd->domain->mesh_scale = 2;
@@ -840,7 +844,7 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->flow->fuel_amount = 1.0f;
       mmd->flow->temp = 1.0f;
       mmd->flow->volume_density = 0.0f;
-      mmd->flow->surface_distance = 1.5f;
+      mmd->flow->surface_distance = 0.5f;
       mmd->flow->particle_size = 1.0f;
       mmd->flow->subframes = 0;
 
@@ -866,6 +870,7 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->effec->numverts = 0;
       mmd->effec->surface_distance = 0.5f;
       mmd->effec->type = FLUID_EFFECTOR_TYPE_COLLISION;
+      mmd->effec->flags = 0;
 
       /* guiding options */
       mmd->effec->guiding_mode = FLUID_EFFECTOR_GUIDING_MAXIMUM;
@@ -936,12 +941,14 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     tmds->noise_type = mds->noise_type;
 
     /* liquid domain options */
+    tmds->flip_ratio = mds->flip_ratio;
     tmds->particle_randomness = mds->particle_randomness;
     tmds->particle_number = mds->particle_number;
     tmds->particle_minimum = mds->particle_minimum;
     tmds->particle_maximum = mds->particle_maximum;
     tmds->particle_radius = mds->particle_radius;
     tmds->particle_band_width = mds->particle_band_width;
+    tmds->fractions_threshold = mds->fractions_threshold;
 
     /* diffusion options*/
     tmds->surface_tension = mds->surface_tension;
@@ -955,6 +962,7 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     }
     tmds->mesh_concave_upper = mds->mesh_concave_upper;
     tmds->mesh_concave_lower = mds->mesh_concave_lower;
+    tmds->mesh_particle_radius = mds->mesh_particle_radius;
     tmds->mesh_smoothen_pos = mds->mesh_smoothen_pos;
     tmds->mesh_smoothen_neg = mds->mesh_smoothen_neg;
     tmds->mesh_scale = mds->mesh_scale;
@@ -1106,7 +1114,8 @@ static void update_mesh_distances(int index,
                                   float *mesh_distances,
                                   BVHTreeFromMesh *treeData,
                                   const float ray_start[3],
-                                  float surface_thickness);
+                                  float surface_thickness,
+                                  int use_plane_init);
 
 static int get_light(ViewLayer *view_layer, float *light)
 {
@@ -1249,7 +1258,7 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
       /* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
       if (data->distances_map) {
         update_mesh_distances(
-            index, data->distances_map, data->tree, ray_start, data->mcs->surface_distance);
+            index, data->distances_map, data->tree, ray_start, data->mcs->surface_distance, data->mcs->flags & FLUID_FLOW_USE_PLANE_INIT);
 
         /* Ensure that num objects are also counted inside object. But dont count twice (see object inc for nearest point) */
         if (data->distances_map[index] < 0 && !hasIncObj) {
@@ -2082,15 +2091,35 @@ static void emit_from_particles(Object *flow_ob,
   }
 }
 
-/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative */
+/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative. */
 static void update_mesh_distances(int index,
                                   float *mesh_distances,
                                   BVHTreeFromMesh *treeData,
                                   const float ray_start[3],
-                                  float surface_thickness)
+                                  float surface_thickness,
+                                  int use_plane_init)
 {
+  float min_dist = 9999;
 
-  /* First pass: Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant diagonals (3D)) */
+  /* Ensure that planes get initialized correctly. */
+  if (use_plane_init) {
+    BVHTreeNearest nearest = {0};
+    nearest.index = -1;
+    nearest.dist_sq = surface_thickness;
+
+    if (BLI_bvhtree_find_nearest(
+            treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1)
+    {
+      float ray[3] = {0};
+      sub_v3_v3v3(ray, ray_start, nearest.co);
+      min_dist = len_v3(ray);
+      min_dist = (-1.0f) * fabsf(min_dist);
+      mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
+    }
+    return;
+  }
+
+  /* First pass: Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant diagonals (3D)). */
   float ray_dirs[26][3] = {
       {1.0f, 0.0f, 0.0f},   {0.0f, 1.0f, 0.0f},   {0.0f, 0.0f, 1.0f},  {-1.0f, 0.0f, 0.0f},
       {0.0f, -1.0f, 0.0f},  {0.0f, 0.0f, -1.0f},  {1.0f, 1.0f, 0.0f},  {1.0f, -1.0f, 0.0f},
@@ -2102,8 +2131,8 @@ static void update_mesh_distances(int index,
   size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
 
   /* Count for ray misses (no face hit) and cases where ray direction matches face normal direction. */
-  int miss_cnt = 0;
-  int dir_cnt = 0;
+  int miss_cnt = 0, dir_cnt = 0;
+  min_dist = 9999;
 
   for (int i = 0; i < ray_cnt; i++) {
     BVHTreeRayHit hit_tree = {0};
@@ -2129,24 +2158,64 @@ static void update_mesh_distances(int index,
     if (dot_v3v3(ray_dirs[i], hit_tree.no) <= 0) {
       dir_cnt++;
     }
+
+    if (hit_tree.dist < min_dist) {
+      min_dist = hit_tree.dist;
+    }
   }
 
-  /* Initialize grid points to -0.5 inside and 0.5 outside mesh.
-   * Inside mesh: All rays have to hit (no misses) or all face normals have to match ray direction */
-  if (mesh_distances[index] != -0.5f) {
-    mesh_distances[index] = (miss_cnt > 0 || dir_cnt == ray_cnt) ? 0.5f : -0.5f;
+  /* Point lies inside mesh. Use negative sign for distance value. */
+  if (!(miss_cnt > 0 || dir_cnt == ray_cnt)) {
+    min_dist = (-1.0f) * fabsf(min_dist);
   }
 
-  /* Second pass: Ensure that single planes get initialized. */
+  /* Update global distance array but ensure that older entries are not overridden. */
+  mesh_distances[index] = MIN2(mesh_distances[index], min_dist);
+
+  /* Second pass: Use nearest neighbour search on mesh surface. */
   BVHTreeNearest nearest = {0};
   nearest.index = -1;
-  nearest.dist_sq = surface_thickness * surface_thickness; /* find_nearest uses squared distance */
+  nearest.dist_sq = 5;
 
   if (BLI_bvhtree_find_nearest(
-          treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
-    if (mesh_distances[index] != -0.5f) {
-      mesh_distances[index] = -0.5f;
+          treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1)
+  {
+    float ray[3] = {0};
+    sub_v3_v3v3(ray, nearest.co, ray_start);
+    min_dist = len_v3(ray);
+//    CLAMP(min_dist, 0.5, min_dist);
+
+    BVHTreeRayHit hit_tree = {0};
+    hit_tree.index = -1;
+    hit_tree.dist = 9999;
+
+    normalize_v3(ray);
+    BLI_bvhtree_ray_cast(treeData->tree,
+                         ray_start,
+                         ray,
+                         0.0f,
+                         &hit_tree,
+                         treeData->raycast_callback,
+                         treeData);
+
+    /* Only proceed if casted ray hit the mesh surface. */
+    if (hit_tree.index != -1) {
+
+      /* Ray and normal are in pointing same directions: Point must lie inside mesh. */
+      if (dot_v3v3(ray, hit_tree.no) > 0) {
+        min_dist = (-1.0f) * fabsf(min_dist);
+      }
+
+      /* Update distance value with more accurate one from this nearest neighbour search.
+       * Skip if new value would be outside and current value has inside value already. */
+      if (!(min_dist > 0 &&  mesh_distances[index] <= 0)) {
+        mesh_distances[index] = min_dist;
+      }
     }
+  }
+
+  if (surface_thickness) {
+    mesh_distances[index] -= surface_thickness;
   }
 }
 
@@ -2380,7 +2449,7 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
 
         /* Calculate levelset from meshes. Result in em->distances */
         update_mesh_distances(
-            index, em->distances, data->tree, ray_start, data->mfs->surface_distance);
+            index, em->distances, data->tree, ray_start, data->mfs->surface_distance, data->mfs->flags & FLUID_FLOW_USE_PLANE_INIT);
       }
 
       /* take high res samples if required */
@@ -4081,7 +4150,7 @@ static void mantaModifier_process(
       }
 
       /* Read config cache */
-      if (manta_read_config(mds->fluid, mmd, data_frame) && manta_needs_realloc(mds->fluid, mmd)) {
+      if (!with_noise && manta_read_config(mds->fluid, mmd, data_frame) && manta_needs_realloc(mds->fluid, mmd)) {
           BKE_manta_reallocate_fluid(mds, mds->res, 1);
       }
 

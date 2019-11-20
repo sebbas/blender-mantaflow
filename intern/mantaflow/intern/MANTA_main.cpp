@@ -70,6 +70,7 @@ MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
   mUsingMesh = mmd->domain->flags & FLUID_DOMAIN_USE_MESH;
   mUsingMVel = mmd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS;
   mUsingGuiding = mmd->domain->flags & FLUID_DOMAIN_USE_GUIDING;
+  mUsingFractions = mmd->domain->flags & FLUID_DOMAIN_USE_FRACTIONS;
   mUsingLiquid = mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID;
   mUsingSmoke = mmd->domain->type == FLUID_DOMAIN_TYPE_GAS;
   mUsingDrops = mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY;
@@ -207,6 +208,9 @@ MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
     if (mUsingGuiding) {
       mResGuiding = (mmd->domain->guiding_parent) ? mmd->domain->guide_res : mmd->domain->res;
       initGuiding(mmd);
+    }
+    if (mUsingFractions) {
+      initFractions(mmd);
     }
     updatePointers();
 
@@ -443,6 +447,17 @@ void MANTA::initGuiding(MantaModifierData *mmd)
     runPythonString(pythonCommands);
     mUsingGuiding = true;
   }
+}
+
+void MANTA::initFractions(MantaModifierData *mmd)
+{
+  std::vector<std::string> pythonCommands;
+  std::string tmpString = fluid_alloc_fractions + fluid_with_fractions;
+  std::string finalString = parseScript(tmpString, mmd);
+  pythonCommands.push_back(finalString);
+
+  runPythonString(pythonCommands);
+  mUsingFractions = true;
 }
 
 void MANTA::initInVelocity(MantaModifierData *mmd)
@@ -805,6 +820,17 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
     ss << mmd->time;
   else if (varName == "END_FRAME")
     ss << mmd->domain->cache_frame_end;
+  else if (varName == "SIMULATION_METHOD") {
+    if (mmd->domain->simulation_method & FLUID_DOMAIN_METHOD_FLIP) {
+      ss << "'FLIP'";
+    } else if (mmd->domain->simulation_method & FLUID_DOMAIN_METHOD_APIC) {
+      ss << "'APIC'";
+    } else {
+      ss << "'NONE'";
+    }
+  }
+  else if (varName == "FLIP_RATIO")
+    ss << mmd->domain->flip_ratio;
   else if (varName == "PARTICLE_RANDOMNESS")
     ss << mmd->domain->particle_randomness;
   else if (varName == "PARTICLE_NUMBER")
@@ -815,10 +841,14 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
     ss << mmd->domain->particle_maximum;
   else if (varName == "PARTICLE_RADIUS")
     ss << mmd->domain->particle_radius;
+  else if (varName == "FRACTIONS_THRESHOLD")
+    ss << mmd->domain->fractions_threshold;
   else if (varName == "MESH_CONCAVE_UPPER")
     ss << mmd->domain->mesh_concave_upper;
   else if (varName == "MESH_CONCAVE_LOWER")
     ss << mmd->domain->mesh_concave_lower;
+  else if (varName == "MESH_PARTICLE_RADIUS")
+    ss << mmd->domain->mesh_particle_radius;
   else if (varName == "MESH_SMOOTHEN_POS")
     ss << mmd->domain->mesh_smoothen_pos;
   else if (varName == "MESH_SMOOTHEN_NEG")
@@ -913,6 +943,8 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
     ss << (mmd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_TIME ? "True" : "False");
   else if (varName == "USING_SPEEDVECTORS")
     ss << (mmd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS ? "True" : "False");
+  else if (varName == "USING_FRACTIONS")
+    ss << (mmd->domain->flags & FLUID_DOMAIN_USE_FRACTIONS ? "True" : "False");
   else
     std::cout << "ERROR: Unknown option: " << varName << std::endl;
   return ss.str();
