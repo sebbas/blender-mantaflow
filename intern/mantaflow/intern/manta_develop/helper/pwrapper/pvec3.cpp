@@ -82,7 +82,7 @@ static PyMemberDef PbVec3Members[] = {
 
 static PyMethodDef PbVec3Methods[] = {
     //{"name", (PyCFunction)Noddy_name, METH_NOARGS, "Return the name, combining the first and last
-    //name" },
+    // name" },
     {NULL}  // Sentinel
 };
 

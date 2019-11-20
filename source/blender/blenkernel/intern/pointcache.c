@@ -1737,9 +1737,9 @@ void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct MantaMo
 
   if (mds->fluid) {
     pid->data_types |= (1 << BPHYS_DATA_SMOKE_LOW);
-      if (mds->flags & FLUID_DOMAIN_USE_NOISE) {
-        pid->data_types |= (1<<BPHYS_DATA_SMOKE_HIGH);
-      }
+    if (mds->flags & FLUID_DOMAIN_USE_NOISE) {
+      pid->data_types |= (1 << BPHYS_DATA_SMOKE_HIGH);
+    }
   }
 
   pid->default_step = 1;

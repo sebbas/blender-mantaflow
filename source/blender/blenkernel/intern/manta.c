@@ -88,9 +88,9 @@
 #  include "PIL_time.h"
 #endif
 
-#  include "BLI_task.h"
-#  include "BLI_kdtree.h"
-#  include "BLI_voxel.h"
+#include "BLI_task.h"
+#include "BLI_kdtree.h"
+#include "BLI_voxel.h"
 
 static ThreadMutex object_update_lock = BLI_MUTEX_INITIALIZER;
 
@@ -100,11 +100,11 @@ struct Scene;
 struct MantaModifierData;
 
 // timestep default value for nice appearance 0.1f
-#  define DT_DEFAULT 0.1f
+#define DT_DEFAULT 0.1f
 
-#  define ADD_IF_LOWER_POS(a, b) (min_ff((a) + (b), max_ff((a), (b))))
-#  define ADD_IF_LOWER_NEG(a, b) (max_ff((a) + (b), min_ff((a), (b))))
-#  define ADD_IF_LOWER(a, b) (((b) > 0) ? ADD_IF_LOWER_POS((a), (b)) : ADD_IF_LOWER_NEG((a), (b)))
+#define ADD_IF_LOWER_POS(a, b) (min_ff((a) + (b), max_ff((a), (b))))
+#define ADD_IF_LOWER_NEG(a, b) (max_ff((a) + (b), min_ff((a), (b))))
+#define ADD_IF_LOWER(a, b) (((b) > 0) ? ADD_IF_LOWER_POS((a), (b)) : ADD_IF_LOWER_NEG((a), (b)))
 
 void BKE_manta_reallocate_fluid(MantaDomainSettings *mds, int res[3], int free_old)
 {
@@ -150,83 +150,81 @@ void BKE_manta_reallocate_copy_fluid(MantaDomainSettings *mds,
   /* copy values from old fluid to new */
   if (o_total_cells > 1 && n_total_cells > 1) {
     /* base smoke */
-    float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_vx, *o_vy, *o_vz,
-      *o_r, *o_g, *o_b;
-    float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_vx, *n_vy, *n_vz,
-      *n_r, *n_g, *n_b;
+    float *o_dens, *o_react, *o_flame, *o_fuel, *o_heat, *o_vx, *o_vy, *o_vz, *o_r, *o_g, *o_b;
+    float *n_dens, *n_react, *n_flame, *n_fuel, *n_heat, *n_vx, *n_vy, *n_vz, *n_r, *n_g, *n_b;
     float dummy, *dummy_s;
     int *dummy_p;
     /* noise smoke */
     int wt_res_old[3];
     float *o_wt_dens, *o_wt_react, *o_wt_flame, *o_wt_fuel, *o_wt_tcu, *o_wt_tcv, *o_wt_tcw,
-      *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
+        *o_wt_tcu2, *o_wt_tcv2, *o_wt_tcw2, *o_wt_r, *o_wt_g, *o_wt_b;
     float *n_wt_dens, *n_wt_react, *n_wt_flame, *n_wt_fuel, *n_wt_tcu, *n_wt_tcv, *n_wt_tcw,
-      *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
+        *n_wt_tcu2, *n_wt_tcv2, *n_wt_tcw2, *n_wt_r, *n_wt_g, *n_wt_b;
 
     if (mds->flags & FLUID_DOMAIN_USE_NOISE) {
       manta_smoke_turbulence_export(fluid_old,
-                  &o_wt_dens,
-                  &o_wt_react,
-                  &o_wt_flame,
-                  &o_wt_fuel,
-                  &o_wt_r,
-                  &o_wt_g,
-                  &o_wt_b,
-                  &o_wt_tcu,
-                  &o_wt_tcv,
-                  &o_wt_tcw,
-                  &o_wt_tcu2,
-                  &o_wt_tcv2,
-                  &o_wt_tcw2);
+                                    &o_wt_dens,
+                                    &o_wt_react,
+                                    &o_wt_flame,
+                                    &o_wt_fuel,
+                                    &o_wt_r,
+                                    &o_wt_g,
+                                    &o_wt_b,
+                                    &o_wt_tcu,
+                                    &o_wt_tcv,
+                                    &o_wt_tcw,
+                                    &o_wt_tcu2,
+                                    &o_wt_tcv2,
+                                    &o_wt_tcw2);
       manta_smoke_turbulence_get_res(fluid_old, wt_res_old);
       manta_smoke_turbulence_export(mds->fluid,
-                  &n_wt_dens,
-                  &n_wt_react,
-                  &n_wt_flame,
-                  &n_wt_fuel,
-                  &n_wt_r,
-                  &n_wt_g,
-                  &n_wt_b,
-                  &n_wt_tcu,
-                  &n_wt_tcv,
-                  &n_wt_tcw,
-                  &n_wt_tcu2,
-                  &n_wt_tcv2,
-                  &n_wt_tcw2);
+                                    &n_wt_dens,
+                                    &n_wt_react,
+                                    &n_wt_flame,
+                                    &n_wt_fuel,
+                                    &n_wt_r,
+                                    &n_wt_g,
+                                    &n_wt_b,
+                                    &n_wt_tcu,
+                                    &n_wt_tcv,
+                                    &n_wt_tcw,
+                                    &n_wt_tcu2,
+                                    &n_wt_tcv2,
+                                    &n_wt_tcw2);
     }
 
     manta_smoke_export(fluid_old,
-         &dummy,
-         &dummy,
-         &o_dens,
-         &o_react,
-         &o_flame,
-         &o_fuel,
-         &o_heat,
-         &o_vx,
-         &o_vy,
-         &o_vz,
-         &o_r,
-         &o_g,
-         &o_b,
-         &dummy_p,
-         &dummy_s);
+                       &dummy,
+                       &dummy,
+                       &o_dens,
+                       &o_react,
+                       &o_flame,
+                       &o_fuel,
+                       &o_heat,
+                       &o_vx,
+                       &o_vy,
+                       &o_vz,
+                       &o_r,
+                       &o_g,
+                       &o_b,
+                       &dummy_p,
+                       &dummy_s);
     manta_smoke_export(mds->fluid,
-         &dummy,
-         &dummy,
-         &n_dens,
-         &n_react,
-         &n_flame,
-         &n_fuel,
-         &n_heat,
-         &n_vx,
-         &n_vy,
-         &n_vz,
-         &n_r,
-         &n_g,
-         &n_b,
-         &dummy_p,
-         &dummy_s);
+                       &dummy,
+                       &dummy,
+                       &n_dens,
+                       &n_react,
+                       &n_flame,
+                       &n_fuel,
+                       &n_heat,
+                       &n_vx,
+                       &n_vy,
+                       &n_vz,
+                       &n_r,
+                       &n_g,
+                       &n_b,
+                       &dummy_p,
+                       &dummy_s);
 
     for (x = o_min[0]; x < o_max[0]; x++) {
       for (y = o_min[1]; y < o_max[1]; y++) {
@@ -247,14 +245,14 @@ void BKE_manta_reallocate_copy_fluid(MantaDomainSettings *mds,
             continue;
           }
           /* skip if trying to copy from old boundary cell */
-          if (xo < bwidth || yo < bwidth || zo < bwidth ||
-              xo >= o_res[0]-bwidth || yo >= o_res[1]-bwidth || zo >= o_res[2]-bwidth) {
-              continue;
+          if (xo < bwidth || yo < bwidth || zo < bwidth || xo >= o_res[0] - bwidth ||
+              yo >= o_res[1] - bwidth || zo >= o_res[2] - bwidth) {
+            continue;
           }
           /* skip if trying to copy into new boundary cell */
-          if (xn < bwidth || yn < bwidth || zn < bwidth ||
-              xn >= n_res[0]-bwidth || yn >= n_res[1]-bwidth || zn >= n_res[2]-bwidth) {
-              continue;
+          if (xn < bwidth || yn < bwidth || zn < bwidth || xn >= n_res[0] - bwidth ||
+              yn >= n_res[1] - bwidth || zn >= n_res[2] - bwidth) {
+            continue;
           }
 
           /* copy data */
@@ -282,9 +280,9 @@ void BKE_manta_reallocate_copy_fluid(MantaDomainSettings *mds,
               for (j = 0; j < block_size; j++) {
                 for (k = 0; k < block_size; k++) {
                   int big_index_old = manta_get_index(
-                    xx_o + i, wt_res_old[0], yy_o + j, wt_res_old[1], zz_o + k);
+                      xx_o + i, wt_res_old[0], yy_o + j, wt_res_old[1], zz_o + k);
                   int big_index_new = manta_get_index(
-                    xx_n + i, mds->res_noise[0], yy_n + j, mds->res_noise[1], zz_n + k);
+                      xx_n + i, mds->res_noise[0], yy_n + j, mds->res_noise[1], zz_n + k);
                   /* copy data */
                   n_wt_dens[big_index_new] = o_wt_dens[big_index_old];
                   if (n_wt_flame && o_wt_flame) {
@@ -322,7 +320,6 @@ void BKE_manta_reallocate_copy_fluid(MantaDomainSettings *mds,
           n_vx[index_new] = o_vx[index_old];
           n_vy[index_new] = o_vy[index_old];
           n_vz[index_new] = o_vz[index_old];
-
         }
       }
     }
@@ -468,8 +465,7 @@ static int mantaModifier_init(
 
     /* set resolutions */
     if (mmd->domain->type == FLUID_DOMAIN_TYPE_GAS &&
-        mmd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN)
-    {
+        mmd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
       res[0] = res[1] = res[2] = 1; /* use minimum res for adaptive init */
     }
     else {
@@ -486,7 +482,7 @@ static int mantaModifier_init(
     /* initially dt is equal to frame length (dt can change with adaptive-time stepping though) */
     mds->dt = mds->frame_length;
     mds->time_per_frame = 0;
-    mds->time_total = (scene_framenr-1) * mds->frame_length;
+    mds->time_total = (scene_framenr - 1) * mds->frame_length;
 
     /* allocate fluid */
     BKE_manta_reallocate_fluid(mds, mds->res, 0);
@@ -1168,8 +1164,9 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
   MantaDomainSettings *mds = data->mds;
 
   /* slightly rounded-up sqrt(3 * (0.5)^2) == max. distance of cell boundary along the diagonal */
-  const float surface_distance = 2.0f;  //0.867f;
-  /* Note: Use larger surface distance to cover larger area with obvel. Manta will use these obvels and extrapolate them (inside and outside obstacle) */
+  const float surface_distance = 2.0f;  // 0.867f;
+  /* Note: Use larger surface distance to cover larger area with obvel. Manta will use these obvels
+   * and extrapolate them (inside and outside obstacle) */
 
   for (int x = mds->res_min[0]; x < mds->res_max[0]; x++) {
     for (int y = mds->res_min[1]; y < mds->res_max[1]; y++) {
@@ -1250,17 +1247,23 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
             data->velocityZ[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
                                           hit_vel[2] * data->mcs->vel_multi :
                                           hit_vel[2];
-            //printf("adding effector object vel: [%f, %f, %f], dx is: %f\n", hit_vel[0], hit_vel[1], hit_vel[2], mds->dx);
+            // printf("adding effector object vel: [%f, %f, %f], dx is: %f\n", hit_vel[0],
+            // hit_vel[1], hit_vel[2], mds->dx);
           }
         }
       }
 
       /* Get distance to mesh surface from both within and outside grid (mantaflow phi grid) */
       if (data->distances_map) {
-        update_mesh_distances(
-            index, data->distances_map, data->tree, ray_start, data->mcs->surface_distance, data->mcs->flags & FLUID_FLOW_USE_PLANE_INIT);
+        update_mesh_distances(index,
+                              data->distances_map,
+                              data->tree,
+                              ray_start,
+                              data->mcs->surface_distance,
+                              data->mcs->flags & FLUID_FLOW_USE_PLANE_INIT);
 
-        /* Ensure that num objects are also counted inside object. But dont count twice (see object inc for nearest point) */
+        /* Ensure that num objects are also counted inside object. But dont count twice (see object
+         * inc for nearest point) */
         if (data->distances_map[index] < 0 && !hasIncObj) {
           data->num_objects[index]++;
         }
@@ -1497,22 +1500,27 @@ static void update_obstacles(Depsgraph *depsgraph,
     if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effec) {
       MantaCollSettings *mcs = mmd2->effec;
 
-      /* Length of one frame. If using adaptive stepping, length is smaller than actual frame length */
+      /* Length of one frame. If using adaptive stepping, length is smaller than actual frame
+       * length */
       float adaptframe_length = time_per_frame / frame_length;
 
-      /* Handle adaptive subframe (ie has subframe fraction). Need to set according scene subframe parameter */
+      /* Handle adaptive subframe (ie has subframe fraction). Need to set according scene subframe
+       * parameter */
       if (time_per_frame < frame_length) {
         scene->r.subframe = adaptframe_length;
         scene->r.cfra = frame - 1;
       }
-      /* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe parameter to 0 and advance current scene frame */
+      /* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe
+       * parameter to 0 and advance current scene frame */
       else {
         scene->r.subframe = 0.0f;
         scene->r.cfra = frame;
       }
-      //printf("effector: frame: %d // scene current frame: %d // scene current subframe: %f\n", frame, scene->r.cfra, scene->r.subframe);
+      // printf("effector: frame: %d // scene current frame: %d // scene current subframe: %f\n",
+      // frame, scene->r.cfra, scene->r.subframe);
 
-      /* TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as subframes dont work with the latter yet */
+      /* TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as
+       * subframes dont work with the latter yet */
       BKE_object_modifier_update_subframe(
           depsgraph, scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
 
@@ -1949,8 +1957,10 @@ static void emit_from_particles(Object *flow_ob,
       totchild = psys->totchild * psys->part->disp / 100;
     }
 
-    particle_pos = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles_pos");
-    particle_vel = MEM_callocN(sizeof(float) * (totpart + totchild) * 3, "manta_flow_particles_vel");
+    particle_pos = MEM_callocN(sizeof(float) * (totpart + totchild) * 3,
+                               "manta_flow_particles_pos");
+    particle_vel = MEM_callocN(sizeof(float) * (totpart + totchild) * 3,
+                               "manta_flow_particles_vel");
 
     /* setup particle radius emission if enabled */
     if (mfs->flags & FLUID_FLOW_USE_PART_SIZE) {
@@ -1981,7 +1991,8 @@ static void emit_from_particles(Object *flow_ob,
         }
       }
 
-      state.time = BKE_scene_frame_get(scene); /* DEG_get_ctime(depsgraph) does not give subframe time */
+      state.time = BKE_scene_frame_get(
+          scene); /* DEG_get_ctime(depsgraph) does not give subframe time */
       if (psys_get_particle_state(&sim, p, &state, 0) == 0) {
         continue;
       }
@@ -2091,7 +2102,8 @@ static void emit_from_particles(Object *flow_ob,
   }
 }
 
-/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are positive, inside negative. */
+/* Calculate map of (minimum) distances to flow/obstacle surface. Distances outside mesh are
+ * positive, inside negative. */
 static void update_mesh_distances(int index,
                                   float *mesh_distances,
                                   BVHTreeFromMesh *treeData,
@@ -2108,8 +2120,7 @@ static void update_mesh_distances(int index,
     nearest.dist_sq = surface_thickness;
 
     if (BLI_bvhtree_find_nearest(
-            treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1)
-    {
+            treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
       float ray[3] = {0};
       sub_v3_v3v3(ray, ray_start, nearest.co);
       min_dist = len_v3(ray);
@@ -2119,7 +2130,8 @@ static void update_mesh_distances(int index,
     return;
   }
 
-  /* First pass: Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant diagonals (3D)). */
+  /* First pass: Raycasts in 26 directions (6 main axis + 12 quadrant diagonals (2D) + 8 octant
+   * diagonals (3D)). */
   float ray_dirs[26][3] = {
       {1.0f, 0.0f, 0.0f},   {0.0f, 1.0f, 0.0f},   {0.0f, 0.0f, 1.0f},  {-1.0f, 0.0f, 0.0f},
       {0.0f, -1.0f, 0.0f},  {0.0f, 0.0f, -1.0f},  {1.0f, 1.0f, 0.0f},  {1.0f, -1.0f, 0.0f},
@@ -2130,7 +2142,8 @@ static void update_mesh_distances(int index,
       {-1.0f, 1.0f, -1.0f}, {-1.0f, -1.0f, -1.0f}};
   size_t ray_cnt = sizeof ray_dirs / sizeof ray_dirs[0];
 
-  /* Count for ray misses (no face hit) and cases where ray direction matches face normal direction. */
+  /* Count for ray misses (no face hit) and cases where ray direction matches face normal
+   * direction. */
   int miss_cnt = 0, dir_cnt = 0;
   min_dist = 9999;
 
@@ -2148,7 +2161,8 @@ static void update_mesh_distances(int index,
                          treeData->raycast_callback,
                          treeData);
 
-    /* Ray did not hit mesh. Current point definitely not inside mesh. Inside mesh all rays have to hit. */
+    /* Ray did not hit mesh. Current point definitely not inside mesh. Inside mesh all rays have to
+     * hit. */
     if (hit_tree.index == -1) {
       miss_cnt++;
       continue;
@@ -2178,25 +2192,19 @@ static void update_mesh_distances(int index,
   nearest.dist_sq = 5;
 
   if (BLI_bvhtree_find_nearest(
-          treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1)
-  {
+          treeData->tree, ray_start, &nearest, treeData->nearest_callback, treeData) != -1) {
     float ray[3] = {0};
     sub_v3_v3v3(ray, nearest.co, ray_start);
     min_dist = len_v3(ray);
-//    CLAMP(min_dist, 0.5, min_dist);
+    //    CLAMP(min_dist, 0.5, min_dist);
 
     BVHTreeRayHit hit_tree = {0};
     hit_tree.index = -1;
     hit_tree.dist = 9999;
 
     normalize_v3(ray);
-    BLI_bvhtree_ray_cast(treeData->tree,
-                         ray_start,
-                         ray,
-                         0.0f,
-                         &hit_tree,
-                         treeData->raycast_callback,
-                         treeData);
+    BLI_bvhtree_ray_cast(
+        treeData->tree, ray_start, ray, 0.0f, &hit_tree, treeData->raycast_callback, treeData);
 
     /* Only proceed if casted ray hit the mesh surface. */
     if (hit_tree.index != -1) {
@@ -2208,7 +2216,7 @@ static void update_mesh_distances(int index,
 
       /* Update distance value with more accurate one from this nearest neighbour search.
        * Skip if new value would be outside and current value has inside value already. */
-      if (!(min_dist > 0 &&  mesh_distances[index] <= 0)) {
+      if (!(min_dist > 0 && mesh_distances[index] <= 0)) {
         mesh_distances[index] = min_dist;
       }
     }
@@ -2329,7 +2337,7 @@ static void sample_mesh(MantaFlowSettings *mfs,
         velocity_map[index * 3] += hit_vel[0] * mfs->vel_multi;
         velocity_map[index * 3 + 1] += hit_vel[1] * mfs->vel_multi;
         velocity_map[index * 3 + 2] += hit_vel[2] * mfs->vel_multi;
-        //printf("adding flow object vel: [%f, %f, %f]\n", hit_vel[0], hit_vel[1], hit_vel[2]);
+        // printf("adding flow object vel: [%f, %f, %f]\n", hit_vel[0], hit_vel[1], hit_vel[2]);
       }
       velocity_map[index * 3] += mfs->vel_coord[0];
       velocity_map[index * 3 + 1] += mfs->vel_coord[1];
@@ -2448,8 +2456,12 @@ static void emit_from_mesh_task_cb(void *__restrict userdata,
                     (float)lz);
 
         /* Calculate levelset from meshes. Result in em->distances */
-        update_mesh_distances(
-            index, em->distances, data->tree, ray_start, data->mfs->surface_distance, data->mfs->flags & FLUID_FLOW_USE_PLANE_INIT);
+        update_mesh_distances(index,
+                              em->distances,
+                              data->tree,
+                              ray_start,
+                              data->mfs->surface_distance,
+                              data->mfs->flags & FLUID_FLOW_USE_PLANE_INIT);
       }
 
       /* take high res samples if required */
@@ -2646,11 +2658,8 @@ static void emit_from_mesh(
  *  Smoke step
  **********************************************************/
 
-static void adaptiveDomainAdjust(MantaDomainSettings *mds,
-                                 Object *ob,
-                                 EmissionMap *emaps,
-                                 unsigned int numflowobj,
-                                 float dt)
+static void adaptiveDomainAdjust(
+    MantaDomainSettings *mds, Object *ob, EmissionMap *emaps, unsigned int numflowobj, float dt)
 {
   /* calculate domain shift for current frame */
   int new_shift[3] = {0};
@@ -2864,7 +2873,8 @@ static void adaptiveDomainAdjust(MantaDomainSettings *mds,
   }
 
   if (res_changed || shift_changed) {
-    BKE_manta_reallocate_copy_fluid(mds, mds->res, res, mds->res_min, min, mds->res_max, tmpShift, total_shift);
+    BKE_manta_reallocate_copy_fluid(
+        mds, mds->res, res, mds->res_min, min, mds->res_max, tmpShift, total_shift);
 
     /* set new domain dimensions */
     copy_v3_v3_int(mds->res_min, min);
@@ -3136,16 +3146,19 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
       int subframes = mfs->subframes;
       EmissionMap *em = &emaps[flowIndex];
 
-      /* Length of one adaptive frame. If using adaptive stepping, length is smaller than actual frame length */
+      /* Length of one adaptive frame. If using adaptive stepping, length is smaller than actual
+       * frame length */
       float adaptframe_length = time_per_frame / frame_length;
       /* Adaptive frame length as percentage */
       CLAMP(adaptframe_length, 0.0f, 1.0f);
 
-      /* Further splitting because of emission subframe: If no subframes present, sample_size is 1 */
+      /* Further splitting because of emission subframe: If no subframes present, sample_size is 1
+       */
       float sample_size = 1.0f / (float)(subframes + 1);
       int hires_multiplier = 1;
 
-      /* First frame cannot have any subframes because there is (obviously) no previous frame from where subframes could come from */
+      /* First frame cannot have any subframes because there is (obviously) no previous frame from
+       * where subframes could come from */
       if (is_first_frame) {
         subframes = 0;
       }
@@ -3162,17 +3175,21 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
         /* Set scene time */
         /* Handle emission subframe */
         if (subframe > 0 && !is_first_frame) {
-          scene->r.subframe = adaptframe_length - sample_size * (float)(subframe) * (dt / frame_length);
+          scene->r.subframe = adaptframe_length -
+                              sample_size * (float)(subframe) * (dt / frame_length);
           scene->r.cfra = frame - 1;
         }
-        /* Last frame in this loop (subframe == suframes). Can be real end frame or in between frames (adaptive frame) */
+        /* Last frame in this loop (subframe == suframes). Can be real end frame or in between
+         * frames (adaptive frame) */
         else {
-          /* Handle adaptive subframe (ie has subframe fraction). Need to set according scene subframe parameter */
+          /* Handle adaptive subframe (ie has subframe fraction). Need to set according scene
+           * subframe parameter */
           if (time_per_frame < frame_length) {
             scene->r.subframe = adaptframe_length;
             scene->r.cfra = frame - 1;
           }
-          /* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe parameter to 0 and advance current scene frame */
+          /* Handle absolute endframe (ie no subframe fraction). Need to set the scene subframe
+           * parameter to 0 and advance current scene frame */
           else {
             scene->r.subframe = 0.0f;
             scene->r.cfra = frame;
@@ -3180,11 +3197,13 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
         }
         /* Sanity check: subframe portion must be between 0 and 1 */
         CLAMP(scene->r.subframe, 0.0f, 1.0f);
-        //printf("flow: frame (is first: %d): %d // scene current frame: %d // scene current subframe: %f\n", is_first_frame, frame, scene->r.cfra, scene->r.subframe);
+        // printf("flow: frame (is first: %d): %d // scene current frame: %d // scene current
+        // subframe: %f\n", is_first_frame, frame, scene->r.cfra, scene->r.subframe);
 
         /* Update frame time, this is considering current subframe fraction
          * BLI_mutex_lock() called in manta_step(), so safe to update subframe here
-         * TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as subframes dont work with the latter yet */
+         * TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph)
+         * as subframes dont work with the latter yet */
         BKE_object_modifier_update_subframe(
             depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
 
@@ -3214,7 +3233,8 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
           printf("Error: unknown flow emission source\n");
         }
 
-        /* If this we emitted with temp emission map in this loop (subframe emission), we combine the temp map with the original emission map */
+        /* If this we emitted with temp emission map in this loop (subframe emission), we combine
+         * the temp map with the original emission map */
         if (subframes) {
           /* Combine emission maps */
           em_combineMaps(
@@ -3225,12 +3245,11 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
     }
   }
 
-//  printf("flow: frame: %d // time per frame: %f // frame length: %f // dt: %f\n", frame, time_per_frame, frame_length, dt);
+  //  printf("flow: frame: %d // time per frame: %f // frame length: %f // dt: %f\n", frame,
+  //  time_per_frame, frame_length, dt);
 
   /* Adjust domain size if needed. Only do this once for every frame */
-  if (mds->type == FLUID_DOMAIN_TYPE_GAS &&
-      mds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN)
-  {
+  if (mds->type == FLUID_DOMAIN_TYPE_GAS && mds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
     adaptiveDomainAdjust(mds, ob, emaps, numflowobj, dt);
   }
 
@@ -3329,7 +3348,8 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
               continue;
             }
 
-            /* sync inflow grids with actual simulation grids, inflow computation needs information from actual simulation */
+            /* sync inflow grids with actual simulation grids, inflow computation needs information
+             * from actual simulation */
             if (emission_map[e_index] && density) {
               density_in[d_index] = density[d_index];
             }
@@ -3559,7 +3579,7 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
   num_normals = manta_liquid_get_num_normals(mds->fluid);
   num_faces = manta_liquid_get_num_triangles(mds->fluid);
 
-  //printf("num_verts: %d, num_normals: %d, num_faces: %d\n", num_verts, num_normals, num_faces);
+  // printf("num_verts: %d, num_normals: %d, num_faces: %d\n", num_verts, num_normals, num_faces);
 
   if (!num_verts || !num_faces) {
     return NULL;
@@ -3590,7 +3610,8 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
     mverts->co[1] = manta_liquid_get_vertex_y_at(mds->fluid, i);
     mverts->co[2] = manta_liquid_get_vertex_z_at(mds->fluid, i);
 
-    // if reading raw data directly from manta, normalize now, otherwise omit this, ie when reading from files
+    // if reading raw data directly from manta, normalize now, otherwise omit this, ie when reading
+    // from files
     {
       // normalize to unit cube around 0
       mverts->co[0] -= ((float)mds->res[0] * mds->mesh_scale) * 0.5f;
@@ -3605,7 +3626,8 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
     mverts->co[1] *= max_size / fabsf(ob->scale[1]);
     mverts->co[2] *= max_size / fabsf(ob->scale[2]);
 
-    //printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0], mverts->co[1], mverts->co[2]);
+    // printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n", mverts->co[0],
+    // mverts->co[1], mverts->co[2]);
   }
 
   // Normals
@@ -3618,7 +3640,7 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
 
     normal_float_to_short_v3(no_s, no);
 
-    //printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
+    // printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
   }
 
   // Triangles
@@ -3634,7 +3656,8 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
     mloops[1].v = manta_liquid_get_triangle_y_at(mds->fluid, i);
     mloops[2].v = manta_liquid_get_triangle_z_at(mds->fluid, i);
 
-    //printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n", mloops[0].v, mloops[1].v, mloops[2].v);
+    // printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n", mloops[0].v, mloops[1].v,
+    // mloops[2].v);
   }
 
   BKE_mesh_ensure_normals(me);
@@ -3666,7 +3689,8 @@ static Mesh *createLiquidGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Objec
     velarray[i].vel[1] = manta_liquid_get_vertvel_y_at(mds->fluid, i) * (mds->dx / time_mult);
     velarray[i].vel[2] = manta_liquid_get_vertvel_z_at(mds->fluid, i) * (mds->dx / time_mult);
 
-    //printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n", i, velarray[i].vel[0], i, velarray[i].vel[1], i, velarray[i].vel[2]);
+    // printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n", i,
+    // velarray[i].vel[0], i, velarray[i].vel[1], i, velarray[i].vel[2]);
   }
 
   return me;
@@ -3691,7 +3715,7 @@ static Mesh *createSmokeGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Object
   float ob_cache_loc[3] = {0};
 
   /* just copy existing mesh if there is no content or if the adaptive domain is not being used */
-  if (mds->total_cells <= 1 || (mds-> flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) == 0) {
+  if (mds->total_cells <= 1 || (mds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) == 0) {
     return BKE_mesh_copy_for_eval(orgmesh, false);
   }
 
@@ -3816,12 +3840,8 @@ static Mesh *createSmokeGeometry(MantaDomainSettings *mds, Mesh *orgmesh, Object
   return result;
 }
 
-static void manta_step(Depsgraph *depsgraph,
-                       Scene *scene,
-                       Object *ob,
-                       Mesh *me,
-                       MantaModifierData *mmd,
-                       int frame)
+static void manta_step(
+    Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *me, MantaModifierData *mmd, int frame)
 {
   MantaDomainSettings *mds = mmd->domain;
   float dt, frame_length, time_total;
@@ -3851,7 +3871,8 @@ static void manta_step(Depsgraph *depsgraph,
     manta_adapt_timestep(mds->fluid);
     dt = manta_get_timestep(mds->fluid);
 
-    /* save adapted dt so that MANTA object can access it (important when adaptive domain creates new MANTA object) */
+    /* save adapted dt so that MANTA object can access it (important when adaptive domain creates
+     * new MANTA object) */
     mds->dt = dt;
 
     /* count for how long this while loop is running */
@@ -3861,19 +3882,13 @@ static void manta_step(Depsgraph *depsgraph,
     /* Calculate inflow geometry */
     update_flowsfluids(depsgraph, scene, ob, mds, time_per_frame, frame_length, frame, dt);
 
-
     manta_update_variables(mds->fluid, mmd);
 
     /* Calculate obstacle geometry */
     update_obstacles(depsgraph, scene, ob, mds, time_per_frame, frame_length, frame, dt);
 
     if (mds->total_cells > 1) {
-      update_effectors(
-          depsgraph,
-          scene,
-          ob,
-          mds,
-          dt);
+      update_effectors(depsgraph, scene, ob, mds, dt);
       manta_bake_data(mds->fluid, mmd, frame);
 
       mds->time_per_frame = time_per_frame;
@@ -3891,7 +3906,8 @@ static void manta_guiding(
 {
   MantaDomainSettings *mds = mmd->domain;
   float fps = scene->r.frs_sec / scene->r.frs_sec_base;
-  float dt = DT_DEFAULT * (25.0f / fps) * mds->time_scale;;
+  float dt = DT_DEFAULT * (25.0f / fps) * mds->time_scale;
+  ;
 
   BLI_mutex_lock(&object_update_lock);
 
@@ -3974,9 +3990,9 @@ static void mantaModifier_process(
 
     /* Reset fluid if no fluid present (obviously)
      * or if timeline gets reset to startframe */
-     if (!mds->fluid || is_startframe) {
-       mantaModifier_reset_ex(mmd, false);
-     }
+    if (!mds->fluid || is_startframe) {
+      mantaModifier_reset_ex(mmd, false);
+    }
 
     mantaModifier_init(mmd, depsgraph, ob, scene, me);
 
@@ -3985,7 +4001,7 @@ static void mantaModifier_process(
     mds->frame_length = DT_DEFAULT * (25.0f / fps) * mds->time_scale;
     mds->dt = mds->frame_length;
     mds->time_per_frame = 0;
-    mds->time_total = (scene_framenr-1) * mds->frame_length;
+    mds->time_total = (scene_framenr - 1) * mds->frame_length;
 
     /* Guiding parent res pointer needs initialization */
     guiding_parent = mds->guiding_parent;
@@ -4019,42 +4035,43 @@ static void mantaModifier_process(
     int mesh_frame = scene_framenr, particles_frame = scene_framenr, guiding_frame = scene_framenr;
 
     bool with_smoke, with_liquid;
-    with_smoke  = mds->type == FLUID_DOMAIN_TYPE_GAS;
+    with_smoke = mds->type == FLUID_DOMAIN_TYPE_GAS;
     with_liquid = mds->type == FLUID_DOMAIN_TYPE_LIQUID;
 
     bool drops, bubble, floater;
-    drops   = mds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY;
-    bubble  = mds->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE;
+    drops = mds->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY;
+    bubble = mds->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE;
     floater = mds->particle_type & FLUID_DOMAIN_PARTICLE_FOAM;
 
     bool with_script, with_adaptive, with_noise, with_mesh, with_particles, with_guiding;
-    with_script    = mds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT;
-    with_adaptive  = mds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN;
-    with_noise     = mds->flags & FLUID_DOMAIN_USE_NOISE;
-    with_mesh      = mds->flags & FLUID_DOMAIN_USE_MESH;
-    with_guiding   = mds->flags & FLUID_DOMAIN_USE_GUIDING;
+    with_script = mds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT;
+    with_adaptive = mds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN;
+    with_noise = mds->flags & FLUID_DOMAIN_USE_NOISE;
+    with_mesh = mds->flags & FLUID_DOMAIN_USE_MESH;
+    with_guiding = mds->flags & FLUID_DOMAIN_USE_GUIDING;
     with_particles = drops || bubble || floater;
 
     bool has_config, has_data, has_noise, has_mesh, has_particles, has_guiding;
     has_config = has_data = has_noise = has_mesh = has_particles = has_guiding = false;
 
     bool baking_data, baking_noise, baking_mesh, baking_particles, baking_guiding, bake_outdated;
-    baking_data      = mds->cache_flag & FLUID_DOMAIN_BAKING_DATA;
-    baking_noise     = mds->cache_flag & FLUID_DOMAIN_BAKING_NOISE;
-    baking_mesh      = mds->cache_flag & FLUID_DOMAIN_BAKING_MESH;
+    baking_data = mds->cache_flag & FLUID_DOMAIN_BAKING_DATA;
+    baking_noise = mds->cache_flag & FLUID_DOMAIN_BAKING_NOISE;
+    baking_mesh = mds->cache_flag & FLUID_DOMAIN_BAKING_MESH;
     baking_particles = mds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES;
-    baking_guiding   = mds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING;
-    bake_outdated    = mds->cache_flag & FLUID_DOMAIN_CACHE_OUTDATED;
+    baking_guiding = mds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING;
+    bake_outdated = mds->cache_flag & FLUID_DOMAIN_CACHE_OUTDATED;
 
     bool resume_data, resume_noise, resume_mesh, resume_particles, resume_guiding;
-    resume_data      = (!is_startframe) && (mds->cache_frame_pause_data == scene_framenr);
-    resume_noise     = (!is_startframe) && (mds->cache_frame_pause_noise == scene_framenr);
-    resume_mesh      = (!is_startframe) && (mds->cache_frame_pause_mesh == scene_framenr);
+    resume_data = (!is_startframe) && (mds->cache_frame_pause_data == scene_framenr);
+    resume_noise = (!is_startframe) && (mds->cache_frame_pause_noise == scene_framenr);
+    resume_mesh = (!is_startframe) && (mds->cache_frame_pause_mesh == scene_framenr);
     resume_particles = (!is_startframe) && (mds->cache_frame_pause_particles == scene_framenr);
-    resume_guiding   = (!is_startframe) && (mds->cache_frame_pause_guiding == scene_framenr);
+    resume_guiding = (!is_startframe) && (mds->cache_frame_pause_guiding == scene_framenr);
 
     bool read_cache, bake_cache;
-    read_cache = false, bake_cache = baking_data || baking_noise || baking_mesh || baking_particles;
+    read_cache = false,
+    bake_cache = baking_data || baking_noise || baking_mesh || baking_particles;
 
     bool with_gdomain;
     with_gdomain = (mds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_DOMAIN);
@@ -4064,8 +4081,7 @@ static void mantaModifier_process(
     int o_res[3], o_min[3], o_max[3], o_shift[3];
 
     /* Cache mode specific settings */
-    switch (mode)
-    {
+    switch (mode) {
       case FLUID_DOMAIN_CACHE_FINAL:
         /* Just load the data that has already been baked */
         if (!baking_data && !baking_noise && !baking_mesh && !baking_particles) {
@@ -4073,8 +4089,7 @@ static void mantaModifier_process(
           bake_cache = false;
           break;
         }
-      case FLUID_DOMAIN_CACHE_MODULAR:
-      {
+      case FLUID_DOMAIN_CACHE_MODULAR: {
         /* Just load the data that has already been baked */
         if (!baking_data && !baking_noise && !baking_mesh && !baking_particles) {
           read_cache = true;
@@ -4113,13 +4128,12 @@ static void mantaModifier_process(
 
     /* Cache outdated? If so, don't read, just bake */
     if (bake_outdated) {
-        read_cache = false;
-        bake_cache = true;
+      read_cache = false;
+      bake_cache = true;
     }
 
     /* Try to read from cache and keep track of read success */
-    if (read_cache)
-    {
+    if (read_cache) {
       /* Read noise cache */
       if (with_smoke && with_noise) {
         /* Read config cache */
@@ -4127,8 +4141,10 @@ static void mantaModifier_process(
         copy_v3_v3_int(o_min, mds->res_min);
         copy_v3_v3_int(o_max, mds->res_max);
         copy_v3_v3_int(o_shift, mds->shift);
-        if (manta_read_config(mds->fluid, mmd, noise_frame) && manta_needs_realloc(mds->fluid, mmd)) {
-          BKE_manta_reallocate_copy_fluid(mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
+        if (manta_read_config(mds->fluid, mmd, noise_frame) &&
+            manta_needs_realloc(mds->fluid, mmd)) {
+          BKE_manta_reallocate_copy_fluid(
+              mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
         }
         has_noise = manta_read_noise(mds->fluid, mmd, noise_frame);
       }
@@ -4145,13 +4161,14 @@ static void mantaModifier_process(
 
       /* Read guiding cache */
       if (with_guiding) {
-        MantaModifierData* mmd2 = (with_gdomain) ? mmd_parent : mmd;
+        MantaModifierData *mmd2 = (with_gdomain) ? mmd_parent : mmd;
         has_guiding = manta_read_guiding(mds->fluid, mmd2, scene_framenr, with_gdomain);
       }
 
       /* Read config cache */
-      if (!with_noise && manta_read_config(mds->fluid, mmd, data_frame) && manta_needs_realloc(mds->fluid, mmd)) {
-          BKE_manta_reallocate_fluid(mds, mds->res, 1);
+      if (!with_noise && manta_read_config(mds->fluid, mmd, data_frame) &&
+          manta_needs_realloc(mds->fluid, mmd)) {
+        BKE_manta_reallocate_fluid(mds, mds->res, 1);
       }
 
       /* Read data cache */
@@ -4159,8 +4176,7 @@ static void mantaModifier_process(
     }
 
     /* Cache mode specific settings */
-    switch (mode)
-    {
+    switch (mode) {
       case FLUID_DOMAIN_CACHE_FINAL:
       case FLUID_DOMAIN_CACHE_MODULAR:
         break;
@@ -4182,8 +4198,7 @@ static void mantaModifier_process(
     }
 
     /* Trigger bake calls individually */
-    if (bake_cache)
-    {
+    if (bake_cache) {
       /* Ensure fresh variables at every animation step */
       manta_update_variables(mds->fluid, mmd);
 
@@ -4386,8 +4401,7 @@ struct Mesh *mantaModifier_do(
 
   /* return generated geometry for adaptive domain */
   Mesh *result = NULL;
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain)
-  {
+  if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
     if (mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
       result = createLiquidGeometry(mmd->domain, me, ob);
     }
@@ -4643,8 +4657,7 @@ float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velo
 
     /* check if point is outside active area */
     if (mmd->domain->type == FLUID_DOMAIN_TYPE_GAS &&
-        mmd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN)
-    {
+        mmd->domain->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
       if (pos[0] < 0.0f || pos[1] < 0.0f || pos[2] < 0.0f) {
         return 0.0f;
       }
@@ -4695,4 +4708,3 @@ int BKE_manta_get_data_flags(MantaDomainSettings *mds)
 
   return flags;
 }
-

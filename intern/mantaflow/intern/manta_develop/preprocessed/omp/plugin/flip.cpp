@@ -2188,7 +2188,8 @@ void PbRegister_mapPartsToGridVec3()
 
 // integers need "max" mode, not yet implemented
 // PYTHON() void mapPartsToGridInt ( FlagGrid& flags, Grid<int >& target , BasicParticleSystem&
-// parts , ParticleDataImpl<int >& source ) { 	mapLinearRealHelper<int >(flags,target,parts,source);
+// parts , ParticleDataImpl<int >& source ) { 	mapLinearRealHelper<int
+// >(flags,target,parts,source);
 //}
 
 template<class T> struct knMapFromGrid : public KernelBase {

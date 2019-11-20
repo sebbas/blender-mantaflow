@@ -297,7 +297,9 @@ void BPY_python_start(int argc, const char **argv)
   PyEval_InitThreads();
 
   /* (sebbas): Required to prevent assertion error */
-  /* see: https://stackoverflow.com/questions/27844676/assertionerror-3-x-only-when-calling-py-finalize-with-threads */
+  /* see:
+   * https://stackoverflow.com/questions/27844676/assertionerror-3-x-only-when-calling-py-finalize-with-threads
+   */
   Py_DECREF(PyImport_ImportModule("threading"));
 #else
   (void)argc;

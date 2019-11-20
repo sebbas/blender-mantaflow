@@ -598,8 +598,9 @@ static void rna_Manta_cache_directory_set(struct PointerRNA *ptr, const char *va
 
   BLI_strncpy(settings->cache_directory, value, sizeof(settings->cache_directory));
 
-  /* TODO (sebbas): Read cache state in order to set cache bake flags and cache pause frames correctly */
-  //settings->cache_flag = 0;
+  /* TODO (sebbas): Read cache state in order to set cache bake flags and cache pause frames
+   * correctly */
+  // settings->cache_flag = 0;
 }
 
 static void rna_Manta_domaintype_set(struct PointerRNA *ptr, int value)
@@ -608,7 +609,8 @@ static void rna_Manta_domaintype_set(struct PointerRNA *ptr, int value)
   Object *ob = (Object *)ptr->owner_id;
 
   if (value != settings->type) {
-    /* Set common values for liquid/smoke domain: cache type, border collision and viewport drawtype. */
+    /* Set common values for liquid/smoke domain: cache type, border collision and viewport
+     * drawtype. */
     if (value == FLUID_DOMAIN_TYPE_GAS) {
       rna_Manta_cachetype_mesh_set(ptr, FLUID_DOMAIN_FILE_BIN_OBJECT);
       rna_Manta_cachetype_data_set(ptr, FLUID_DOMAIN_FILE_UNI);
@@ -1046,11 +1048,19 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   };
 
   static EnumPropertyItem cache_types[] = {
-      {FLUID_DOMAIN_CACHE_REPLAY, "REPLAY", 0, "Replay", "Use the timeline to bake the scene. Pausing and resuming possible."},
-      {FLUID_DOMAIN_CACHE_MODULAR, "MODULAR", 0, "Modular", "Bake every stage of the simulation on its own. Can pause and resume bake jobs."},
-      /*{FLUID_DOMAIN_CACHE_FINAL, "FINAL", 0, "Final", "Only bakes cache files that are essential for the final render. Cannot resume bake jobs."},*/
-      {0, NULL, 0, NULL, NULL}
-  };
+      {FLUID_DOMAIN_CACHE_REPLAY,
+       "REPLAY",
+       0,
+       "Replay",
+       "Use the timeline to bake the scene. Pausing and resuming possible."},
+      {FLUID_DOMAIN_CACHE_MODULAR,
+       "MODULAR",
+       0,
+       "Modular",
+       "Bake every stage of the simulation on its own. Can pause and resume bake jobs."},
+      /*{FLUID_DOMAIN_CACHE_FINAL, "FINAL", 0, "Final", "Only bakes cache files that are essential
+         for the final render. Cannot resume bake jobs."},*/
+      {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem smoke_data_depth_items[] = {
       {16, "16", 0, "Float (Half)", "Half float (16 bit data)"},
@@ -1525,7 +1535,11 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "flip_ratio", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1.0);
-  RNA_def_property_ui_text(prop, "FLIP Ratio", "PIC/FLIP Ratio. A value of 1.0 will result in a completely FLIP based simulation. Use a lower value for simulations which should produce smaller splashes");
+  RNA_def_property_ui_text(
+      prop,
+      "FLIP Ratio",
+      "PIC/FLIP Ratio. A value of 1.0 will result in a completely FLIP based simulation. Use a "
+      "lower value for simulations which should produce smaller splashes");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_randomness", PROP_FLOAT, PROP_NONE);
@@ -1558,7 +1572,9 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "particle_radius", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(
-      prop, "Radius", "Particle radius factor. Use this parameter when the simulation appears to leak volume");
+      prop,
+      "Radius",
+      "Particle radius factor. Use this parameter when the simulation appears to leak volume");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "particle_band_width", PROP_FLOAT, PROP_NONE);
@@ -1577,9 +1593,10 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_fractions", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_FRACTIONS);
-  RNA_def_property_ui_text(prop,
-                           "Fractional Obstacles",
-                           "Fractional obstacles improve and smoothen the fluid-obstacle boundary.");
+  RNA_def_property_ui_text(
+      prop,
+      "Fractional Obstacles",
+      "Fractional obstacles improve and smoothen the fluid-obstacle boundary.");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   prop = RNA_def_property(srna, "fractions_threshold", PROP_FLOAT, PROP_NONE);
@@ -1697,7 +1714,9 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mesh_particle_radius", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_text(
-      prop, "Radius", "Particle radius factor (higher value results in larger (meshed) particles)");
+      prop,
+      "Radius",
+      "Particle radius factor (higher value results in larger (meshed) particles)");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
   /*  secondary particles options */
@@ -2043,7 +2062,9 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Export Mantaflow Script",
-      "Generate and export Mantaflow script from current domain settings during bake. This is only needed if you plan to analyse the cache (e.g. view grids, velocity vectors, particles) in Mantaflow directly (outside of Blender) after baking the simulation");
+      "Generate and export Mantaflow script from current domain settings during bake. This is "
+      "only needed if you plan to analyse the cache (e.g. view grids, velocity vectors, "
+      "particles) in Mantaflow directly (outside of Blender) after baking the simulation");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
@@ -2070,17 +2091,15 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "timesteps_minimum", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_range(prop, 0, 100, 1, -1);
-  RNA_def_property_ui_text(prop,
-                           "Minimum",
-                           "Minimum number of simulation steps to perform for one frame");
+  RNA_def_property_ui_text(
+      prop, "Minimum", "Minimum number of simulation steps to perform for one frame");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "timesteps_maximum", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_range(prop, 0, 100, 1, -1);
-  RNA_def_property_ui_text(prop,
-                           "Maximum",
-                           "Maximum number of simulation steps to perform for one frame");
+  RNA_def_property_ui_text(
+      prop, "Maximum", "Maximum number of simulation steps to perform for one frame");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   /* display settings */
@@ -2399,9 +2418,7 @@ static void rna_def_manta_flow_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_plane_init", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_USE_PLANE_INIT);
-  RNA_def_property_ui_text(prop,
-                           "Is Planar",
-                           "Treat this object as a planar, unclosed mesh");
+  RNA_def_property_ui_text(prop, "Is Planar", "Treat this object as a planar, unclosed mesh");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "particle_size", PROP_FLOAT, PROP_NONE);
@@ -2532,9 +2549,7 @@ static void rna_def_manta_effec_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_plane_init", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_FLOW_USE_PLANE_INIT);
-  RNA_def_property_ui_text(prop,
-                           "Is Planar",
-                           "Treat this object as a planar, unclosed mesh");
+  RNA_def_property_ui_text(prop, "Is Planar", "Treat this object as a planar, unclosed mesh");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);

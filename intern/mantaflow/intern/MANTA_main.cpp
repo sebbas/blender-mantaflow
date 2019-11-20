@@ -287,8 +287,7 @@ void MANTA::initDomain(MantaModifierData *mmd)
 void MANTA::initNoise(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
-  std::string tmpString = fluid_variables_noise + fluid_solver_noise +
-                          fluid_time_stepping_noise;
+  std::string tmpString = fluid_variables_noise + fluid_solver_noise + fluid_time_stepping_noise;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
 
@@ -401,8 +400,8 @@ void MANTA::initLiquid(MantaModifierData *mmd)
 void MANTA::initMesh(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
-  std::string tmpString = fluid_variables_mesh + fluid_solver_mesh +
-                          liquid_load_mesh + liquid_load_meshvel;
+  std::string tmpString = fluid_variables_mesh + fluid_solver_mesh + liquid_load_mesh +
+                          liquid_load_meshvel;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
 
@@ -823,9 +822,11 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
   else if (varName == "SIMULATION_METHOD") {
     if (mmd->domain->simulation_method & FLUID_DOMAIN_METHOD_FLIP) {
       ss << "'FLIP'";
-    } else if (mmd->domain->simulation_method & FLUID_DOMAIN_METHOD_APIC) {
+    }
+    else if (mmd->domain->simulation_method & FLUID_DOMAIN_METHOD_APIC) {
       ss << "'APIC'";
-    } else {
+    }
+    else {
       ss << "'NONE'";
     }
   }
@@ -896,9 +897,11 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
   else if (varName == "FLUID_VISCOSITY")
     ss << mmd->domain->viscosity_base * pow(10.0f, -mmd->domain->viscosity_exponent);
   else if (varName == "FLUID_DOMAIN_SIZE") {
-    tmpFloat = MAX3(mmd->domain->global_size[0], mmd->domain->global_size[1], mmd->domain->global_size[2]);
+    tmpFloat = MAX3(
+        mmd->domain->global_size[0], mmd->domain->global_size[1], mmd->domain->global_size[2]);
     ss << tmpFloat;
-  } else if (varName == "SNDPARTICLE_TYPES") {
+  }
+  else if (varName == "SNDPARTICLE_TYPES") {
     if (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) {
       ss << "PtypeSpray";
     }
@@ -1180,17 +1183,15 @@ int MANTA::writeConfiguration(MantaModifierData *mmd, int framenr)
 
   MantaDomainSettings *mds = mmd->domain;
   std::ostringstream ss;
-  char cacheDir[FILE_MAX], targetFile[FILE_MAX];;
+  char cacheDir[FILE_MAX], targetFile[FILE_MAX];
+  ;
   cacheDir[0] = '\0';
   targetFile[0] = '\0';
 
   std::string dformat = getCacheFileEnding(mmd->domain->cache_data_format);
 
-  BLI_path_join(cacheDir,
-                sizeof(cacheDir),
-                mmd->domain->cache_directory,
-                FLUID_DOMAIN_DIR_CONFIG,
-                NULL);
+  BLI_path_join(
+      cacheDir, sizeof(cacheDir), mmd->domain->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
   BLI_path_make_safe(cacheDir);
   BLI_dir_create_recursive(cacheDir); /* Create 'config' subdir if it does not exist already */
 
@@ -1199,24 +1200,24 @@ int MANTA::writeConfiguration(MantaModifierData *mmd, int framenr)
   BLI_join_dirfile(targetFile, sizeof(targetFile), cacheDir, ss.str().c_str());
   BLI_path_frame(targetFile, framenr, 0);
 
-  gzFile gzf = gzopen(targetFile, "wb1"); // do some compression
+  gzFile gzf = gzopen(targetFile, "wb1");  // do some compression
   if (!gzf)
     std::cerr << "writeConfiguration: can't open file: " << targetFile << std::endl;
 
   gzwrite(gzf, &mds->active_fields, sizeof(int));
-  gzwrite(gzf, &mds->res, 3*sizeof(int));
+  gzwrite(gzf, &mds->res, 3 * sizeof(int));
   gzwrite(gzf, &mds->dx, sizeof(float));
   gzwrite(gzf, &mds->dt, sizeof(float));
-  gzwrite(gzf, &mds->p0, 3*sizeof(float));
-  gzwrite(gzf, &mds->p1, 3*sizeof(float));
-  gzwrite(gzf, &mds->dp0, 3*sizeof(float));
-  gzwrite(gzf, &mds->shift, 3*sizeof(int));
-  gzwrite(gzf, &mds->obj_shift_f, 3*sizeof(float));
-  gzwrite(gzf, &mds->obmat, 16*sizeof(float));
-  gzwrite(gzf, &mds->base_res, 3*sizeof(int));
-  gzwrite(gzf, &mds->res_min, 3*sizeof(int));
-  gzwrite(gzf, &mds->res_max, 3*sizeof(int));
-  gzwrite(gzf, &mds->active_color, 3*sizeof(float));
+  gzwrite(gzf, &mds->p0, 3 * sizeof(float));
+  gzwrite(gzf, &mds->p1, 3 * sizeof(float));
+  gzwrite(gzf, &mds->dp0, 3 * sizeof(float));
+  gzwrite(gzf, &mds->shift, 3 * sizeof(int));
+  gzwrite(gzf, &mds->obj_shift_f, 3 * sizeof(float));
+  gzwrite(gzf, &mds->obmat, 16 * sizeof(float));
+  gzwrite(gzf, &mds->base_res, 3 * sizeof(int));
+  gzwrite(gzf, &mds->res_min, 3 * sizeof(int));
+  gzwrite(gzf, &mds->res_max, 3 * sizeof(int));
+  gzwrite(gzf, &mds->active_color, 3 * sizeof(float));
 
   gzclose(gzf);
 
@@ -1283,11 +1284,8 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
 
   std::string dformat = getCacheFileEnding(mmd->domain->cache_data_format);
 
-  BLI_path_join(cacheDir,
-                sizeof(cacheDir),
-                mmd->domain->cache_directory,
-                FLUID_DOMAIN_DIR_CONFIG,
-                NULL);
+  BLI_path_join(
+      cacheDir, sizeof(cacheDir), mmd->domain->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
   BLI_path_make_safe(cacheDir);
 
   ss.str("");
@@ -1298,24 +1296,24 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
   if (!BLI_exists(targetFile))
     return 0;
 
-  gzFile gzf = gzopen(targetFile, "rb"); // do some compression
+  gzFile gzf = gzopen(targetFile, "rb");  // do some compression
   if (!gzf)
     std::cerr << "readConfiguration: can't open file: " << targetFile << std::endl;
 
   gzread(gzf, &mds->active_fields, sizeof(int));
-  gzread(gzf, &mds->res, 3*sizeof(int));
+  gzread(gzf, &mds->res, 3 * sizeof(int));
   gzread(gzf, &mds->dx, sizeof(float));
-  gzread(gzf, &dummy, sizeof(float)); // dt not needed right now
-  gzread(gzf, &mds->p0, 3*sizeof(float));
-  gzread(gzf, &mds->p1, 3*sizeof(float));
-  gzread(gzf, &mds->dp0, 3*sizeof(float));
-  gzread(gzf, &mds->shift, 3*sizeof(int));
-  gzread(gzf, &mds->obj_shift_f, 3*sizeof(float));
-  gzread(gzf, &mds->obmat, 16*sizeof(float));
-  gzread(gzf, &mds->base_res, 3*sizeof(int));
-  gzread(gzf, &mds->res_min, 3*sizeof(int));
-  gzread(gzf, &mds->res_max, 3*sizeof(int));
-  gzread(gzf, &mds->active_color, 3*sizeof(float));
+  gzread(gzf, &dummy, sizeof(float));  // dt not needed right now
+  gzread(gzf, &mds->p0, 3 * sizeof(float));
+  gzread(gzf, &mds->p1, 3 * sizeof(float));
+  gzread(gzf, &mds->dp0, 3 * sizeof(float));
+  gzread(gzf, &mds->shift, 3 * sizeof(int));
+  gzread(gzf, &mds->obj_shift_f, 3 * sizeof(float));
+  gzread(gzf, &mds->obmat, 16 * sizeof(float));
+  gzread(gzf, &mds->base_res, 3 * sizeof(int));
+  gzread(gzf, &mds->res_min, 3 * sizeof(int));
+  gzread(gzf, &mds->res_max, 3 * sizeof(int));
+  gzread(gzf, &mds->active_color, 3 * sizeof(float));
   mds->total_cells = mds->res[0] * mds->res[1] * mds->res[2];
 
   gzclose(gzf);
@@ -1809,7 +1807,8 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
                 FLUID_DOMAIN_DIR_SCRIPT,
                 NULL);
   BLI_path_make_safe(cacheDirScript);
-  BLI_dir_create_recursive(cacheDirScript); /* Create 'script' subdir if it does not exist already */
+  BLI_dir_create_recursive(
+      cacheDirScript); /* Create 'script' subdir if it does not exist already */
   BLI_path_join(
       cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_DOMAIN_SMOKE_SCRIPT, NULL);
   BLI_path_make_safe(cacheDirScript);
@@ -1918,7 +1917,8 @@ void MANTA::exportLiquidScript(MantaModifierData *mmd)
                 FLUID_DOMAIN_DIR_SCRIPT,
                 NULL);
   BLI_path_make_safe(cacheDirScript);
-  BLI_dir_create_recursive(cacheDirScript); /* Create 'script' subdir if it does not exist already */
+  BLI_dir_create_recursive(
+      cacheDirScript); /* Create 'script' subdir if it does not exist already */
   BLI_path_join(
       cacheDirScript, sizeof(cacheDirScript), cacheDirScript, FLUID_DOMAIN_LIQUID_SCRIPT, NULL);
   BLI_path_make_safe(cacheDirScript);
@@ -2007,7 +2007,8 @@ void MANTA::exportLiquidScript(MantaModifierData *mmd)
   myfile.close();
 }
 
-/* Call Mantaflow python functions through this function. Use isAttribute for object attributes, e.g. s.cfl (here 's' is varname, 'cfl' functionName, and isAttribute true) */
+/* Call Mantaflow python functions through this function. Use isAttribute for object attributes,
+ * e.g. s.cfl (here 's' is varname, 'cfl' functionName, and isAttribute true) */
 static PyObject *callPythonFunction(std::string varName,
                                     std::string functionName,
                                     bool isAttribute = false)
@@ -2049,7 +2050,8 @@ static char *pyObjectToString(PyObject *inputObject)
 
 static double pyObjectToDouble(PyObject *inputObject)
 {
-  // Cannot use PyFloat_AsDouble() since its error check crashes - likely because of Real (aka float) type in Mantaflow
+  // Cannot use PyFloat_AsDouble() since its error check crashes - likely because of Real (aka
+  // float) type in Mantaflow
   return PyFloat_AS_DOUBLE(inputObject);
 }
 

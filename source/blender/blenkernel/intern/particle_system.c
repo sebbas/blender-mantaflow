@@ -4276,7 +4276,8 @@ static void particles_manta_step(ParticleSimulationData *sim,
         }
         // printf("part->type: %d, flagActivePart: %d\n", part->type, flagActivePart);
 
-        /* Type of particle must matche current particle system type (only important for snd particles) */
+        /* Type of particle must matche current particle system type (only important for snd
+         * particles) */
         if ((flagActivePart & PSPRAY) && (part->type & PART_MANTA_SPRAY) == 0)
           continue;
         if ((flagActivePart & PBUBBLE) && (part->type & PART_MANTA_BUBBLE) == 0)
@@ -4331,7 +4332,8 @@ static void particles_manta_step(ParticleSimulationData *sim,
           /* Match domain scale */
           mul_m4_v3(ob->obmat, pa->state.co);
 
-          // printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+          // printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
+          // pa->state.co[0], pa->state.co[1], pa->state.co[2]);
 
           /* Set particle velocity */
           pa->state.vel[0] = velX;
@@ -4339,7 +4341,8 @@ static void particles_manta_step(ParticleSimulationData *sim,
           pa->state.vel[2] = velZ;
           mul_v3_fl(pa->state.vel, mds->dx);
 
-          // printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
+          // printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
+          // pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
 
           /* Set default angular velocity and particle rotation */
           zero_v3(pa->state.ave);

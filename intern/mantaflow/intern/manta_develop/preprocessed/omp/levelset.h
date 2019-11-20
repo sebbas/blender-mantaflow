@@ -233,6 +233,7 @@ class LevelsetGrid : public Grid<Real> {
   }
 
   static Real invalidTimeValue();
+
  public:
   PbArgs _args;
 }

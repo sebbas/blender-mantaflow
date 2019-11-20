@@ -249,8 +249,8 @@ typedef struct MantaDomainSettings {
   int res_max[3];          /* cell max */
   int res[3];              /* data resolution (res_max-res_min) */
   int total_cells;
-  float dx; /* 1.0f / res */
-  float scale; /* largest domain size */
+  float dx;           /* 1.0f / res */
+  float scale;        /* largest domain size */
   int boundary_width; /* usually this is just 1 */
 
   /* adaptive domain options */
@@ -365,7 +365,7 @@ typedef struct MantaDomainSettings {
   char cache_directory[1024];
   char error[64]; /* Bake error description */
   short cache_type;
-  char _pad8[2];  /* unused */
+  char _pad8[2]; /* unused */
 
   /* time options */
   float dt;

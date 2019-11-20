@@ -94,7 +94,6 @@ typedef struct MantaJob {
   int *pause_frame;
 } MantaJob;
 
-
 static bool manta_initjob(
     bContext *C, MantaJob *job, wmOperator *op, char *error_msg, int error_size)
 {
@@ -148,8 +147,8 @@ static bool manta_initpaths(MantaJob *job, ReportList *reports)
   /* Ensure whole path exists */
   const bool dir_exists = BLI_dir_create_recursive(tmpDir);
 
-  /* We change path to some presumably valid default value, but do not allow bake process to continue,
-   * this gives user chance to set manually another path. */
+  /* We change path to some presumably valid default value, but do not allow bake process to
+   * continue, this gives user chance to set manually another path. */
   if (!dir_exists) {
     modifier_path_init(
         mds->cache_directory, sizeof(mds->cache_directory), FLUID_DOMAIN_DIR_DEFAULT);
@@ -298,10 +297,7 @@ static void manta_bake_endjob(void *customdata)
   }
 }
 
-static void manta_bake_startjob(void *customdata,
-                                      short *stop,
-                                      short *do_update,
-                                      float *progress)
+static void manta_bake_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
   MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
@@ -400,10 +396,7 @@ static void manta_free_endjob(void *customdata)
   }
 }
 
-static void manta_free_startjob(void *customdata,
-                                      short *stop,
-                                      short *do_update,
-                                      float *progress)
+static void manta_free_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
   MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
@@ -438,7 +431,8 @@ static void manta_free_startjob(void *customdata,
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
 
-    /* Free optional mesh and particles as well - otherwise they would not be in sync with data cache */
+    /* Free optional mesh and particles as well - otherwise they would not be in sync with data
+     * cache */
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
@@ -509,7 +503,6 @@ static void manta_free_startjob(void *customdata,
   ED_update_for_newframe(job->bmain, job->depsgraph);
 }
 
-
 /***************************** Operators ******************************/
 
 static int manta_bake_exec(struct bContext *C, struct wmOperator *op)
@@ -535,8 +528,8 @@ static int manta_bake_exec(struct bContext *C, struct wmOperator *op)
 }
 
 static int manta_bake_invoke(struct bContext *C,
-                                   struct wmOperator *op,
-                                   const wmEvent *UNUSED(_event))
+                             struct wmOperator *op,
+                             const wmEvent *UNUSED(_event))
 {
   Scene *scene = CTX_data_scene(C);
   MantaJob *job = MEM_mallocN(sizeof(MantaJob), "MantaJob");

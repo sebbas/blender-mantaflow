@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -343,21 +343,21 @@ extern "C" void manta_smoke_export_script(MANTA *smoke, MantaModifierData *mmd)
 }
 
 extern "C" void manta_smoke_export(MANTA *smoke,
-                             float *dt,
-                             float *dx,
-                             float **dens,
-                             float **react,
-                             float **flame,
-                             float **fuel,
-                             float **heat,
-                             float **vx,
-                             float **vy,
-                             float **vz,
-                             float **r,
-                             float **g,
-                             float **b,
-                             int **obstacle,
-                             float **shadow)
+                                   float *dt,
+                                   float *dx,
+                                   float **dens,
+                                   float **react,
+                                   float **flame,
+                                   float **fuel,
+                                   float **heat,
+                                   float **vx,
+                                   float **vy,
+                                   float **vz,
+                                   float **r,
+                                   float **g,
+                                   float **b,
+                                   int **obstacle,
+                                   float **shadow)
 {
   if (dens)
     *dens = smoke->getDensity();
@@ -380,24 +380,24 @@ extern "C" void manta_smoke_export(MANTA *smoke,
     *b = smoke->getColorB();
   *obstacle = smoke->getObstacle();
   *shadow = smoke->getShadow();
-  *dt = 1;  //dummy value, not needed for smoke
-  *dx = 1;  //dummy value, not needed for smoke
+  *dt = 1;  // dummy value, not needed for smoke
+  *dx = 1;  // dummy value, not needed for smoke
 }
 
 extern "C" void manta_smoke_turbulence_export(MANTA *smoke,
-                                        float **dens,
-                                        float **react,
-                                        float **flame,
-                                        float **fuel,
-                                        float **r,
-                                        float **g,
-                                        float **b,
-                                        float **tcu,
-                                        float **tcv,
-                                        float **tcw,
-                                        float **tcu2,
-                                        float **tcv2,
-                                        float **tcw2)
+                                              float **dens,
+                                              float **react,
+                                              float **flame,
+                                              float **fuel,
+                                              float **r,
+                                              float **g,
+                                              float **b,
+                                              float **tcu,
+                                              float **tcv,
+                                              float **tcw,
+                                              float **tcu2,
+                                              float **tcv2,
+                                              float **tcw2)
 {
   if (!smoke && !(smoke->usingNoise()))
     return;
@@ -502,17 +502,17 @@ static void get_rgba_from_density(
 }
 
 extern "C" void manta_smoke_get_rgba_from_density(MANTA *smoke,
-                                            float color[3],
-                                            float *data,
-                                            int sequential)
+                                                  float color[3],
+                                                  float *data,
+                                                  int sequential)
 {
   get_rgba_from_density(color, smoke->getDensity(), smoke->getTotalCells(), data, sequential);
 }
 
 extern "C" void manta_smoke_turbulence_get_rgba_from_density(MANTA *smoke,
-                                                       float color[3],
-                                                       float *data,
-                                                       int sequential)
+                                                             float color[3],
+                                                             float *data,
+                                                             int sequential)
 {
   get_rgba_from_density(
       color, smoke->getDensityHigh(), smoke->getTotalCellsHigh(), data, sequential);

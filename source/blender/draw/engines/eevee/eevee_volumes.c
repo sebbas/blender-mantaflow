@@ -443,7 +443,8 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
 
     /* Don't show smoke before simulation starts, this could be made an option in the future. */
     /* (sebbas): Always show smoke for manta */
-    /* const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >= mds->point_cache[0]->startframe); */
+    /* const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >=
+     * mds->point_cache[0]->startframe); */
 
     if (mds->fluid && (mds->type == FLUID_DOMAIN_TYPE_GAS) /* && show_smoke */) {
       if (!(mds->flags & FLUID_DOMAIN_USE_NOISE)) {

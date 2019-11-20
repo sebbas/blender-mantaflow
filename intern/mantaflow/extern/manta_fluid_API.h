@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version. 
+ * of the License, or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -103,42 +103,45 @@ float *manta_get_phiout_in(struct MANTA *fluid);
 /* Smoke functions */
 void manta_smoke_export_script(struct MANTA *smoke, struct MantaModifierData *mmd);
 void manta_smoke_export(struct MANTA *smoke,
-                  float *dt,
-                  float *dx,
-                  float **dens,
-                  float **react,
-                  float **flame,
-                  float **fuel,
-                  float **heat,
-                  float **vx,
-                  float **vy,
-                  float **vz,
-                  float **r,
-                  float **g,
-                  float **b,
-                  int **obstacles,
-                  float **shadow);
+                        float *dt,
+                        float *dx,
+                        float **dens,
+                        float **react,
+                        float **flame,
+                        float **fuel,
+                        float **heat,
+                        float **vx,
+                        float **vy,
+                        float **vz,
+                        float **r,
+                        float **g,
+                        float **b,
+                        int **obstacles,
+                        float **shadow);
 void manta_smoke_turbulence_export(struct MANTA *smoke,
-                             float **dens,
-                             float **react,
-                             float **flame,
-                             float **fuel,
-                             float **r,
-                             float **g,
-                             float **b,
-                             float **tcu,
-                             float **tcv,
-                             float **tcw,
-                             float **tcu2,
-                             float **tcv2,
-                             float **tcw2);
+                                   float **dens,
+                                   float **react,
+                                   float **flame,
+                                   float **fuel,
+                                   float **r,
+                                   float **g,
+                                   float **b,
+                                   float **tcu,
+                                   float **tcv,
+                                   float **tcw,
+                                   float **tcu2,
+                                   float **tcv2,
+                                   float **tcw2);
 void manta_smoke_get_rgba(struct MANTA *smoke, float *data, int sequential);
 void manta_smoke_turbulence_get_rgba(struct MANTA *smoke, float *data, int sequential);
-void manta_smoke_get_rgba_from_density(struct MANTA *smoke, float color[3], float *data, int sequential);
+void manta_smoke_get_rgba_from_density(struct MANTA *smoke,
+                                       float color[3],
+                                       float *data,
+                                       int sequential);
 void manta_smoke_turbulence_get_rgba_from_density(struct MANTA *smoke,
-                                            float color[3],
-                                            float *data,
-                                            int sequential);
+                                                  float color[3],
+                                                  float *data,
+                                                  int sequential);
 void manta_smoke_ensure_heat(struct MANTA *smoke, struct MantaModifierData *mmd);
 void manta_smoke_ensure_fire(struct MANTA *smoke, struct MantaModifierData *mmd);
 void manta_smoke_ensure_colors(struct MANTA *smoke, struct MantaModifierData *mmd);
