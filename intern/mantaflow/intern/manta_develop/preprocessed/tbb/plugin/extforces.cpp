@@ -938,10 +938,6 @@ struct KnSetWallBcsFrac : public KernelBase {
         normalize(dphi);
         Vec3 velMAC = vel.getAtMACX(i, j, k);
         velTarget(i, j, k).x = velMAC.x - dot(dphi, velMAC) * dphi.x;
-        if (obvel) {  // TODO (sebbas): TBC
-          Vec3 obvelMAC = (*obvel).getAtMACX(i, j, k);
-          velTarget(i, j, k).x += dot(dphi, obvelMAC) * dphi.x;
-        }
       }
 
       if (curObs | flags.isObstacle(i, j - 1, k)) {
@@ -965,10 +961,6 @@ struct KnSetWallBcsFrac : public KernelBase {
         normalize(dphi);
         Vec3 velMAC = vel.getAtMACY(i, j, k);
         velTarget(i, j, k).y = velMAC.y - dot(dphi, velMAC) * dphi.y;
-        if (obvel) {  // TODO (sebbas): TBC
-          Vec3 obvelMAC = (*obvel).getAtMACY(i, j, k);
-          velTarget(i, j, k).y += dot(dphi, obvelMAC) * dphi.y;
-        }
       }
 
       if (phiObs->is3D() && (curObs | flags.isObstacle(i, j, k - 1))) {
@@ -993,10 +985,6 @@ struct KnSetWallBcsFrac : public KernelBase {
         normalize(dphi);
         Vec3 velMAC = vel.getAtMACZ(i, j, k);
         velTarget(i, j, k).z = velMAC.z - dot(dphi, velMAC) * dphi.z;
-        if (obvel) {  // TODO (sebbas): TBC
-          Vec3 obvelMAC = (*obvel).getAtMACZ(i, j, k);
-          velTarget(i, j, k).z += dot(dphi, obvelMAC) * dphi.z;
-        }
       }
     }  // not at boundary
   }

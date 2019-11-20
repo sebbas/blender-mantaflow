@@ -46,6 +46,7 @@ struct MakeRhs : public KernelBase {
           const MACGrid &vel,
           const Grid<Real> *perCellCorr,
           const MACGrid *fractions,
+          const MACGrid *obvel,
           const Grid<Real> *phi,
           const Grid<Real> *curv,
           const Real surfTens,
@@ -56,6 +57,7 @@ struct MakeRhs : public KernelBase {
         vel(vel),
         perCellCorr(perCellCorr),
         fractions(fractions),
+        obvel(obvel),
         phi(phi),
         curv(curv),
         surfTens(surfTens),
@@ -74,6 +76,7 @@ struct MakeRhs : public KernelBase {
                  const MACGrid &vel,
                  const Grid<Real> *perCellCorr,
                  const MACGrid *fractions,
+                 const MACGrid *obvel,
                  const Grid<Real> *phi,
                  const Grid<Real> *curv,
                  const Real surfTens,
@@ -102,6 +105,17 @@ struct MakeRhs : public KernelBase {
       if (vel.is3D())
         set += (*fractions)(i, j, k).z * vel(i, j, k).z -
                (*fractions)(i, j, k + 1).z * vel(i, j, k + 1).z;
+
+      // compute divergence from obstacle by using obstacle velocity (optional)
+      if (obvel) {
+        set += (1 - (*fractions)(i, j, k).x) * (*obvel)(i, j, k).x -
+               (1 - (*fractions)(i + 1, j, k).x) * (*obvel)(i + 1, j, k).x +
+               (1 - (*fractions)(i, j, k).y) * (*obvel)(i, j, k).y -
+               (1 - (*fractions)(i, j + 1, k).y) * (*obvel)(i, j + 1, k).y;
+        if (obvel->is3D())
+          set += (1 - (*fractions)(i, j, k).z) * (*obvel)(i, j, k).z -
+                 (1 - (*fractions)(i, j, k + 1).z) * (*obvel)(i, j, k + 1).z;
+      }
     }
 
     // compute surface tension effect (optional)
@@ -159,26 +173,31 @@ struct MakeRhs : public KernelBase {
     return fractions;
   }
   typedef MACGrid type4;
-  inline const Grid<Real> *getArg5()
+  inline const MACGrid *getArg5()
+  {
+    return obvel;
+  }
+  typedef MACGrid type5;
+  inline const Grid<Real> *getArg6()
   {
     return phi;
   }
-  typedef Grid<Real> type5;
-  inline const Grid<Real> *getArg6()
+  typedef Grid<Real> type6;
+  inline const Grid<Real> *getArg7()
   {
     return curv;
   }
-  typedef Grid<Real> type6;
-  inline const Real &getArg7()
+  typedef Grid<Real> type7;
+  inline const Real &getArg8()
   {
     return surfTens;
   }
-  typedef Real type7;
-  inline const Real &getArg8()
+  typedef Real type8;
+  inline const Real &getArg9()
   {
     return gfClamp;
   }
-  typedef Real type8;
+  typedef Real type9;
   void runMessage()
   {
     debMsg("Executing kernel MakeRhs ", 3);
@@ -208,6 +227,7 @@ struct MakeRhs : public KernelBase {
                  vel,
                  perCellCorr,
                  fractions,
+                 obvel,
                  phi,
                  curv,
                  surfTens,
@@ -238,6 +258,7 @@ struct MakeRhs : public KernelBase {
                vel,
                perCellCorr,
                fractions,
+               obvel,
                phi,
                curv,
                surfTens,
@@ -257,6 +278,7 @@ struct MakeRhs : public KernelBase {
   const MACGrid &vel;
   const Grid<Real> *perCellCorr;
   const MACGrid *fractions;
+  const MACGrid *obvel;
   const Grid<Real> *phi;
   const Grid<Real> *curv;
   const Real surfTens;
@@ -940,6 +962,7 @@ void computePressureRhs(Grid<Real> &rhs,
                         const Grid<Real> *phi = 0,
                         const Grid<Real> *perCellCorr = 0,
                         const MACGrid *fractions = 0,
+                        const MACGrid *obvel = 0,
                         Real gfClamp = 1e-04,
                         Real cgMaxIterFac = 1.5,
                         bool precondition = true,
@@ -951,7 +974,8 @@ void computePressureRhs(Grid<Real> &rhs,
                         const Real surfTens = 0.)
 {
   // compute divergence and init right hand side
-  MakeRhs kernMakeRhs(flags, rhs, vel, perCellCorr, fractions, phi, curv, surfTens, gfClamp);
+  MakeRhs kernMakeRhs(
+      flags, rhs, vel, perCellCorr, fractions, obvel, phi, curv, surfTens, gfClamp);
 
   if (enforceCompatibility)
     rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
@@ -974,15 +998,16 @@ static PyObject *_W_1(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
       const Grid<Real> *phi = _args.getPtrOpt<Grid<Real>>("phi", 5, 0, &_lock);
       const Grid<Real> *perCellCorr = _args.getPtrOpt<Grid<Real>>("perCellCorr", 6, 0, &_lock);
       const MACGrid *fractions = _args.getPtrOpt<MACGrid>("fractions", 7, 0, &_lock);
-      Real gfClamp = _args.getOpt<Real>("gfClamp", 8, 1e-04, &_lock);
-      Real cgMaxIterFac = _args.getOpt<Real>("cgMaxIterFac", 9, 1.5, &_lock);
-      bool precondition = _args.getOpt<bool>("precondition", 10, true, &_lock);
-      int preconditioner = _args.getOpt<int>("preconditioner", 11, PcMIC, &_lock);
-      bool enforceCompatibility = _args.getOpt<bool>("enforceCompatibility", 12, false, &_lock);
-      bool useL2Norm = _args.getOpt<bool>("useL2Norm", 13, false, &_lock);
-      bool zeroPressureFixing = _args.getOpt<bool>("zeroPressureFixing", 14, false, &_lock);
-      const Grid<Real> *curv = _args.getPtrOpt<Grid<Real>>("curv", 15, NULL, &_lock);
-      const Real surfTens = _args.getOpt<Real>("surfTens", 16, 0., &_lock);
+      const MACGrid *obvel = _args.getPtrOpt<MACGrid>("obvel", 8, 0, &_lock);
+      Real gfClamp = _args.getOpt<Real>("gfClamp", 9, 1e-04, &_lock);
+      Real cgMaxIterFac = _args.getOpt<Real>("cgMaxIterFac", 10, 1.5, &_lock);
+      bool precondition = _args.getOpt<bool>("precondition", 11, true, &_lock);
+      int preconditioner = _args.getOpt<int>("preconditioner", 12, PcMIC, &_lock);
+      bool enforceCompatibility = _args.getOpt<bool>("enforceCompatibility", 13, false, &_lock);
+      bool useL2Norm = _args.getOpt<bool>("useL2Norm", 14, false, &_lock);
+      bool zeroPressureFixing = _args.getOpt<bool>("zeroPressureFixing", 15, false, &_lock);
+      const Grid<Real> *curv = _args.getPtrOpt<Grid<Real>>("curv", 16, NULL, &_lock);
+      const Real surfTens = _args.getOpt<Real>("surfTens", 17, 0., &_lock);
       _retval = getPyNone();
       computePressureRhs(rhs,
                          vel,
@@ -992,6 +1017,7 @@ static PyObject *_W_1(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
                          phi,
                          perCellCorr,
                          fractions,
+                         obvel,
                          gfClamp,
                          cgMaxIterFac,
                          precondition,
@@ -1354,6 +1380,7 @@ void solvePressure(MACGrid &vel,
                    const Grid<Real> *phi = 0,
                    const Grid<Real> *perCellCorr = 0,
                    const MACGrid *fractions = 0,
+                   const MACGrid *obvel = 0,
                    Real gfClamp = 1e-04,
                    Real cgMaxIterFac = 1.5,
                    bool precondition = true,
@@ -1375,6 +1402,7 @@ void solvePressure(MACGrid &vel,
                      phi,
                      perCellCorr,
                      fractions,
+                     obvel,
                      gfClamp,
                      cgMaxIterFac,
                      precondition,
@@ -1442,16 +1470,17 @@ static PyObject *_W_4(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
       const Grid<Real> *phi = _args.getPtrOpt<Grid<Real>>("phi", 4, 0, &_lock);
       const Grid<Real> *perCellCorr = _args.getPtrOpt<Grid<Real>>("perCellCorr", 5, 0, &_lock);
       const MACGrid *fractions = _args.getPtrOpt<MACGrid>("fractions", 6, 0, &_lock);
-      Real gfClamp = _args.getOpt<Real>("gfClamp", 7, 1e-04, &_lock);
-      Real cgMaxIterFac = _args.getOpt<Real>("cgMaxIterFac", 8, 1.5, &_lock);
-      bool precondition = _args.getOpt<bool>("precondition", 9, true, &_lock);
-      int preconditioner = _args.getOpt<int>("preconditioner", 10, PcMIC, &_lock);
-      bool enforceCompatibility = _args.getOpt<bool>("enforceCompatibility", 11, false, &_lock);
-      bool useL2Norm = _args.getOpt<bool>("useL2Norm", 12, false, &_lock);
-      bool zeroPressureFixing = _args.getOpt<bool>("zeroPressureFixing", 13, false, &_lock);
-      const Grid<Real> *curv = _args.getPtrOpt<Grid<Real>>("curv", 14, NULL, &_lock);
-      const Real surfTens = _args.getOpt<Real>("surfTens", 15, 0., &_lock);
-      Grid<Real> *retRhs = _args.getPtrOpt<Grid<Real>>("retRhs", 16, NULL, &_lock);
+      const MACGrid *obvel = _args.getPtrOpt<MACGrid>("obvel", 7, 0, &_lock);
+      Real gfClamp = _args.getOpt<Real>("gfClamp", 8, 1e-04, &_lock);
+      Real cgMaxIterFac = _args.getOpt<Real>("cgMaxIterFac", 9, 1.5, &_lock);
+      bool precondition = _args.getOpt<bool>("precondition", 10, true, &_lock);
+      int preconditioner = _args.getOpt<int>("preconditioner", 11, PcMIC, &_lock);
+      bool enforceCompatibility = _args.getOpt<bool>("enforceCompatibility", 12, false, &_lock);
+      bool useL2Norm = _args.getOpt<bool>("useL2Norm", 13, false, &_lock);
+      bool zeroPressureFixing = _args.getOpt<bool>("zeroPressureFixing", 14, false, &_lock);
+      const Grid<Real> *curv = _args.getPtrOpt<Grid<Real>>("curv", 15, NULL, &_lock);
+      const Real surfTens = _args.getOpt<Real>("surfTens", 16, 0., &_lock);
+      Grid<Real> *retRhs = _args.getPtrOpt<Grid<Real>>("retRhs", 17, NULL, &_lock);
       _retval = getPyNone();
       solvePressure(vel,
                     pressure,
@@ -1460,6 +1489,7 @@ static PyObject *_W_4(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
                     phi,
                     perCellCorr,
                     fractions,
+                    obvel,
                     gfClamp,
                     cgMaxIterFac,
                     precondition,

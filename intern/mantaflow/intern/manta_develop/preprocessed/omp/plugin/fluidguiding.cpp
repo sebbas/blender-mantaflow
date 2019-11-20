@@ -590,6 +590,7 @@ void solvePressure(MACGrid &vel,
                    const Grid<Real> *phi = 0,
                    const Grid<Real> *perCellCorr = 0,
                    const MACGrid *fractions = 0,
+                   const MACGrid *obvel = 0,
                    Real gfClamp = 1e-04,
                    Real cgMaxIterFac = 1.5,
                    bool precondition = true,
@@ -618,6 +619,7 @@ void PD_fluid_guiding(MACGrid &vel,
                       Grid<Real> *phi = 0,
                       Grid<Real> *perCellCorr = 0,
                       MACGrid *fractions = 0,
+                      MACGrid *obvel = 0,
                       Real gfClamp = 1e-04,
                       Real cgMaxIterFac = 1.5,
                       Real cgAccuracy = 1e-3,
@@ -668,6 +670,7 @@ void PD_fluid_guiding(MACGrid &vel,
                   phi,
                   perCellCorr,
                   fractions,
+                  obvel,
                   gfClamp,
                   cgMaxIterFac,
                   true,
@@ -721,13 +724,14 @@ static PyObject *_W_2(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
       Grid<Real> *phi = _args.getPtrOpt<Grid<Real>>("phi", 12, 0, &_lock);
       Grid<Real> *perCellCorr = _args.getPtrOpt<Grid<Real>>("perCellCorr", 13, 0, &_lock);
       MACGrid *fractions = _args.getPtrOpt<MACGrid>("fractions", 14, 0, &_lock);
-      Real gfClamp = _args.getOpt<Real>("gfClamp", 15, 1e-04, &_lock);
-      Real cgMaxIterFac = _args.getOpt<Real>("cgMaxIterFac", 16, 1.5, &_lock);
-      Real cgAccuracy = _args.getOpt<Real>("cgAccuracy", 17, 1e-3, &_lock);
-      int preconditioner = _args.getOpt<int>("preconditioner", 18, 1, &_lock);
-      bool zeroPressureFixing = _args.getOpt<bool>("zeroPressureFixing", 19, false, &_lock);
-      const Grid<Real> *curv = _args.getPtrOpt<Grid<Real>>("curv", 20, NULL, &_lock);
-      const Real surfTens = _args.getOpt<Real>("surfTens", 21, 0., &_lock);
+      MACGrid *obvel = _args.getPtrOpt<MACGrid>("obvel", 15, 0, &_lock);
+      Real gfClamp = _args.getOpt<Real>("gfClamp", 16, 1e-04, &_lock);
+      Real cgMaxIterFac = _args.getOpt<Real>("cgMaxIterFac", 17, 1.5, &_lock);
+      Real cgAccuracy = _args.getOpt<Real>("cgAccuracy", 18, 1e-3, &_lock);
+      int preconditioner = _args.getOpt<int>("preconditioner", 19, 1, &_lock);
+      bool zeroPressureFixing = _args.getOpt<bool>("zeroPressureFixing", 20, false, &_lock);
+      const Grid<Real> *curv = _args.getPtrOpt<Grid<Real>>("curv", 21, NULL, &_lock);
+      const Real surfTens = _args.getOpt<Real>("surfTens", 22, 0., &_lock);
       _retval = getPyNone();
       PD_fluid_guiding(vel,
                        velT,
@@ -744,6 +748,7 @@ static PyObject *_W_2(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
                        phi,
                        perCellCorr,
                        fractions,
+                       obvel,
                        gfClamp,
                        cgMaxIterFac,
                        cgAccuracy,

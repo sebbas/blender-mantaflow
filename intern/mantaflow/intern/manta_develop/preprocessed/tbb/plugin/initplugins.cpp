@@ -1392,7 +1392,7 @@ void PbRegister_calcCenterOfMass()
 //*****************************************************************************
 // helper functions for volume fractions (which are needed for second order obstacle boundaries)
 
-inline static Real calcFraction(Real phi1, Real phi2)
+inline static Real calcFraction(Real phi1, Real phi2, Real fracThreshold)
 {
   if (phi1 > 0. && phi2 > 0.)
     return 1.;
@@ -1410,7 +1410,7 @@ inline static Real calcFraction(Real phi1, Real phi2)
     return 0.5;
 
   Real frac = 1. - phi1 / denom;
-  if (frac < 0.01)
+  if (frac < fracThreshold)
     frac = 0.;  // stomp small values , dont mark as fluid
   return std::min(Real(1), frac);
 }
@@ -1419,12 +1419,14 @@ struct KnUpdateFractions : public KernelBase {
   KnUpdateFractions(const FlagGrid &flags,
                     const Grid<Real> &phiObs,
                     MACGrid &fractions,
-                    const int &boundaryWidth)
+                    const int &boundaryWidth,
+                    const Real fracThreshold)
       : KernelBase(&flags, 1),
         flags(flags),
         phiObs(phiObs),
         fractions(fractions),
-        boundaryWidth(boundaryWidth)
+        boundaryWidth(boundaryWidth),
+        fracThreshold(fracThreshold)
   {
     runMessage();
     run();
@@ -1435,14 +1437,15 @@ struct KnUpdateFractions : public KernelBase {
                  const FlagGrid &flags,
                  const Grid<Real> &phiObs,
                  MACGrid &fractions,
-                 const int &boundaryWidth) const
+                 const int &boundaryWidth,
+                 const Real fracThreshold) const
   {
 
     // walls at domain bounds and inner objects
-    fractions(i, j, k).x = calcFraction(phiObs(i, j, k), phiObs(i - 1, j, k));
-    fractions(i, j, k).y = calcFraction(phiObs(i, j, k), phiObs(i, j - 1, k));
+    fractions(i, j, k).x = calcFraction(phiObs(i, j, k), phiObs(i - 1, j, k), fracThreshold);
+    fractions(i, j, k).y = calcFraction(phiObs(i, j, k), phiObs(i, j - 1, k), fracThreshold);
     if (phiObs.is3D()) {
-      fractions(i, j, k).z = calcFraction(phiObs(i, j, k), phiObs(i, j, k - 1));
+      fractions(i, j, k).z = calcFraction(phiObs(i, j, k), phiObs(i, j, k - 1), fracThreshold);
     }
 
     // remaining BCs at the domain boundaries
@@ -1525,6 +1528,11 @@ struct KnUpdateFractions : public KernelBase {
     return boundaryWidth;
   }
   typedef int type3;
+  inline const Real &getArg4()
+  {
+    return fracThreshold;
+  }
+  typedef Real type4;
   void runMessage()
   {
     debMsg("Executing kernel KnUpdateFractions ", 3);
@@ -1540,13 +1548,13 @@ struct KnUpdateFractions : public KernelBase {
       for (int k = __r.begin(); k != (int)__r.end(); k++)
         for (int j = 1; j < _maxY; j++)
           for (int i = 1; i < _maxX; i++)
-            op(i, j, k, flags, phiObs, fractions, boundaryWidth);
+            op(i, j, k, flags, phiObs, fractions, boundaryWidth, fracThreshold);
     }
     else {
       const int k = 0;
       for (int j = __r.begin(); j != (int)__r.end(); j++)
         for (int i = 1; i < _maxX; i++)
-          op(i, j, k, flags, phiObs, fractions, boundaryWidth);
+          op(i, j, k, flags, phiObs, fractions, boundaryWidth, fracThreshold);
     }
   }
   void run()
@@ -1560,16 +1568,18 @@ struct KnUpdateFractions : public KernelBase {
   const Grid<Real> &phiObs;
   MACGrid &fractions;
   const int &boundaryWidth;
+  const Real fracThreshold;
 };
 
 //! update fill fraction values
 void updateFractions(const FlagGrid &flags,
                      const Grid<Real> &phiObs,
                      MACGrid &fractions,
-                     const int &boundaryWidth = 0)
+                     const int &boundaryWidth = 0,
+                     const Real fracThreshold = 0.01)
 {
   fractions.setConst(Vec3(0.));
-  KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
+  KnUpdateFractions(flags, phiObs, fractions, boundaryWidth, fracThreshold);
 }
 static PyObject *_W_16(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
 {
@@ -1585,8 +1595,9 @@ static PyObject *_W_16(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
       const Grid<Real> &phiObs = *_args.getPtr<Grid<Real>>("phiObs", 1, &_lock);
       MACGrid &fractions = *_args.getPtr<MACGrid>("fractions", 2, &_lock);
       const int &boundaryWidth = _args.getOpt<int>("boundaryWidth", 3, 0, &_lock);
+      const Real fracThreshold = _args.getOpt<Real>("fracThreshold", 4, 0.01, &_lock);
       _retval = getPyNone();
-      updateFractions(flags, phiObs, fractions, boundaryWidth);
+      updateFractions(flags, phiObs, fractions, boundaryWidth, fracThreshold);
       _args.check();
     }
     pbFinalizePlugin(parent, "updateFractions", !noTiming);
