@@ -1714,7 +1714,11 @@ static bool dupliobject_cmp(const void *a_, const void *b_)
     return true;
   }
 
-  if (ELEM(a->type, b->type, OB_DUPLICOLLECTION)) {
+  if (a->type != b->type) {
+    return true;
+  }
+
+  if (a->type == OB_DUPLICOLLECTION) {
     for (int i = 1; (i < MAX_DUPLI_RECUR); i++) {
       if (a->persistent_id[i] != b->persistent_id[i]) {
         return true;
@@ -1798,6 +1802,9 @@ static void make_object_duplilist_real(bContext *C,
     BKE_collection_object_add_from(bmain, scene, base->object, ob_dst);
     base_dst = BKE_view_layer_base_find(view_layer, ob_dst);
     BLI_assert(base_dst != NULL);
+
+    ED_object_base_select(base_dst, BA_SELECT);
+    DEG_id_tag_update(&ob_dst->id, ID_RECALC_SELECT);
 
     BKE_scene_object_base_flag_sync_from_base(base_dst);
 
@@ -1933,6 +1940,9 @@ static void make_object_duplilist_real(bContext *C,
     }
     base->object->instance_collection = NULL;
   }
+
+  ED_object_base_select(base, BA_DESELECT);
+  DEG_id_tag_update(&base->object->id, ID_RECALC_SELECT);
 
   BLI_ghash_free(dupli_gh, NULL, NULL);
   if (parent_gh) {

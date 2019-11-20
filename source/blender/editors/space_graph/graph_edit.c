@@ -333,7 +333,7 @@ void GRAPH_OT_view_all(wmOperatorType *ot)
   ot->poll = ED_operator_graphedit_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 
   /* props */
   ot->prop = RNA_def_boolean(ot->srna,
@@ -356,7 +356,7 @@ void GRAPH_OT_view_selected(wmOperatorType *ot)
   ot->poll = ED_operator_graphedit_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 
   /* props */
   ot->prop = RNA_def_boolean(ot->srna,
@@ -387,7 +387,7 @@ void GRAPH_OT_view_frame(wmOperatorType *ot)
   ot->poll = ED_operator_graphedit_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 }
 
 /* ******************** Create Ghost-Curves Operator *********************** */
@@ -579,7 +579,6 @@ static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
      0,
      "Only Selected Channels",
      "Insert a keyframe on selected F-Curves using each curve's current value"},
-    {0, "", 0, "", ""},
     {GRAPHKEYS_INSERTKEY_ACTIVE | GRAPHKEYS_INSERTKEY_CURSOR,
      "CURSOR_ACTIVE",
      0,

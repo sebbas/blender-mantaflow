@@ -764,6 +764,7 @@ static void ui_apply_but_undo(uiBut *but)
 
   if (but->flag & UI_BUT_UNDO) {
     const char *str = NULL;
+    bool skip_undo = false;
 
     /* define which string to use for undo */
     if (but->type == UI_BTYPE_MENU) {
@@ -792,9 +793,21 @@ static void ui_apply_but_undo(uiBut *but)
       else {
         ID *id = but->rnapoin.owner_id;
         if (!ED_undo_is_legacy_compatible_for_property(but->block->evil_C, id)) {
-          str = "";
+          skip_undo = true;
         }
       }
+    }
+
+    if (skip_undo == false) {
+      /* XXX: disable all undo pushes from UI changes from sculpt mode as they cause memfile undo
+       * steps to be written which cause lag: T71434. */
+      if (BKE_paintmode_get_active_from_context(but->block->evil_C) == PAINT_MODE_SCULPT) {
+        skip_undo = true;
+      }
+    }
+
+    if (skip_undo) {
+      str = "";
     }
 
     /* delayed, after all other funcs run, popups are closed, etc */
@@ -1086,6 +1099,9 @@ static void ui_multibut_add(uiHandleButtonData *data, uiBut *but)
   mbut_state = MEM_callocN(sizeof(*mbut_state), __func__);
   mbut_state->but = but;
   mbut_state->origvalue = ui_but_value_get(but);
+#  ifdef USE_ALLSELECT
+  mbut_state->select_others.is_copy = data->select_others.is_copy;
+#  endif
 
   BLI_linklist_prepend(&data->multi_data.mbuts, mbut_state);
 
@@ -2525,6 +2541,9 @@ static void ui_but_copy(bContext *C, uiBut *but, const bool copy_array)
       break;
 
     case UI_BTYPE_BUT:
+      if (!but->optype) {
+        break;
+      }
       ui_but_copy_operator(C, but, buf, buf_max_len);
       is_buf_set = true;
       break;

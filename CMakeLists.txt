@@ -170,6 +170,14 @@ option_defaults_init(
   _init_OPENSUBDIV
 )
 
+# TBB malloc is only supported on for windows currently
+if(WIN32)
+  set(_init_TBB_MALLOC_PROXY ON)
+else()
+  set(_init_TBB_MALLOC_PROXY OFF)
+endif()
+
+
 # customize...
 if(UNIX AND NOT APPLE)
   # some of these libraries are problematic on Linux
@@ -371,7 +379,6 @@ if(WIN32)
   option(WITH_INPUT_IME "Enable Input Method Editor (IME) for complex Asian character input" ON)
 endif()
 option(WITH_INPUT_NDOF "Enable NDOF input devices (SpaceNavigator and friends)" ${_init_INPUT_NDOF})
-option(WITH_RAYOPTIMIZATION "Enable use of SIMD (SSE) optimizations for the raytracer" ON)
 if(UNIX AND NOT APPLE)
   option(WITH_INSTALL_PORTABLE "Install redistributeable runtime, otherwise install into CMAKE_INSTALL_PREFIX" ON)
   option(WITH_STATIC_LIBS "Try to link with static libraries, as much as possible, to make blender more portable across distributions" OFF)
@@ -463,6 +470,7 @@ mark_as_advanced(WITH_ASSERT_ABORT)
 
 option(WITH_BOOST "Enable features depending on boost" ON)
 option(WITH_TBB   "Enable features depending on TBB (OpenVDB, OpenImageDenoise, sculpt multithreading)" ON)
+option(WITH_TBB_MALLOC_PROXY "Enable the TBB malloc replacement" ${_init_TBB_MALLOC_PROXY})
 
 # Unit testsing
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
@@ -589,6 +597,10 @@ if(UNIX AND NOT APPLE)
   option(WITH_CXX11_ABI "Use native C++11 ABI of compiler" ON)
   mark_as_advanced(WITH_CXX11_ABI)
 endif()
+
+# Installation process.
+option(POSTINSTALL_SCRIPT "Run given CMake script after installation process" OFF)
+mark_as_advanced(POSTINSTALL_SCRIPT)
 
 # avoid using again
 option_defaults_clear()
@@ -1189,6 +1201,7 @@ if(WITH_SYSTEM_GLEW)
     message(FATAL_ERROR "GLEW is required to build Blender. Install it or disable WITH_SYSTEM_GLEW.")
   endif()
 
+  set(GLEW_INCLUDE_PATH "${GLEW_INCLUDE_DIR}")
   set(BLENDER_GLEW_LIBRARIES ${GLEW_LIBRARY})
 else()
   if(WITH_GLEW_ES)
@@ -1800,7 +1813,6 @@ if(FIRST_RUN)
   info_cfg_text("Compiler Options:")
   info_cfg_option(WITH_BUILDINFO)
   info_cfg_option(WITH_OPENMP)
-  info_cfg_option(WITH_RAYOPTIMIZATION)
 
   info_cfg_text("System Options:")
   info_cfg_option(WITH_INSTALL_PORTABLE)
