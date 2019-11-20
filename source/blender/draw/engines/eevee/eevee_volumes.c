@@ -436,6 +436,11 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
     MantaModifierData *mmd = (MantaModifierData *)md;
     MantaDomainSettings *mds = mmd->domain;
 
+    /* Don't try to show liquid domains here. */
+    if (!mds->fluid || !(mds->type == FLUID_DOMAIN_TYPE_GAS)) {
+      return;
+    }
+
     /* Don't show smoke before simulation starts, this could be made an option in the future. */
     /* (sebbas): Always show smoke for manta */
     /* const bool show_smoke = ((int)DEG_get_ctime(draw_ctx->depsgraph) >= mds->point_cache[0]->startframe); */
