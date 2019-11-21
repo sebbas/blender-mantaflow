@@ -1,6 +1,0 @@
-#include "timing.h"
-+ Timings ^ static const Pb::Register _R_$IDX$("Timings", "Timings", "PbClass");
-template<> const char *Namify<Timings>::S = "Timings";
-> Timings ^ +Timings ^ static const Pb::Register _R_$IDX$("Timings", "Timings", Timings::_W_0);
-+ Timings ^ static const Pb::Register _R_$IDX$("Timings", "display", Timings::_W_1);
-+ Timings ^ static const Pb::Register _R_$IDX$("Timings", "saveMean", Timings::_W_2);

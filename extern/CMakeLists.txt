@@ -110,3 +110,7 @@ if(WITH_QUADRIFLOW)
   set(QUADRIFLOW_CMAKE_CFG ${CMAKE_CURRENT_SOURCE_DIR}/quadriflow/blender_config.cmake)
   add_subdirectory(quadriflow)
 endif()
+
+if(WITH_MOD_MANTA)
+  add_subdirectory(mantaflow)
+endif()
