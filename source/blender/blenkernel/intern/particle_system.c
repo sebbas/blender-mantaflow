@@ -4163,6 +4163,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
       float resX, resY, resZ;
       int upres = 1;
       char debugStrBuffer[256];
+      float tmp[3] = {0}, tmp2[3] = {0};
 
       /* Helper variables for scaling */
       float min[3], max[3], size[3], cell_size_scaled[3], max_size;
@@ -4331,6 +4332,16 @@ static void particles_manta_step(ParticleSimulationData *sim,
 
           /* Match domain scale */
           mul_m4_v3(ob->obmat, pa->state.co);
+
+          /* Add origin offset to particle position */
+          zero_v3(tmp);
+          zero_v3(tmp2);
+          sub_v3_v3v3(tmp2, mds->p1, mds->p0);
+          mul_v3_fl(tmp2, 0.5f);
+          add_v3_v3v3(tmp, tmp, mds->p1);
+          sub_v3_v3(tmp, tmp2);
+          mul_v3_v3(tmp, ob->scale);
+          add_v3_v3(pa->state.co, tmp);
 
           // printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
           // pa->state.co[0], pa->state.co[1], pa->state.co[2]);
