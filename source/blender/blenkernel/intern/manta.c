@@ -4126,11 +4126,14 @@ static void mantaModifier_process(
         break;
     }
 
+    /* TODO (sebbas): Add proper cache reset mechanism. */
+    #if 0
     /* Cache outdated? If so, don't read, just bake */
     if (bake_outdated) {
       read_cache = false;
       bake_cache = true;
     }
+    #endif
 
     /* Try to read from cache and keep track of read success */
     if (read_cache) {
