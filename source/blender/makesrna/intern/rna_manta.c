@@ -981,7 +981,7 @@ static void rna_Manta_flowtype_set(struct PointerRNA *ptr, int value)
     /* Force flow source to mesh */
     if (value == FLUID_FLOW_TYPE_LIQUID) {
       rna_Manta_flowsource_set(ptr, FLUID_FLOW_SOURCE_MESH);
-      settings->surface_distance = 0.5f;
+      settings->surface_distance = 0.0f;
     }
     else {
       settings->surface_distance = 1.5f;
@@ -2412,7 +2412,7 @@ static void rna_def_manta_flow_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
-  RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
+  RNA_def_property_ui_range(prop, 0.0, 10.0, 0.05, 5);
   RNA_def_property_ui_text(prop, "Surface", "Maximum distance from mesh surface to emit fluid");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
@@ -2542,7 +2542,7 @@ static void rna_def_manta_effec_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "surface_distance", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 10.0);
-  RNA_def_property_ui_range(prop, 0.5, 5.0, 0.05, 5);
+  RNA_def_property_ui_range(prop, 0.0, 10.0, 0.05, 5);
   RNA_def_property_ui_text(
       prop, "Surface", "Distance around mesh surface to consider as effector");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");

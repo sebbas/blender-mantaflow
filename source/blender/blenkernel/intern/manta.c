@@ -840,7 +840,7 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->flow->fuel_amount = 1.0f;
       mmd->flow->temp = 1.0f;
       mmd->flow->volume_density = 0.0f;
-      mmd->flow->surface_distance = 0.5f;
+      mmd->flow->surface_distance = 1.5f;
       mmd->flow->particle_size = 1.0f;
       mmd->flow->subframes = 0;
 
@@ -864,7 +864,7 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->effec->mesh = NULL;
       mmd->effec->verts_old = NULL;
       mmd->effec->numverts = 0;
-      mmd->effec->surface_distance = 0.5f;
+      mmd->effec->surface_distance = 0.0f;
       mmd->effec->type = FLUID_EFFECTOR_TYPE_COLLISION;
       mmd->effec->flags = 0;
 
