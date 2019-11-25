@@ -284,7 +284,7 @@ void MANTA::initDomain(MantaModifierData *mmd)
 void MANTA::initNoise(MantaModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
-  std::string tmpString = fluid_variables_noise + fluid_solver_noise + fluid_time_stepping_noise;
+  std::string tmpString = fluid_variables_noise + fluid_solver_noise;
   std::string finalString = parseScript(tmpString, mmd);
   pythonCommands.push_back(finalString);
 
@@ -1868,9 +1868,6 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
 
   // Time
   manta_script += header_time + fluid_time_stepping + fluid_adapt_time_step;
-  if (noise) {
-    manta_script += fluid_time_stepping_noise;
-  }
 
   // Import
   manta_script += header_import + fluid_file_import + fluid_cache_helper + fluid_load_data +

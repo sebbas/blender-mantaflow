@@ -204,17 +204,6 @@ s$ID$.timestep     = dt0_s$ID$\n\
 s$ID$.timeTotal    = timeTotal_s$ID$\n\
 #mantaMsg('timestep: ' + str(s$ID$.timestep) + ' // timPerFrame: ' + str(s$ID$.timePerFrame) + ' // frameLength: ' + str(s$ID$.frameLength) + ' // timeTotal: ' + str(s$ID$.timeTotal) )\n";
 
-const std::string fluid_time_stepping_noise =
-    "\n\
-mantaMsg('Fluid adaptive time stepping noise')\n\
-sn$ID$.frameLength = frameLength_s$ID$\n\
-sn$ID$.timestepMin = s$ID$.timestepMin\n\
-sn$ID$.timestepMax = s$ID$.timestepMax\n\
-sn$ID$.cfl         = cflCond_s$ID$\n\
-sn$ID$.timestep    = dt0_s$ID$\n\
-sn$ID$.timeTotal   = timeTotal_s$ID$\n\
-#mantaMsg('noise timestep: ' + str(sn$ID$.timestep) + ' // timPerFrame: ' + str(sn$ID$.timePerFrame) + ' // frameLength: ' + str(sn$ID$.frameLength) + ' // timeTotal: ' + str(sn$ID$.timeTotal) )\n";
-
 const std::string fluid_adapt_time_step =
     "\n\
 def fluid_adapt_time_step_$ID$():\n\
@@ -407,11 +396,13 @@ if 'liquid_data_dict_s$ID$' in globals(): liquid_data_dict_s$ID$.clear()\n\
 if 'liquid_flip_dict_s$ID$' in globals(): liquid_flip_dict_s$ID$.clear()\n\
 if 'liquid_mesh_dict_s$ID$' in globals(): liquid_mesh_dict_s$ID$.clear()\n\
 if 'liquid_meshvel_dict_s$ID$' in globals(): liquid_meshvel_dict_s$ID$.clear()\n\
+if 'liquid_particles_dict_s$ID$' in globals(): liquid_particles_dict_s$ID$.clear()\n\
 if 'smoke_data_dict_s$ID$' in globals(): smoke_data_dict_s$ID$.clear()\n\
 if 'smoke_noise_dict_s$ID$' in globals(): smoke_noise_dict_s$ID$.clear()\n\
 if 'fluid_particles_dict_s$ID$' in globals(): fluid_particles_dict_s$ID$.clear()\n\
 if 'fluid_guiding_dict_s$ID$' in globals(): fluid_guiding_dict_s$ID$.clear()\n\
 if 'fluid_data_dict_s$ID$' in globals(): fluid_data_dict_s$ID$.clear()\n\
+if 'fluid_vel_dict_s$ID$' in globals(): fluid_vel_dict_s$ID$.clear()\n\
 \n\
 # Delete all childs from objects (e.g. pdata for particles)\n\
 mantaMsg('Release solver childs childs')\n\
@@ -520,6 +511,7 @@ def bake_noise_process_$ID$(framenr, format_data, format_noise, path_data, path_
     \n\
     sn$ID$.frame = framenr\n\
     sn$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
+    sn$ID$.timestep  = dt0_s$ID$\n\
     mantaMsg('sn$ID$.timeTotal: ' + str(sn$ID$.timeTotal))\n\
     \n\
     smoke_step_noise_$ID$(framenr)\n\
@@ -538,6 +530,7 @@ def bake_mesh_process_$ID$(framenr, format_data, format_mesh, format_particles, 
     \n\
     sm$ID$.frame = framenr\n\
     sm$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
+    sm$ID$.timestep  = dt0_s$ID$\n\
     \n\
     #if using_smoke_s$ID$:\n\
         # TODO (sebbas): Future update could include smoke mesh (vortex sheets)\n\
@@ -560,6 +553,7 @@ def bake_particles_process_$ID$(framenr, format_data, format_particles, path_dat
     \n\
     sp$ID$.frame = framenr\n\
     sp$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
+    sn$ID$.timestep  = dt0_s$ID$\n\
     \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\
@@ -648,8 +642,8 @@ const std::string fluid_load_vel =
     "\n\
 def fluid_load_vel_$ID$(path, framenr, file_format):\n\
     mantaMsg('Fluid load vel, frame ' + str(framenr))\n\
-    vel_dict = dict(vel=guidevel_sg$ID$)\n\
-    fluid_file_import_s$ID$(dict=vel_dict, path=path, framenr=framenr, file_format=file_format)\n";
+    fluid_vel_dict = dict(vel=guidevel_sg$ID$)\n\
+    fluid_file_import_s$ID$(dict=fluid_vel_dict, path=path, framenr=framenr, file_format=file_format)\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT

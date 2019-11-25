@@ -80,7 +80,6 @@ struct MANTA {
 
   // Pointer transfer: Mantaflow -> Blender
   void updatePointers();
-  void updatePointersNoise();
 
   // Write cache
   int writeConfiguration(MantaModifierData *mmd, int framenr);

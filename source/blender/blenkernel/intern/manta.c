@@ -3966,6 +3966,7 @@ static void manta_step(
       mds->time_total = time_total;
     }
   }
+
   if (mds->type == FLUID_DOMAIN_TYPE_GAS) {
     manta_smoke_calc_transparency(mds, DEG_get_evaluated_view_layer(depsgraph));
   }
@@ -4067,7 +4068,6 @@ static void mantaModifier_process(
       }
     }
 
-    /* Cache does not keep track of active fields yet. So refresh them here */
     objs = BKE_collision_objects_create(
         depsgraph, ob, mds->fluid_group, &numobj, eModifierType_Manta);
     update_flowsflags(mds, objs, numobj);

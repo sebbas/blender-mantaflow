@@ -136,22 +136,17 @@ color_b_sn$ID$    = 0\n\
 wltnoise_sn$ID$   = sn$ID$.create(NoiseField, fixedSeed=265, loadFromFile=True)\n\
 \n\
 mantaMsg('Initializing UV Grids')\n\
-uv_s$ID$ = [] # list for UV grids\n\
-for i in range(uvs_s$ID$):\n\
-    uvGrid_s$ID$ = s$ID$.create(VecGrid)\n\
-    uv_s$ID$.append(uvGrid_s$ID$)\n\
-    resetUvGrid(target=uv_s$ID$[i], offset=uvs_offset_s$ID$)\n\
+uvGrid0_s$ID$ = s$ID$.create(VecGrid)\n\
+uvGrid1_s$ID$ = s$ID$.create(VecGrid)\n\
+resetUvGrid(target=uvGrid0_s$ID$, offset=uvs_offset_s$ID$)\n\
+resetUvGrid(target=uvGrid1_s$ID$, offset=uvs_offset_s$ID$)\n\
 \n\
 # Sync UV and texture grids\n\
-copyVec3ToReal(source=uv_s$ID$[0], targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
-copyVec3ToReal(source=uv_s$ID$[1], targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n\
+copyVec3ToReal(source=uvGrid0_s$ID$, targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
+copyVec3ToReal(source=uvGrid1_s$ID$, targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
-smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$)\n\
-for i in range(uvs_s$ID$):\n\
-    k_s$ID$ = 'uvGrid' + str(i)\n\
-    v_s$ID$ = uv_s$ID$[i]\n\
-    smoke_noise_dict_s$ID$[k_s$ID$] = v_s$ID$\n";
+smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$, uv0_noise=uvGrid0_s$ID$, uv1_noise=uvGrid1_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // ADDITIONAL GRIDS
@@ -168,10 +163,9 @@ color_g_in_s$ID$ = s$ID$.create(RealGrid)\n\
 color_b_in_s$ID$ = s$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
-tmpDict_s$ID$ = dict(color_r=color_r_s$ID$, color_g=color_g_s$ID$, color_b=color_b_s$ID$)\n\
-smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n\
-tmpDict_s$ID$ = dict(color_r_in=color_r_in_s$ID$, color_g_in=color_g_in_s$ID$, color_b_in=color_b_in_s$ID$)\n\
-smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
+if 'smoke_data_dict_s$ID$' in globals():\n\
+    smoke_data_dict_s$ID$.update(color_r=color_r_s$ID$, color_g=color_g_s$ID$, color_b=color_b_s$ID$)\n\
+    smoke_data_dict_s$ID$.update(color_r_in=color_r_in_s$ID$, color_g_in=color_g_in_s$ID$, color_b_in=color_b_in_s$ID$)\n";
 
 const std::string smoke_alloc_colors_noise =
     "\
@@ -181,8 +175,8 @@ color_g_sn$ID$ = sn$ID$.create(RealGrid)\n\
 color_b_sn$ID$ = sn$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
-tmpDict_s$ID$ = dict(color_r_noise=color_r_sn$ID$, color_g_noise=color_g_sn$ID$, color_b_noise=color_b_sn$ID$)\n\
-smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
+if 'smoke_noise_dict_s$ID$' in globals():\n\
+    smoke_noise_dict_s$ID$.update(color_r_noise=color_r_sn$ID$, color_g_noise=color_g_sn$ID$, color_b_noise=color_b_sn$ID$)\n";
 
 const std::string smoke_init_colors =
     "\n\
@@ -211,8 +205,8 @@ heat_s$ID$   = s$ID$.create(RealGrid)\n\
 heatIn_s$ID$ = s$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
-tmpDict_s$ID$ = dict(heat=heat_s$ID$, heatIn=heatIn_s$ID$,)\n\
-smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
+if 'smoke_data_dict_s$ID$' in globals():\n\
+    smoke_data_dict_s$ID$.update(heat=heat_s$ID$, heatIn=heatIn_s$ID$)\n";
 
 const std::string smoke_alloc_fire =
     "\n\
@@ -224,10 +218,9 @@ fuelIn_s$ID$  = s$ID$.create(RealGrid)\n\
 reactIn_s$ID$ = s$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
-tmpDict_s$ID$ = dict(flame=flame_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$,)\n\
-smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n\
-tmpDict_s$ID$ = dict(fuelIn=fuelIn_s$ID$, reactIn=reactIn_s$ID$,)\n\
-smoke_data_dict_s$ID$.update(tmpDict_s$ID$)\n";
+if 'smoke_data_dict_s$ID$' in globals():\n\
+    smoke_data_dict_s$ID$.update(flame=flame_s$ID$, fuel=fuel_s$ID$, react=react_s$ID$)\n\
+    smoke_data_dict_s$ID$.update(fuelIn=fuelIn_s$ID$, reactIn=reactIn_s$ID$)\n";
 
 const std::string smoke_alloc_fire_noise =
     "\n\
@@ -237,8 +230,8 @@ fuel_sn$ID$  = sn$ID$.create(RealGrid)\n\
 react_sn$ID$ = sn$ID$.create(RealGrid)\n\
 \n\
 # Add objects to dict to load them later on\n\
-tmpDict_s$ID$ = dict(flame_noise=flame_sn$ID$, fuel_noise=fuel_sn$ID$, react_noise=react_sn$ID$)\n\
-smoke_noise_dict_s$ID$.update(tmpDict_s$ID$)\n";
+if 'smoke_noise_dict_s$ID$' in globals():\n\
+    smoke_noise_dict_s$ID$.update(flame_noise=flame_sn$ID$, fuel_noise=fuel_sn$ID$, react_noise=react_sn$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // STEP FUNCTIONS
@@ -386,15 +379,15 @@ def smoke_step_noise_$ID$(framenr):\n\
     mantaMsg('Manta step noise, frame ' + str(framenr))\n\
     sn$ID$.frame = framenr\n\
     \n\
-    copyRealToVec3(sourceX=texture_u_s$ID$, sourceY=texture_v_s$ID$, sourceZ=texture_w_s$ID$, target=uv_s$ID$[0])\n\
-    copyRealToVec3(sourceX=texture_u2_s$ID$, sourceY=texture_v2_s$ID$, sourceZ=texture_w2_s$ID$, target=uv_s$ID$[1])\n\
+    copyRealToVec3(sourceX=texture_u_s$ID$, sourceY=texture_v_s$ID$, sourceZ=texture_w_s$ID$, target=uvGrid0_s$ID$)\n\
+    copyRealToVec3(sourceX=texture_u2_s$ID$, sourceY=texture_v2_s$ID$, sourceZ=texture_w2_s$ID$, target=uvGrid1_s$ID$)\n\
     \n\
     flags_sn$ID$.initDomain(boundaryWidth=0, phiWalls=phiObs_sn$ID$, outflow=boundConditions_s$ID$)\n\
     \n\
     mantaMsg('Interpolating grids')\n\
     # Join big obstacle levelset after initDomain() call as it overwrites everything in phiObs\n\
     if using_obstacle_s$ID$:\n\
-        interpolateGrid(target=phiIn_sn$ID$, source=phiObs_s$ID$) # mis-use phiIn_sn\n\
+        interpolateGrid(target=phiIn_sn$ID$, source=phiObsIn_s$ID$) # mis-use phiIn_sn\n\
         phiObs_sn$ID$.join(phiIn_sn$ID$)\n\
     if using_outflow_s$ID$:\n\
         interpolateGrid(target=phiOut_sn$ID$, source=phiOut_s$ID$)\n\
@@ -435,8 +428,8 @@ def smoke_step_noise_$ID$(framenr):\n\
     \n\
     sn$ID$.step()\n\
     \n\
-    copyVec3ToReal(source=uv_s$ID$[0], targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
-    copyVec3ToReal(source=uv_s$ID$[1], targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n\
+    copyVec3ToReal(source=uvGrid0_s$ID$, targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
+    copyVec3ToReal(source=uvGrid1_s$ID$, targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n\
 \n\
 def step_noise_$ID$():\n\
     mantaMsg('Smoke step noise')\n\
@@ -445,11 +438,11 @@ def step_noise_$ID$():\n\
         mantaMsg('Dissolving noise')\n\
         dissolveSmoke(flags=flags_sn$ID$, density=density_sn$ID$, heat=None, red=color_r_sn$ID$, green=color_g_sn$ID$, blue=color_b_sn$ID$, speed=dissolveSpeed_s$ID$, logFalloff=using_logdissolve_s$ID$)\n\
     \n\
-    for i in range(uvs_s$ID$):\n\
-        mantaMsg('Advecting UV')\n\
-        advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=uv_s$ID$[i], order=2)\n\
-        mantaMsg('Updating UVWeight')\n\
-        updateUvWeight(resetTime=sn$ID$.timestep*10.0 , index=i, numUvs=uvs_s$ID$, uv=uv_s$ID$[i], offset=uvs_offset_s$ID$)\n\
+    mantaMsg('Advecting UVs and updating UV weight')\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=uvGrid0_s$ID$, order=2)\n\
+    updateUvWeight(resetTime=sn$ID$.timestep*10.0 , index=0, numUvs=uvs_s$ID$, uv=uvGrid0_s$ID$, offset=uvs_offset_s$ID$)\n\
+    advectSemiLagrange(flags=flags_s$ID$, vel=vel_s$ID$, grid=uvGrid1_s$ID$, order=2)\n\
+    updateUvWeight(resetTime=sn$ID$.timestep*10.0 , index=1, numUvs=uvs_s$ID$, uv=uvGrid1_s$ID$, offset=uvs_offset_s$ID$)\n\
     \n\
     mantaMsg('Energy')\n\
     computeEnergy(flags=flags_s$ID$, vel=vel_s$ID$, energy=energy_s$ID$)\n\
@@ -464,9 +457,11 @@ def step_noise_$ID$():\n\
     \n\
     mantaMsg('Applying noise vec')\n\
     for o in range(octaves_s$ID$):\n\
-        for i in range(uvs_s$ID$):\n\
-            uvWeight_s$ID$ = getUvWeight(uv_s$ID$[i])\n\
-            applyNoiseVec3(flags=flags_sn$ID$, target=vel_sn$ID$, noise=wltnoise_sn$ID$, scale=sStr_s$ID$ * uvWeight_s$ID$, scaleSpatial=sPos_s$ID$ , weight=energy_s$ID$, uv=uv_s$ID$[i])\n\
+        uvWeight_s$ID$ = getUvWeight(uvGrid0_s$ID$)\n\
+        applyNoiseVec3(flags=flags_sn$ID$, target=vel_sn$ID$, noise=wltnoise_sn$ID$, scale=sStr_s$ID$ * uvWeight_s$ID$, scaleSpatial=sPos_s$ID$ , weight=energy_s$ID$, uv=uvGrid0_s$ID$)\n\
+        uvWeight_s$ID$ = getUvWeight(uvGrid1_s$ID$)\n\
+        applyNoiseVec3(flags=flags_sn$ID$, target=vel_sn$ID$, noise=wltnoise_sn$ID$, scale=sStr_s$ID$ * uvWeight_s$ID$, scaleSpatial=sPos_s$ID$ , weight=energy_s$ID$, uv=uvGrid1_s$ID$)\n\
+        \n\
         sStr_s$ID$ *= 0.06 # magic kolmogorov factor \n\
         sPos_s$ID$ *= 2.0 \n\
     \n\
@@ -507,7 +502,11 @@ const std::string smoke_load_noise =
     "\n\
 def smoke_load_noise_$ID$(path, framenr, file_format):\n\
     mantaMsg('Smoke load noise')\n\
-    fluid_file_import_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n";
+    fluid_file_import_s$ID$(dict=smoke_noise_dict_s$ID$, path=path, framenr=framenr, file_format=file_format)\n\
+    \n\
+    # Fill up xyz texture grids, important when resuming a bake\n\
+    copyVec3ToReal(source=uvGrid0_s$ID$, targetX=texture_u_s$ID$, targetY=texture_v_s$ID$, targetZ=texture_w_s$ID$)\n\
+    copyVec3ToReal(source=uvGrid1_s$ID$, targetX=texture_u2_s$ID$, targetY=texture_v2_s$ID$, targetZ=texture_w2_s$ID$)\n";
 
 //////////////////////////////////////////////////////////////////////
 // EXPORT
