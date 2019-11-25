@@ -46,7 +46,13 @@ buoyancy_dens_s$ID$     = float($BUOYANCY_ALPHA$) / float($FLUID_DOMAIN_SIZE$)\n
 buoyancy_heat_s$ID$     = float($BUOYANCY_BETA$) / float($FLUID_DOMAIN_SIZE$)\n\
 dissolveSpeed_s$ID$     = $DISSOLVE_SPEED$\n\
 using_logdissolve_s$ID$ = $USING_LOG_DISSOLVE$\n\
-using_dissolve_s$ID$    = $USING_DISSOLVE$\n";
+using_dissolve_s$ID$    = $USING_DISSOLVE$\n\
+flameVorticity_s$ID$    = $FLAME_VORTICITY$\n\
+burningRate_s$ID$       = $BURNING_RATE$\n\
+flameSmoke_s$ID$        = $FLAME_SMOKE$\n\
+ignitionTemp_s$ID$      = $IGNITION_TEMP$\n\
+maxTemp_s$ID$           = $MAX_TEMP$\n\
+flameSmokeColor_s$ID$   = vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$)\n";
 
 const std::string smoke_variables_noise =
     "\n\
@@ -330,7 +336,10 @@ def smoke_step_$ID$():\n\
         resetOutflow(flags=flags_s$ID$, real=density_s$ID$)\n\
     \n\
     mantaMsg('Vorticity')\n\
-    vorticityConfinement(vel=vel_s$ID$, flags=flags_s$ID$, strength=vorticity_s$ID$)\n\
+    if using_fire_s$ID$:\n\
+        flame_s$ID$.copyFrom(fuel_s$ID$) # temporarily misuse flame grid as vorticity storage\n\
+        flame_s$ID$.multConst(flameVorticity_s$ID$)\n\
+    vorticityConfinement(vel=vel_s$ID$, flags=flags_s$ID$, strengthGlobal=vorticity_s$ID$, strengthCell=None if using_fire_s$ID$ else None)\n\
     \n\
     if using_heat_s$ID$:\n\
         mantaMsg('Adding heat buoyancy')\n\
@@ -365,7 +374,7 @@ def smoke_step_$ID$():\n\
 \n\
 def process_burn_$ID$():\n\
     mantaMsg('Process burn')\n\
-    processBurn(fuel=fuel_s$ID$, density=density_s$ID$, react=react_s$ID$, red=color_r_s$ID$ if using_colors_s$ID$ else None, green=color_g_s$ID$ if using_colors_s$ID$ else None, blue=color_b_s$ID$ if using_colors_s$ID$ else None, heat=heat_s$ID$ if using_heat_s$ID$ else None, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel_s$ID$, density=density_s$ID$, react=react_s$ID$, red=color_r_s$ID$ if using_colors_s$ID$ else None, green=color_g_s$ID$ if using_colors_s$ID$ else None, blue=color_b_s$ID$ if using_colors_s$ID$ else None, heat=heat_s$ID$ if using_heat_s$ID$ else None, burningRate=burningRate_s$ID$, flameSmoke=flameSmoke_s$ID$, ignitionTemp=ignitionTemp_s$ID$, maxTemp=maxTemp_s$ID$, flameSmokeColor=flameSmokeColor_s$ID$)\n\
 \n\
 def update_flame_$ID$():\n\
     mantaMsg('Update flame')\n\
@@ -478,7 +487,7 @@ def step_noise_$ID$():\n\
 \n\
 def process_burn_noise_$ID$():\n\
     mantaMsg('Process burn noise')\n\
-    processBurn(fuel=fuel_sn$ID$, density=density_sn$ID$, react=react_sn$ID$, red=color_r_sn$ID$ if using_colors_s$ID$ else None, green=color_g_sn$ID$ if using_colors_s$ID$ else None, blue=color_b_sn$ID$ if using_colors_s$ID$ else None, burningRate=$BURNING_RATE$, flameSmoke=$FLAME_SMOKE$, ignitionTemp=$IGNITION_TEMP$, maxTemp=$MAX_TEMP$, flameSmokeColor=vec3($FLAME_SMOKE_COLOR_X$,$FLAME_SMOKE_COLOR_Y$,$FLAME_SMOKE_COLOR_Z$))\n\
+    processBurn(fuel=fuel_sn$ID$, density=density_sn$ID$, react=react_sn$ID$, red=color_r_sn$ID$ if using_colors_s$ID$ else None, green=color_g_sn$ID$ if using_colors_s$ID$ else None, blue=color_b_sn$ID$ if using_colors_s$ID$ else None, burningRate=burningRate_s$ID$, flameSmoke=flameSmoke_s$ID$, ignitionTemp=ignitionTemp_s$ID$, maxTemp=maxTemp_s$ID$, flameSmokeColor=flameSmokeColor_s$ID$)\n\
 \n\
 def update_flame_noise_$ID$():\n\
     mantaMsg('Update flame noise')\n\

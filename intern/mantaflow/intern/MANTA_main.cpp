@@ -690,6 +690,8 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
     ss << mmd->domain->time_per_frame;
   else if (varName == "VORTICITY")
     ss << mmd->domain->vorticity / mConstantScaling;
+  else if (varName == "FLAME_VORTICITY")
+    ss << mmd->domain->flame_vorticity / mConstantScaling;
   else if (varName == "NOISE_SCALE")
     ss << mmd->domain->noise_scale;
   else if (varName == "MESH_SCALE")
