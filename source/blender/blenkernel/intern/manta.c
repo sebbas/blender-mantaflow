@@ -327,6 +327,77 @@ void BKE_manta_reallocate_copy_fluid(MantaDomainSettings *mds,
   manta_free(fluid_old);
 }
 
+void BKE_manta_cache_free(MantaDomainSettings *mds, Object *ob, int cache_map)
+{
+  char tmpDir[FILE_MAX];
+  int flags = mds->cache_flag;
+
+  /* Ensure cache directory is not relative */
+  const char *relbase = modifier_path_relbase_from_global(ob);
+  BLI_path_abs(mds->cache_directory, relbase);
+
+  if (cache_map & FLUID_DOMAIN_OUTDATED_DATA)
+  {
+    printf("free data\n");
+    flags &= ~(FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKED_DATA | FLUID_DOMAIN_OUTDATED_DATA);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
+    mds->cache_frame_pause_data = 0;
+  }
+
+  if (cache_map & FLUID_DOMAIN_OUTDATED_NOISE)
+  {
+    printf("free noise\n");
+    flags &= ~(FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE | FLUID_DOMAIN_OUTDATED_NOISE);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
+    mds->cache_frame_pause_noise = 0;
+  }
+
+  if (cache_map & FLUID_DOMAIN_OUTDATED_MESH)
+  {
+    printf("free mesh\n");
+    flags &= ~(FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH | FLUID_DOMAIN_OUTDATED_MESH);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
+    mds->cache_frame_pause_mesh = 0;
+  }
+
+  if (cache_map & FLUID_DOMAIN_OUTDATED_PARTICLES)
+  {
+    printf("free particles\n");
+    flags &= ~(FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES | FLUID_DOMAIN_OUTDATED_PARTICLES);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
+    mds->cache_frame_pause_particles = 0;
+  }
+
+  if (cache_map & FLUID_DOMAIN_OUTDATED_GUIDING)
+  {
+    printf("free guiding\n");
+    flags &= ~(FLUID_DOMAIN_BAKING_GUIDING | FLUID_DOMAIN_BAKED_GUIDING | FLUID_DOMAIN_OUTDATED_GUIDING);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
+    mds->cache_frame_pause_guiding = 0;
+  }
+
+  mds->cache_flag = flags;
+}
+
 /* convert global position to domain cell space */
 static void manta_pos_to_cell(MantaDomainSettings *mds, float pos[3])
 {
@@ -3969,22 +4040,6 @@ static void mantaModifier_process(
     unsigned int numobj = 0;
     MantaModifierData *mmd_parent = NULL;
 
-#if 0
-    bool is_baking = (mds->cache_flag & (FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKING_NOISE |
-                                         FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKING_PARTICLES |
-                                         FLUID_DOMAIN_BAKING_GUIDING));
-    bool is_baked = (mds->cache_flag & (FLUID_DOMAIN_BAKED_DATA | FLUID_DOMAIN_BAKED_NOISE |
-                                        FLUID_DOMAIN_BAKED_MESH | FLUID_DOMAIN_BAKED_PARTICLES |
-                                        FLUID_DOMAIN_BAKED_GUIDING));
-
-    /* Reset fluid if no fluid present (obviously)
-     * or if timeline gets reset to startframe when no (!) baking is running
-     * or if no baking is running and also there is no baked data present */
-    if (!mds->fluid || (scene_framenr == startframe && !is_baking) || (!is_baking && !is_baked)) {
-      mantaModifier_reset_ex(mmd, false);
-    }
-#endif
-
     bool is_startframe;
     is_startframe = (scene_framenr == mds->cache_frame_start);
 
@@ -4060,7 +4115,7 @@ static void mantaModifier_process(
     baking_mesh = mds->cache_flag & FLUID_DOMAIN_BAKING_MESH;
     baking_particles = mds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES;
     baking_guiding = mds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING;
-    bake_outdated = mds->cache_flag & FLUID_DOMAIN_CACHE_OUTDATED;
+    bake_outdated = mds->cache_flag & (FLUID_DOMAIN_OUTDATED_DATA | FLUID_DOMAIN_OUTDATED_NOISE | FLUID_DOMAIN_OUTDATED_NOISE | FLUID_DOMAIN_OUTDATED_MESH | FLUID_DOMAIN_OUTDATED_PARTICLES | FLUID_DOMAIN_OUTDATED_GUIDING);
 
     bool resume_data, resume_noise, resume_mesh, resume_particles, resume_guiding;
     resume_data = (!is_startframe) && (mds->cache_frame_pause_data == scene_framenr);
@@ -4078,6 +4133,7 @@ static void mantaModifier_process(
 
     int mode = mds->cache_type;
     int prev_frame = scene_framenr - 1;
+    CLAMP(prev_frame, 1, prev_frame);
     int o_res[3], o_min[3], o_max[3], o_shift[3];
 
     /* Cache mode specific settings */
@@ -4115,67 +4171,83 @@ static void mantaModifier_process(
           guiding_frame = prev_frame;
         }
 
+        /* Noise, mesh and particles can never be baked more than data. */
+        CLAMP(noise_frame, noise_frame, data_frame);
+        CLAMP(mesh_frame, mesh_frame, data_frame);
+        CLAMP(particles_frame, particles_frame, data_frame);
+
         /* Force to read cache as we're resuming the bake */
         read_cache = true;
         break;
       }
       case FLUID_DOMAIN_CACHE_REPLAY:
       default:
-        /* Always trying to read the cache in replay mode */
+        /* Always trying to read the cache in replay mode. */
         read_cache = true;
         break;
     }
 
-    /* TODO (sebbas): Add proper cache reset mechanism. */
-    #if 0
-    /* Cache outdated? If so, don't read, just bake */
+    /* Cache outdated? If so reset, don't read, and then just rebake. */
     if (bake_outdated) {
       read_cache = false;
       bake_cache = true;
+      BKE_manta_cache_free(mds, ob, mds->cache_flag);
     }
-    #endif
 
-    /* Try to read from cache and keep track of read success */
+    /* Try to read from cache and keep track of read success. */
     if (read_cache) {
-      /* Read noise cache */
-      if (with_smoke && with_noise) {
-        /* Read config cache */
-        copy_v3_v3_int(o_res, mds->res);
-        copy_v3_v3_int(o_min, mds->res_min);
-        copy_v3_v3_int(o_max, mds->res_max);
-        copy_v3_v3_int(o_shift, mds->shift);
-        if (manta_read_config(mds->fluid, mmd, noise_frame) &&
-            manta_needs_realloc(mds->fluid, mmd)) {
-          BKE_manta_reallocate_copy_fluid(
-              mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
-        }
-        has_noise = manta_read_noise(mds->fluid, mmd, noise_frame);
-      }
 
-      /* Read mesh cache */
+      /* Read mesh cache. */
       if (with_liquid && with_mesh) {
         has_mesh = manta_read_mesh(mds->fluid, mmd, mesh_frame);
       }
 
-      /* Read particles cache */
+      /* Read particles cache. */
       if (with_liquid && with_particles) {
         has_particles = manta_read_particles(mds->fluid, mmd, particles_frame);
       }
 
-      /* Read guiding cache */
+      /* Read guiding cache. */
       if (with_guiding) {
         MantaModifierData *mmd2 = (with_gdomain) ? mmd_parent : mmd;
         has_guiding = manta_read_guiding(mds->fluid, mmd2, scene_framenr, with_gdomain);
       }
 
-      /* Read config cache */
-      if (!with_noise && manta_read_config(mds->fluid, mmd, data_frame) &&
-          manta_needs_realloc(mds->fluid, mmd)) {
-        BKE_manta_reallocate_fluid(mds, mds->res, 1);
-      }
+      /* Read noise and data cache */
+      if (with_smoke && with_noise) {
 
-      /* Read data cache */
-      has_data = manta_read_data(mds->fluid, mmd, data_frame);
+        /* Only reallocate when just reading cache or when resuming during bake. */
+        if ((!baking_noise || (baking_noise && resume_noise)) &&
+            manta_read_config(mds->fluid, mmd, noise_frame) &&
+            manta_needs_realloc(mds->fluid, mmd)) {
+          BKE_manta_reallocate_fluid(mds, mds->res, 1);
+        }
+        has_noise = manta_read_noise(mds->fluid, mmd, noise_frame);
+
+        /* In case of using the adaptive domain, copy all data that was read to a new fluid object. */
+        if (with_adaptive && baking_noise ) {
+          /* Adaptive domain needs to know about current state, so save it, then copy. */
+          copy_v3_v3_int(o_res, mds->res);
+          copy_v3_v3_int(o_min, mds->res_min);
+          copy_v3_v3_int(o_max, mds->res_max);
+          copy_v3_v3_int(o_shift, mds->shift);
+          if (manta_read_config(mds->fluid, mmd, data_frame) &&
+              manta_needs_realloc(mds->fluid, mmd)) {
+                BKE_manta_reallocate_copy_fluid(mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
+          }
+        }
+        has_data = manta_read_data(mds->fluid, mmd, data_frame);
+      }
+      /* Read data cache only */
+      else {
+        /* Read config and realloc fluid object if needed. */
+        if (manta_read_config(mds->fluid, mmd, data_frame) &&
+            manta_needs_realloc(mds->fluid, mmd)) {
+          BKE_manta_reallocate_fluid(mds, mds->res, 1);
+        }
+        /* Read data cache */
+        has_data = manta_read_data(mds->fluid, mmd, data_frame);
+      }
     }
 
     /* Cache mode specific settings */
@@ -4234,156 +4306,7 @@ static void mantaModifier_process(
           manta_bake_particles(mds->fluid, mmd, scene_framenr);
         }
       }
-      mds->cache_flag &= ~FLUID_DOMAIN_CACHE_OUTDATED;
     }
-
-#if 0
-    /* Read cache. For liquids update data directly (i.e. not via python) */
-    if (!is_baking) {
-      if (mds->cache_flag & FLUID_DOMAIN_BAKED_DATA)
-      {
-        if (mds->type == FLUID_DOMAIN_TYPE_GAS) {
-          if (manta_read_config(mds->fluid, mmd, scene_framenr)) {
-            /* Adaptive domain might have changed resolution */
-            if (manta_needs_realloc(mds->fluid, mmd)) {
-              BKE_manta_reallocate_fluid(mds, mds->res, 1);
-            }
-            manta_read_data(mds->fluid, mmd, scene_framenr);
-          }
-        }
-        if (mds->type == FLUID_DOMAIN_TYPE_LIQUID) {
-          manta_update_liquid_structures(mds->fluid, mmd, scene_framenr);
-        }
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKED_NOISE)
-      {
-        if (mds->type == FLUID_DOMAIN_TYPE_GAS) {
-          if (manta_read_config(mds->fluid, mmd, scene_framenr)) {
-            if (manta_needs_realloc(mds->fluid, mmd)) {
-              BKE_manta_reallocate_fluid(mds, mds->res, 1);
-            }
-            manta_read_noise(mds->fluid, mmd, scene_framenr);
-          }
-        }
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKED_MESH)
-      {
-        //if (mds->type == FLUID_DOMAIN_TYPE_GAS)
-        // TODO (sebbas): smoke as mesh
-        if (mds->type == FLUID_DOMAIN_TYPE_LIQUID) {
-          manta_update_mesh_structures(mds->fluid, mmd, scene_framenr);
-        }
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKED_PARTICLES)
-      {
-        //if (mds->type == FLUID_DOMAIN_TYPE_GAS)
-        // TODO (sebbas): fire particles
-        if (mds->type == FLUID_DOMAIN_TYPE_LIQUID) {
-          manta_update_particle_structures(mds->fluid, mmd, scene_framenr);
-        }
-      }
-    }
-
-    /* Simulate step and write cache. Optionally also read py objects once from previous frame (bake started from resume operator) */
-    if (is_baking) {
-      /* Ensure fresh variables at every animation step */
-      manta_update_variables(mds->fluid, mmd);
-
-      /* Export mantaflow python script on first frame (once only) and for any bake type */
-      if ((mds->flags & FLUID_DOMAIN_EXPORT_MANTA_SCRIPT) &&
-          scene_framenr == mds->cache_frame_start)
-      {
-        if (mmd->domain && mmd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
-          manta_smoke_export_script(mmd->domain->fluid, mmd);
-        }
-        if (mmd->domain && mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
-          manta_liquid_export_script(mmd->domain->fluid, mmd);
-        }
-      }
-
-      if (mds->cache_flag & FLUID_DOMAIN_BAKING_DATA)
-      {
-        if (mds->flags & FLUID_DOMAIN_USE_GUIDING) {
-          /* Load guiding vel from flow object (only if baked) or else from domain object */
-          if (mds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_EFFECTOR &&
-              mds->cache_flag & FLUID_DOMAIN_BAKED_GUIDING) {
-            manta_read_guiding(mds->fluid, mmd, scene_framenr, false);
-          }
-          else if (mds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_DOMAIN && mmd_parent) {
-            manta_read_guiding(mds->fluid, mmd_parent, scene_framenr, true);
-          }
-        }
-
-        /* Refresh all objects if we start baking from a resumed frame */
-        if (mds->cache_frame_start != scene_framenr &&
-            mds->cache_frame_pause_data == scene_framenr) {
-          /* Adaptive domain might have changed resolution */
-          manta_read_config(mds->fluid, mmd, scene_framenr - 1);
-          if (manta_needs_realloc(mds->fluid, mmd)) {
-            BKE_manta_reallocate_fluid(mds, mds->res, 1);
-          }
-          manta_read_data(mds->fluid, mmd, scene_framenr - 1);
-        }
-
-        /* Base step needs separated bake and write calls as transparency calculation happens after fluid step */
-        manta_step(depsgraph, scene, ob, me, mmd, scene_framenr);
-        manta_write_config(mds->fluid, mmd, scene_framenr);
-        manta_write_data(mds->fluid, mmd, scene_framenr);
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKING_NOISE)
-      {
-        if (mds->type == FLUID_DOMAIN_TYPE_GAS) {
-          /* Refresh all objects if we start baking from a resumed frame */
-          if (mds->cache_frame_start != scene_framenr &&
-              mds->cache_frame_pause_noise == scene_framenr) {
-            /* Adaptive domain might have changed resolution */
-            manta_read_config(mds->fluid, mmd, scene_framenr - 1);
-            if (manta_needs_realloc(mds->fluid, mmd)) {
-              BKE_manta_reallocate_fluid(mds, mds->res, 1);
-            }
-            manta_read_data(mds->fluid, mmd, scene_framenr - 1);
-            manta_read_noise(mds->fluid, mmd, scene_framenr - 1);
-          }
-          if (mds->flags & FLUID_DOMAIN_USE_ADAPTIVE_DOMAIN) {
-            int o_res[3], o_min[3], o_max[3], o_shift[3];
-            copy_v3_v3_int(o_res, mds->res);
-            copy_v3_v3_int(o_min, mds->res_min);
-            copy_v3_v3_int(o_max, mds->res_max);
-            copy_v3_v3_int(o_shift, mds->shift);
-            manta_read_config(mds->fluid, mmd, scene_framenr);
-            if (manta_needs_realloc(mds->fluid, mmd)) {
-              /* Copy function also handles realloc of MANTA object */
-              BKE_manta_reallocate_copy_fluid(mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
-            }
-          }
-          manta_bake_noise(mds->fluid, mmd, scene_framenr);
-        }
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKING_MESH)
-      {
-        if (mds->type == FLUID_DOMAIN_TYPE_LIQUID) {
-          /* Note: Mesh bake does not need object refresh from cache */
-          manta_bake_mesh(mds->fluid, mmd, scene_framenr);
-        }
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES)
-      {
-        if (mds->type == FLUID_DOMAIN_TYPE_LIQUID) {
-          /* Refresh all objects if we start baking from a resumed frame */
-          if (mds->cache_frame_start != scene_framenr &&
-              mds->cache_frame_pause_particles == scene_framenr) {
-            manta_read_particles(mds->fluid, mmd, scene_framenr - 1);
-          }
-          manta_bake_particles(mds->fluid, mmd, scene_framenr);
-        }
-      }
-      if (mds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING)
-      {
-        manta_guiding(depsgraph, scene, ob, mmd, scene_framenr);
-      }
-    }
-#endif
-
     mmd->time = scene_framenr;
   }
 }
@@ -4391,7 +4314,7 @@ static void mantaModifier_process(
 struct Mesh *mantaModifier_do(
     MantaModifierData *mmd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *me)
 {
-  /* lock so preview render does not read smoke data while it gets modified */
+  /* Lock so preview render does not read smoke data while it gets modified. */
   if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
     BLI_rw_mutex_lock(mmd->domain->fluid_mutex, THREAD_LOCK_WRITE);
   }
@@ -4402,15 +4325,21 @@ struct Mesh *mantaModifier_do(
     BLI_rw_mutex_unlock(mmd->domain->fluid_mutex);
   }
 
-  /* return generated geometry for adaptive domain */
   Mesh *result = NULL;
   if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
+    /* Return generated geometry depending on domain type. */
     if (mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
       result = createLiquidGeometry(mmd->domain, me, ob);
     }
     if (mmd->domain->type == FLUID_DOMAIN_TYPE_GAS) {
       result = createSmokeGeometry(mmd->domain, me, ob);
     }
+    /* Clear flag outside of locked block (above). */
+    mmd->domain->cache_flag &= ~FLUID_DOMAIN_OUTDATED_DATA;
+    mmd->domain->cache_flag &= ~FLUID_DOMAIN_OUTDATED_NOISE;
+    mmd->domain->cache_flag &= ~FLUID_DOMAIN_OUTDATED_MESH;
+    mmd->domain->cache_flag &= ~FLUID_DOMAIN_OUTDATED_PARTICLES;
+    mmd->domain->cache_flag &= ~FLUID_DOMAIN_OUTDATED_GUIDING;
   }
   if (!result) {
     result = BKE_mesh_copy_for_eval(me, false);

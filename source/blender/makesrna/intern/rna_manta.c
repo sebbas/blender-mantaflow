@@ -72,11 +72,13 @@ static void rna_Manta_dependency_update(Main *bmain, Scene *scene, PointerRNA *p
   DEG_relations_tag_update(bmain);
 }
 
-static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *scene, PointerRNA *ptr)
 {
   MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
-  if (settings->mmd && settings->mmd->domain)
-    settings->cache_flag |= FLUID_DOMAIN_CACHE_OUTDATED;
+  if (settings->mmd && settings->mmd->domain) {
+    settings->mmd->domain->cache_flag |= FLUID_DOMAIN_OUTDATED_DATA;
+    scene->r.cfra = settings->cache_frame_start;
+}
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 }
 static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -1523,7 +1525,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_NOISE);
   RNA_def_property_ui_text(prop, "Use Noise", "Enable fluid noise (using amplification)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_update");
 
   /* liquid domain options */
 

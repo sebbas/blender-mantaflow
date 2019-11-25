@@ -255,22 +255,27 @@ static void manta_bake_endjob(void *customdata)
   if (STREQ(job->type, "MANTA_OT_bake_data")) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_DATA;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_DATA;
+    mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_DATA;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_noise")) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_NOISE;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_NOISE;
+    mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_NOISE;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_mesh")) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_MESH;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_MESH;
+    mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_MESH;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_particles")) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_PARTICLES;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_PARTICLES;
+    mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_PARTICLES;
   }
   else if (STREQ(job->type, "MANTA_OT_bake_guiding")) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
+    mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_GUIDING;
   }
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
@@ -415,82 +420,26 @@ static void manta_free_startjob(void *customdata, short *stop, short *do_update,
   G.is_rendering = true;
   BKE_spacedata_draw_locks(true);
 
+  int cache_map = 0;
+
   if (STREQ(job->type, "MANTA_OT_free_data")) {
-    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKED_DATA |
-                         FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE |
-                         FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH |
-                         FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES);
-
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Free optional mesh and particles as well - otherwise they would not be in sync with data
-     * cache */
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Free optional mantaflow script */
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Reset pause frames */
-    mds->cache_frame_pause_data = 0;
-    mds->cache_frame_pause_noise = 0;
-    mds->cache_frame_pause_mesh = 0;
-    mds->cache_frame_pause_particles = 0;
+    cache_map |= (FLUID_DOMAIN_OUTDATED_DATA | FLUID_DOMAIN_OUTDATED_NOISE |
+                  FLUID_DOMAIN_OUTDATED_MESH | FLUID_DOMAIN_OUTDATED_PARTICLES);
   }
   else if (STREQ(job->type, "MANTA_OT_free_noise")) {
-    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE);
-
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Reset pause frame */
-    mds->cache_frame_pause_noise = 0;
+    cache_map |= FLUID_DOMAIN_OUTDATED_NOISE;
   }
   else if (STREQ(job->type, "MANTA_OT_free_mesh")) {
-    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH);
-
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Reset pause frame */
-    mds->cache_frame_pause_mesh = 0;
+    cache_map |= FLUID_DOMAIN_OUTDATED_MESH;
   }
   else if (STREQ(job->type, "MANTA_OT_free_particles")) {
-    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES);
-
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Reset pause frame */
-    mds->cache_frame_pause_particles = 0;
+    cache_map |= FLUID_DOMAIN_OUTDATED_PARTICLES;
   }
   else if (STREQ(job->type, "MANTA_OT_free_guiding")) {
-    mds->cache_flag &= ~(FLUID_DOMAIN_BAKING_GUIDING | FLUID_DOMAIN_BAKED_GUIDING);
-
-    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
-    if (BLI_exists(tmpDir))
-      BLI_delete(tmpDir, true, true);
-
-    /* Reset pause frame */
-    mds->cache_frame_pause_guiding = 0;
+    cache_map |= FLUID_DOMAIN_OUTDATED_GUIDING;
   }
+  BKE_manta_cache_free(mds, job->ob, cache_map);
+  /* TODO (sebbas): Really need this update call ?? */
   DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
   *do_update = true;

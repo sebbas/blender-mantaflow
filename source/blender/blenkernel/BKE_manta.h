@@ -53,6 +53,7 @@ void BKE_manta_reallocate_copy_fluid(struct MantaDomainSettings *mds,
                                      int o_max[3],
                                      int o_shift[3],
                                      int n_shift[3]);
+void BKE_manta_cache_free(struct MantaDomainSettings *mds, struct Object *ob, int cache_map);
 
 float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
 int BKE_manta_get_data_flags(struct MantaDomainSettings *mds);
