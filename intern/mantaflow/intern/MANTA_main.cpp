@@ -213,7 +213,6 @@ MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
       initFractions(mmd);
     }
     updatePointers();
-
     return;
   }
 
@@ -238,7 +237,6 @@ MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
       mResGuiding = (mmd->domain->guiding_parent) ? mmd->domain->guide_res : mmd->domain->res;
       initGuiding(mmd);
     }
-    updatePointers();  // Needs to be after heat, fire, color init
 
     if (mUsingNoise) {
       int amplify = mmd->domain->noise_scale;
@@ -254,9 +252,8 @@ MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
         initFireHigh(mmd);
       if (mUsingColors)
         initColorsHigh(mmd);
-
-      updatePointersNoise();  // Needs to be after fire, color init
     }
+    updatePointers();
   }
 }
 
@@ -1429,7 +1426,7 @@ int MANTA::readNoise(MantaModifierData *mmd, int framenr)
     pythonCommands.push_back(ss.str());
   }
   runPythonString(pythonCommands);
-  updatePointersNoise();
+  updatePointers();
   return 1;
 }
 
@@ -2021,14 +2018,19 @@ static PyObject *callPythonFunction(std::string varName,
   }
 
   PyGILState_STATE gilstate = PyGILState_Ensure();
-  PyObject *main, *var, *func, *returnedValue;
+  PyObject *main = NULL, *var = NULL, *func = NULL, *returnedValue = NULL;
 
   // Get pyobject that holds result value
   main = PyImport_ImportModule("__main__");
+  if (!main) return NULL;
+
   var = PyObject_GetAttrString(main, varName.c_str());
+  if (!var) return NULL;
+
   func = PyObject_GetAttrString(var, functionName.c_str());
 
   Py_DECREF(var);
+  if (!func) return NULL;
 
   if (!isAttribute) {
     returnedValue = PyObject_CallObject(func, NULL);
@@ -2485,6 +2487,22 @@ void MANTA::updateParticlesFromUni(const char *filename, bool isSecondarySys, bo
   gzclose(gzf);
 }
 
+template<typename T>
+void MANTA::setPointers(std::vector<std::tuple<T **, std::string, std::string, bool>> objects)
+{
+  PyObject *mantaObject = NULL;
+
+  for (typename std::vector<std::tuple<T **, std::string, std::string, bool>>::iterator it = objects.begin(); it != objects.end(); ++it) {
+    if (!std::get<3>(*it)) continue;
+    mantaObject = callPythonFunction(std::get<1>(*it), std::get<2>(*it));
+    if (mantaObject) {
+      (*std::get<0>(*it)) = (T *)stringToPointer(pyObjectToString(mantaObject));
+    } else {
+      (*std::get<0>(*it)) = NULL;
+    }
+  }
+}
+
 void MANTA::updatePointers()
 {
   if (with_debug)
@@ -2500,203 +2518,99 @@ void MANTA::updatePointers()
   std::string snd = "sp" + id;
   std::string mesh = "sm" + id;
   std::string mesh2 = "mesh" + id;
+  std::string noise = "sn" + id;
   std::string solver_ext = "_" + solver;
   std::string parts_ext = "_" + parts;
   std::string snd_ext = "_" + snd;
   std::string mesh_ext = "_" + mesh;
   std::string mesh_ext2 = "_" + mesh2;
-
-  mObstacle = (int *)stringToPointer(
-      pyObjectToString(callPythonFunction("flags" + solver_ext, func)));
-  mPhiIn = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("phiIn" + solver_ext, func)));
-
-  mVelocityX = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("x_vel" + solver_ext, func)));
-  mVelocityY = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("y_vel" + solver_ext, func)));
-  mVelocityZ = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("z_vel" + solver_ext, func)));
-
-  mForceX = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("x_force" + solver_ext, func)));
-  mForceY = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("y_force" + solver_ext, func)));
-  mForceZ = (float *)stringToPointer(
-      pyObjectToString(callPythonFunction("z_force" + solver_ext, func)));
-
-  if (mUsingOutflow) {
-    mPhiOutIn = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("phiOutIn" + solver_ext, func)));
-  }
-
-  if (mUsingObstacle) {
-    mPhiObsIn = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("phiObsIn" + solver_ext, func)));
-    mNumObstacle = (int *)stringToPointer(
-        pyObjectToString(callPythonFunction("numObs" + solver_ext, func)));
-
-    mObVelocityX = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("x_obvel" + solver_ext, func)));
-    mObVelocityY = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("y_obvel" + solver_ext, func)));
-    mObVelocityZ = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("z_obvel" + solver_ext, func)));
-  }
-
-  if (mUsingGuiding) {
-    mPhiGuideIn = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("phiGuideIn" + solver_ext, func)));
-    mNumGuide = (int *)stringToPointer(
-        pyObjectToString(callPythonFunction("numGuides" + solver_ext, func)));
-
-    mGuideVelocityX = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("x_guidevel" + solver_ext, func)));
-    mGuideVelocityY = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("y_guidevel" + solver_ext, func)));
-    mGuideVelocityZ = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("z_guidevel" + solver_ext, func)));
-  }
-
-  if (mUsingInvel) {
-    mInVelocityX = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("x_invel" + solver_ext, func)));
-    mInVelocityY = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("y_invel" + solver_ext, func)));
-    mInVelocityZ = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("z_invel" + solver_ext, func)));
-  }
-
-  // Liquid
-  if (mUsingLiquid) {
-    mPhi = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("phi" + solver_ext, func)));
-
-    mFlipParticleData = (std::vector<pData> *)stringToPointer(
-        pyObjectToString(callPythonFunction("pp" + solver_ext, func)));
-    mFlipParticleVelocity = (std::vector<pVel> *)stringToPointer(
-        pyObjectToString(callPythonFunction("pVel" + parts_ext, func)));
-
-    if (mUsingMesh) {
-      mMeshNodes = (std::vector<Node> *)stringToPointer(
-          pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcNodes)));
-      mMeshTriangles = (std::vector<Triangle> *)stringToPointer(
-          pyObjectToString(callPythonFunction("mesh" + mesh_ext, funcTris)));
-      if (mUsingMVel)
-        mMeshVelocities = (std::vector<pVel> *)stringToPointer(
-            pyObjectToString(callPythonFunction("mVel" + mesh_ext2, func)));
-    }
-
-    if (mUsingDrops || mUsingBubbles || mUsingFloats || mUsingTracers) {
-      mSndParticleData = (std::vector<pData> *)stringToPointer(
-          pyObjectToString(callPythonFunction("ppSnd" + snd_ext, func)));
-      mSndParticleVelocity = (std::vector<pVel> *)stringToPointer(
-          pyObjectToString(callPythonFunction("pVelSnd" + parts_ext, func)));
-      mSndParticleLife = (std::vector<float> *)stringToPointer(
-          pyObjectToString(callPythonFunction("pLifeSnd" + parts_ext, func)));
-    }
-  }
-
-  // Smoke
-  if (mUsingSmoke) {
-    mDensity = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("density" + solver_ext, func)));
-    mDensityIn = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("densityIn" + solver_ext, func)));
-    mShadow = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("shadow" + solver_ext, func)));
-    mEmissionIn = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("emissionIn" + solver_ext, func)));
-
-    if (mUsingHeat) {
-      mHeat = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("heat" + solver_ext, func)));
-      mHeatIn = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("heatIn" + solver_ext, func)));
-    }
-    if (mUsingFire) {
-      mFlame = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("flame" + solver_ext, func)));
-      mFuel = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("fuel" + solver_ext, func)));
-      mReact = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("react" + solver_ext, func)));
-
-      mFuelIn = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("fuelIn" + solver_ext, func)));
-      mReactIn = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("reactIn" + solver_ext, func)));
-    }
-    if (mUsingColors) {
-      mColorR = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_r" + solver_ext, func)));
-      mColorG = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_g" + solver_ext, func)));
-      mColorB = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_b" + solver_ext, func)));
-
-      mColorRIn = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_r_in" + solver_ext, func)));
-      mColorGIn = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_g_in" + solver_ext, func)));
-      mColorBIn = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_b_in" + solver_ext, func)));
-    }
-  }
-}
-
-void MANTA::updatePointersNoise()
-{
-  if (with_debug)
-    std::cout << "MANTA::updatePointersHigh()" << std::endl;
-
-  std::string func = "getDataPointer";
-  std::string id = std::to_string(mCurrentID);
-  std::string solver = "s" + id;
-  std::string solver_ext = "_" + solver;
-
-  std::string noise = "sn" + id;
   std::string noise_ext = "_" + noise;
 
-  // Liquid
-  if (mUsingLiquid) {
-    // Nothing to do here
-  }
+  std::vector<std::tuple<int **, std::string, std::string, bool>> mantaIntObjects;
+  mantaIntObjects.push_back(std::make_tuple(&mObstacle, "flags" + solver_ext, func, true));
+  mantaIntObjects.push_back(std::make_tuple(&mNumObstacle, "numObs" + solver_ext, func, mUsingObstacle));
+  mantaIntObjects.push_back(std::make_tuple(&mNumGuide, "numGuides" + solver_ext, func, mUsingGuiding));
 
-  // Smoke
-  if (mUsingSmoke) {
-    mDensityHigh = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("density" + noise_ext, func)));
-    mShadow = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("shadow" + solver_ext, func)));
-    mTextureU = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("texture_u" + solver_ext, func)));
-    mTextureV = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("texture_v" + solver_ext, func)));
-    mTextureW = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("texture_w" + solver_ext, func)));
-    mTextureU2 = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("texture_u2" + solver_ext, func)));
-    mTextureV2 = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("texture_v2" + solver_ext, func)));
-    mTextureW2 = (float *)stringToPointer(
-        pyObjectToString(callPythonFunction("texture_w2" + solver_ext, func)));
+  std::vector<std::tuple<float **, std::string, std::string, bool>> mantaFloatObjects;
+  mantaFloatObjects.push_back(std::make_tuple(&mPhiIn, "phiIn" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mVelocityX, "x_vel" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mVelocityY, "y_vel" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mVelocityZ, "z_vel" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mForceX, "x_force" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mForceY, "y_force" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mForceZ, "z_force" + solver_ext, func, true));
+  mantaFloatObjects.push_back(std::make_tuple(&mPhiOutIn, "phiOutIn" + solver_ext, func, mUsingOutflow));
+  mantaFloatObjects.push_back(std::make_tuple(&mPhiObsIn, "phiObsIn" + solver_ext, func, mUsingObstacle));
+  mantaFloatObjects.push_back(std::make_tuple(&mObVelocityX, "x_obvel" + solver_ext, func, mUsingObstacle));
+  mantaFloatObjects.push_back(std::make_tuple(&mObVelocityY, "y_obvel" + solver_ext, func, mUsingObstacle));
+  mantaFloatObjects.push_back(std::make_tuple(&mObVelocityZ, "z_obvel" + solver_ext, func, mUsingObstacle));
+  mantaFloatObjects.push_back(std::make_tuple(&mPhiGuideIn, "phiGuideIn" + solver_ext, func, mUsingGuiding));
+  mantaFloatObjects.push_back(std::make_tuple(&mGuideVelocityX, "x_guidevel" + solver_ext, func, mUsingGuiding));
+  mantaFloatObjects.push_back(std::make_tuple(&mGuideVelocityY, "y_guidevel" + solver_ext, func, mUsingGuiding));
+  mantaFloatObjects.push_back(std::make_tuple(&mGuideVelocityZ, "z_guidevel" + solver_ext, func, mUsingGuiding));
+  mantaFloatObjects.push_back(std::make_tuple(&mInVelocityX, "x_invel" + solver_ext, func, mUsingInvel));
+  mantaFloatObjects.push_back(std::make_tuple(&mInVelocityY, "y_invel" + solver_ext, func, mUsingInvel));
+  mantaFloatObjects.push_back(std::make_tuple(&mInVelocityZ, "z_invel" + solver_ext, func, mUsingInvel));
 
-    if (mUsingFire) {
-      mFlameHigh = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("flame" + noise_ext, func)));
-      mFuelHigh = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("fuel" + noise_ext, func)));
-      mReactHigh = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("react" + noise_ext, func)));
-    }
-    if (mUsingColors) {
-      mColorRHigh = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_r" + noise_ext, func)));
-      mColorGHigh = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_g" + noise_ext, func)));
-      mColorBHigh = (float *)stringToPointer(
-          pyObjectToString(callPythonFunction("color_b" + noise_ext, func)));
-    }
-  }
+  mantaFloatObjects.push_back(std::make_tuple(&mPhi, "phi" + solver_ext, func, mUsingLiquid));
+
+  mantaFloatObjects.push_back(std::make_tuple(&mDensity, "density" + solver_ext, func, mUsingSmoke));
+  mantaFloatObjects.push_back(std::make_tuple(&mDensityIn, "densityIn" + solver_ext, func, mUsingSmoke));
+  mantaFloatObjects.push_back(std::make_tuple(&mShadow, "shadow" + solver_ext, func, mUsingSmoke));
+  mantaFloatObjects.push_back(std::make_tuple(&mEmissionIn, "emissionIn" + solver_ext, func, mUsingSmoke));
+  mantaFloatObjects.push_back(std::make_tuple(&mHeat, "heat" + solver_ext, func, mUsingSmoke & mUsingHeat));
+  mantaFloatObjects.push_back(std::make_tuple(&mHeatIn, "heatIn" + solver_ext, func, mUsingSmoke & mUsingHeat));
+  mantaFloatObjects.push_back(std::make_tuple(&mFlame, "flame" + solver_ext, func, mUsingSmoke & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mFuel, "fuel" + solver_ext, func, mUsingSmoke & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mReact, "react" + solver_ext, func, mUsingSmoke & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mFuelIn, "fuelIn" + solver_ext, func, mUsingSmoke & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mReactIn, "reactIn" + solver_ext, func, mUsingSmoke & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorR, "color_r" + solver_ext, func, mUsingSmoke & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorG, "color_g" + solver_ext, func, mUsingSmoke & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorB, "color_b" + solver_ext, func, mUsingSmoke & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorRIn, "color_r_in" + solver_ext, func, mUsingSmoke & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorGIn, "color_g_in" + solver_ext, func, mUsingSmoke & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorBIn, "color_b_in" + solver_ext, func, mUsingSmoke & mUsingColors));
+
+  mantaFloatObjects.push_back(std::make_tuple(&mDensityHigh, "density" + noise_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mShadow, "shadow" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mTextureU, "texture_u" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mTextureV, "texture_v" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mTextureW, "texture_w" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mTextureU2, "texture_u2" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mTextureV2, "texture_v2" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mTextureW2, "texture_w2" + solver_ext, func, mUsingSmoke & mUsingNoise));
+  mantaFloatObjects.push_back(std::make_tuple(&mFlameHigh, "flame" + noise_ext, func, mUsingSmoke & mUsingNoise & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mFuelHigh, "fuel" + noise_ext, func, mUsingSmoke & mUsingNoise & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mReactHigh, "react" + noise_ext, func, mUsingSmoke & mUsingNoise & mUsingFire));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorRHigh, "color_r" + noise_ext, func, mUsingSmoke & mUsingNoise & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorGHigh, "color_g" + noise_ext, func, mUsingSmoke & mUsingNoise & mUsingColors));
+  mantaFloatObjects.push_back(std::make_tuple(&mColorRHigh, "color_b" + noise_ext, func, mUsingSmoke & mUsingNoise & mUsingColors));
+
+  std::vector<std::tuple<std::vector<pData> **, std::string, std::string, bool>> mantaPDataObjects;
+  mantaPDataObjects.push_back(std::make_tuple(&mFlipParticleData, "pp" + solver_ext, func, mUsingLiquid));
+  mantaPDataObjects.push_back(std::make_tuple(&mSndParticleData, "ppSnd" + snd_ext, func, mUsingLiquid & (mUsingDrops | mUsingBubbles | mUsingFloats | mUsingTracers)));
+
+  std::vector<std::tuple<std::vector<pVel> **, std::string, std::string, bool>> mantaPVelObjects;
+  mantaPVelObjects.push_back(std::make_tuple(&mFlipParticleVelocity, "pVel" + parts_ext, func, mUsingLiquid));
+  mantaPVelObjects.push_back(std::make_tuple(&mMeshVelocities, "mVel" + mesh_ext2, func, mUsingLiquid & mUsingMesh & mUsingMVel));
+  mantaPVelObjects.push_back(std::make_tuple(&mSndParticleVelocity, "pVelSnd" + parts_ext, func, mUsingLiquid & (mUsingDrops | mUsingBubbles | mUsingFloats | mUsingTracers)));
+
+  std::vector<std::tuple<std::vector<Node> **, std::string, std::string, bool>> mantaNodeObjects;
+  mantaNodeObjects.push_back(std::make_tuple(&mMeshNodes, "mesh" + mesh_ext, funcNodes, mUsingLiquid & mUsingMesh));
+
+  std::vector<std::tuple<std::vector<Triangle> **, std::string, std::string, bool>> mantaTriangleObjects;
+  mantaTriangleObjects.push_back(std::make_tuple(&mMeshTriangles, "mesh" + mesh_ext, funcTris, mUsingLiquid & mUsingMesh));
+
+  std::vector<std::tuple<std::vector<float> **, std::string, std::string, bool>> mantaFloatVecObjects;
+  mantaFloatVecObjects.push_back(std::make_tuple(&mSndParticleLife, "pLifeSnd" + parts_ext, func, mUsingLiquid & (mUsingDrops | mUsingBubbles | mUsingFloats | mUsingTracers)));
+
+  setPointers(mantaIntObjects);
+  setPointers(mantaFloatObjects);
+  setPointers(mantaPDataObjects);
+  setPointers(mantaPVelObjects);
+  setPointers(mantaNodeObjects);
+  setPointers(mantaTriangleObjects);
+  setPointers(mantaFloatVecObjects);
 }
+

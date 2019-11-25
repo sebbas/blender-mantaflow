@@ -530,11 +530,10 @@ extern "C" void manta_smoke_ensure_fire(MANTA *smoke, struct MantaModifierData *
 {
   if (smoke) {
     smoke->initFire(mmd);
+    if (smoke->usingNoise()) {
+      smoke->initFireHigh(mmd);
+    }
     smoke->updatePointers();
-  }
-  if (smoke && smoke->usingNoise()) {
-    smoke->initFireHigh(mmd);
-    smoke->updatePointersNoise();
   }
 }
 
@@ -542,11 +541,10 @@ extern "C" void manta_smoke_ensure_colors(MANTA *smoke, struct MantaModifierData
 {
   if (smoke) {
     smoke->initColors(mmd);
+    if (smoke->usingNoise()) {
+      smoke->initColorsHigh(mmd);
+    }
     smoke->updatePointers();
-  }
-  if (smoke && smoke->usingNoise()) {
-    smoke->initColorsHigh(mmd);
-    smoke->updatePointersNoise();
   }
 }
 
