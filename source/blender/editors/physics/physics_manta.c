@@ -324,7 +324,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'noise' subdir if it does not exist already */
-    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_NOISE;
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKED_NOISE | FLUID_DOMAIN_OUTDATED_NOISE);
     mds->cache_flag |= FLUID_DOMAIN_BAKING_NOISE;
     job->pause_frame = &mds->cache_frame_pause_noise;
   }
@@ -332,7 +332,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'mesh' subdir if it does not exist already */
-    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_MESH;
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKED_MESH | FLUID_DOMAIN_OUTDATED_MESH);
     mds->cache_flag |= FLUID_DOMAIN_BAKING_MESH;
     job->pause_frame = &mds->cache_frame_pause_mesh;
   }
@@ -340,7 +340,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
-    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_PARTICLES;
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKED_PARTICLES | FLUID_DOMAIN_OUTDATED_PARTICLES);
     mds->cache_flag |= FLUID_DOMAIN_BAKING_PARTICLES;
     job->pause_frame = &mds->cache_frame_pause_particles;
   }
@@ -348,7 +348,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'guiding' subdir if it does not exist already */
-    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_GUIDING;
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKED_GUIDING | FLUID_DOMAIN_OUTDATED_GUIDING);
     mds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
     job->pause_frame = &mds->cache_frame_pause_guiding;
   }
@@ -359,7 +359,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'data' subdir if it does not exist already */
-    mds->cache_flag &= ~FLUID_DOMAIN_BAKED_DATA;
+    mds->cache_flag &= ~(FLUID_DOMAIN_BAKED_DATA | FLUID_DOMAIN_OUTDATED_DATA);
     mds->cache_flag |= FLUID_DOMAIN_BAKING_DATA;
     job->pause_frame = &mds->cache_frame_pause_data;
 
@@ -444,8 +444,6 @@ static void manta_free_startjob(void *customdata, short *stop, short *do_update,
     cache_map |= FLUID_DOMAIN_OUTDATED_GUIDING;
   }
   BKE_manta_cache_free(mds, job->ob, cache_map);
-  /* TODO (sebbas): Really need this update call ?? */
-  DEG_id_tag_update(&job->ob->id, ID_RECALC_GEOMETRY);
 
   *do_update = true;
   *stop = 0;

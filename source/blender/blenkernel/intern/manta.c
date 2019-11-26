@@ -4167,9 +4167,9 @@ static void mantaModifier_process(
         if (!baking_data && !baking_noise && !baking_mesh && !baking_particles) {
           read_cache = true;
           bake_cache = false;
-          break;
         }
-      case FLUID_DOMAIN_CACHE_MODULAR: {
+        break;
+      case FLUID_DOMAIN_CACHE_MODULAR:
         /* Just load the data that has already been baked */
         if (!baking_data && !baking_noise && !baking_mesh && !baking_particles) {
           read_cache = true;
@@ -4203,7 +4203,6 @@ static void mantaModifier_process(
         /* Force to read cache as we're resuming the bake */
         read_cache = true;
         break;
-      }
       case FLUID_DOMAIN_CACHE_REPLAY:
       default:
         /* Always trying to read the cache in replay mode. */
@@ -4211,8 +4210,10 @@ static void mantaModifier_process(
         break;
     }
 
-    /* Cache outdated? If so reset, don't read, and then just rebake. */
-    if (bake_outdated) {
+    /* Cache outdated? If so reset, don't read, and then just rebake.
+     * Note: Only do this in replay mode! */
+    bool mode_replay = (mode == FLUID_DOMAIN_CACHE_REPLAY);
+    if (bake_outdated && mode_replay) {
       read_cache = false;
       bake_cache = true;
       BKE_manta_cache_free(mds, ob, mds->cache_flag);
