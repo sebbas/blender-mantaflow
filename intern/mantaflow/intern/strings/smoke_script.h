@@ -297,7 +297,7 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     flags_s$ID$.fillGrid()\n\
     \n\
     if timePerFrame_s$ID$ == 0: # Only apply inflow once per frame\n\
-        print('Smoke inflow at frame: ' + str(framenr))\n\
+        mantaMsg('Smoke inflow at frame: ' + str(framenr))\n\
         applyEmission(flags=flags_s$ID$, target=density_s$ID$, source=densityIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
         if using_heat_s$ID$:\n\
             applyEmission(flags=flags_s$ID$, target=heat_s$ID$, source=heatIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
