@@ -336,9 +336,7 @@ void BKE_manta_cache_free(MantaDomainSettings *mds, Object *ob, int cache_map)
   const char *relbase = modifier_path_relbase_from_global(ob);
   BLI_path_abs(mds->cache_directory, relbase);
 
-  if (cache_map & FLUID_DOMAIN_OUTDATED_DATA)
-  {
-    printf("free data\n");
+  if (cache_map & FLUID_DOMAIN_OUTDATED_DATA) {
     flags &= ~(FLUID_DOMAIN_BAKING_DATA | FLUID_DOMAIN_BAKED_DATA | FLUID_DOMAIN_OUTDATED_DATA);
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
@@ -348,12 +346,13 @@ void BKE_manta_cache_free(MantaDomainSettings *mds, Object *ob, int cache_map)
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_DATA, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
+    tmpDir[0] = '\0';
+    BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_SCRIPT, NULL);
+    if (BLI_exists(tmpDir))
+      BLI_delete(tmpDir, true, true);
     mds->cache_frame_pause_data = 0;
   }
-
-  if (cache_map & FLUID_DOMAIN_OUTDATED_NOISE)
-  {
-    printf("free noise\n");
+  if (cache_map & FLUID_DOMAIN_OUTDATED_NOISE) {
     flags &= ~(FLUID_DOMAIN_BAKING_NOISE | FLUID_DOMAIN_BAKED_NOISE | FLUID_DOMAIN_OUTDATED_NOISE);
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
@@ -361,10 +360,7 @@ void BKE_manta_cache_free(MantaDomainSettings *mds, Object *ob, int cache_map)
       BLI_delete(tmpDir, true, true);
     mds->cache_frame_pause_noise = 0;
   }
-
-  if (cache_map & FLUID_DOMAIN_OUTDATED_MESH)
-  {
-    printf("free mesh\n");
+  if (cache_map & FLUID_DOMAIN_OUTDATED_MESH) {
     flags &= ~(FLUID_DOMAIN_BAKING_MESH | FLUID_DOMAIN_BAKED_MESH | FLUID_DOMAIN_OUTDATED_MESH);
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
@@ -372,11 +368,9 @@ void BKE_manta_cache_free(MantaDomainSettings *mds, Object *ob, int cache_map)
       BLI_delete(tmpDir, true, true);
     mds->cache_frame_pause_mesh = 0;
   }
-
-  if (cache_map & FLUID_DOMAIN_OUTDATED_PARTICLES)
-  {
-    printf("free particles\n");
-    flags &= ~(FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES | FLUID_DOMAIN_OUTDATED_PARTICLES);
+  if (cache_map & FLUID_DOMAIN_OUTDATED_PARTICLES) {
+    flags &= ~(FLUID_DOMAIN_BAKING_PARTICLES | FLUID_DOMAIN_BAKED_PARTICLES |
+               FLUID_DOMAIN_OUTDATED_PARTICLES);
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     if (BLI_exists(tmpDir))
@@ -384,17 +378,15 @@ void BKE_manta_cache_free(MantaDomainSettings *mds, Object *ob, int cache_map)
     mds->cache_frame_pause_particles = 0;
   }
 
-  if (cache_map & FLUID_DOMAIN_OUTDATED_GUIDING)
-  {
-    printf("free guiding\n");
-    flags &= ~(FLUID_DOMAIN_BAKING_GUIDING | FLUID_DOMAIN_BAKED_GUIDING | FLUID_DOMAIN_OUTDATED_GUIDING);
+  if (cache_map & FLUID_DOMAIN_OUTDATED_GUIDING) {
+    flags &= ~(FLUID_DOMAIN_BAKING_GUIDING | FLUID_DOMAIN_BAKED_GUIDING |
+               FLUID_DOMAIN_OUTDATED_GUIDING);
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
     if (BLI_exists(tmpDir))
       BLI_delete(tmpDir, true, true);
     mds->cache_frame_pause_guiding = 0;
   }
-
   mds->cache_flag = flags;
 }
 
@@ -4115,7 +4107,10 @@ static void mantaModifier_process(
     baking_mesh = mds->cache_flag & FLUID_DOMAIN_BAKING_MESH;
     baking_particles = mds->cache_flag & FLUID_DOMAIN_BAKING_PARTICLES;
     baking_guiding = mds->cache_flag & FLUID_DOMAIN_BAKING_GUIDING;
-    bake_outdated = mds->cache_flag & (FLUID_DOMAIN_OUTDATED_DATA | FLUID_DOMAIN_OUTDATED_NOISE | FLUID_DOMAIN_OUTDATED_NOISE | FLUID_DOMAIN_OUTDATED_MESH | FLUID_DOMAIN_OUTDATED_PARTICLES | FLUID_DOMAIN_OUTDATED_GUIDING);
+    bake_outdated = mds->cache_flag &
+                    (FLUID_DOMAIN_OUTDATED_DATA | FLUID_DOMAIN_OUTDATED_NOISE |
+                     FLUID_DOMAIN_OUTDATED_NOISE | FLUID_DOMAIN_OUTDATED_MESH |
+                     FLUID_DOMAIN_OUTDATED_PARTICLES | FLUID_DOMAIN_OUTDATED_GUIDING);
 
     bool resume_data, resume_noise, resume_mesh, resume_particles, resume_guiding;
     resume_data = (!is_startframe) && (mds->cache_frame_pause_data == scene_framenr);
@@ -4131,10 +4126,12 @@ static void mantaModifier_process(
     bool with_gdomain;
     with_gdomain = (mds->guiding_source == FLUID_DOMAIN_GUIDING_SRC_DOMAIN);
 
+    int o_res[3], o_min[3], o_max[3], o_shift[3];
     int mode = mds->cache_type;
     int prev_frame = scene_framenr - 1;
+
+    /* Ensure positivity of previous frame. */
     CLAMP(prev_frame, 1, prev_frame);
-    int o_res[3], o_min[3], o_max[3], o_shift[3];
 
     /* Cache mode specific settings */
     switch (mode) {
@@ -4224,8 +4221,9 @@ static void mantaModifier_process(
         }
         has_noise = manta_read_noise(mds->fluid, mmd, noise_frame);
 
-        /* In case of using the adaptive domain, copy all data that was read to a new fluid object. */
-        if (with_adaptive && baking_noise ) {
+        /* In case of using the adaptive domain, copy all data that was read to a new fluid object.
+         */
+        if (with_adaptive && baking_noise) {
           /* Adaptive domain needs to know about current state, so save it, then copy. */
           copy_v3_v3_int(o_res, mds->res);
           copy_v3_v3_int(o_min, mds->res_min);
@@ -4233,7 +4231,8 @@ static void mantaModifier_process(
           copy_v3_v3_int(o_shift, mds->shift);
           if (manta_read_config(mds->fluid, mmd, data_frame) &&
               manta_needs_realloc(mds->fluid, mmd)) {
-                BKE_manta_reallocate_copy_fluid(mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
+            BKE_manta_reallocate_copy_fluid(
+                mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
           }
         }
         has_data = manta_read_data(mds->fluid, mmd, data_frame);
@@ -4287,7 +4286,7 @@ static void mantaModifier_process(
         }
       }
 
-      if (baking_guiding) {
+      if (baking_guiding && with_guiding) {
         manta_guiding(depsgraph, scene, ob, mmd, scene_framenr);
       }
       if (baking_data) {
@@ -4296,13 +4295,13 @@ static void mantaModifier_process(
         manta_write_data(mds->fluid, mmd, scene_framenr);
       }
       if (has_data || baking_data) {
-        if (baking_noise) {
+        if (baking_noise && with_smoke && with_noise) {
           manta_bake_noise(mds->fluid, mmd, scene_framenr);
         }
-        if (baking_mesh) {
+        if (baking_mesh && with_liquid && with_mesh) {
           manta_bake_mesh(mds->fluid, mmd, scene_framenr);
         }
-        if (baking_particles) {
+        if (baking_particles && with_liquid && with_particles) {
           manta_bake_particles(mds->fluid, mmd, scene_framenr);
         }
       }

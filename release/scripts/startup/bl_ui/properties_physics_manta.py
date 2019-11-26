@@ -1045,6 +1045,7 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "cache_type", expand=False)
+        col.enabled = not baking_any
 
         col = flow.column(align=True)
         col.separator()
@@ -1069,6 +1070,25 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
 
             if domain.use_mesh:
                 col.prop(domain, "cache_mesh_format", text="Mesh File Format")
+
+        if domain.cache_type == "FINAL":
+
+            col.separator()
+            split = layout.split()
+
+            bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
+            if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
+                col = split.column()
+                col.operator("manta.bake_all", text="Resume")
+                col = split.column()
+                col.operator("manta.free_all", text="Free")
+            elif domain.cache_baking_data and not domain.cache_baked_data:
+                split.enabled = False
+                split.operator("manta.pause_bake", text="Baking All - ESC to pause")
+            elif not domain.cache_baked_data and not domain.cache_baking_data:
+                split.operator("manta.bake_all", text="Bake All")
+            else:
+                split.operator("manta.free_all", text="Free All")
 
 
 class PHYSICS_PT_manta_export(PhysicButtonsPanel, Panel):

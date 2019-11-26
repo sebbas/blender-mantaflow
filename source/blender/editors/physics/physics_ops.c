@@ -126,6 +126,8 @@ static void operatortypes_boids(void)
 
 static void operatortypes_manta(void)
 {
+  WM_operatortype_append(MANTA_OT_bake_all);
+  WM_operatortype_append(MANTA_OT_free_all);
   WM_operatortype_append(MANTA_OT_bake_data);
   WM_operatortype_append(MANTA_OT_free_data);
   WM_operatortype_append(MANTA_OT_bake_noise);

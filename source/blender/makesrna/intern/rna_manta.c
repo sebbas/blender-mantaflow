@@ -76,9 +76,12 @@ static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *scene, PointerRNA *
 {
   MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
   if (settings->mmd && settings->mmd->domain) {
-    settings->mmd->domain->cache_flag |= FLUID_DOMAIN_OUTDATED_DATA;
+    settings->mmd->domain->cache_flag |= (FLUID_DOMAIN_OUTDATED_DATA |
+                                          FLUID_DOMAIN_OUTDATED_NOISE |
+                                          FLUID_DOMAIN_OUTDATED_MESH |
+                                          FLUID_DOMAIN_OUTDATED_PARTICLES);
     scene->r.cfra = settings->cache_frame_start;
-}
+  }
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
 }
 static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -185,7 +188,7 @@ static void rna_Manta_draw_type_update(Main *UNUSED(bmain),
   }
 }
 
-static void rna_Manta_flip_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_flip_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
@@ -203,15 +206,15 @@ static void rna_Manta_flip_parts_update(Main *bmain, Scene *UNUSED(scene), Point
   }
   else {
     rna_Manta_parts_delete(ptr, PART_MANTA_FLIP);
-    rna_Manta_resetCache(NULL, NULL, ptr);
+    rna_Manta_resetCache(bmain, scene, ptr);
 
     mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FLIP;
   }
   rna_Manta_draw_type_update(NULL, NULL, ptr);
-  rna_Manta_reset(NULL, NULL, ptr);
+  rna_Manta_reset(bmain, scene, ptr);
 }
 
-static void rna_Manta_spray_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_spray_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
@@ -229,15 +232,15 @@ static void rna_Manta_spray_parts_update(Main *bmain, Scene *UNUSED(scene), Poin
   }
   else {
     rna_Manta_parts_delete(ptr, PART_MANTA_SPRAY);
-    rna_Manta_resetCache(NULL, NULL, ptr);
+    rna_Manta_resetCache(bmain, scene, ptr);
 
     mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_SPRAY;
   }
   rna_Manta_draw_type_update(NULL, NULL, ptr);
-  rna_Manta_reset(NULL, NULL, ptr);
+  rna_Manta_reset(bmain, scene, ptr);
 }
 
-static void rna_Manta_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_bubble_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
@@ -255,15 +258,15 @@ static void rna_Manta_bubble_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
   }
   else {
     rna_Manta_parts_delete(ptr, PART_MANTA_BUBBLE);
-    rna_Manta_resetCache(NULL, NULL, ptr);
+    rna_Manta_resetCache(bmain, scene, ptr);
 
     mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_BUBBLE;
   }
   rna_Manta_draw_type_update(NULL, NULL, ptr);
-  rna_Manta_reset(NULL, NULL, ptr);
+  rna_Manta_reset(bmain, scene, ptr);
 }
 
-static void rna_Manta_foam_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_foam_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
@@ -281,15 +284,15 @@ static void rna_Manta_foam_parts_update(Main *bmain, Scene *UNUSED(scene), Point
   }
   else {
     rna_Manta_parts_delete(ptr, PART_MANTA_FOAM);
-    rna_Manta_resetCache(NULL, NULL, ptr);
+    rna_Manta_resetCache(bmain, scene, ptr);
 
     mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FOAM;
   }
   rna_Manta_draw_type_update(NULL, NULL, ptr);
-  rna_Manta_reset(NULL, NULL, ptr);
+  rna_Manta_reset(bmain, scene, ptr);
 }
 
-static void rna_Manta_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+static void rna_Manta_tracer_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   MantaModifierData *mmd;
@@ -307,12 +310,12 @@ static void rna_Manta_tracer_parts_update(Main *bmain, Scene *UNUSED(scene), Poi
   }
   else {
     rna_Manta_parts_delete(ptr, PART_MANTA_TRACER);
-    rna_Manta_resetCache(NULL, NULL, ptr);
+    rna_Manta_resetCache(bmain, scene, ptr);
 
     mmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_TRACER;
   }
   rna_Manta_draw_type_update(NULL, NULL, ptr);
-  rna_Manta_reset(NULL, NULL, ptr);
+  rna_Manta_reset(bmain, scene, ptr);
 }
 
 static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -430,7 +433,7 @@ static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerR
     // sanity check, should not occur
     printf("ERROR: Unexpected combined export setting encountered!");
   }
-  rna_Manta_resetCache(NULL, NULL, ptr);
+  rna_Manta_resetCache(bmain, scene, ptr);
   rna_Manta_draw_type_update(NULL, NULL, ptr);
 }
 
@@ -471,6 +474,16 @@ static void rna_Manta_cachetype_noise_set(struct PointerRNA *ptr, int value)
   if (value != settings->cache_noise_format) {
     /* TODO (sebbas): Clear old caches. */
     settings->cache_noise_format = value;
+  }
+}
+
+static void rna_Manta_cachetype_set(struct PointerRNA *ptr, int value)
+{
+  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+
+  if (value != settings->cache_type) {
+    settings->cache_type = value;
+    settings->cache_flag = 0;
   }
 }
 
@@ -1060,8 +1073,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
        0,
        "Modular",
        "Bake every stage of the simulation on its own. Can pause and resume bake jobs."},
-      /*{FLUID_DOMAIN_CACHE_FINAL, "FINAL", 0, "Final", "Only bakes cache files that are essential
-         for the final render. Cannot resume bake jobs."},*/
+      {FLUID_DOMAIN_CACHE_FINAL, "FINAL", 0, "Final", "Bake the entire simulation at once."},
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem smoke_data_depth_items[] = {
@@ -1702,7 +1714,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_MESH);
   RNA_def_property_ui_text(prop, "Use Mesh", "Enable fluid mesh (using amplification)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_update");
 
   prop = RNA_def_property(srna, "use_speed_vectors", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_SPEED_VECTORS);
@@ -2009,6 +2021,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "cache_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "cache_type");
   RNA_def_property_enum_items(prop, cache_types);
+  RNA_def_property_enum_funcs(prop, NULL, "rna_Manta_cachetype_set", NULL);
   RNA_def_property_ui_text(prop, "Type", "Change the cache type of the simulation");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Manta_reset");
 
