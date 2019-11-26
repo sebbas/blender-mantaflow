@@ -553,7 +553,7 @@ def bake_particles_process_$ID$(framenr, format_data, format_particles, path_dat
     \n\
     sp$ID$.frame = framenr\n\
     sp$ID$.timeTotal = (framenr-1) * frameLength_s$ID$\n\
-    sn$ID$.timestep  = dt0_s$ID$\n\
+    sp$ID$.timestep  = dt0_s$ID$\n\
     \n\
     fluid_load_data_$ID$(path_data, framenr, format_data)\n\
     #if using_smoke_s$ID$:\n\

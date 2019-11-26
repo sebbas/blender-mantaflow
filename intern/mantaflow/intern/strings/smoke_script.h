@@ -91,19 +91,19 @@ shadow_s$ID$     = s$ID$.create(RealGrid)\n\
 emissionIn_s$ID$ = s$ID$.create(RealGrid)\n\
 density_s$ID$    = s$ID$.create(RealGrid)\n\
 densityIn_s$ID$  = s$ID$.create(RealGrid)\n\
-heat_s$ID$       = 0 # allocated dynamically\n\
-heatIn_s$ID$     = 0\n\
-flame_s$ID$      = 0\n\
-fuel_s$ID$       = 0\n\
-react_s$ID$      = 0\n\
-fuelIn_s$ID$     = 0\n\
-reactIn_s$ID$    = 0\n\
-color_r_s$ID$    = 0\n\
-color_g_s$ID$    = 0\n\
-color_b_s$ID$    = 0\n\
-color_r_in_s$ID$ = 0\n\
-color_g_in_s$ID$ = 0\n\
-color_b_in_s$ID$ = 0\n\
+heat_s$ID$       = None # allocated dynamically\n\
+heatIn_s$ID$     = None\n\
+flame_s$ID$      = None\n\
+fuel_s$ID$       = None\n\
+react_s$ID$      = None\n\
+fuelIn_s$ID$     = None\n\
+reactIn_s$ID$    = None\n\
+color_r_s$ID$    = None\n\
+color_g_s$ID$    = None\n\
+color_b_s$ID$    = None\n\
+color_r_in_s$ID$ = None\n\
+color_g_in_s$ID$ = None\n\
+color_b_in_s$ID$ = None\n\
 \n\
 # Keep track of important objects in dict to load them later on\n\
 smoke_data_dict_s$ID$ = dict(density=density_s$ID$, shadow=shadow_s$ID$, densityIn=densityIn_s$ID$, emissionIn=emissionIn_s$ID$)\n";
@@ -127,12 +127,12 @@ texture_w_s$ID$   = s$ID$.create(RealGrid)\n\
 texture_u2_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_v2_s$ID$  = s$ID$.create(RealGrid)\n\
 texture_w2_s$ID$  = s$ID$.create(RealGrid)\n\
-flame_sn$ID$      = 0\n\
-fuel_sn$ID$       = 0\n\
-react_sn$ID$      = 0\n\
-color_r_sn$ID$    = 0\n\
-color_g_sn$ID$    = 0\n\
-color_b_sn$ID$    = 0\n\
+flame_sn$ID$      = None\n\
+fuel_sn$ID$       = None\n\
+react_sn$ID$      = None\n\
+color_r_sn$ID$    = None\n\
+color_g_sn$ID$    = None\n\
+color_b_sn$ID$    = None\n\
 wltnoise_sn$ID$   = sn$ID$.create(NoiseField, fixedSeed=265, loadFromFile=True)\n\
 \n\
 mantaMsg('Initializing UV Grids')\n\
@@ -154,6 +154,11 @@ smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$, uv0_noise=uvGrid0_s$
 
 const std::string smoke_alloc_colors =
     "\n\
+# Sanity check, clear grids first\n\
+del color_r_s$ID$\n\
+del color_g_s$ID$\n\
+del color_b_s$ID$\n\
+\n\
 mantaMsg('Allocating colors')\n\
 color_r_s$ID$    = s$ID$.create(RealGrid)\n\
 color_g_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -168,7 +173,12 @@ if 'smoke_data_dict_s$ID$' in globals():\n\
     smoke_data_dict_s$ID$.update(color_r_in=color_r_in_s$ID$, color_g_in=color_g_in_s$ID$, color_b_in=color_b_in_s$ID$)\n";
 
 const std::string smoke_alloc_colors_noise =
-    "\
+    "\n\
+# Sanity check, clear grids first\n\
+del color_r_sn$ID$\n\
+del color_g_sn$ID$\n\
+del color_b_sn$ID$\n\
+\n\
 mantaMsg('Allocating colors noise')\n\
 color_r_sn$ID$ = sn$ID$.create(RealGrid)\n\
 color_g_sn$ID$ = sn$ID$.create(RealGrid)\n\
@@ -200,6 +210,10 @@ color_b_sn$ID$.multConst($COLOR_B$)\n";
 
 const std::string smoke_alloc_heat =
     "\n\
+# Sanity check, clear grids first\n\
+del heat_s$ID$\n\
+del heatIn_s$ID$\n\
+\n\
 mantaMsg('Allocating heat')\n\
 heat_s$ID$   = s$ID$.create(RealGrid)\n\
 heatIn_s$ID$ = s$ID$.create(RealGrid)\n\
@@ -210,6 +224,13 @@ if 'smoke_data_dict_s$ID$' in globals():\n\
 
 const std::string smoke_alloc_fire =
     "\n\
+# Sanity check, clear grids first\n\
+del flame_s$ID$\n\
+del fuel_s$ID$\n\
+del react_s$ID$\n\
+del fuelIn_s$ID$\n\
+del reactIn_s$ID$\n\
+\n\
 mantaMsg('Allocating fire')\n\
 flame_s$ID$   = s$ID$.create(RealGrid)\n\
 fuel_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -224,6 +245,11 @@ if 'smoke_data_dict_s$ID$' in globals():\n\
 
 const std::string smoke_alloc_fire_noise =
     "\n\
+# Sanity check, clear grids first\n\
+del flame_sn$ID$\n\
+del fuel_sn$ID$\n\
+del react_sn$ID$\n\
+\n\
 mantaMsg('Allocating fire noise')\n\
 flame_sn$ID$ = sn$ID$.create(RealGrid)\n\
 fuel_sn$ID$  = sn$ID$.create(RealGrid)\n\
@@ -270,20 +296,21 @@ def smoke_adaptive_step_$ID$(framenr):\n\
     setObstacleFlags(flags=flags_s$ID$, phiObs=phiObs_s$ID$, phiOut=phiOut_s$ID$, phiIn=phiIn_s$ID$)\n\
     flags_s$ID$.fillGrid()\n\
     \n\
-    mantaMsg('Smoke inflow')\n\
-    applyEmission(flags=flags_s$ID$, target=density_s$ID$, source=densityIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-    if using_heat_s$ID$:\n\
-        applyEmission(flags=flags_s$ID$, target=heat_s$ID$, source=heatIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-    \n\
-    if using_colors_s$ID$:\n\
-        applyEmission(flags=flags_s$ID$, target=color_r_s$ID$, source=color_r_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-        applyEmission(flags=flags_s$ID$, target=color_g_s$ID$, source=color_g_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-        applyEmission(flags=flags_s$ID$, target=color_b_s$ID$, source=color_b_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-    \n\
-    if using_fire_s$ID$:\n\
-        applyEmission(flags=flags_s$ID$, target=fuel_s$ID$, source=fuelIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-        applyEmission(flags=flags_s$ID$, target=react_s$ID$, source=reactIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
-    \n\
+    if timePerFrame_s$ID$ == 0: # Only apply inflow once per frame\n\
+        print('Smoke inflow at frame: ' + str(framenr))\n\
+        applyEmission(flags=flags_s$ID$, target=density_s$ID$, source=densityIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        if using_heat_s$ID$:\n\
+            applyEmission(flags=flags_s$ID$, target=heat_s$ID$, source=heatIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        \n\
+        if using_colors_s$ID$:\n\
+            applyEmission(flags=flags_s$ID$, target=color_r_s$ID$, source=color_r_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_s$ID$, target=color_g_s$ID$, source=color_g_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_s$ID$, target=color_b_s$ID$, source=color_b_in_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        \n\
+        if using_fire_s$ID$:\n\
+            applyEmission(flags=flags_s$ID$, target=fuel_s$ID$, source=fuelIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+            applyEmission(flags=flags_s$ID$, target=react_s$ID$, source=reactIn_s$ID$, emissionTexture=emissionIn_s$ID$, type=FlagInflow|FlagOutflow)\n\
+        \n\
     mantaMsg('Smoke step / s$ID$.frame: ' + str(s$ID$.frame))\n\
     if using_fire_s$ID$:\n\
         process_burn_$ID$()\n\
