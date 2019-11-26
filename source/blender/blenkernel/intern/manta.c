@@ -3001,24 +3001,31 @@ BLI_INLINE void apply_inflow_fields(MantaFlowSettings *mfs,
                                     float emission_value,
                                     float distance_value,
                                     int index,
-                                    float *density,
-                                    float *heat,
-                                    float *fuel,
-                                    float *react,
-                                    float *color_r,
-                                    float *color_g,
-                                    float *color_b,
-                                    float *phi,
-                                    float *emission)
+                                    float *density_in,
+                                    const float *density,
+                                    float *heat_in,
+                                    const float *heat,
+                                    float *fuel_in,
+                                    const float *fuel,
+                                    float *react_in,
+                                    const float *react,
+                                    float *color_r_in,
+                                    const float *color_r,
+                                    float *color_g_in,
+                                    const float *color_g,
+                                    float *color_b_in,
+                                    const float *color_b,
+                                    float *phi_in,
+                                    float *emission_in)
 {
   /* add inflow */
-  if (phi) {
-    phi[index] = distance_value;
+  if (phi_in) {
+    phi_in[index] = distance_value;
   }
 
   /* save emission value for manta inflow */
-  if (emission) {
-    emission[index] = emission_value;
+  if (emission_in) {
+    emission_in[index] = emission_value;
   }
 
   /* add smoke inflow */
@@ -3028,53 +3035,77 @@ BLI_INLINE void apply_inflow_fields(MantaFlowSettings *mfs,
   float dens_flow = (mfs->type == FLUID_FLOW_TYPE_FIRE) ? 0.0f : emission_value * mfs->density;
   float fuel_flow = (fuel) ? emission_value * mfs->fuel_amount : 0.0f;
   /* add heat */
-  if (heat && emission_value > 0.0f) {
-    heat[index] = ADD_IF_LOWER(heat[index], mfs->temp);
+  if (heat && heat_in) {
+    if (emission_value > 0.0f) {
+      heat_in[index] = ADD_IF_LOWER(heat[index], mfs->temp);
+      /* Scale inflow by dt/framelength. This is to ensure that adaptive steps don't apply too much
+       * emission. */
+    }
+    else {
+      heat_in[index] = heat[index];
+    }
   }
 
   /* set density and fuel - absolute mode */
   if (absolute_flow) {
-    if (density && mfs->type != FLUID_FLOW_TYPE_FIRE) {
-      if (dens_flow > density[index]) {
-        density[index] = dens_flow;
+    if (density && density_in) {
+      density_in[index] = density[index];
+      if (mfs->type != FLUID_FLOW_TYPE_FIRE && dens_flow > density[index]) {
+        density_in[index] = dens_flow;
       }
     }
-    if (fuel && mfs->type != FLUID_FLOW_TYPE_SMOKE && fuel_flow) {
-      if (fuel_flow > fuel[index]) {
-        fuel[index] = fuel_flow;
+    if (fuel && fuel_in) {
+      fuel_in[index] = fuel[index];
+      if (mfs->type != FLUID_FLOW_TYPE_SMOKE && fuel_flow && fuel_flow > fuel[index]) {
+        fuel_in[index] = fuel_flow;
       }
     }
   }
   /* set density and fuel - additive mode */
   else {
-    if (density && mfs->type != FLUID_FLOW_TYPE_FIRE) {
-      density[index] += dens_flow;
-      CLAMP(density[index], 0.0f, 1.0f);
+    if (density && density_in) {
+      density_in[index] = density[index];
+      if (mfs->type != FLUID_FLOW_TYPE_FIRE) {
+        density_in[index] += dens_flow;
+        CLAMP(density_in[index], 0.0f, 1.0f);
+      }
     }
-    if (fuel && mfs->type != FLUID_FLOW_TYPE_SMOKE && mfs->fuel_amount) {
-      fuel[index] += fuel_flow;
-      CLAMP(fuel[index], 0.0f, 10.0f);
+    if (fuel && fuel_in) {
+      fuel_in[index] = fuel[index];
+      if (mfs->type != FLUID_FLOW_TYPE_SMOKE && mfs->fuel_amount) {
+        fuel_in[index] += fuel_flow;
+        CLAMP(fuel_in[index], 0.0f, 10.0f);
+      }
     }
   }
 
   /* set color */
-  if (color_r && dens_flow) {
-    float total_dens = density[index] / (dens_old + dens_flow);
-    color_r[index] = (color_r[index] + mfs->color[0] * dens_flow) * total_dens;
-    color_g[index] = (color_g[index] + mfs->color[1] * dens_flow) * total_dens;
-    color_b[index] = (color_b[index] + mfs->color[2] * dens_flow) * total_dens;
+  if (color_r && color_r_in) {
+    color_r_in[index] = color_r[index];
+    color_g_in[index] = color_g[index];
+    color_b_in[index] = color_b[index];
+
+    if (dens_flow) {
+      float total_dens = density[index] / (dens_old + dens_flow);
+      color_r_in[index] = (color_r[index] + mfs->color[0] * dens_flow) * total_dens;
+      color_g_in[index] = (color_g[index] + mfs->color[1] * dens_flow) * total_dens;
+      color_b_in[index] = (color_b[index] + mfs->color[2] * dens_flow) * total_dens;
+    }
   }
 
   /* set fire reaction coordinate */
-  if (fuel && fuel[index] > FLT_EPSILON) {
+  if (fuel && fuel_in) {
     /* instead of using 1.0 for all new fuel add slight falloff
      * to reduce flow blockiness */
     float value = 1.0f - pow2f(1.0f - emission_value);
 
-    if (value > react[index]) {
+    if (fuel[index] > FLT_EPSILON && value > react[index]) {
       float f = fuel_flow / fuel[index];
-      react[index] = value * f + (1.0f - f) * react[index];
-      CLAMP(react[index], 0.0f, value);
+      react_in[index] = value * f + (1.0f - f) * react[index];
+      CLAMP(react_in[index], 0.0f, value);
+    }
+    else {
+      react_in[index] = react[index];
     }
   }
 }
@@ -3411,24 +3442,6 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
               continue;
             }
 
-            /* sync inflow grids with actual simulation grids, inflow computation needs information
-             * from actual simulation */
-            if (emission_map[e_index] && density) {
-              density_in[d_index] = density[d_index];
-            }
-            if (emission_map[e_index] && heat) {
-              heat_in[d_index] = heat[d_index];
-            }
-            if (emission_map[e_index] && color_r) {
-              color_r_in[d_index] = color_r[d_index];
-              color_g_in[d_index] = color_g[d_index];
-              color_b_in[d_index] = color_b[d_index];
-            }
-            if (emission_map[e_index] && fuel) {
-              fuel_in[d_index] = fuel[d_index];
-              react_in[d_index] = react[d_index];
-            }
-
             if (mfs->behavior == FLUID_FLOW_BEHAVIOR_OUTFLOW) {  // outflow
               apply_outflow_fields(d_index,
                                    distance_map[e_index],
@@ -3447,12 +3460,19 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                   9999.0f,
                                   d_index,
                                   density_in,
+                                  density,
                                   heat_in,
+                                  heat,
                                   fuel_in,
+                                  fuel,
                                   react_in,
+                                  react,
                                   color_r_in,
+                                  color_r,
                                   color_g_in,
+                                  color_g,
                                   color_b_in,
+                                  color_b,
                                   phi_in,
                                   emission_in);
             }
@@ -3465,12 +3485,19 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
                                     distance_map[e_index],
                                     d_index,
                                     density_in,
+                                    density,
                                     heat_in,
+                                    heat,
                                     fuel_in,
+                                    fuel,
                                     react_in,
+                                    react,
                                     color_r_in,
+                                    color_r,
                                     color_g_in,
+                                    color_g,
                                     color_b_in,
+                                    color_b,
                                     phi_in,
                                     emission_in);
                 /* initial velocity */
