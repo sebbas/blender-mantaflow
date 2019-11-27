@@ -27,6 +27,7 @@
 #include "BLI_system.h"
 
 #include "DNA_camera_types.h"
+#include "DNA_curveprofile_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -51,8 +52,12 @@
 #include "BKE_paint.h"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
+#include "BKE_curveprofile.h"
 
 #include "BLO_readfile.h"
+
+/* Make preferences read-only, use versioning_userdef.c. */
+#define U (*((const UserDef *)&U))
 
 /**
  * Rename if the ID doesn't exist.
@@ -324,6 +329,11 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
       copy_v2_v2(me->mloopuv[i].uv, uv_values[i]);
     }
   }
+
+  /* Make sure that the curve profile is initialized */
+  if (ts->custom_bevel_profile_preset == NULL) {
+    ts->custom_bevel_profile_preset = BKE_curveprofile_add(PROF_PRESET_LINE);
+  }
 }
 
 /**
@@ -500,6 +510,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
       id_us_min(&brush->id);
       brush->sculpt_tool = SCULPT_TOOL_POSE;
+    }
+
+    brush_name = "Multiplane Scrape";
+    brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
+    if (!brush) {
+      brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
+      id_us_min(&brush->id);
+      brush->sculpt_tool = SCULPT_TOOL_MULTIPLANE_SCRAPE;
     }
 
     brush_name = "Simplify";

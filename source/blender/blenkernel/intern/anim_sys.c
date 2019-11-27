@@ -180,8 +180,10 @@ AnimData *BKE_animdata_add_id(ID *id)
 
 /* Action Setter --------------------------------------- */
 
-/** Called when user tries to change the active action of an AnimData block
- * (via RNA, Outliner, etc.) */
+/**
+ * Called when user tries to change the active action of an AnimData block
+ * (via RNA, Outliner, etc.)
+ */
 bool BKE_animdata_set_action(ReportList *reports, ID *id, bAction *act)
 {
   AnimData *adt = BKE_animdata_from_id(id);
@@ -279,6 +281,25 @@ void BKE_animdata_free(ID *id, const bool do_id_user)
       iat->adt = NULL;
     }
   }
+}
+
+bool BKE_animdata_id_is_animated(const struct ID *id)
+{
+  if (id == NULL) {
+    return false;
+  }
+
+  const AnimData *adt = BKE_animdata_from_id((ID *)id);
+  if (adt == NULL) {
+    return false;
+  }
+
+  if (adt->action != NULL && !BLI_listbase_is_empty(&adt->action->curves)) {
+    return true;
+  }
+
+  return !BLI_listbase_is_empty(&adt->drivers) || !BLI_listbase_is_empty(&adt->nla_tracks) ||
+         !BLI_listbase_is_empty(&adt->overrides);
 }
 
 /* Copying -------------------------------------------- */
