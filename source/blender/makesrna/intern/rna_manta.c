@@ -1470,7 +1470,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Smoke", "Amount of smoke created by burning fuel");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_resetCache");
 
-  prop = RNA_def_property(srna, "flame_vorticity", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "flame_vorticity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 2.0);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1.0, 5);
   RNA_def_property_ui_text(prop, "Vorticity", "Additional vorticity for the flames");
