@@ -4197,13 +4197,13 @@ static void particles_manta_step(ParticleSimulationData *sim,
         /* tottypepart is the amount of particles of a snd particle type */
         for (p = 0; p < totpart; p++) {
           flagActivePart = manta_liquid_get_snd_particle_flag_at(mds->fluid, p);
-          if ((part->type & PART_MANTA_SPRAY) && (flagActivePart & PSPRAY))
+          if ((part->type & PART_MANTA_SPRAY) && (flagActivePart & PARTICLE_TYPE_SPRAY))
             tottypepart++;
-          if ((part->type & PART_MANTA_BUBBLE) && (flagActivePart & PBUBBLE))
+          if ((part->type & PART_MANTA_BUBBLE) && (flagActivePart & PARTICLE_TYPE_BUBBLE))
             tottypepart++;
-          if ((part->type & PART_MANTA_FOAM) && (flagActivePart & PFOAM))
+          if ((part->type & PART_MANTA_FOAM) && (flagActivePart & PARTICLE_TYPE_FOAM))
             tottypepart++;
-          if ((part->type & PART_MANTA_TRACER) && (flagActivePart & PTRACER))
+          if ((part->type & PART_MANTA_TRACER) && (flagActivePart & PARTICLE_TYPE_TRACER))
             tottypepart++;
         }
       }
@@ -4279,13 +4279,13 @@ static void particles_manta_step(ParticleSimulationData *sim,
 
         /* Type of particle must matche current particle system type (only important for snd
          * particles) */
-        if ((flagActivePart & PSPRAY) && (part->type & PART_MANTA_SPRAY) == 0)
+        if ((flagActivePart & PARTICLE_TYPE_SPRAY) && (part->type & PART_MANTA_SPRAY) == 0)
           continue;
-        if ((flagActivePart & PBUBBLE) && (part->type & PART_MANTA_BUBBLE) == 0)
+        if ((flagActivePart & PARTICLE_TYPE_BUBBLE) && (part->type & PART_MANTA_BUBBLE) == 0)
           continue;
-        if ((flagActivePart & PFOAM) && (part->type & PART_MANTA_FOAM) == 0)
+        if ((flagActivePart & PARTICLE_TYPE_FOAM) && (part->type & PART_MANTA_FOAM) == 0)
           continue;
-        if ((flagActivePart & PTRACER) && (part->type & PART_MANTA_TRACER) == 0)
+        if ((flagActivePart & PARTICLE_TYPE_TRACER) && (part->type & PART_MANTA_TRACER) == 0)
           continue;
 
         // printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
@@ -4295,8 +4295,8 @@ static void particles_manta_step(ParticleSimulationData *sim,
           break;
 
         /* Only show active particles, i.e. filter out dead particles that just Mantaflow needs
-         * Mantaflow convention: PDELETE == inactive particle */
-        if ((flagActivePart & PDELETE) == 0) {
+         * Mantaflow convention: PARTICLE_TYPE_DELETE == inactive particle */
+        if ((flagActivePart & PARTICLE_TYPE_DELETE) == 0) {
           activeParts++;
 
           /* Use particle system settings for particle size */
