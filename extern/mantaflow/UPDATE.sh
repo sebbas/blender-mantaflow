@@ -60,12 +60,20 @@ mkdir -p $BLENDER_INSTALLATION/blender/tmp/helper/ && cp -Rf $MANTA_INSTALLATION
 mkdir -p $BLENDER_INSTALLATION/blender/tmp/helper/ && cp -Rf $MANTA_INSTALLATION/mantaflowgit/source/pwrapper "$_"
 mkdir -p $BLENDER_INSTALLATION/blender/tmp/preprocessed/ && cp -Rf $MANTA_INSTALLATION/mantaflowgit/build_blender/pp/source/. "$_"
 
+# Remove some files that are not need in Blender
+rm $BLENDER_INSTALLATION/blender/tmp/dependencies/cnpy/example1.cpp
+rm $BLENDER_INSTALLATION/blender/tmp/helper/pwrapper/pymain.cpp
+rm $BLENDER_INSTALLATION/blender/tmp/preprocessed/*.reg
+rm $BLENDER_INSTALLATION/blender/tmp/preprocessed/python/*.reg
+rm $BLENDER_INSTALLATION/blender/tmp/preprocessed/fileio/*.reg
+
 # ==================== 4) CLANG-FORMAT ===================================================
 
 cd $BLENDER_INSTALLATION/blender/tmp/
 
 echo "Applying clang format to Mantaflow source files"
-find . -iname *.h -o -iname *.cpp -o -iname *.reg | xargs clang-format --verbose -i -style=file
+find . -iname *.h -o -iname *.cpp | xargs clang-format --verbose -i -style=file
+find . -iname *.h -o -iname *.cpp | xargs dos2unix --verbose
 
 # ==================== 5) MOVE MANTAFLOW FILES TO EXTERN/ ================================
 

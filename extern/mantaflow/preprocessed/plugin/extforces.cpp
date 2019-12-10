@@ -1241,12 +1241,8 @@ void PbRegister_setInitialVelocity()
 
 //! Kernel: gradient norm operator
 struct KnConfForce : public KernelBase {
-  KnConfForce(Grid<Vec3> &force,
-              const Grid<Real> &grid,
-              const Grid<Vec3> &curl,
-              Real str,
-              const Grid<Real> *strGrid)
-      : KernelBase(&force, 1), force(force), grid(grid), curl(curl), str(str), strGrid(strGrid)
+  KnConfForce(Grid<Vec3> &force, const Grid<Real> &grid, const Grid<Vec3> &curl, Real str)
+      : KernelBase(&force, 1), force(force), grid(grid), curl(curl), str(str)
   {
     runMessage();
     run();
@@ -1257,8 +1253,7 @@ struct KnConfForce : public KernelBase {
                  Grid<Vec3> &force,
                  const Grid<Real> &grid,
                  const Grid<Vec3> &curl,
-                 Real str,
-                 const Grid<Real> *strGrid) const
+                 Real str) const
   {
     Vec3 grad = 0.5 * Vec3(grid(i + 1, j, k) - grid(i - 1, j, k),
                            grid(i, j + 1, k) - grid(i, j - 1, k),
@@ -1266,8 +1261,6 @@ struct KnConfForce : public KernelBase {
     if (grid.is3D())
       grad[2] = 0.5 * (grid(i, j, k + 1) - grid(i, j, k - 1));
     normalize(grad);
-    if (strGrid)
-      str += (*strGrid)(i, j, k);
     force(i, j, k) = str * cross(grad, curl(i, j, k));
   }
   inline Grid<Vec3> &getArg0()
@@ -1290,11 +1283,6 @@ struct KnConfForce : public KernelBase {
     return str;
   }
   typedef Real type3;
-  inline const Grid<Real> *getArg4()
-  {
-    return strGrid;
-  }
-  typedef Grid<Real> type4;
   void runMessage()
   {
     debMsg("Executing kernel KnConfForce ", 3);
@@ -1310,13 +1298,13 @@ struct KnConfForce : public KernelBase {
       for (int k = __r.begin(); k != (int)__r.end(); k++)
         for (int j = 1; j < _maxY; j++)
           for (int i = 1; i < _maxX; i++)
-            op(i, j, k, force, grid, curl, str, strGrid);
+            op(i, j, k, force, grid, curl, str);
     }
     else {
       const int k = 0;
       for (int j = __r.begin(); j != (int)__r.end(); j++)
         for (int i = 1; i < _maxX; i++)
-          op(i, j, k, force, grid, curl, str, strGrid);
+          op(i, j, k, force, grid, curl, str);
     }
   }
   void run()
@@ -1330,13 +1318,9 @@ struct KnConfForce : public KernelBase {
   const Grid<Real> &grid;
   const Grid<Vec3> &curl;
   Real str;
-  const Grid<Real> *strGrid;
 };
 
-void vorticityConfinement(MACGrid &vel,
-                          const FlagGrid &flags,
-                          Real strengthGlobal = 0,
-                          const Grid<Real> *strengthCell = NULL)
+void vorticityConfinement(MACGrid &vel, const FlagGrid &flags, Real strength)
 {
   Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
   Grid<Real> norm(flags.getParent());
@@ -1344,7 +1328,7 @@ void vorticityConfinement(MACGrid &vel,
   GetCentered(velCenter, vel);
   CurlOp(velCenter, curl);
   GridNorm(norm, curl);
-  KnConfForce(force, norm, curl, strengthGlobal, strengthCell);
+  KnConfForce(force, norm, curl, strength);
   KnApplyForceField(flags, vel, force, NULL, true, false);
 }
 static PyObject *_W_8(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
@@ -1359,11 +1343,9 @@ static PyObject *_W_8(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
       ArgLocker _lock;
       MACGrid &vel = *_args.getPtr<MACGrid>("vel", 0, &_lock);
       const FlagGrid &flags = *_args.getPtr<FlagGrid>("flags", 1, &_lock);
-      Real strengthGlobal = _args.getOpt<Real>("strengthGlobal", 2, 0, &_lock);
-      const Grid<Real> *strengthCell = _args.getPtrOpt<Grid<Real>>(
-          "strengthCell", 3, NULL, &_lock);
+      Real strength = _args.get<Real>("strength", 2, &_lock);
       _retval = getPyNone();
-      vorticityConfinement(vel, flags, strengthGlobal, strengthCell);
+      vorticityConfinement(vel, flags, strength);
       _args.check();
     }
     pbFinalizePlugin(parent, "vorticityConfinement", !noTiming);

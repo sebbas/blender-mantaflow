@@ -79,70 +79,54 @@ set(SRC
   ${MANTA_DEP}/cnpy/cnpy.h
 
   ${MANTA_PP}/commonkernels.h
-  ${MANTA_PP}/commonkernels.h.reg
   ${MANTA_PP}/commonkernels.h.reg.cpp
   ${MANTA_PP}/conjugategrad.cpp
   ${MANTA_PP}/conjugategrad.h
-  ${MANTA_PP}/conjugategrad.h.reg
   ${MANTA_PP}/conjugategrad.h.reg.cpp
   ${MANTA_PP}/edgecollapse.cpp
   ${MANTA_PP}/edgecollapse.h
-  ${MANTA_PP}/edgecollapse.h.reg
   ${MANTA_PP}/edgecollapse.h.reg.cpp
   ${MANTA_PP}/fastmarch.cpp
   ${MANTA_PP}/fastmarch.h
-  ${MANTA_PP}/fastmarch.h.reg
   ${MANTA_PP}/fastmarch.h.reg.cpp
   ${MANTA_PP}/fileio/iogrids.cpp
   ${MANTA_PP}/fileio/iomeshes.cpp
   ${MANTA_PP}/fileio/ioparticles.cpp
   ${MANTA_PP}/fileio/mantaio.h
-  ${MANTA_PP}/fileio/mantaio.h.reg
   ${MANTA_PP}/fileio/mantaio.h.reg.cpp
   ${MANTA_PP}/fluidsolver.cpp
   ${MANTA_PP}/fluidsolver.h
-  ${MANTA_PP}/fluidsolver.h.reg
   ${MANTA_PP}/fluidsolver.h.reg.cpp
   ${MANTA_PP}/general.cpp
   ${MANTA_PP}/general.h
-  ${MANTA_PP}/general.h.reg
   ${MANTA_PP}/general.h.reg.cpp
   ${MANTA_PP}/gitinfo.h
   ${MANTA_PP}/grid.cpp
   ${MANTA_PP}/grid.h
-  ${MANTA_PP}/grid.h.reg
   ${MANTA_PP}/grid.h.reg.cpp
   ${MANTA_PP}/grid4d.cpp
   ${MANTA_PP}/grid4d.h
-  ${MANTA_PP}/grid4d.h.reg
   ${MANTA_PP}/grid4d.h.reg.cpp
   ${MANTA_PP}/kernel.cpp
   ${MANTA_PP}/kernel.h
-  ${MANTA_PP}/kernel.h.reg
   ${MANTA_PP}/kernel.h.reg.cpp
   ${MANTA_PP}/levelset.cpp
   ${MANTA_PP}/levelset.h
-  ${MANTA_PP}/levelset.h.reg
   ${MANTA_PP}/levelset.h.reg.cpp
   ${MANTA_PP}/mesh.cpp
   ${MANTA_PP}/mesh.h
-  ${MANTA_PP}/mesh.h.reg
   ${MANTA_PP}/mesh.h.reg.cpp
   ${MANTA_PP}/movingobs.cpp
   ${MANTA_PP}/movingobs.h
-  ${MANTA_PP}/movingobs.h.reg
   ${MANTA_PP}/movingobs.h.reg.cpp
   ${MANTA_PP}/multigrid.cpp
   ${MANTA_PP}/multigrid.h
-  ${MANTA_PP}/multigrid.h.reg
   ${MANTA_PP}/multigrid.h.reg.cpp
   ${MANTA_PP}/noisefield.cpp
   ${MANTA_PP}/noisefield.h
-  ${MANTA_PP}/noisefield.h.reg
   ${MANTA_PP}/noisefield.h.reg.cpp
   ${MANTA_PP}/particle.cpp
   ${MANTA_PP}/particle.h
-  ${MANTA_PP}/particle.h.reg
   ${MANTA_PP}/particle.h.reg.cpp
   ${MANTA_PP}/plugin/advection.cpp
   ${MANTA_PP}/plugin/apic.cpp
@@ -165,29 +149,23 @@ set(SRC
   ${MANTA_PP}/plugin/waveletturbulence.cpp
   ${MANTA_PP}/plugin/waves.cpp
   ${MANTA_PP}/python/defines.py
-  ${MANTA_PP}/python/defines.py.reg
   ${MANTA_PP}/python/defines.py.reg.cpp
   ${MANTA_PP}/registration.cpp
   ${MANTA_PP}/shapes.cpp
   ${MANTA_PP}/shapes.h
-  ${MANTA_PP}/shapes.h.reg
   ${MANTA_PP}/shapes.h.reg.cpp
   ${MANTA_PP}/test.cpp
   ${MANTA_PP}/timing.cpp
   ${MANTA_PP}/timing.h
-  ${MANTA_PP}/timing.h.reg
   ${MANTA_PP}/timing.h.reg.cpp
   ${MANTA_PP}/turbulencepart.cpp
   ${MANTA_PP}/turbulencepart.h
-  ${MANTA_PP}/turbulencepart.h.reg
   ${MANTA_PP}/turbulencepart.h.reg.cpp
   ${MANTA_PP}/vortexpart.cpp
   ${MANTA_PP}/vortexpart.h
-  ${MANTA_PP}/vortexpart.h.reg
   ${MANTA_PP}/vortexpart.h.reg.cpp
   ${MANTA_PP}/vortexsheet.cpp
   ${MANTA_PP}/vortexsheet.h
-  ${MANTA_PP}/vortexsheet.h.reg
   ${MANTA_PP}/vortexsheet.h.reg.cpp
 
   ${MANTA_HLP}/pwrapper/manta.h
