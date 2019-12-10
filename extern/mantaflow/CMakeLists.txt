@@ -25,6 +25,8 @@
 
 set(MANTAVERSION "0.12")
 
+add_definitions(-DWITH_MANTA=1)
+
 set(MANTA_DEP
   dependencies
 )
@@ -35,9 +37,7 @@ set(MANTA_PP
   preprocessed
 )
 
-if(WITH_OPENMP AND WITH_MANTA_OMP)
-  add_definitions(-DOPENMP=1)
-else()
+if(WITH_TBB)
   add_definitions(-DTBB=1)
 endif()
 
@@ -60,7 +60,7 @@ set(INC_SYS
   ${ZLIB_INCLUDE_DIRS}
 )
 
-if(NOT WITH_OPENMP OR NOT WITH_MANTA_OMP)
+if(WITH_TBB)
   list(APPEND INC_SYS
     ${TBB_INCLUDE_DIRS}
   )

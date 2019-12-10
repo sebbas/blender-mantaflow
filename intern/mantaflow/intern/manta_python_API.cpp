@@ -27,7 +27,6 @@
  *  \ingroup mantaflow
  */
 
-#include "Python.h"
 #include "manta_python_API.h"
 #include "manta.h"
 

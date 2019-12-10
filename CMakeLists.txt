@@ -313,7 +313,6 @@ endif()
 
 # Modifiers
 option(WITH_MOD_MANTA           "Enable Mantaflow Fluid Simulation Framework" ON)
-option(WITH_MANTA_OMP           "Enable Mantaflow OpenMP support (instead of default TBB support)" OFF)
 option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 option(WITH_MOD_OCEANSIM        "Enable Ocean Modifier" OFF)
 
@@ -1260,13 +1259,6 @@ endif()
 
 if(WITH_PYTHON_MODULE)
   add_definitions(-DPy_ENABLE_SHARED)
-endif()
-
-#-----------------------------------------------------------------------------
-# Configure mantaflow.
-
-if(WITH_MOD_MANTA)
-  add_definitions(-DWITH_MANTA)
 endif()
 
 #-----------------------------------------------------------------------------

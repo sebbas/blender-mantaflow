@@ -30,6 +30,8 @@
 #ifndef MANTA_PYTHON_API_H
 #define MANTA_PYTHON_API_H
 
+#include "Python.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

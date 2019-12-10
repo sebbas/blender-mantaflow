@@ -2981,19 +2981,19 @@ BLI_INLINE void apply_outflow_fields(int index,
 
   /* set smoke outflow */
   if (density) {
-    density[index] = 0.f;
+    density[index] = 0.0f;
   }
   if (heat) {
-    heat[index] = 0.f;
+    heat[index] = 0.0f;
   }
   if (fuel) {
-    fuel[index] = 0.f;
-    react[index] = 0.f;
+    fuel[index] = 0.0f;
+    react[index] = 0.0f;
   }
   if (color_r) {
-    color_r[index] = 0.f;
-    color_g[index] = 0.f;
-    color_b[index] = 0.f;
+    color_r[index] = 0.0f;
+    color_g[index] = 0.0f;
+    color_b[index] = 0.0f;
   }
 }
 

@@ -40,36 +40,36 @@ MANTA *manta_init(int *res, struct MantaModifierData *mmd)
 void manta_free(MANTA *fluid)
 {
   delete fluid;
-  fluid = NULL;
+  fluid = nullptr;
 }
 
 void manta_ensure_obstacle(MANTA *fluid, struct MantaModifierData *mmd)
 {
-  if (fluid) {
-    fluid->initObstacle(mmd);
-    fluid->updatePointers();
-  }
+  if (!fluid)
+    return;
+  fluid->initObstacle(mmd);
+  fluid->updatePointers();
 }
 void manta_ensure_guiding(MANTA *fluid, struct MantaModifierData *mmd)
 {
-  if (fluid) {
-    fluid->initGuiding(mmd);
-    fluid->updatePointers();
-  }
+  if (!fluid)
+    return;
+  fluid->initGuiding(mmd);
+  fluid->updatePointers();
 }
 void manta_ensure_invelocity(MANTA *fluid, struct MantaModifierData *mmd)
 {
-  if (fluid) {
-    fluid->initInVelocity(mmd);
-    fluid->updatePointers();
-  }
+  if (!fluid)
+    return;
+  fluid->initInVelocity(mmd);
+  fluid->updatePointers();
 }
 void manta_ensure_outflow(MANTA *fluid, struct MantaModifierData *mmd)
 {
-  if (fluid) {
-    fluid->initOutflow(mmd);
-    fluid->updatePointers();
-  }
+  if (!fluid)
+    return;
+  fluid->initOutflow(mmd);
+  fluid->updatePointers();
 }
 
 int manta_write_config(MANTA *fluid, MantaModifierData *mmd, int framenr)
@@ -121,10 +121,7 @@ int manta_read_particles(MANTA *fluid, MantaModifierData *mmd, int framenr)
   return fluid->readParticles(mmd, framenr);
 }
 
-int manta_read_guiding(MANTA *fluid,
-                                  MantaModifierData *mmd,
-                                  int framenr,
-                                  bool sourceDomain)
+int manta_read_guiding(MANTA *fluid, MantaModifierData *mmd, int framenr, bool sourceDomain)
 {
   if (!fluid || !mmd)
     return 0;
@@ -189,8 +186,9 @@ int manta_bake_guiding(MANTA *fluid, MantaModifierData *mmd, int framenr)
 
 void manta_update_variables(MANTA *fluid, MantaModifierData *mmd)
 {
-  if (fluid)
-    fluid->updateVariables(mmd);
+  if (!fluid)
+    return;
+  fluid->updateVariables(mmd);
 }
 
 int manta_get_frame(MANTA *fluid)
@@ -209,15 +207,16 @@ float manta_get_timestep(MANTA *fluid)
 
 void manta_adapt_timestep(MANTA *fluid)
 {
-  if (fluid)
-    fluid->adaptTimestep();
+  if (!fluid)
+    return;
+  fluid->adaptTimestep();
 }
 
 bool manta_needs_realloc(MANTA *fluid, MantaModifierData *mmd)
 {
-  if (fluid)
-    return fluid->needsRealloc(mmd);
-  return false;
+  if (!fluid)
+    return false;
+  return fluid->needsRealloc(mmd);
 }
 
 /* Fluid accessors */
@@ -343,21 +342,21 @@ void manta_smoke_export_script(MANTA *smoke, MantaModifierData *mmd)
 }
 
 void manta_smoke_export(MANTA *smoke,
-                                   float *dt,
-                                   float *dx,
-                                   float **dens,
-                                   float **react,
-                                   float **flame,
-                                   float **fuel,
-                                   float **heat,
-                                   float **vx,
-                                   float **vy,
-                                   float **vz,
-                                   float **r,
-                                   float **g,
-                                   float **b,
-                                   int **obstacle,
-                                   float **shadow)
+                        float *dt,
+                        float *dx,
+                        float **dens,
+                        float **react,
+                        float **flame,
+                        float **fuel,
+                        float **heat,
+                        float **vx,
+                        float **vy,
+                        float **vz,
+                        float **r,
+                        float **g,
+                        float **b,
+                        int **obstacle,
+                        float **shadow)
 {
   if (dens)
     *dens = smoke->getDensity();
@@ -385,19 +384,19 @@ void manta_smoke_export(MANTA *smoke,
 }
 
 void manta_smoke_turbulence_export(MANTA *smoke,
-                                              float **dens,
-                                              float **react,
-                                              float **flame,
-                                              float **fuel,
-                                              float **r,
-                                              float **g,
-                                              float **b,
-                                              float **tcu,
-                                              float **tcv,
-                                              float **tcw,
-                                              float **tcu2,
-                                              float **tcv2,
-                                              float **tcw2)
+                                   float **dens,
+                                   float **react,
+                                   float **flame,
+                                   float **fuel,
+                                   float **r,
+                                   float **g,
+                                   float **b,
+                                   float **tcu,
+                                   float **tcv,
+                                   float **tcw,
+                                   float **tcu2,
+                                   float **tcv2,
+                                   float **tcw2)
 {
   if (!smoke && !(smoke->usingNoise()))
     return;
@@ -428,8 +427,8 @@ static void get_rgba(
     float *r, float *g, float *b, float *a, int total_cells, float *data, int sequential)
 {
   int i;
+  /* Use offsets to map RGB grids to to correct location in data grid. */
   int m = 4, i_g = 1, i_b = 2, i_a = 3;
-  /* sequential data */
   if (sequential) {
     m = 1;
     i_g *= total_cells;
@@ -473,13 +472,11 @@ void manta_smoke_turbulence_get_rgba(MANTA *smoke, float *data, int sequential)
            sequential);
 }
 
-/* get a single color premultiplied voxel grid */
 static void get_rgba_from_density(
     float color[3], float *a, int total_cells, float *data, int sequential)
 {
   int i;
   int m = 4, i_g = 1, i_b = 2, i_a = 3;
-  /* sequential data */
   if (sequential) {
     m = 1;
     i_g *= total_cells;
@@ -501,18 +498,15 @@ static void get_rgba_from_density(
   }
 }
 
-void manta_smoke_get_rgba_from_density(MANTA *smoke,
-                                                  float color[3],
-                                                  float *data,
-                                                  int sequential)
+void manta_smoke_get_rgba_from_density(MANTA *smoke, float color[3], float *data, int sequential)
 {
   get_rgba_from_density(color, smoke->getDensity(), smoke->getTotalCells(), data, sequential);
 }
 
 void manta_smoke_turbulence_get_rgba_from_density(MANTA *smoke,
-                                                             float color[3],
-                                                             float *data,
-                                                             int sequential)
+                                                  float color[3],
+                                                  float *data,
+                                                  int sequential)
 {
   get_rgba_from_density(
       color, smoke->getDensityHigh(), smoke->getTotalCellsHigh(), data, sequential);
@@ -640,31 +634,31 @@ int manta_smoke_has_colors(MANTA *smoke)
 
 float *manta_smoke_turbulence_get_density(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getDensityHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getDensityHigh() : nullptr;
 }
 float *manta_smoke_turbulence_get_fuel(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getFuelHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getFuelHigh() : nullptr;
 }
 float *manta_smoke_turbulence_get_react(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getReactHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getReactHigh() : nullptr;
 }
 float *manta_smoke_turbulence_get_color_r(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getColorRHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getColorRHigh() : nullptr;
 }
 float *manta_smoke_turbulence_get_color_g(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getColorGHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getColorGHigh() : nullptr;
 }
 float *manta_smoke_turbulence_get_color_b(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getColorBHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getColorBHigh() : nullptr;
 }
 float *manta_smoke_turbulence_get_flame(MANTA *smoke)
 {
-  return (smoke && smoke->usingNoise()) ? smoke->getFlameHigh() : NULL;
+  return (smoke && smoke->usingNoise()) ? smoke->getFlameHigh() : nullptr;
 }
 
 int manta_smoke_turbulence_has_fuel(MANTA *smoke)

@@ -23,12 +23,7 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-
-if(WITH_OPENMP AND WITH_MANTA_OMP)
-  add_definitions(-DOPENMP=1)
-else()
-  add_definitions(-DTBB=1)
-endif()
+add_definitions(-DWITH_MANTA=1)
 
 if(WITH_OPENVDB)
   add_definitions(-DOPENVDB=1)

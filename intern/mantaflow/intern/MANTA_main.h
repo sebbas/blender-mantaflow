@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 #include <atomic>
+#include <cassert>
 
 struct MANTA {
  public:
@@ -416,174 +417,246 @@ struct MANTA {
 
   inline float getVertexXAt(int i)
   {
-    return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ?
-               mMeshNodes->at(i).pos[0] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshNodes && !mMeshNodes->empty()) {
+      assert(i < mMeshNodes->size());
+      return (*mMeshNodes)[i].pos[0];
+    }
+    return 0.0f;
   }
   inline float getVertexYAt(int i)
   {
-    return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ?
-               mMeshNodes->at(i).pos[1] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshNodes && !mMeshNodes->empty()) {
+      assert(i < mMeshNodes->size());
+      return (*mMeshNodes)[i].pos[1];
+    }
+    return 0.0f;
   }
   inline float getVertexZAt(int i)
   {
-    return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ?
-               mMeshNodes->at(i).pos[2] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshNodes && !mMeshNodes->empty()) {
+      assert(i < mMeshNodes->size());
+      return (*mMeshNodes)[i].pos[2];
+    }
+    return 0.0f;
   }
 
   inline float getNormalXAt(int i)
   {
-    return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ?
-               mMeshNodes->at(i).normal[0] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshNodes && !mMeshNodes->empty()) {
+      assert(i < mMeshNodes->size());
+      return (*mMeshNodes)[i].normal[0];
+    }
+    return 0.0f;
   }
   inline float getNormalYAt(int i)
   {
-    return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ?
-               mMeshNodes->at(i).normal[1] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshNodes && !mMeshNodes->empty()) {
+      assert(i < mMeshNodes->size());
+      return (*mMeshNodes)[i].normal[1];
+    }
+    return 0.0f;
   }
   inline float getNormalZAt(int i)
   {
-    return (mMeshNodes && !mMeshNodes->empty() && mMeshNodes->size() > i) ?
-               mMeshNodes->at(i).normal[2] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshNodes && !mMeshNodes->empty()) {
+      assert(i < mMeshNodes->size());
+      return (*mMeshNodes)[i].normal[2];
+    }
+    return 0.0f;
   }
 
   inline int getTriangleXAt(int i)
   {
-    return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ?
-               mMeshTriangles->at(i).c[0] :
-               0;
+    assert(i >= 0);
+    if (mMeshTriangles && !mMeshTriangles->empty()) {
+      assert(i < mMeshTriangles->size());
+      return (*mMeshTriangles)[i].c[0];
+    }
+    return 0;
   }
   inline int getTriangleYAt(int i)
   {
-    return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ?
-               mMeshTriangles->at(i).c[1] :
-               0;
+    assert(i >= 0);
+    if (mMeshTriangles && !mMeshTriangles->empty()) {
+      assert(i < mMeshTriangles->size());
+      return (*mMeshTriangles)[i].c[1];
+    }
+    return 0;
   }
   inline int getTriangleZAt(int i)
   {
-    return (mMeshTriangles && !mMeshTriangles->empty() && mMeshTriangles->size() > i) ?
-               mMeshTriangles->at(i).c[2] :
-               0;
+    assert(i >= 0);
+    if (mMeshTriangles && !mMeshTriangles->empty()) {
+      assert(i < mMeshTriangles->size());
+      return (*mMeshTriangles)[i].c[2];
+    }
+    return 0;
   }
 
   inline float getVertVelXAt(int i)
   {
-    return (mMeshVelocities && !mMeshVelocities->empty() && mMeshVelocities->size() > i) ?
-               mMeshVelocities->at(i).pos[0] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshVelocities && !mMeshVelocities->empty()) {
+      assert(i < mMeshVelocities->size());
+      return (*mMeshVelocities)[i].pos[0];
+    }
+    return 0.0f;
   }
   inline float getVertVelYAt(int i)
   {
-    return (mMeshVelocities && !mMeshVelocities->empty() && mMeshVelocities->size() > i) ?
-               mMeshVelocities->at(i).pos[1] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshVelocities && !mMeshVelocities->empty()) {
+      assert(i < mMeshVelocities->size());
+      return (*mMeshVelocities)[i].pos[1];
+    }
+    return 0.0f;
   }
   inline float getVertVelZAt(int i)
   {
-    return (mMeshVelocities && !mMeshVelocities->empty() && mMeshVelocities->size() > i) ?
-               mMeshVelocities->at(i).pos[2] :
-               0.f;
+    assert(i >= 0);
+    if (mMeshVelocities && !mMeshVelocities->empty()) {
+      assert(i < mMeshVelocities->size());
+      return (*mMeshVelocities)[i].pos[2];
+    }
+    return 0.0f;
   }
 
   // Particle getters
   inline int getFlipParticleFlagAt(int i)
   {
-    return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ?
-               ((std::vector<pData> *)mFlipParticleData)->at(i).flag :
-               0;
+    assert(i >= 0);
+    if (mFlipParticleData && !mFlipParticleData->empty()) {
+      assert(i < mFlipParticleData->size());
+      return (*mFlipParticleData)[i].flag;
+    }
+    return 0;
   }
   inline int getSndParticleFlagAt(int i)
   {
-    return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ?
-               ((std::vector<pData> *)mSndParticleData)->at(i).flag :
-               0;
+    assert(i >= 0);
+    if (mSndParticleData && !mSndParticleData->empty()) {
+      assert(i < mSndParticleData->size());
+      return (*mSndParticleData)[i].flag;
+    }
+    return 0;
   }
 
   inline float getFlipParticlePositionXAt(int i)
   {
-    return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ?
-               mFlipParticleData->at(i).pos[0] :
-               0.f;
+    assert(i >= 0);
+    if (mFlipParticleData && !mFlipParticleData->empty()) {
+      assert(i < mFlipParticleData->size());
+      return (*mFlipParticleData)[i].pos[0];
+    }
+    return 0.0f;
   }
   inline float getFlipParticlePositionYAt(int i)
   {
-    return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ?
-               mFlipParticleData->at(i).pos[1] :
-               0.f;
+    assert(i >= 0);
+    if (mFlipParticleData && !mFlipParticleData->empty()) {
+      assert(i < mFlipParticleData->size());
+      return (*mFlipParticleData)[i].pos[1];
+    }
+    return 0.0f;
   }
   inline float getFlipParticlePositionZAt(int i)
   {
-    return (mFlipParticleData && !mFlipParticleData->empty() && mFlipParticleData->size() > i) ?
-               mFlipParticleData->at(i).pos[2] :
-               0.f;
+    assert(i >= 0);
+    if (mFlipParticleData && !mFlipParticleData->empty()) {
+      assert(i < mFlipParticleData->size());
+      return (*mFlipParticleData)[i].pos[2];
+    }
+    return 0.0f;
   }
 
   inline float getSndParticlePositionXAt(int i)
   {
-    return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ?
-               mSndParticleData->at(i).pos[0] :
-               0.f;
+    assert(i >= 0);
+    if (mSndParticleData && !mSndParticleData->empty()) {
+      assert(i < mSndParticleData->size());
+      return (*mSndParticleData)[i].pos[0];
+    }
+    return 0.0f;
   }
   inline float getSndParticlePositionYAt(int i)
   {
-    return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ?
-               mSndParticleData->at(i).pos[1] :
-               0.f;
+    assert(i >= 0);
+    if (mSndParticleData && !mSndParticleData->empty()) {
+      assert(i < mSndParticleData->size());
+      return (*mSndParticleData)[i].pos[1];
+    }
+    return 0.0f;
   }
   inline float getSndParticlePositionZAt(int i)
   {
-    return (mSndParticleData && !mSndParticleData->empty() && mSndParticleData->size() > i) ?
-               mSndParticleData->at(i).pos[2] :
-               0.f;
+    assert(i >= 0);
+    if (mSndParticleData && !mSndParticleData->empty()) {
+      assert(i < mSndParticleData->size());
+      return (*mSndParticleData)[i].pos[2];
+    }
+    return 0.0f;
   }
 
   inline float getFlipParticleVelocityXAt(int i)
   {
-    return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() &&
-            mFlipParticleVelocity->size() > i) ?
-               mFlipParticleVelocity->at(i).pos[0] :
-               0.f;
+    assert(i >= 0);
+    if (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) {
+      assert(i < mFlipParticleVelocity->size());
+      return (*mFlipParticleVelocity)[i].pos[0];
+    }
+    return 0.0f;
   }
   inline float getFlipParticleVelocityYAt(int i)
   {
-    return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() &&
-            mFlipParticleVelocity->size() > i) ?
-               mFlipParticleVelocity->at(i).pos[1] :
-               0.f;
+    assert(i >= 0);
+    if (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) {
+      assert(i < mFlipParticleVelocity->size());
+      return (*mFlipParticleVelocity)[i].pos[1];
+    }
+    return 0.0f;
   }
   inline float getFlipParticleVelocityZAt(int i)
   {
-    return (mFlipParticleVelocity && !mFlipParticleVelocity->empty() &&
-            mFlipParticleVelocity->size() > i) ?
-               mFlipParticleVelocity->at(i).pos[2] :
-               0.f;
+    assert(i >= 0);
+    if (mFlipParticleVelocity && !mFlipParticleVelocity->empty()) {
+      assert(i < mFlipParticleVelocity->size());
+      return (*mFlipParticleVelocity)[i].pos[2];
+    }
+    return 0.0f;
   }
 
   inline float getSndParticleVelocityXAt(int i)
   {
-    return (mSndParticleVelocity && !mSndParticleVelocity->empty() &&
-            mSndParticleVelocity->size() > i) ?
-               mSndParticleVelocity->at(i).pos[0] :
-               0.f;
+    assert(i >= 0);
+    if (mSndParticleVelocity && !mSndParticleVelocity->empty()) {
+      assert(i < mSndParticleVelocity->size());
+      return (*mSndParticleVelocity)[i].pos[0];
+    }
+    return 0.0f;
   }
   inline float getSndParticleVelocityYAt(int i)
   {
-    return (mSndParticleVelocity && !mSndParticleVelocity->empty() &&
-            mSndParticleVelocity->size() > i) ?
-               mSndParticleVelocity->at(i).pos[1] :
-               0.f;
+    assert(i >= 0);
+    if (mSndParticleVelocity && !mSndParticleVelocity->empty()) {
+      assert(i < mSndParticleVelocity->size());
+      return (*mSndParticleVelocity)[i].pos[1];
+    }
+    return 0.0f;
   }
   inline float getSndParticleVelocityZAt(int i)
   {
-    return (mSndParticleVelocity && !mSndParticleVelocity->empty() &&
-            mSndParticleVelocity->size() > i) ?
-               mSndParticleVelocity->at(i).pos[2] :
-               0.f;
+    assert(i >= 0);
+    if (mSndParticleVelocity && !mSndParticleVelocity->empty()) {
+      assert(i < mSndParticleVelocity->size());
+      return (*mSndParticleVelocity)[i].pos[2];
+    }
+    return 0.0f;
   }
 
   inline float *getFlipParticleData()
