@@ -73,6 +73,20 @@
 #include "DNA_manta_types.h"
 #include "DNA_mesh_types.h"
 
+#define MANTA_JOB_BAKE_ALL "MANTA_OT_bake_all"
+#define MANTA_JOB_BAKE_DATA "MANTA_OT_bake_data"
+#define MANTA_JOB_BAKE_NOISE "MANTA_OT_bake_noise"
+#define MANTA_JOB_BAKE_MESH "MANTA_OT_bake_mesh"
+#define MANTA_JOB_BAKE_PARTICLES "MANTA_OT_bake_particles"
+#define MANTA_JOB_BAKE_GUIDING "MANTA_OT_bake_guiding"
+#define MANTA_JOB_FREE_ALL "MANTA_OT_free_all"
+#define MANTA_JOB_FREE_DATA "MANTA_OT_free_data"
+#define MANTA_JOB_FREE_NOISE "MANTA_OT_free_noise"
+#define MANTA_JOB_FREE_MESH "MANTA_OT_free_mesh"
+#define MANTA_JOB_FREE_PARTICLES "MANTA_OT_free_particles"
+#define MANTA_JOB_FREE_GUIDING "MANTA_OT_free_guiding"
+#define MANTA_JOB_BAKE_PAUSE "MANTA_OT_pause_bake"
+
 typedef struct MantaJob {
   /* from wmJob */
   void *owner;
@@ -93,6 +107,43 @@ typedef struct MantaJob {
 
   int *pause_frame;
 } MantaJob;
+
+static inline bool manta_is_bake_all(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_BAKE_ALL));
+}
+static inline bool manta_is_bake_data(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_BAKE_DATA));
+}
+static inline bool manta_is_bake_noise(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_BAKE_NOISE));
+}
+static inline bool manta_is_bake_mesh(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_BAKE_MESH));
+}
+static inline bool manta_is_bake_particle(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_BAKE_PARTICLES));
+}
+static inline bool manta_is_bake_guiding(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_BAKE_GUIDING));
+}
+static inline bool manta_is_free_all(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_FREE_ALL));
+}
+static inline bool manta_is_free_data(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_FREE_DATA));
+}
+static inline bool manta_is_free_noise(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_FREE_NOISE));
+}
+static inline bool manta_is_free_mesh(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_FREE_MESH));
+}
+static inline bool manta_is_free_particles(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_FREE_PARTICLES));
+}
+static inline bool manta_is_free_guiding(MantaJob *job) {
+  return (STREQ(job->type, MANTA_JOB_FREE_GUIDING));
+}
 
 static bool manta_initjob(
     bContext *C, MantaJob *job, wmOperator *op, char *error_msg, int error_size)
@@ -252,27 +303,27 @@ static void manta_bake_endjob(void *customdata)
   MantaJob *job = customdata;
   MantaDomainSettings *mds = job->mmd->domain;
 
-  if (STREQ(job->type, "MANTA_OT_bake_noise") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_noise(job) || manta_is_bake_all(job)) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_NOISE;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_NOISE;
     mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_NOISE;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_mesh") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_mesh(job) || manta_is_bake_all(job)) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_MESH;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_MESH;
     mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_MESH;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_particles") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_particle(job) || manta_is_bake_all(job)) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_PARTICLES;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_PARTICLES;
     mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_PARTICLES;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_guiding") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_guiding(job) || manta_is_bake_all(job)) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_GUIDING;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_GUIDING;
     mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_GUIDING;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_data") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_data(job) || manta_is_bake_all(job)) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_DATA;
     mds->cache_flag |= FLUID_DOMAIN_BAKED_DATA;
     mds->cache_flag &= ~FLUID_DOMAIN_OUTDATED_DATA;
@@ -293,7 +344,7 @@ static void manta_bake_endjob(void *customdata)
                PIL_check_seconds_timer() - job->start);
   }
   else {
-    if (strlen(mds->error)) { /* If an error occurred */
+    if (mds->error != NULL && mds->error[0] != '\0') {
       WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, mds->error);
     }
     else { /* User canceled the bake */
@@ -320,7 +371,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
   G.is_rendering = true;
   BKE_spacedata_draw_locks(true);
 
-  if (STREQ(job->type, "MANTA_OT_bake_noise") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_noise(job) || manta_is_bake_all(job)) {
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_NOISE, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'noise' subdir if it does not exist already */
@@ -328,7 +379,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     mds->cache_flag |= FLUID_DOMAIN_BAKING_NOISE;
     job->pause_frame = &mds->cache_frame_pause_noise;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_mesh") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_mesh(job) || manta_is_bake_all(job)) {
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_MESH, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'mesh' subdir if it does not exist already */
@@ -336,7 +387,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     mds->cache_flag |= FLUID_DOMAIN_BAKING_MESH;
     job->pause_frame = &mds->cache_frame_pause_mesh;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_particles") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_particle(job) || manta_is_bake_all(job)) {
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'particles' subdir if it does not exist already */
@@ -344,7 +395,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     mds->cache_flag |= FLUID_DOMAIN_BAKING_PARTICLES;
     job->pause_frame = &mds->cache_frame_pause_particles;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_guiding") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_guiding(job) || manta_is_bake_all(job)) {
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_GUIDING, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'guiding' subdir if it does not exist already */
@@ -352,7 +403,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
     mds->cache_flag |= FLUID_DOMAIN_BAKING_GUIDING;
     job->pause_frame = &mds->cache_frame_pause_guiding;
   }
-  if (STREQ(job->type, "MANTA_OT_bake_data") || STREQ(job->type, "MANTA_OT_bake_all")) {
+  if (manta_is_bake_data(job) || manta_is_bake_all(job)) {
     tmpDir[0] = '\0';
     BLI_path_join(tmpDir, sizeof(tmpDir), mds->cache_directory, FLUID_DOMAIN_DIR_CONFIG, NULL);
     BLI_dir_create_recursive(tmpDir); /* Create 'config' subdir if it does not exist already */
@@ -397,7 +448,7 @@ static void manta_free_endjob(void *customdata)
                PIL_check_seconds_timer() - job->start);
   }
   else {
-    if (strlen(mds->error)) { /* If an error occurred */
+    if (mds->error != NULL && mds->error[0] != '\0') {
       WM_reportf(RPT_ERROR, "Fluid Mantaflow: %s failed: %s", job->name, mds->error);
     }
     else { /* User canceled the free job */
@@ -427,20 +478,20 @@ static void manta_free_startjob(void *customdata, short *stop, short *do_update,
 
   int cache_map = 0;
 
-  if (STREQ(job->type, "MANTA_OT_free_data") || STREQ(job->type, "MANTA_OT_free_all")) {
+  if (manta_is_free_data(job) || manta_is_free_all(job)) {
     cache_map |= (FLUID_DOMAIN_OUTDATED_DATA | FLUID_DOMAIN_OUTDATED_NOISE |
                   FLUID_DOMAIN_OUTDATED_MESH | FLUID_DOMAIN_OUTDATED_PARTICLES);
   }
-  if (STREQ(job->type, "MANTA_OT_free_noise") || STREQ(job->type, "MANTA_OT_free_all")) {
+  if (manta_is_free_noise(job) || manta_is_free_all(job)) {
     cache_map |= FLUID_DOMAIN_OUTDATED_NOISE;
   }
-  if (STREQ(job->type, "MANTA_OT_free_mesh") || STREQ(job->type, "MANTA_OT_free_all")) {
+  if (manta_is_free_mesh(job) || manta_is_free_all(job)) {
     cache_map |= FLUID_DOMAIN_OUTDATED_MESH;
   }
-  if (STREQ(job->type, "MANTA_OT_free_particles") || STREQ(job->type, "MANTA_OT_free_all")) {
+  if (manta_is_free_particles(job) || manta_is_free_all(job)) {
     cache_map |= FLUID_DOMAIN_OUTDATED_PARTICLES;
   }
-  if (STREQ(job->type, "MANTA_OT_free_guiding") || STREQ(job->type, "MANTA_OT_free_all")) {
+  if (manta_is_free_guiding(job) || manta_is_free_all(job)) {
     cache_map |= FLUID_DOMAIN_OUTDATED_GUIDING;
   }
   BKE_manta_cache_free(mds, job->ob, cache_map);
@@ -621,7 +672,7 @@ void MANTA_OT_bake_all(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake All";
   ot->description = "Bake Entire Fluid Simulation";
-  ot->idname = "MANTA_OT_bake_all";
+  ot->idname = MANTA_JOB_BAKE_ALL;
 
   /* api callbacks */
   ot->exec = manta_bake_exec;
@@ -635,7 +686,7 @@ void MANTA_OT_free_all(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Free All";
   ot->description = "Free Entire Fluid Simulation";
-  ot->idname = "MANTA_OT_free_all";
+  ot->idname = MANTA_JOB_FREE_ALL;
 
   /* api callbacks */
   ot->exec = manta_free_exec;
@@ -647,7 +698,7 @@ void MANTA_OT_bake_data(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake Data";
   ot->description = "Bake Fluid Data";
-  ot->idname = "MANTA_OT_bake_data";
+  ot->idname = MANTA_JOB_BAKE_DATA;
 
   /* api callbacks */
   ot->exec = manta_bake_exec;
@@ -661,7 +712,7 @@ void MANTA_OT_free_data(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Free Data";
   ot->description = "Free Fluid Data";
-  ot->idname = "MANTA_OT_free_data";
+  ot->idname = MANTA_JOB_FREE_DATA;
 
   /* api callbacks */
   ot->exec = manta_free_exec;
@@ -673,7 +724,7 @@ void MANTA_OT_bake_noise(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake Noise";
   ot->description = "Bake Fluid Noise";
-  ot->idname = "MANTA_OT_bake_noise";
+  ot->idname = MANTA_JOB_BAKE_NOISE;
 
   /* api callbacks */
   ot->exec = manta_bake_exec;
@@ -687,7 +738,7 @@ void MANTA_OT_free_noise(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Free Noise";
   ot->description = "Free Fluid Noise";
-  ot->idname = "MANTA_OT_free_noise";
+  ot->idname = MANTA_JOB_FREE_NOISE;
 
   /* api callbacks */
   ot->exec = manta_free_exec;
@@ -699,7 +750,7 @@ void MANTA_OT_bake_mesh(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake Mesh";
   ot->description = "Bake Fluid Mesh";
-  ot->idname = "MANTA_OT_bake_mesh";
+  ot->idname = MANTA_JOB_BAKE_MESH;
 
   /* api callbacks */
   ot->exec = manta_bake_exec;
@@ -713,7 +764,7 @@ void MANTA_OT_free_mesh(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Free Mesh";
   ot->description = "Free Fluid Mesh";
-  ot->idname = "MANTA_OT_free_mesh";
+  ot->idname = MANTA_JOB_FREE_MESH;
 
   /* api callbacks */
   ot->exec = manta_free_exec;
@@ -725,7 +776,7 @@ void MANTA_OT_bake_particles(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake Particles";
   ot->description = "Bake Fluid Particles";
-  ot->idname = "MANTA_OT_bake_particles";
+  ot->idname = MANTA_JOB_BAKE_PARTICLES;
 
   /* api callbacks */
   ot->exec = manta_bake_exec;
@@ -739,7 +790,7 @@ void MANTA_OT_free_particles(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Free Particles";
   ot->description = "Free Fluid Particles";
-  ot->idname = "MANTA_OT_free_particles";
+  ot->idname = MANTA_JOB_FREE_PARTICLES;
 
   /* api callbacks */
   ot->exec = manta_free_exec;
@@ -751,7 +802,7 @@ void MANTA_OT_bake_guiding(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Bake Guiding";
   ot->description = "Bake Fluid Guiding";
-  ot->idname = "MANTA_OT_bake_guiding";
+  ot->idname = MANTA_JOB_BAKE_GUIDING;
 
   /* api callbacks */
   ot->exec = manta_bake_exec;
@@ -765,7 +816,7 @@ void MANTA_OT_free_guiding(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Free Guiding";
   ot->description = "Free Fluid Guiding";
-  ot->idname = "MANTA_OT_free_guiding";
+  ot->idname = MANTA_JOB_FREE_GUIDING;
 
   /* api callbacks */
   ot->exec = manta_free_exec;
@@ -777,7 +828,7 @@ void MANTA_OT_pause_bake(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Pause Bake";
   ot->description = "Pause Bake";
-  ot->idname = "MANTA_OT_pause_bake";
+  ot->idname = MANTA_JOB_BAKE_PAUSE;
 
   /* api callbacks */
   ot->exec = manta_pause_exec;
