@@ -183,7 +183,7 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
 }
 
 ModifierTypeInfo modifierType_Manta = {
-    /* name */ "Manta",
+    /* name */ "Fluid",
     /* structName */ "MantaModifierData",
     /* structSize */ sizeof(MantaModifierData),
     /* type */ eModifierTypeType_Constructive,

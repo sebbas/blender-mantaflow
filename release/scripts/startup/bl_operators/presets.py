@@ -399,7 +399,7 @@ class AddPresetFluid(AddPresetBase, Operator):
 class AddPresetManta(AddPresetBase, Operator):
     """Add or remove a Mantaflow Preset"""
     bl_idname = "manta.preset_add"
-    bl_label = "Add Mantaflow Preset"
+    bl_label = "Add Fluid Preset"
     preset_menu = "MANTA_MT_presets"
 
     preset_defines = [
