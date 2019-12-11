@@ -305,12 +305,12 @@ static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerR
     if (ob->type == OB_MESH && !rna_Manta_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM)))
 
       rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM));
-      rna_Manta_parts_create(bmain,
-                             ptr,
-                             "SprayFoamParticleSettings",
-                             "Spray + Foam Particles",
-                             "Spray + Foam Particle System",
-                             (PART_MANTA_SPRAY | PART_MANTA_FOAM));
+    rna_Manta_parts_create(bmain,
+                           ptr,
+                           "SprayFoamParticleSettings",
+                           "Spray + Foam Particles",
+                           "Spray + Foam Particle System",
+                           (PART_MANTA_SPRAY | PART_MANTA_FOAM));
 
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
@@ -325,12 +325,12 @@ static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerR
         !rna_Manta_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE)))
 
       rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
-      rna_Manta_parts_create(bmain,
-                             ptr,
-                             "SprayBubbleParticleSettings",
-                             "Spray + Bubble Particles",
-                             "Spray + Bubble Particle System",
-                             (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
+    rna_Manta_parts_create(bmain,
+                           ptr,
+                           "SprayBubbleParticleSettings",
+                           "Spray + Bubble Particles",
+                           "Spray + Bubble Particle System",
+                           (PART_MANTA_SPRAY | PART_MANTA_BUBBLE));
 
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
@@ -344,12 +344,12 @@ static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerR
     if (ob->type == OB_MESH && !rna_Manta_parts_exists(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE)))
 
       rna_Manta_parts_delete(ptr, (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-      rna_Manta_parts_create(bmain,
-                             ptr,
-                             "FoamBubbleParticleSettings",
-                             "Foam + Bubble Particles",
-                             "Foam + Bubble Particle System",
-                             (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_create(bmain,
+                           ptr,
+                           "FoamBubbleParticleSettings",
+                           "Foam + Bubble Particles",
+                           "Foam + Bubble Particle System",
+                           (PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_BUBBLE;
@@ -365,12 +365,12 @@ static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerR
         !rna_Manta_parts_exists(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE)))
 
       rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
-      rna_Manta_parts_create(bmain,
-                             ptr,
-                             "SprayFoamBubbleParticleSettings",
-                             "Spray + Foam + Bubble Particles",
-                             "Spray + Foam + Bubble Particle System",
-                             (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
+    rna_Manta_parts_create(bmain,
+                           ptr,
+                           "SprayFoamBubbleParticleSettings",
+                           "Spray + Foam + Bubble Particles",
+                           "Spray + Foam + Bubble Particle System",
+                           (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
 
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_SPRAY;
     mmd->domain->particle_type |= FLUID_DOMAIN_PARTICLE_FOAM;

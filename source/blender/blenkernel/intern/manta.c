@@ -4710,7 +4710,12 @@ int BKE_manta_get_data_flags(MantaDomainSettings *mds)
   return flags;
 }
 
-void BKE_manta_create_particle_system(struct Main *bmain, struct Object *ob, const char *pset_name, const char *parts_name, const char *psys_name, const int psys_type)
+void BKE_manta_create_particle_system(struct Main *bmain,
+                                      struct Object *ob,
+                                      const char *pset_name,
+                                      const char *parts_name,
+                                      const char *psys_name,
+                                      const int psys_type)
 {
   ParticleSystem *psys;
   ParticleSettings *part;

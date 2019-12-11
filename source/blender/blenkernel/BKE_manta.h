@@ -58,7 +58,12 @@ void BKE_manta_cache_free(struct MantaDomainSettings *mds, struct Object *ob, in
 float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
 int BKE_manta_get_data_flags(struct MantaDomainSettings *mds);
 
-void BKE_manta_create_particle_system(struct Main *bmain, struct Object *ob, const char *pset_name, const char *parts_name, const char *psys_name, const int psys_type);
+void BKE_manta_create_particle_system(struct Main *bmain,
+                                      struct Object *ob,
+                                      const char *pset_name,
+                                      const char *parts_name,
+                                      const char *psys_name,
+                                      const int psys_type);
 void BKE_manta_delete_particle_system(struct Object *ob, const int particle_type);
 
 #endif /* __BKE_MANTA_H__ */
