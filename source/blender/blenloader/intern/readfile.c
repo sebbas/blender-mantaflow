@@ -4622,7 +4622,7 @@ static void lib_link_particlesettings(FileData *fd, Main *main)
 
       part->instance_object = newlibadr(fd, part->id.lib, part->instance_object);
       part->instance_collection = newlibadr_us(fd, part->id.lib, part->instance_collection);
-      part->eff_group = newlibadr(fd, part->id.lib, part->eff_group);
+      part->force_group = newlibadr(fd, part->id.lib, part->force_group);
       part->bb_ob = newlibadr(fd, part->id.lib, part->bb_ob);
       part->collision_group = newlibadr(fd, part->id.lib, part->collision_group);
 
@@ -4633,7 +4633,7 @@ static void lib_link_particlesettings(FileData *fd, Main *main)
         part->effector_weights->group = newlibadr(fd, part->id.lib, part->effector_weights->group);
       }
       else {
-        part->effector_weights = BKE_effector_add_weights(part->eff_group);
+        part->effector_weights = BKE_effector_add_weights(part->force_group);
       }
 
       if (part->instance_weights.first && part->instance_collection) {
@@ -4715,7 +4715,7 @@ static void direct_link_particlesettings(FileData *fd, ParticleSettings *part)
 
   part->effector_weights = newdataadr(fd, part->effector_weights);
   if (!part->effector_weights) {
-    part->effector_weights = BKE_effector_add_weights(part->eff_group);
+    part->effector_weights = BKE_effector_add_weights(part->force_group);
   }
 
   link_list(fd, &part->instance_weights);
@@ -5537,7 +5537,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 
       if (mmd->type == MOD_MANTA_TYPE_DOMAIN) {
         mmd->flow = NULL;
-        mmd->effec = NULL;
+        mmd->effector = NULL;
         mmd->domain = newdataadr(fd, mmd->domain);
         mmd->domain->mmd = mmd;
 
@@ -5585,7 +5585,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       }
       else if (mmd->type == MOD_MANTA_TYPE_FLOW) {
         mmd->domain = NULL;
-        mmd->effec = NULL;
+        mmd->effector = NULL;
         mmd->flow = newdataadr(fd, mmd->flow);
         mmd->flow->mmd = mmd;
         mmd->flow->mesh = NULL;
@@ -5596,18 +5596,18 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
       else if (mmd->type == MOD_MANTA_TYPE_EFFEC) {
         mmd->flow = NULL;
         mmd->domain = NULL;
-        mmd->effec = newdataadr(fd, mmd->effec);
-        if (mmd->effec) {
-          mmd->effec->mmd = mmd;
-          mmd->effec->verts_old = NULL;
-          mmd->effec->numverts = 0;
-          mmd->effec->mesh = NULL;
+        mmd->effector = newdataadr(fd, mmd->effector);
+        if (mmd->effector) {
+          mmd->effector->mmd = mmd;
+          mmd->effector->verts_old = NULL;
+          mmd->effector->numverts = 0;
+          mmd->effector->mesh = NULL;
         }
         else {
           mmd->type = 0;
           mmd->flow = NULL;
           mmd->domain = NULL;
-          mmd->effec = NULL;
+          mmd->effector = NULL;
         }
       }
     }
@@ -10372,7 +10372,7 @@ static void expand_particlesettings(FileData *fd, Main *mainvar, ParticleSetting
 
   expand_doit(fd, mainvar, part->instance_object);
   expand_doit(fd, mainvar, part->instance_collection);
-  expand_doit(fd, mainvar, part->eff_group);
+  expand_doit(fd, mainvar, part->force_group);
   expand_doit(fd, mainvar, part->bb_ob);
   expand_doit(fd, mainvar, part->collision_group);
 

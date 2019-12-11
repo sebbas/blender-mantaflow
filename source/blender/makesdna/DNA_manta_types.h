@@ -242,8 +242,8 @@ typedef struct MantaDomainSettings {
   struct MANTA *fluid_old; /* Adaptive domain needs access to old fluid state. */
   void *fluid_mutex;
   struct Collection *fluid_group;
-  struct Collection *eff_group;   /* UNUSED */
-  struct Collection *coll_group;  /* Collision objects group. */
+  struct Collection *force_group;    /* UNUSED */
+  struct Collection *effector_group; /* Effector objects group. */
   struct GPUTexture *tex;
   struct GPUTexture *tex_wt;
   struct GPUTexture *tex_shadow;
@@ -259,9 +259,10 @@ typedef struct MantaDomainSettings {
   struct EffectorWeights *effector_weights;
 
   /* Domain object data. */
-  float p0[3];  /* Start point of BB in local space (includes sub-cell shift for adaptive domain). */
-  float p1[3];  /* End point of BB in local space. */
-  float dp0[3]; /* Difference from object center to grid start point. */
+  float
+      p0[3]; /* Start point of BB in local space (includes sub-cell shift for adaptive domain). */
+  float p1[3];          /* End point of BB in local space. */
+  float dp0[3];         /* Difference from object center to grid start point. */
   float cell_size[3];   /* Size of simulation cell in local space. */
   float global_size[3]; /* Global size of domain axises. */
   float prev_loc[3];
@@ -502,7 +503,7 @@ typedef struct MantaFlowSettings {
   /* Previous vertex positions in domain space. */
   float *verts_old;
   int numverts;
-  float vel_multi;  /* Multiplier for inherited velocity. */
+  float vel_multi; /* Multiplier for inherited velocity. */
   float vel_normal;
   float vel_random;
   float vel_coord[3];
@@ -554,7 +555,7 @@ enum {
 };
 
 /* Collision objects (filled with smoke). */
-typedef struct MantaCollSettings {
+typedef struct MantaEffectorSettings {
 
   /* -- Runtime-only fields (from here on). -- */
 
@@ -575,6 +576,6 @@ typedef struct MantaCollSettings {
   float vel_multi; /* Multiplier for object velocity. */
   short guiding_mode;
   char _pad2[2];
-} MantaCollSettings;
+} MantaEffectorSettings;
 
 #endif

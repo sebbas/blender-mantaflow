@@ -625,9 +625,9 @@ static char *rna_MantaFlowSettings_path(PointerRNA *ptr)
   return BLI_sprintfN("modifiers[\"%s\"].flow_settings", name_esc);
 }
 
-static char *rna_MantaCollSettings_path(PointerRNA *ptr)
+static char *rna_MantaEffectorSettings_path(PointerRNA *ptr)
 {
-  MantaCollSettings *settings = (MantaCollSettings *)ptr->data;
+  MantaEffectorSettings *settings = (MantaEffectorSettings *)ptr->data;
   ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
@@ -1173,11 +1173,11 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
 
   /* object collections */
 
-  prop = RNA_def_property(srna, "collision_group", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "coll_group");
+  prop = RNA_def_property(srna, "effector_group", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "effector_group");
   RNA_def_property_struct_type(prop, "Collection");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Collision Collection", "Limit collisions to this collection");
+  RNA_def_property_ui_text(prop, "Effector Collection", "Limit effectors to this collection");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset_dependency");
 
   prop = RNA_def_property(srna, "fluid_group", PROP_POINTER, PROP_NONE);
@@ -1187,11 +1187,11 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Fluid Collection", "Limit fluid objects to this collection");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset_dependency");
 
-  prop = RNA_def_property(srna, "effector_collection", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "eff_group");
+  prop = RNA_def_property(srna, "force_collection", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "force_group");
   RNA_def_property_struct_type(prop, "Collection");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Effector Collection", "Limit effectors to this collection");
+  RNA_def_property_ui_text(prop, "Force Collection", "Limit forces to this collection");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset_dependency");
 
   /* grid access */
@@ -2491,10 +2491,10 @@ static void rna_def_manta_effec_settings(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "MantaCollSettings", NULL);
-  RNA_def_struct_ui_text(srna, "Collision Settings", "Smoke collision settings");
-  RNA_def_struct_sdna(srna, "MantaCollSettings");
-  RNA_def_struct_path_func(srna, "rna_MantaCollSettings_path");
+  srna = RNA_def_struct(brna, "MantaEffectorSettings", NULL);
+  RNA_def_struct_ui_text(srna, "Effector Settings", "Smoke collision settings");
+  RNA_def_struct_sdna(srna, "MantaEffectorSettings");
+  RNA_def_struct_path_func(srna, "rna_MantaEffectorSettings_path");
 
   prop = RNA_def_property(srna, "effec_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");

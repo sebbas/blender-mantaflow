@@ -53,7 +53,7 @@ static void initData(ModifierData *md)
 
   mmd->domain = NULL;
   mmd->flow = NULL;
-  mmd->effec = NULL;
+  mmd->effector = NULL;
   mmd->type = 0;
   mmd->time = -1;
 }
@@ -123,7 +123,7 @@ static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)
 static bool is_coll_cb(Object *UNUSED(ob), ModifierData *md)
 {
   MantaModifierData *mmd = (MantaModifierData *)md;
-  return (mmd->type & MOD_MANTA_TYPE_EFFEC) && mmd->effec;
+  return (mmd->type & MOD_MANTA_TYPE_EFFEC) && mmd->effector;
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
@@ -139,7 +139,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
                                 "Manta Flow");
     DEG_add_collision_relations(ctx->node,
                                 ctx->object,
-                                mmd->domain->coll_group,
+                                mmd->domain->effector_group,
                                 eModifierType_Manta,
                                 is_coll_cb,
                                 "Manta Coll");
@@ -164,9 +164,9 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
   MantaModifierData *mmd = (MantaModifierData *)md;
 
   if (mmd->type == MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
-    walk(userData, ob, (ID **)&mmd->domain->coll_group, IDWALK_CB_NOP);
+    walk(userData, ob, (ID **)&mmd->domain->effector_group, IDWALK_CB_NOP);
     walk(userData, ob, (ID **)&mmd->domain->fluid_group, IDWALK_CB_NOP);
-    walk(userData, ob, (ID **)&mmd->domain->eff_group, IDWALK_CB_NOP);
+    walk(userData, ob, (ID **)&mmd->domain->force_group, IDWALK_CB_NOP);
 
     if (mmd->domain->guiding_parent) {
       walk(userData, ob, (ID **)&mmd->domain->guiding_parent, IDWALK_CB_NOP);

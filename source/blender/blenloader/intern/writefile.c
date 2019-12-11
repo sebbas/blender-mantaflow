@@ -1659,7 +1659,7 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
         writestruct(wd, DATA, MantaFlowSettings, 1, mmd->flow);
       }
       else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
-        writestruct(wd, DATA, MantaCollSettings, 1, mmd->effec);
+        writestruct(wd, DATA, MantaEffectorSettings, 1, mmd->effector);
       }
     }
     else if (md->type == eModifierType_Fluidsim) {

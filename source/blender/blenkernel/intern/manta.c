@@ -552,7 +552,7 @@ static bool mantaModifier_init(
     return true;
   }
   else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
-    if (!mmd->effec) {
+    if (!mmd->effector) {
       mantaModifier_createType(mmd);
     }
     mmd->time = scene_framenr;
@@ -617,58 +617,60 @@ static void mantaModifier_freeFlow(MantaModifierData *mmd)
 
 static void mantaModifier_freeEffector(MantaModifierData *mmd)
 {
-  if (mmd->effec) {
-    if (mmd->effec->mesh) {
-      BKE_id_free(NULL, mmd->effec->mesh);
+  if (mmd->effector) {
+    if (mmd->effector->mesh) {
+      BKE_id_free(NULL, mmd->effector->mesh);
     }
-    mmd->effec->mesh = NULL;
+    mmd->effector->mesh = NULL;
 
-    if (mmd->effec->verts_old) {
-      MEM_freeN(mmd->effec->verts_old);
+    if (mmd->effector->verts_old) {
+      MEM_freeN(mmd->effector->verts_old);
     }
-    mmd->effec->verts_old = NULL;
-    mmd->effec->numverts = 0;
+    mmd->effector->verts_old = NULL;
+    mmd->effector->numverts = 0;
 
-    MEM_freeN(mmd->effec);
-    mmd->effec = NULL;
+    MEM_freeN(mmd->effector);
+    mmd->effector = NULL;
   }
 }
 
 static void mantaModifier_reset_ex(struct MantaModifierData *mmd, bool need_lock)
 {
-  if (mmd) {
-    if (mmd->domain) {
-      if (mmd->domain->fluid) {
-        if (need_lock) {
-          BLI_rw_mutex_lock(mmd->domain->fluid_mutex, THREAD_LOCK_WRITE);
-        }
+  if (!mmd) {
+    return;
+  }
 
-        manta_free(mmd->domain->fluid);
-        mmd->domain->fluid = NULL;
-
-        if (need_lock) {
-          BLI_rw_mutex_unlock(mmd->domain->fluid_mutex);
-        }
+  if (mmd->domain) {
+    if (mmd->domain->fluid) {
+      if (need_lock) {
+        BLI_rw_mutex_lock(mmd->domain->fluid_mutex, THREAD_LOCK_WRITE);
       }
 
-      mmd->time = -1;
-      mmd->domain->total_cells = 0;
-      mmd->domain->active_fields = 0;
-    }
-    else if (mmd->flow) {
-      if (mmd->flow->verts_old) {
-        MEM_freeN(mmd->flow->verts_old);
+      manta_free(mmd->domain->fluid);
+      mmd->domain->fluid = NULL;
+
+      if (need_lock) {
+        BLI_rw_mutex_unlock(mmd->domain->fluid_mutex);
       }
-      mmd->flow->verts_old = NULL;
-      mmd->flow->numverts = 0;
     }
-    else if (mmd->effec) {
-      if (mmd->effec->verts_old) {
-        MEM_freeN(mmd->effec->verts_old);
-      }
-      mmd->effec->verts_old = NULL;
-      mmd->effec->numverts = 0;
+
+    mmd->time = -1;
+    mmd->domain->total_cells = 0;
+    mmd->domain->active_fields = 0;
+  }
+  else if (mmd->flow) {
+    if (mmd->flow->verts_old) {
+      MEM_freeN(mmd->flow->verts_old);
     }
+    mmd->flow->verts_old = NULL;
+    mmd->flow->numverts = 0;
+  }
+  else if (mmd->effector) {
+    if (mmd->effector->verts_old) {
+      MEM_freeN(mmd->effector->verts_old);
+    }
+    mmd->effector->verts_old = NULL;
+    mmd->effector->numverts = 0;
   }
 }
 
@@ -679,11 +681,13 @@ void mantaModifier_reset(struct MantaModifierData *mmd)
 
 void mantaModifier_free(MantaModifierData *mmd)
 {
-  if (mmd) {
-    mantaModifier_freeDomain(mmd);
-    mantaModifier_freeFlow(mmd);
-    mantaModifier_freeEffector(mmd);
+  if (!mmd) {
+    return;
   }
+
+  mantaModifier_freeDomain(mmd);
+  mantaModifier_freeFlow(mmd);
+  mantaModifier_freeEffector(mmd);
 }
 
 void mantaModifier_createType(struct MantaModifierData *mmd)
@@ -703,9 +707,9 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
     mmd->domain->effector_weights = BKE_effector_add_weights(NULL);
     mmd->domain->fluid = NULL;
     mmd->domain->fluid_mutex = BLI_rw_mutex_alloc();
-    mmd->domain->eff_group = NULL;
+    mmd->domain->force_group = NULL;
     mmd->domain->fluid_group = NULL;
-    mmd->domain->coll_group = NULL;
+    mmd->domain->effector_group = NULL;
 
     /* adaptive domain options */
     mmd->domain->adapt_margin = 4;
@@ -910,23 +914,23 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
     mmd->flow->flags = FLUID_FLOW_ABSOLUTE | FLUID_FLOW_USE_PART_SIZE | FLUID_FLOW_USE_INFLOW;
   }
   else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
-    if (mmd->effec) {
+    if (mmd->effector) {
       mantaModifier_freeEffector(mmd);
     }
 
     /* effector object data */
-    mmd->effec = MEM_callocN(sizeof(MantaCollSettings), "MantaColl");
-    mmd->effec->mmd = mmd;
-    mmd->effec->mesh = NULL;
-    mmd->effec->verts_old = NULL;
-    mmd->effec->numverts = 0;
-    mmd->effec->surface_distance = 0.0f;
-    mmd->effec->type = FLUID_EFFECTOR_TYPE_COLLISION;
-    mmd->effec->flags = 0;
+    mmd->effector = MEM_callocN(sizeof(MantaEffectorSettings), "MantaEffector");
+    mmd->effector->mmd = mmd;
+    mmd->effector->mesh = NULL;
+    mmd->effector->verts_old = NULL;
+    mmd->effector->numverts = 0;
+    mmd->effector->surface_distance = 0.0f;
+    mmd->effector->type = FLUID_EFFECTOR_TYPE_COLLISION;
+    mmd->effector->flags = 0;
 
     /* guiding options */
-    mmd->effec->guiding_mode = FLUID_EFFECTOR_GUIDING_MAXIMUM;
-    mmd->effec->vel_multi = 1.0f;
+    mmd->effector->guiding_mode = FLUID_EFFECTOR_GUIDING_MAXIMUM;
+    mmd->effector->vel_multi = 1.0f;
   }
 }
 
@@ -945,8 +949,8 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
 
     /* domain object data */
     tmds->fluid_group = mds->fluid_group;
-    tmds->eff_group = mds->eff_group;
-    tmds->coll_group = mds->coll_group;
+    tmds->force_group = mds->force_group;
+    tmds->effector_group = mds->effector_group;
     if (tmds->effector_weights) {
       MEM_freeN(tmds->effector_weights);
     }
@@ -1144,16 +1148,16 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     tmfs->texture_type = mfs->texture_type;
     tmfs->flags = mfs->flags;
   }
-  else if (tmmd->effec) {
-    MantaCollSettings *tmcs = tmmd->effec;
-    MantaCollSettings *mcs = mmd->effec;
+  else if (tmmd->effector) {
+    MantaEffectorSettings *tmes = tmmd->effector;
+    MantaEffectorSettings *mes = mmd->effector;
 
-    tmcs->surface_distance = mcs->surface_distance;
-    tmcs->type = mcs->type;
+    tmes->surface_distance = mes->surface_distance;
+    tmes->type = mes->type;
 
     /* guiding options */
-    tmcs->guiding_mode = mcs->guiding_mode;
-    tmcs->vel_multi = mcs->vel_multi;
+    tmes->guiding_mode = mes->guiding_mode;
+    tmes->vel_multi = mes->vel_multi;
   }
 }
 
@@ -1198,7 +1202,7 @@ static int get_light(ViewLayer *view_layer, float *light)
 
 typedef struct ObstaclesFromDMData {
   MantaDomainSettings *mds;
-  MantaCollSettings *mcs;
+  MantaEffectorSettings *mes;
   const MVert *mvert;
   const MLoop *mloop;
   const MLoopTri *looptri;
@@ -1264,10 +1268,10 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
                            weights);
 
           /* Guiding has additional velocity multiplier */
-          if (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
-            mul_v3_fl(hit_vel, data->mcs->vel_multi);
+          if (data->mes->type == FLUID_EFFECTOR_TYPE_GUIDE) {
+            mul_v3_fl(hit_vel, data->mes->vel_multi);
 
-            switch (data->mcs->guiding_mode) {
+            switch (data->mes->guiding_mode) {
               case FLUID_EFFECTOR_GUIDING_AVERAGED:
                 data->velocityX[index] = (data->velocityX[index] + hit_vel[0]) * 0.5f;
                 data->velocityY[index] = (data->velocityY[index] + hit_vel[1]) * 0.5f;
@@ -1293,14 +1297,14 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
           }
           else {
             /* Apply (i.e. add) effector object velocity */
-            data->velocityX[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
-                                          hit_vel[0] * data->mcs->vel_multi :
+            data->velocityX[index] += (data->mes->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
+                                          hit_vel[0] * data->mes->vel_multi :
                                           hit_vel[0];
-            data->velocityY[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
-                                          hit_vel[1] * data->mcs->vel_multi :
+            data->velocityY[index] += (data->mes->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
+                                          hit_vel[1] * data->mes->vel_multi :
                                           hit_vel[1];
-            data->velocityZ[index] += (data->mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
-                                          hit_vel[2] * data->mcs->vel_multi :
+            data->velocityZ[index] += (data->mes->type == FLUID_EFFECTOR_TYPE_GUIDE) ?
+                                          hit_vel[2] * data->mes->vel_multi :
                                           hit_vel[2];
 #if 0
             /* Debugging: Print object velocities. */
@@ -1316,8 +1320,8 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
                               data->distances_map,
                               data->tree,
                               ray_start,
-                              data->mcs->surface_distance,
-                              data->mcs->flags & FLUID_FLOW_USE_PLANE_INIT);
+                              data->mes->surface_distance,
+                              data->mes->flags & FLUID_FLOW_USE_PLANE_INIT);
 
         /* Ensure that num objects are also counted inside object. But dont count twice (see object
          * inc for nearest point) */
@@ -1331,7 +1335,7 @@ static void obstacles_from_mesh_task_cb(void *__restrict userdata,
 
 static void obstacles_from_mesh(Object *coll_ob,
                                 MantaDomainSettings *mds,
-                                MantaCollSettings *mcs,
+                                MantaEffectorSettings *mes,
                                 float *distances_map,
                                 float *velocityX,
                                 float *velocityY,
@@ -1339,7 +1343,7 @@ static void obstacles_from_mesh(Object *coll_ob,
                                 int *num_objects,
                                 float dt)
 {
-  if (!mcs->mesh) {
+  if (!mes->mesh) {
     return;
   }
   {
@@ -1353,7 +1357,7 @@ static void obstacles_from_mesh(Object *coll_ob,
     float *vert_vel = NULL;
     bool has_velocity = false;
 
-    me = BKE_mesh_copy_for_eval(mcs->mesh, true);
+    me = BKE_mesh_copy_for_eval(mes->mesh, true);
 
     /* Duplicate vertices to modify. */
     if (me->mvert) {
@@ -1373,13 +1377,13 @@ static void obstacles_from_mesh(Object *coll_ob,
     {
       vert_vel = MEM_callocN(sizeof(float) * numverts * 3, "manta_obs_velocity");
 
-      if (mcs->numverts != numverts || !mcs->verts_old) {
-        if (mcs->verts_old) {
-          MEM_freeN(mcs->verts_old);
+      if (mes->numverts != numverts || !mes->verts_old) {
+        if (mes->verts_old) {
+          MEM_freeN(mes->verts_old);
         }
 
-        mcs->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "manta_obs_verts_old");
-        mcs->numverts = numverts;
+        mes->verts_old = MEM_callocN(sizeof(float) * numverts * 3, "manta_obs_verts_old");
+        mes->numverts = numverts;
       }
       else {
         has_velocity = true;
@@ -1406,15 +1410,15 @@ static void obstacles_from_mesh(Object *coll_ob,
       /* vert velocity */
       add_v3fl_v3fl_v3i(co, mvert[i].co, mds->shift);
       if (has_velocity) {
-        sub_v3_v3v3(&vert_vel[i * 3], co, &mcs->verts_old[i * 3]);
+        sub_v3_v3v3(&vert_vel[i * 3], co, &mes->verts_old[i * 3]);
         mul_v3_fl(&vert_vel[i * 3], mds->dx / dt);
       }
-      copy_v3_v3(&mcs->verts_old[i * 3], co);
+      copy_v3_v3(&mes->verts_old[i * 3], co);
     }
 
     if (BKE_bvhtree_from_mesh_get(&treeData, me, BVHTREE_FROM_LOOPTRI, 4)) {
       ObstaclesFromDMData data = {.mds = mds,
-                                  .mcs = mcs,
+                                  .mes = mes,
                                   .mvert = mvert,
                                   .mloop = mloop,
                                   .looptri = looptri,
@@ -1456,15 +1460,15 @@ static void update_obstacleflags(MantaDomainSettings *mds, Object **collobjs, in
     MantaModifierData *mmd2 = (MantaModifierData *)modifiers_findByType(collob,
                                                                         eModifierType_Manta);
 
-    if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effec) {
-      MantaCollSettings *mcs = mmd2->effec;
-      if (!mcs) {
+    if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effector) {
+      MantaEffectorSettings *mes = mmd2->effector;
+      if (!mes) {
         break;
       }
-      if (mcs->type == FLUID_EFFECTOR_TYPE_COLLISION) {
+      if (mes->type == FLUID_EFFECTOR_TYPE_COLLISION) {
         active_fields |= FLUID_DOMAIN_ACTIVE_OBSTACLE;
       }
-      if (mcs->type == FLUID_EFFECTOR_TYPE_GUIDE) {
+      if (mes->type == FLUID_EFFECTOR_TYPE_GUIDE) {
         active_fields |= FLUID_DOMAIN_ACTIVE_GUIDING;
       }
     }
@@ -1492,7 +1496,7 @@ static void update_obstacles(Depsgraph *depsgraph,
   unsigned int numcollobj = 0, collIndex = 0;
 
   collobjs = BKE_collision_objects_create(
-      depsgraph, ob, mds->coll_group, &numcollobj, eModifierType_Manta);
+      depsgraph, ob, mds->effector_group, &numcollobj, eModifierType_Manta);
 
   /* Update all flow related flags and ensure that corresponding grids get initialized. */
   update_obstacleflags(mds, collobjs, numcollobj);
@@ -1525,10 +1529,10 @@ static void update_obstacles(Depsgraph *depsgraph,
 
     /* Use big value that's not inf to initialize levelset grids. */
     if (phiObsIn) {
-      phiObsIn[z] = 9999;
+      phiObsIn[z] = FLT_MAX;
     }
     if (phiGuideIn) {
-      phiGuideIn[z] = 9999;
+      phiGuideIn[z] = FLT_MAX;
     }
     if (num_obstacles) {
       num_obstacles[z] = 0;
@@ -1555,8 +1559,8 @@ static void update_obstacles(Depsgraph *depsgraph,
                                                                         eModifierType_Manta);
 
     /* TODO (sebbas): check if modifier is active? */
-    if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effec) {
-      MantaCollSettings *mcs = mmd2->effec;
+    if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effector) {
+      MantaEffectorSettings *mes = mmd2->effector;
 
       /* Length of one frame. If using adaptive stepping, length is smaller than actual frame
        * length. */
@@ -1583,12 +1587,12 @@ static void update_obstacles(Depsgraph *depsgraph,
       BKE_object_modifier_update_subframe(
           depsgraph, scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
 
-      if (mcs && (mcs->type == FLUID_EFFECTOR_TYPE_COLLISION)) {
-        obstacles_from_mesh(collob, mds, mcs, phiObsIn, velx, vely, velz, num_obstacles, dt);
+      if (mes && (mes->type == FLUID_EFFECTOR_TYPE_COLLISION)) {
+        obstacles_from_mesh(collob, mds, mes, phiObsIn, velx, vely, velz, num_obstacles, dt);
       }
-      if (mcs && (mcs->type == FLUID_EFFECTOR_TYPE_GUIDE)) {
+      if (mes && (mes->type == FLUID_EFFECTOR_TYPE_GUIDE)) {
         obstacles_from_mesh(
-            collob, mds, mcs, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
+            collob, mds, mes, phiGuideIn, velxGuide, velyGuide, velzGuide, num_guides, dt);
       }
     }
   }
@@ -2175,7 +2179,7 @@ static void update_mesh_distances(int index,
                                   float surface_thickness,
                                   int use_plane_init)
 {
-  float min_dist = 9999;
+  float min_dist = FLT_MAX;
 
   /* Ensure that planes get initialized correctly. */
   if (use_plane_init) {
@@ -2209,12 +2213,12 @@ static void update_mesh_distances(int index,
   /* Count for ray misses (no face hit) and cases where ray direction matches face normal
    * direction. */
   int miss_cnt = 0, dir_cnt = 0;
-  min_dist = 9999;
+  min_dist = FLT_MAX;
 
   for (int i = 0; i < ray_cnt; i++) {
     BVHTreeRayHit hit_tree = {0};
     hit_tree.index = -1;
-    hit_tree.dist = 9999;
+    hit_tree.dist = FLT_MAX;
 
     normalize_v3(ray_dirs[i]);
     BLI_bvhtree_ray_cast(treeData->tree,
@@ -2264,7 +2268,7 @@ static void update_mesh_distances(int index,
 
     BVHTreeRayHit hit_tree = {0};
     hit_tree.index = -1;
-    hit_tree.dist = 9999;
+    hit_tree.dist = FLT_MAX;
 
     normalize_v3(ray);
     BLI_bvhtree_ray_cast(
@@ -2319,7 +2323,7 @@ static void sample_mesh(MantaFlowSettings *mfs,
   float sample_str = 0.0f;
 
   hit.index = -1;
-  hit.dist = 9999;
+  hit.dist = FLT_MAX;
   nearest.index = -1;
   nearest.dist_sq = mfs->surface_distance *
                     mfs->surface_distance; /* find_nearest uses squared distance */
@@ -2341,7 +2345,7 @@ static void sample_mesh(MantaFlowSettings *mfs,
          * point is at least surrounded by two faces */
         negate_v3(ray_dir);
         hit.index = -1;
-        hit.dist = 9999;
+        hit.dist = FLT_MAX;
 
         BLI_bvhtree_ray_cast(
             treeData->tree, ray_start, ray_dir, 0.0f, &hit, treeData->raycast_callback, treeData);
@@ -3380,10 +3384,10 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
   /* Grid reset before writing again */
   for (z = 0; z < mds->res[0] * mds->res[1] * mds->res[2]; z++) {
     if (phi_in) {
-      phi_in[z] = 9999.0f;
+      phi_in[z] = FLT_MAX;
     }
     if (phiout_in) {
-      phiout_in[z] = 9999.0f;
+      phiout_in[z] = FLT_MAX;
     }
     if (density_in) {
       density_in[z] = 0.0f;
@@ -3463,7 +3467,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
             else if (mfs->behavior == FLUID_FLOW_BEHAVIOR_GEOMETRY && mmd2->time > 2) {
               apply_inflow_fields(mfs,
                                   0.0f,
-                                  9999.0f,
+                                  FLT_MAX,
                                   d_index,
                                   density_in,
                                   density,
@@ -4060,11 +4064,11 @@ static void mantaModifier_processEffector(MantaModifierData *mmd,
     mantaModifier_init(mmd, depsgraph, ob, scene, me);
   }
 
-  if (mmd->effec) {
-    if (mmd->effec->mesh) {
-      BKE_id_free(NULL, mmd->effec->mesh);
+  if (mmd->effector) {
+    if (mmd->effector->mesh) {
+      BKE_id_free(NULL, mmd->effector->mesh);
     }
-    mmd->effec->mesh = BKE_mesh_copy_for_eval(me, false);
+    mmd->effector->mesh = BKE_mesh_copy_for_eval(me, false);
   }
 
   if (scene_framenr > mmd->time) {
@@ -4124,7 +4128,7 @@ static void mantaModifier_processDomain(MantaModifierData *mmd,
   }
 
   objs = BKE_collision_objects_create(
-      depsgraph, ob, mds->coll_group, &numobj, eModifierType_Manta);
+      depsgraph, ob, mds->effector_group, &numobj, eModifierType_Manta);
   update_obstacleflags(mds, objs, numobj);
   if (objs) {
     MEM_freeN(objs);

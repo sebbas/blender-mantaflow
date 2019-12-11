@@ -457,7 +457,7 @@ typedef struct MantaModifierData {
   /** Inflow, outflow, smoke objects. */
   struct MantaFlowSettings *flow;
   /** Effector objects (collision, guiding). */
-  struct MantaCollSettings *effec;
+  struct MantaEffectorSettings *effector;
   float time;
   /** Domain, inflow, outflow, .... */
   int type;

@@ -273,7 +273,7 @@ typedef struct ParticleSettings {
 
   struct Collection *instance_collection;
   struct ListBase instance_weights;
-  struct Collection *eff_group DNA_DEPRECATED;  // deprecated
+  struct Collection *force_group DNA_DEPRECATED;  // deprecated
   struct Object *instance_object;
   struct Object *bb_ob;
   /** Old animation system, deprecated for 2.5. */
@@ -433,7 +433,7 @@ typedef enum eParticleDrawFlag {
  * Hair is always baked static in object/geometry space.
  * Other types (normal particles) are in global space and not static baked. */
 enum {
-  PART_EMITTER  = (1 << 0),
+  PART_EMITTER = (1 << 0),
   /* REACTOR type currently unused */
   /* PART_REACTOR = (1 << 1), */
   PART_HAIR = (1 << 2),

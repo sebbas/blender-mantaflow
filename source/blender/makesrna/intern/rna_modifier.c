@@ -3485,7 +3485,7 @@ static void rna_def_modifier_manta(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Flow Settings", "");
 
   prop = RNA_def_property(srna, "effec_settings", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "effec");
+  RNA_def_property_pointer_sdna(prop, NULL, "effector");
   RNA_def_property_ui_text(prop, "Effector Settings", "");
 
   prop = RNA_def_property(srna, "manta_type", PROP_ENUM, PROP_NONE);
