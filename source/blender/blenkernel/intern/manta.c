@@ -4709,3 +4709,50 @@ int BKE_manta_get_data_flags(MantaDomainSettings *mds)
 
   return flags;
 }
+
+void BKE_manta_create_particle_system(struct Main *bmain, struct Object *ob, const char *pset_name, const char *parts_name, const char *psys_name, const int psys_type)
+{
+  ParticleSystem *psys;
+  ParticleSettings *part;
+  ParticleSystemModifierData *pmmd;
+
+  /* add particle system */
+  part = BKE_particlesettings_add(bmain, pset_name);
+  psys = MEM_callocN(sizeof(ParticleSystem), "particle_system");
+
+  part->type = psys_type;
+  part->totpart = 0;
+  part->draw_size = 0.05f;  // make fluid particles more subtle in viewport
+  part->draw_col = PART_DRAW_COL_VEL;
+  psys->part = part;
+  psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
+  BLI_strncpy(psys->name, parts_name, sizeof(psys->name));
+  BLI_addtail(&ob->particlesystem, psys);
+
+  /* add modifier */
+  pmmd = (ParticleSystemModifierData *)modifier_new(eModifierType_ParticleSystem);
+  BLI_strncpy(pmmd->modifier.name, psys_name, sizeof(pmmd->modifier.name));
+  pmmd->psys = psys;
+  BLI_addtail(&ob->modifiers, pmmd);
+  modifier_unique_name(&ob->modifiers, (ModifierData *)pmmd);
+}
+
+void BKE_manta_delete_particle_system(struct Object *ob, const int particle_type)
+{
+  ParticleSystemModifierData *pmmd;
+  ParticleSystem *psys, *next_psys;
+
+  for (psys = ob->particlesystem.first; psys; psys = next_psys) {
+    next_psys = psys->next;
+    if (psys->part->type & particle_type) {
+      /* clear modifier */
+      pmmd = psys_get_modifier(ob, psys);
+      BLI_remlink(&ob->modifiers, pmmd);
+      modifier_free((ModifierData *)pmmd);
+
+      /* clear particle system */
+      BLI_remlink(&ob->particlesystem, psys);
+      psys_free(ob, psys);
+    }
+  }
+}
