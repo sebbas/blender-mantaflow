@@ -2341,7 +2341,7 @@ static void rna_def_manta_flow_settings(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Manta_reset");
 
   prop = RNA_def_property(srna, "temperature", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "temp");
+  RNA_def_property_float_sdna(prop, NULL, "temperature");
   RNA_def_property_range(prop, -10, 10);
   RNA_def_property_ui_range(prop, -10, 10, 1, 1);
   RNA_def_property_ui_text(prop, "Temp. Diff.", "Temperature difference to ambient temperature");

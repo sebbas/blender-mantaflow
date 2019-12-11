@@ -901,7 +901,7 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
       mmd->flow->color[1] = 0.7f;
       mmd->flow->color[2] = 0.7f;
       mmd->flow->fuel_amount = 1.0f;
-      mmd->flow->temp = 1.0f;
+      mmd->flow->temperature = 1.0f;
       mmd->flow->volume_density = 0.0f;
       mmd->flow->surface_distance = 1.5f;
       mmd->flow->particle_size = 1.0f;
@@ -1134,7 +1134,7 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     tmfs->density = mfs->density;
     copy_v3_v3(tmfs->color, mfs->color);
     tmfs->fuel_amount = mfs->fuel_amount;
-    tmfs->temp = mfs->temp;
+    tmfs->temperature = mfs->temperature;
     tmfs->volume_density = mfs->volume_density;
     tmfs->surface_distance = mfs->surface_distance;
     tmfs->particle_size = mfs->particle_size;
@@ -3043,7 +3043,7 @@ BLI_INLINE void apply_inflow_fields(MantaFlowSettings *mfs,
   /* add heat */
   if (heat && heat_in) {
     if (emission_value > 0.0f) {
-      heat_in[index] = ADD_IF_LOWER(heat[index], mfs->temp);
+      heat_in[index] = ADD_IF_LOWER(heat[index], mfs->temperature);
       /* Scale inflow by dt/framelength. This is to ensure that adaptive steps don't apply too much
        * emission. */
     }
@@ -3149,7 +3149,7 @@ static void update_flowsflags(MantaDomainSettings *mds, Object **flowobjs, int n
       }
 
       /* activate heat field if flow produces any heat */
-      if (mfs->temp) {
+      if (mfs->temperature) {
         active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
       }
       /* activate fuel field if flow adds any fuel */
