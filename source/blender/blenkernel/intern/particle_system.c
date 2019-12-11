@@ -4277,10 +4277,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
                        "particles_manta_step::error - unknown particle system type\n");
           return;
         }
-#if 0
+#  if 0
         /* Debugging: Print type of particle system and current particles. */
         printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#endif
+#  endif
 
         /* Type of particle must matche current particle system type (only important for snd
          * particles). */
@@ -4292,10 +4292,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
           continue;
         if ((flagActivePart & PARTICLE_TYPE_TRACER) && (part->type & PART_MANTA_TRACER) == 0)
           continue;
-#if 0
+#  if 0
         /* Debugging: Print type of particle system and current particles. */
         printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#endif
+#  endif
         /* Particle system has allocated tottypeparts particles - so break early before exceeded.
          */
         if (activeParts >= tottypepart)
@@ -4350,20 +4350,20 @@ static void particles_manta_step(ParticleSimulationData *sim,
           sub_v3_v3(tmp, tmp2);
           mul_v3_v3(tmp, ob->scale);
           add_v3_v3(pa->state.co, tmp);
-#if 0
+#  if 0
           /* Debugging: Print particle coordinates. */
           printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
           pa->state.co[0], pa->state.co[1], pa->state.co[2]);
-#endif
+#  endif
           /* Set particle velocity. */
           float velParticle[3] = {velX, velY, velZ};
           copy_v3_v3(pa->state.vel, velParticle);
           mul_v3_fl(pa->state.vel, mds->dx);
-#if 0
+#  if 0
           /* Debugging: Print particle velocity. */
           printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
           pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
-#endif
+#  endif
           /* Set default angular velocity and particle rotation. */
           zero_v3(pa->state.ave);
           unit_qt(pa->state.rot);
@@ -4377,10 +4377,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
           pa++;
         }
       }
-#if 0
+#  if 0
       /* Debugging: Print number of active particles. */
       printf("active parts: %d\n", activeParts);
-#endif
+#  endif
       totpart = psys->totpart = part->totpart = activeParts;
 
       BLI_rng_free(sim->rng);
