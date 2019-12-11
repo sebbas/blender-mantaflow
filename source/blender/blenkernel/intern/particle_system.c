@@ -4136,7 +4136,7 @@ static void cached_step(ParticleSimulationData *sim, float cfra, const bool use_
 }
 
 static void particles_manta_step(ParticleSimulationData *sim,
-                                 int UNUSED(cfra),
+                                 int cfra,
                                  const bool use_render_params)
 {
   ParticleSystem *psys = sim->psys;
@@ -4164,7 +4164,6 @@ static void particles_manta_step(ParticleSimulationData *sim,
       int upres = 1;
       char debugStrBuffer[256];
       float tmp[3] = {0}, tmp2[3] = {0};
-      RNG *rng;
 
       /* Helper variables for scaling. */
       float min[3], max[3], size[3], cell_size_scaled[3], max_size;
@@ -4223,7 +4222,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
       realloc_particles(sim, part->totpart);
 
       /* Set some randomness when choosing which particles to display. */
-      rng = BLI_rng_new(0);
+      sim->rng = BLI_rng_new_srandom(31415926 + (int)cfra + psys->seed);
       double r, dispProb = (double)part->disp / 100.0;
 
       /* Loop over *all* particles. Will break out of loop before tottypepart amount exceeded. */
@@ -4276,10 +4275,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
                        "particles_manta_step::error - unknown particle system type\n");
           return;
         }
-#if 0
+#  if 0
         /* Debugging: Print type of particle system and current particles. */
         printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#endif
+#  endif
 
         /* Type of particle must matche current particle system type (only important for snd
          * particles). */
@@ -4295,7 +4294,8 @@ static void particles_manta_step(ParticleSimulationData *sim,
         /* Debugging: Print type of particle system and current particles. */
         printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
 #  endif
-        /* Particle system has allocated tottypeparts particles - so break early before exceeded. */
+        /* Particle system has allocated tottypeparts particles - so break early before exceeded.
+         */
         if (activeParts >= tottypepart)
           break;
 
@@ -4381,9 +4381,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
 #  endif
       totpart = psys->totpart = part->totpart = activeParts;
 
-      BLI_rng_free(rng);
+      BLI_rng_free(sim->rng);
+      sim->rng = NULL;
 
-    }  /* Manta sim particles done. */
+    } /* Manta sim particles done. */
   }
 #else
   UNUSED_VARS(use_render_params);
