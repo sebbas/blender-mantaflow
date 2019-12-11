@@ -578,17 +578,19 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 
   psys_get_texture(sim, pa, &ptex, PAMAP_INIT, 0.f);
 
-  if (part->type == PART_EMITTER) {
-    if (ptex.exist < psys_frand(psys, p + 125)) {
-      pa->flag |= PARS_UNEXIST;
-    }
-    pa->time = part->sta + (part->end - part->sta) * ptex.time;
-  }
-  if (part->type == PART_HAIR) {
-    if (ptex.exist < psys_frand(psys, p + 125)) {
-      pa->flag |= PARS_UNEXIST;
-    }
-    pa->time = 0.f;
+  switch (part->type) {
+    case PART_EMITTER:
+      if (ptex.exist < psys_frand(psys, p + 125)) {
+        pa->flag |= PARS_UNEXIST;
+      }
+      pa->time = part->sta + (part->end - part->sta) * ptex.time;
+      break;
+    case PART_HAIR:
+      if (ptex.exist < psys_frand(psys, p + 125)) {
+        pa->flag |= PARS_UNEXIST;
+      }
+      pa->time = 0.f;
+      break;
   }
 }
 
@@ -4229,7 +4231,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
       for (p = 0, pa = psys->particles; p < totpart; p++) {
 
         /* Apply some randomness and determine which particles to skip. */
-        r = (double)rand() / (double)RAND_MAX;
+        r = BLI_rng_get_double(sim->rng);
         if (r > dispProb)
           continue;
 
@@ -4275,10 +4277,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
                        "particles_manta_step::error - unknown particle system type\n");
           return;
         }
-#  if 0
+#if 0
         /* Debugging: Print type of particle system and current particles. */
         printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#  endif
+#endif
 
         /* Type of particle must matche current particle system type (only important for snd
          * particles). */
@@ -4290,10 +4292,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
           continue;
         if ((flagActivePart & PARTICLE_TYPE_TRACER) && (part->type & PART_MANTA_TRACER) == 0)
           continue;
-#  if 0
+#if 0
         /* Debugging: Print type of particle system and current particles. */
         printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#  endif
+#endif
         /* Particle system has allocated tottypeparts particles - so break early before exceeded.
          */
         if (activeParts >= tottypepart)
@@ -4348,20 +4350,20 @@ static void particles_manta_step(ParticleSimulationData *sim,
           sub_v3_v3(tmp, tmp2);
           mul_v3_v3(tmp, ob->scale);
           add_v3_v3(pa->state.co, tmp);
-#  if 0
+#if 0
           /* Debugging: Print particle coordinates. */
           printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
           pa->state.co[0], pa->state.co[1], pa->state.co[2]);
-#  endif
+#endif
           /* Set particle velocity. */
           float velParticle[3] = {velX, velY, velZ};
           copy_v3_v3(pa->state.vel, velParticle);
           mul_v3_fl(pa->state.vel, mds->dx);
-#  if 0
+#if 0
           /* Debugging: Print particle velocity. */
           printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
           pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
-#  endif
+#endif
           /* Set default angular velocity and particle rotation. */
           zero_v3(pa->state.ave);
           unit_qt(pa->state.rot);
@@ -4375,10 +4377,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
           pa++;
         }
       }
-#  if 0
+#if 0
       /* Debugging: Print number of active particles. */
       printf("active parts: %d\n", activeParts);
-#  endif
+#endif
       totpart = psys->totpart = part->totpart = activeParts;
 
       BLI_rng_free(sim->rng);
