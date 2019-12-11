@@ -42,11 +42,11 @@ struct MANTA {
   virtual ~MANTA();
 
   // Mirroring Mantaflow structures for particle data (pVel also used for mesh vert vels)
-  typedef struct pData {
+  typedef struct PData {
     float pos[3];
     int flag;
   } pData;
-  typedef struct pVel {
+  typedef struct PVel {
     float pos[3];
   } pVel;
 
