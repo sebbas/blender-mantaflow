@@ -578,13 +578,13 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 
   psys_get_texture(sim, pa, &ptex, PAMAP_INIT, 0.f);
 
-  if (part->type & PART_EMITTER) {
+  if (part->type == PART_EMITTER) {
     if (ptex.exist < psys_frand(psys, p + 125)) {
       pa->flag |= PARS_UNEXIST;
     }
     pa->time = part->sta + (part->end - part->sta) * ptex.time;
   }
-  if (part->type & PART_HAIR) {
+  if (part->type == PART_HAIR) {
     if (ptex.exist < psys_frand(psys, p + 125)) {
       pa->flag |= PARS_UNEXIST;
     }
@@ -4164,8 +4164,9 @@ static void particles_manta_step(ParticleSimulationData *sim,
       int upres = 1;
       char debugStrBuffer[256];
       float tmp[3] = {0}, tmp2[3] = {0};
+      RNG *rng;
 
-      /* Helper variables for scaling */
+      /* Helper variables for scaling. */
       float min[3], max[3], size[3], cell_size_scaled[3], max_size;
 
       /* Sanity check: parts also enabled in fluid domain? */
@@ -4186,7 +4187,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
         return;
       }
 
-      /* Count particle amount. tottypepart only important for snd particles */
+      /* Count particle amount. tottypepart is only important for snd particles. */
       if (part->type & PART_MANTA_FLIP) {
         tottypepart = totpart = manta_liquid_get_num_flip_particles(mds->fluid);
       }
@@ -4194,7 +4195,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
           (PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM | PART_MANTA_TRACER)) {
         totpart = manta_liquid_get_num_snd_particles(mds->fluid);
 
-        /* tottypepart is the amount of particles of a snd particle type */
+        /* tottypepart is the amount of particles of a snd particle type. */
         for (p = 0; p < totpart; p++) {
           flagActivePart = manta_liquid_get_snd_particle_flag_at(mds->fluid, p);
           if ((part->type & PART_MANTA_SPRAY) && (flagActivePart & PARTICLE_TYPE_SPRAY))
@@ -4207,7 +4208,7 @@ static void particles_manta_step(ParticleSimulationData *sim,
             tottypepart++;
         }
       }
-      /* Sanity check: no particles present */
+      /* Sanity check: no particles present. */
       if (!totpart || !tottypepart)
         return;
 
@@ -4218,22 +4219,22 @@ static void particles_manta_step(ParticleSimulationData *sim,
       part->sta = part->end = 1.0f;
       part->lifetime = sim->scene->r.efra + 1;
 
-      /* Allocate particles */
+      /* Allocate particles. */
       realloc_particles(sim, part->totpart);
 
-      /* Randomness when choosing which particles to display */
-      srand(123456789);  // set seed
+      /* Set some randomness when choosing which particles to display. */
+      rng = BLI_rng_new(0);
       double r, dispProb = (double)part->disp / 100.0;
 
-      /* Loop over *all* particles. Will break out of loop before tottypepart amount exceeded */
+      /* Loop over *all* particles. Will break out of loop before tottypepart amount exceeded. */
       for (p = 0, pa = psys->particles; p < totpart; p++) {
 
-        /* Apply some randomness and determine which particles to skip */
+        /* Apply some randomness and determine which particles to skip. */
         r = (double)rand() / (double)RAND_MAX;
         if (r > dispProb)
           continue;
 
-        /* flag, res, upres, pos, vel for FLIP and snd particles have different getterss */
+        /* flag, res, upres, pos, vel for FLIP and snd particles have different getters. */
         if (part->type & PART_MANTA_FLIP) {
           flagActivePart = manta_liquid_get_flip_particle_flag_at(mds->fluid, p);
 
@@ -4275,10 +4276,13 @@ static void particles_manta_step(ParticleSimulationData *sim,
                        "particles_manta_step::error - unknown particle system type\n");
           return;
         }
-        // printf("part->type: %d, flagActivePart: %d\n", part->type, flagActivePart);
+#if 0
+        /* Debugging: Print type of particle system and current particles. */
+        printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
+#endif
 
         /* Type of particle must matche current particle system type (only important for snd
-         * particles) */
+         * particles). */
         if ((flagActivePart & PARTICLE_TYPE_SPRAY) && (part->type & PART_MANTA_SPRAY) == 0)
           continue;
         if ((flagActivePart & PARTICLE_TYPE_BUBBLE) && (part->type & PART_MANTA_BUBBLE) == 0)
@@ -4287,19 +4291,20 @@ static void particles_manta_step(ParticleSimulationData *sim,
           continue;
         if ((flagActivePart & PARTICLE_TYPE_TRACER) && (part->type & PART_MANTA_TRACER) == 0)
           continue;
-
-        // printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-
-        /* Particle system has allocated tottypeparts particles - so break early before exceeded */
+#  if 0
+        /* Debugging: Print type of particle system and current particles. */
+        printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
+#  endif
+        /* Particle system has allocated tottypeparts particles - so break early before exceeded. */
         if (activeParts >= tottypepart)
           break;
 
-        /* Only show active particles, i.e. filter out dead particles that just Mantaflow needs
-         * Mantaflow convention: PARTICLE_TYPE_DELETE == inactive particle */
+        /* Only show active particles, i.e. filter out dead particles that just Mantaflow needs.
+         * Mantaflow convention: PARTICLE_TYPE_DELETE == inactive particle. */
         if ((flagActivePart & PARTICLE_TYPE_DELETE) == 0) {
           activeParts++;
 
-          /* Use particle system settings for particle size */
+          /* Use particle system settings for particle size. */
           pa->size = part->size;
           if (part->randsize > 0.0f)
             pa->size *= 1.0f - part->randsize * psys_frand(psys, p + 1);
@@ -4311,29 +4316,30 @@ static void particles_manta_step(ParticleSimulationData *sim,
           madd_v3fl_v3fl_v3fl_v3i(max, mds->p0, cell_size_scaled, mds->res_max);
           sub_v3_v3v3(size, max, min);
 
-          /* Biggest dimension will be used for upscaling */
+          /* Biggest dimension will be used for upscaling. */
           max_size = MAX3(size[0] / (float)upres, size[1] / (float)upres, size[2] / (float)upres);
 
-          /* Set particle position */
-          pa->state.co[0] = posX;
-          pa->state.co[1] = posY;
-          pa->state.co[2] = posZ;
+          /* Set particle position. */
+          float posParticle[3] = {posX, posY, posZ};
+          copy_v3_v3(pa->state.co, posParticle);
 
-          /* Normalize to unit cube around 0 */
-          pa->state.co[0] -= resX * 0.5f;
-          pa->state.co[1] -= resY * 0.5f;
-          pa->state.co[2] -= resZ * 0.5f;
+          /* Normalize to unit cube around 0. */
+          float resDomain[3] = {resX, resY, resZ};
+          mul_v3_fl(resDomain, 0.5f);
+          sub_v3_v3(pa->state.co, resDomain);
           mul_v3_fl(pa->state.co, mds->dx);
 
-          /* Match domain dimension / size */
-          pa->state.co[0] *= max_size / fabsf(ob->scale[0]);
-          pa->state.co[1] *= max_size / fabsf(ob->scale[1]);
-          pa->state.co[2] *= max_size / fabsf(ob->scale[2]);
+          /* Match domain dimension / size. */
+          float scaleAbs[3] = {
+              1. / fabsf(ob->scale[0]), 1. / fabsf(ob->scale[1]), 1. / fabsf(ob->scale[2])};
+          mul_v3_fl(scaleAbs, max_size);
+          mul_v3_v3(pa->state.co, scaleAbs);
+          ;
 
-          /* Match domain scale */
+          /* Match domain scale. */
           mul_m4_v3(ob->obmat, pa->state.co);
 
-          /* Add origin offset to particle position */
+          /* Add origin offset to particle position. */
           zero_v3(tmp);
           zero_v3(tmp2);
           sub_v3_v3v3(tmp2, mds->p1, mds->p0);
@@ -4342,20 +4348,21 @@ static void particles_manta_step(ParticleSimulationData *sim,
           sub_v3_v3(tmp, tmp2);
           mul_v3_v3(tmp, ob->scale);
           add_v3_v3(pa->state.co, tmp);
-
-          // printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
-          // pa->state.co[0], pa->state.co[1], pa->state.co[2]);
-
-          /* Set particle velocity */
-          pa->state.vel[0] = velX;
-          pa->state.vel[1] = velY;
-          pa->state.vel[2] = velZ;
+#  if 0
+          /* Debugging: Print particle coordinates. */
+          printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
+          pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+#  endif
+          /* Set particle velocity. */
+          float velParticle[3] = {velX, velY, velZ};
+          copy_v3_v3(pa->state.vel, velParticle);
           mul_v3_fl(pa->state.vel, mds->dx);
-
-          // printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
-          // pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
-
-          /* Set default angular velocity and particle rotation */
+#  if 0
+          /* Debugging: Print particle velocity. */
+          printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
+          pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
+#  endif
+          /* Set default angular velocity and particle rotation. */
           zero_v3(pa->state.ave);
           unit_qt(pa->state.rot);
 
@@ -4364,14 +4371,19 @@ static void particles_manta_step(ParticleSimulationData *sim,
           pa->lifetime = sim->scene->r.efra;
           pa->alive = PARS_ALIVE;
 
-          /* Increasing particle settings pointer only for active particles */
+          /* Increasing particle settings pointer only for active particles. */
           pa++;
         }
       }
-      // printf("active parts: %d\n", activeParts);
+#  if 0
+      /* Debugging: Print number of active particles. */
+      printf("active parts: %d\n", activeParts);
+#  endif
       totpart = psys->totpart = part->totpart = activeParts;
 
-    }  // manta sim particles done
+      BLI_rng_free(rng);
+
+    }  /* Manta sim particles done. */
   }
 #else
   UNUSED_VARS(use_render_params);
