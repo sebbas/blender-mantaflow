@@ -149,7 +149,7 @@ class LevelsetGrid : public Grid<Real> {
     }
   }
 
-  void subtract(const LevelsetGrid &o);
+  void subtract(const LevelsetGrid &o, const FlagGrid *flags = NULL, const int subtractType = 0);
   static PyObject *_W_4(PyObject *_self, PyObject *_linargs, PyObject *_kwds)
   {
     try {
@@ -161,9 +161,11 @@ class LevelsetGrid : public Grid<Real> {
       {
         ArgLocker _lock;
         const LevelsetGrid &o = *_args.getPtr<LevelsetGrid>("o", 0, &_lock);
+        const FlagGrid *flags = _args.getPtrOpt<FlagGrid>("flags", 1, NULL, &_lock);
+        const int subtractType = _args.getOpt<int>("subtractType", 2, 0, &_lock);
         pbo->_args.copy(_args);
         _retval = getPyNone();
-        pbo->subtract(o);
+        pbo->subtract(o, flags, subtractType);
         pbo->_args.check();
       }
       pbFinalizePlugin(pbo->getParent(), "LevelsetGrid::subtract", !noTiming);

@@ -434,13 +434,20 @@ void LevelsetGrid::join(const LevelsetGrid &o)
 
 //! subtract b, note does not preserve SDF!
 struct KnSubtract : public KernelBase {
-  KnSubtract(Grid<Real> &a, const Grid<Real> &b) : KernelBase(&a, 0), a(a), b(b)
+  KnSubtract(Grid<Real> &a, const Grid<Real> &b, const FlagGrid *flags, int subtractType)
+      : KernelBase(&a, 0), a(a), b(b), flags(flags), subtractType(subtractType)
   {
     runMessage();
     run();
   }
-  inline void op(IndexInt idx, Grid<Real> &a, const Grid<Real> &b) const
+  inline void op(IndexInt idx,
+                 Grid<Real> &a,
+                 const Grid<Real> &b,
+                 const FlagGrid *flags,
+                 int subtractType) const
   {
+    if (flags && ((*flags)(idx)&subtractType) == 0)
+      return;
     if (b[idx] < 0.)
       a[idx] = b[idx] * -1.;
   }
@@ -454,6 +461,16 @@ struct KnSubtract : public KernelBase {
     return b;
   }
   typedef Grid<Real> type1;
+  inline const FlagGrid *getArg2()
+  {
+    return flags;
+  }
+  typedef FlagGrid type2;
+  inline int &getArg3()
+  {
+    return subtractType;
+  }
+  typedef int type3;
   void runMessage()
   {
     debMsg("Executing kernel KnSubtract ", 3);
@@ -464,7 +481,7 @@ struct KnSubtract : public KernelBase {
   void operator()(const tbb::blocked_range<IndexInt> &__r) const
   {
     for (IndexInt idx = __r.begin(); idx != (IndexInt)__r.end(); idx++)
-      op(idx, a, b);
+      op(idx, a, b, flags, subtractType);
   }
   void run()
   {
@@ -472,10 +489,12 @@ struct KnSubtract : public KernelBase {
   }
   Grid<Real> &a;
   const Grid<Real> &b;
+  const FlagGrid *flags;
+  int subtractType;
 };
-void LevelsetGrid::subtract(const LevelsetGrid &o)
+void LevelsetGrid::subtract(const LevelsetGrid &o, const FlagGrid *flags, const int subtractType)
 {
-  KnSubtract(*this, o);
+  KnSubtract(*this, o, flags, subtractType);
 }
 
 //! re-init levelset and extrapolate velocities (in & out)
