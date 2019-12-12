@@ -58,90 +58,234 @@
 
 const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     {0, "", 0, N_("Modify"), ""},
-    {eModifierType_DataTransfer, "DATA_TRANSFER", ICON_MOD_DATA_TRANSFER, "Data Transfer", ""},
-    {eModifierType_MeshCache, "MESH_CACHE", ICON_MOD_MESHDEFORM, "Mesh Cache", ""},
+    {eModifierType_DataTransfer,
+     "DATA_TRANSFER",
+     ICON_MOD_DATA_TRANSFER,
+     "Data Transfer",
+     "Transfer several types of data (vertex groups, UV maps, vertex colors, custom normals) from "
+     "one mesh to another"},
+    {eModifierType_MeshCache,
+     "MESH_CACHE",
+     ICON_MOD_MESHDEFORM,
+     "Mesh Cache",
+     "Deform the mesh using an external frame-by-frame vertex transform cache"},
     {eModifierType_MeshSequenceCache,
      "MESH_SEQUENCE_CACHE",
      ICON_MOD_MESHDEFORM,
      "Mesh Sequence Cache",
-     ""},
-    {eModifierType_NormalEdit, "NORMAL_EDIT", ICON_MOD_NORMALEDIT, "Normal Edit", ""},
-    {eModifierType_WeightedNormal, "WEIGHTED_NORMAL", ICON_MOD_NORMALEDIT, "Weighted Normal", ""},
-    {eModifierType_UVProject, "UV_PROJECT", ICON_MOD_UVPROJECT, "UV Project", ""},
-    {eModifierType_UVWarp, "UV_WARP", ICON_MOD_UVPROJECT, "UV Warp", ""},
+     "Deform the mesh or curve using an external mesh cache in Alembic format"},
+    {eModifierType_NormalEdit,
+     "NORMAL_EDIT",
+     ICON_MOD_NORMALEDIT,
+     "Normal Edit",
+     "Modify the direction of the surface normals"},
+    {eModifierType_WeightedNormal,
+     "WEIGHTED_NORMAL",
+     ICON_MOD_NORMALEDIT,
+     "Weighted Normal",
+     "Modify the direction of the surface normals using a weighting method"},
+    {eModifierType_UVProject,
+     "UV_PROJECT",
+     ICON_MOD_UVPROJECT,
+     "UV Project",
+     "Project the UV map coordinates from the negative Z axis of another object"},
+    {eModifierType_UVWarp,
+     "UV_WARP",
+     ICON_MOD_UVPROJECT,
+     "UV Warp",
+     "Transform the UV map using the the difference between two objects"},
     {eModifierType_WeightVGEdit,
      "VERTEX_WEIGHT_EDIT",
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Edit",
-     ""},
+     "Modify of the weights of a vertex group"},
     {eModifierType_WeightVGMix,
      "VERTEX_WEIGHT_MIX",
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Mix",
-     ""},
+     "Mix the weights of two vertex groups"},
     {eModifierType_WeightVGProximity,
      "VERTEX_WEIGHT_PROXIMITY",
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Proximity",
-     ""},
+     "Set the vertex group weights based on the distance to another target object"},
     {0, "", 0, N_("Generate"), ""},
-    {eModifierType_Array, "ARRAY", ICON_MOD_ARRAY, "Array", ""},
-    {eModifierType_Bevel, "BEVEL", ICON_MOD_BEVEL, "Bevel", ""},
-    {eModifierType_Boolean, "BOOLEAN", ICON_MOD_BOOLEAN, "Boolean", ""},
-    {eModifierType_Build, "BUILD", ICON_MOD_BUILD, "Build", ""},
-    {eModifierType_Decimate, "DECIMATE", ICON_MOD_DECIM, "Decimate", ""},
-    {eModifierType_EdgeSplit, "EDGE_SPLIT", ICON_MOD_EDGESPLIT, "Edge Split", ""},
-    {eModifierType_Mask, "MASK", ICON_MOD_MASK, "Mask", ""},
-    {eModifierType_Mirror, "MIRROR", ICON_MOD_MIRROR, "Mirror", ""},
-    {eModifierType_Multires, "MULTIRES", ICON_MOD_MULTIRES, "Multiresolution", ""},
-    {eModifierType_Remesh, "REMESH", ICON_MOD_REMESH, "Remesh", ""},
-    {eModifierType_Screw, "SCREW", ICON_MOD_SCREW, "Screw", ""},
-    {eModifierType_Skin, "SKIN", ICON_MOD_SKIN, "Skin", ""},
-    {eModifierType_Solidify, "SOLIDIFY", ICON_MOD_SOLIDIFY, "Solidify", ""},
-    {eModifierType_Subsurf, "SUBSURF", ICON_MOD_SUBSURF, "Subdivision Surface", ""},
-    {eModifierType_Triangulate, "TRIANGULATE", ICON_MOD_TRIANGULATE, "Triangulate", ""},
+    {eModifierType_Array,
+     "ARRAY",
+     ICON_MOD_ARRAY,
+     "Array",
+     "Create copies of the shape with offsets"},
+    {eModifierType_Bevel,
+     "BEVEL",
+     ICON_MOD_BEVEL,
+     "Bevel",
+     "Generate sloped corners by adding geometry to the mesh's edges or vertices"},
+    {eModifierType_Boolean,
+     "BOOLEAN",
+     ICON_MOD_BOOLEAN,
+     "Boolean",
+     "Use another shape to cut, combine or perform a difference operation"},
+    {eModifierType_Build,
+     "BUILD",
+     ICON_MOD_BUILD,
+     "Build",
+     "Cause the faces of the mesh object to appear or disappear one after the other over time"},
+    {eModifierType_Decimate,
+     "DECIMATE",
+     ICON_MOD_DECIM,
+     "Decimate",
+     "Reduce the geometry density"},
+    {eModifierType_EdgeSplit,
+     "EDGE_SPLIT",
+     ICON_MOD_EDGESPLIT,
+     "Edge Split",
+     "Split away joined faces at the edges"},
+    {eModifierType_Mask,
+     "MASK",
+     ICON_MOD_MASK,
+     "Mask",
+     "Dynamically hide vertices based on a vertex group or armature"},
+    {eModifierType_Mirror,
+     "MIRROR",
+     ICON_MOD_MIRROR,
+     "Mirror",
+     "Mirror along the local X, Y and/or Z axes, over the object origin"},
+    {eModifierType_Multires,
+     "MULTIRES",
+     ICON_MOD_MULTIRES,
+     "Multiresolution",
+     "Subdivide the mesh in a way that allows editing the higher subdivision levels"},
+    {eModifierType_Remesh,
+     "REMESH",
+     ICON_MOD_REMESH,
+     "Remesh",
+     "Generate new mesh topology based on the current shape"},
+    {eModifierType_Screw,
+     "SCREW",
+     ICON_MOD_SCREW,
+     "Screw",
+     "Lathe around an axis, treating the inout mesh as a profile"},
+    {eModifierType_Skin,
+     "SKIN",
+     ICON_MOD_SKIN,
+     "Skin",
+     "Create a solid shape from vertices and edges, using the vertex radius to define the "
+     "thickness"},
+    {eModifierType_Solidify, "SOLIDIFY", ICON_MOD_SOLIDIFY, "Solidify", " Make the surface thick"},
+    {eModifierType_Subsurf,
+     "SUBSURF",
+     ICON_MOD_SUBSURF,
+     "Subdivision Surface",
+     "Split the faces into smaller parts, giving it a smoother appearance"},
+    {eModifierType_Triangulate,
+     "TRIANGULATE",
+     ICON_MOD_TRIANGULATE,
+     "Triangulate",
+     "Convert all polygons to triangles"},
     {eModifierType_Wireframe,
      "WIREFRAME",
      ICON_MOD_WIREFRAME,
      "Wireframe",
-     "Generate a wireframe on the edges of a mesh"},
+     "Convert faces into thickened edges"},
+    {eModifierType_Weld,
+     "WELD",
+     ICON_AUTOMERGE_OFF,
+     "Weld",
+     "Find groups of vertices closer then dist and merges them together"},
     {0, "", 0, N_("Deform"), ""},
-    {eModifierType_Armature, "ARMATURE", ICON_MOD_ARMATURE, "Armature", ""},
-    {eModifierType_Cast, "CAST", ICON_MOD_CAST, "Cast", ""},
-    {eModifierType_Curve, "CURVE", ICON_MOD_CURVE, "Curve", ""},
-    {eModifierType_Displace, "DISPLACE", ICON_MOD_DISPLACE, "Displace", ""},
-    {eModifierType_Hook, "HOOK", ICON_HOOK, "Hook", ""},
+    {eModifierType_Armature,
+     "ARMATURE",
+     ICON_MOD_ARMATURE,
+     "Armature",
+     "Deform the shape using an armature object"},
+    {eModifierType_Cast,
+     "CAST",
+     ICON_MOD_CAST,
+     "Cast",
+     "Shift the shape towards a predefined primitive"},
+    {eModifierType_Curve, "CURVE", ICON_MOD_CURVE, "Curve", "Bend the mesh using a curve object"},
+    {eModifierType_Displace,
+     "DISPLACE",
+     ICON_MOD_DISPLACE,
+     "Displace",
+     "Offset vertices based on a texture"},
+    {eModifierType_Hook, "HOOK", ICON_HOOK, "Hook", "Deform specific points using another object"},
     {eModifierType_LaplacianDeform,
      "LAPLACIANDEFORM",
      ICON_MOD_MESHDEFORM,
      "Laplacian Deform",
-     ""},
-    {eModifierType_Lattice, "LATTICE", ICON_MOD_LATTICE, "Lattice", ""},
-    {eModifierType_MeshDeform, "MESH_DEFORM", ICON_MOD_MESHDEFORM, "Mesh Deform", ""},
-    {eModifierType_Shrinkwrap, "SHRINKWRAP", ICON_MOD_SHRINKWRAP, "Shrinkwrap", ""},
-    {eModifierType_SimpleDeform, "SIMPLE_DEFORM", ICON_MOD_SIMPLEDEFORM, "Simple Deform", ""},
-    {eModifierType_Smooth, "SMOOTH", ICON_MOD_SMOOTH, "Smooth", ""},
+     "Deform based a series of anchor points"},
+    {eModifierType_Lattice,
+     "LATTICE",
+     ICON_MOD_LATTICE,
+     "Lattice",
+     "Deform using the shape of a lattice object"},
+    {eModifierType_MeshDeform,
+     "MESH_DEFORM",
+     ICON_MOD_MESHDEFORM,
+     "Mesh Deform",
+     "Deform using a different mesh, which acts as a deformation cage"},
+    {eModifierType_Shrinkwrap,
+     "SHRINKWRAP",
+     ICON_MOD_SHRINKWRAP,
+     "Shrinkwrap",
+     "Project the shape onto another object"},
+    {eModifierType_SimpleDeform,
+     "SIMPLE_DEFORM",
+     ICON_MOD_SIMPLEDEFORM,
+     "Simple Deform",
+     "Deform the shape by twisting, bending, tapering or stretching"},
+    {eModifierType_Smooth,
+     "SMOOTH",
+     ICON_MOD_SMOOTH,
+     "Smooth",
+     "Smooth the mesh by flattening the angles between adjacent faces"},
     {eModifierType_CorrectiveSmooth,
      "CORRECTIVE_SMOOTH",
      ICON_MOD_SMOOTH,
      "Smooth Corrective",
-     ""},
-    {eModifierType_LaplacianSmooth, "LAPLACIANSMOOTH", ICON_MOD_SMOOTH, "Smooth Laplacian", ""},
-    {eModifierType_SurfaceDeform, "SURFACE_DEFORM", ICON_MOD_MESHDEFORM, "Surface Deform", ""},
-    {eModifierType_Warp, "WARP", ICON_MOD_WARP, "Warp", ""},
-    {eModifierType_Wave, "WAVE", ICON_MOD_WAVE, "Wave", ""},
+     "Smooth the mesh while still preserving the volume"},
+    {eModifierType_LaplacianSmooth,
+     "LAPLACIANSMOOTH",
+     ICON_MOD_SMOOTH,
+     "Smooth Laplacian",
+     "Reduce the noise on a mesh surface with minimal changes to its shape"},
+    {eModifierType_SurfaceDeform,
+     "SURFACE_DEFORM",
+     ICON_MOD_MESHDEFORM,
+     "Surface Deform",
+     "Transfer motion from another mesh"},
+    {eModifierType_Warp,
+     "WARP",
+     ICON_MOD_WARP,
+     "Warp",
+     "Warp parts of a mesh to a new location in a very flexible way thanks to 2 specified "
+     "objects"},
+    {eModifierType_Wave,
+     "WAVE",
+     ICON_MOD_WAVE,
+     "Wave",
+     "Adds a ripple-like motion to an object’s geometry"},
     {0, "", 0, N_("Simulate"), ""},
     {eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
     {eModifierType_Collision, "COLLISION", ICON_MOD_PHYSICS, "Collision", ""},
     {eModifierType_DynamicPaint, "DYNAMIC_PAINT", ICON_MOD_DYNAMICPAINT, "Dynamic Paint", ""},
-    {eModifierType_Explode, "EXPLODE", ICON_MOD_EXPLODE, "Explode", ""},
-    {eModifierType_Ocean, "OCEAN", ICON_MOD_OCEAN, "Ocean", ""},
+    {eModifierType_Explode,
+     "EXPLODE",
+     ICON_MOD_EXPLODE,
+     "Explode",
+     "Break apart the mesh faces and let them follow particles"},
+    {eModifierType_Ocean, "OCEAN", ICON_MOD_OCEAN, "Ocean", "Generate a moving ocean surface"},
     {eModifierType_ParticleInstance,
      "PARTICLE_INSTANCE",
      ICON_MOD_PARTICLE_INSTANCE,
      "Particle Instance",
      ""},
-    {eModifierType_ParticleSystem, "PARTICLE_SYSTEM", ICON_MOD_PARTICLES, "Particle System", ""},
+    {eModifierType_ParticleSystem,
+     "PARTICLE_SYSTEM",
+     ICON_MOD_PARTICLES,
+     "Particle System",
+     "Spawn particles from the shape"},
     {eModifierType_Manta, "FLUID", ICON_MOD_MANTA, "Fluid Simulation", ""},
     {eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
     {eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
@@ -558,6 +702,8 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
       return &RNA_LaplacianDeformModifier;
     case eModifierType_Wireframe:
       return &RNA_WireframeModifier;
+    case eModifierType_Weld:
+      return &RNA_WeldModifier;
     case eModifierType_DataTransfer:
       return &RNA_DataTransferModifier;
     case eModifierType_NormalEdit:
@@ -663,6 +809,7 @@ RNA_MOD_VGROUP_NAME_SET(WeightVGMix, mask_defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(WeightVGProximity, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(WeightVGProximity, mask_defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(WeightedNormal, defgrp_name);
+RNA_MOD_VGROUP_NAME_SET(Weld, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Wireframe, defgrp_name);
 
 static void rna_ExplodeModifier_vgroup_get(PointerRNA *ptr, char *value)
@@ -5502,6 +5649,40 @@ static void rna_def_modifier_wireframe(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
+static void rna_def_modifier_weld(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "WeldModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Weld Modifier", "Weld modifier");
+  RNA_def_struct_sdna(srna, "WeldModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_AUTOMERGE_OFF);
+
+  prop = RNA_def_property(srna, "merge_threshold", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, NULL, "merge_dist");
+  RNA_def_property_range(prop, 0, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0, 1, 0.001, 6);
+  RNA_def_property_ui_text(prop, "Merge Distance", "Limit below which to merge vertices");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "max_interactions", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, NULL, "max_interactions");
+  RNA_def_property_ui_text(
+      prop,
+      "Duplicate Limit",
+      "For a better performance, limits the number of elements found per vertex. "
+      "(0 makes it infinite)");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "vertex_group", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "defgrp_name");
+  RNA_def_property_ui_text(
+      prop, "Vertex Group", "Vertex group name for selecting the affected areas");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_WeldModifier_defgrp_name_set");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+}
+
 static void rna_def_modifier_datatransfer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6210,6 +6391,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_meshcache(brna);
   rna_def_modifier_laplaciandeform(brna);
   rna_def_modifier_wireframe(brna);
+  rna_def_modifier_weld(brna);
   rna_def_modifier_datatransfer(brna);
   rna_def_modifier_normaledit(brna);
   rna_def_modifier_meshseqcache(brna);

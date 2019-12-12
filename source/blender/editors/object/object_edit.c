@@ -445,7 +445,7 @@ static bool ED_object_editmode_load_ex(Main *bmain, Object *obedit, const bool f
       return false;
     }
 
-    EDBM_mesh_load(bmain, obedit);
+    EDBM_mesh_load_ex(bmain, obedit, freedata);
 
     if (freedata) {
       EDBM_mesh_free(me->edit_mesh);
@@ -512,6 +512,9 @@ static bool ED_object_editmode_load_ex(Main *bmain, Object *obedit, const bool f
     if (freedata) {
       ED_mball_editmball_free(obedit);
     }
+  }
+  else {
+    return false;
   }
 
   char *needs_flush_ptr = BKE_object_data_editmode_flush_ptr_get(obedit->data);

@@ -18,7 +18,7 @@
  */
 
 /** \file
- * \ingroup edrend
+ * \ingroup render
  */
 
 #include <math.h>
@@ -77,7 +77,7 @@
 #include "render_intern.h"
 
 /* Define this to get timing information. */
-// #undef DEBUG_TIME
+// #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
 #  include "PIL_time.h"
@@ -114,7 +114,6 @@ typedef struct OGLRender {
   ImageUser iuser;
 
   GPUOffScreen *ofs;
-  int ofs_samples;
   int sizex, sizey;
   int write_still;
 
@@ -138,6 +137,8 @@ typedef struct OGLRender {
   TaskPool *task_pool;
   bool pool_ok;
   bool is_animation;
+
+  eImageFormatDepth color_depth;
   SpinLock reports_lock;
   unsigned int num_scheduled_frames;
   ThreadMutex task_mutex;
@@ -284,6 +285,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
   const short view_context = (v3d != NULL);
   bool draw_sky = (scene->r.alphamode == R_ADDSKY);
   float *rectf = NULL;
+  unsigned char *rect = NULL;
   const char *viewname = RE_GetActiveRenderView(oglrender->re);
   ImBuf *ibuf_result = NULL;
 
@@ -356,6 +358,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
     char err_out[256] = "unknown";
     ImBuf *ibuf_view;
     const int alpha_mode = (draw_sky) ? R_ADDSKY : R_ALPHAPREMUL;
+    int output_flags = oglrender->color_depth <= R_IMF_CHAN_DEPTH_8 ? IB_rect : IB_rectfloat;
 
     if (view_context) {
       ibuf_view = ED_view3d_draw_offscreen_imbuf(depsgraph,
@@ -365,9 +368,8 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
                                                  ar,
                                                  sizex,
                                                  sizey,
-                                                 IB_rectfloat,
+                                                 output_flags,
                                                  alpha_mode,
-                                                 oglrender->ofs_samples,
                                                  viewname,
                                                  oglrender->ofs,
                                                  err_out);
@@ -385,10 +387,9 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
                                                         scene->camera,
                                                         oglrender->sizex,
                                                         oglrender->sizey,
-                                                        IB_rectfloat,
+                                                        output_flags,
                                                         V3D_OFSDRAW_SHOW_ANNOTATION,
                                                         alpha_mode,
-                                                        oglrender->ofs_samples,
                                                         viewname,
                                                         oglrender->ofs,
                                                         err_out);
@@ -397,7 +398,12 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 
     if (ibuf_view) {
       ibuf_result = ibuf_view;
-      rectf = (float *)ibuf_view->rect_float;
+      if (ibuf_view->rect_float) {
+        rectf = ibuf_view->rect_float;
+      }
+      else {
+        rect = (unsigned char *)ibuf_view->rect;
+      }
     }
     else {
       fprintf(stderr, "%s: failed to get buffer, %s\n", __func__, err_out);
@@ -406,7 +412,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 
   if (ibuf_result != NULL) {
     if ((scene->r.stamp & R_STAMP_ALL) && (scene->r.stamp & R_STAMP_DRAW)) {
-      BKE_image_stamp_buf(scene, camera, NULL, NULL, rectf, rr->rectx, rr->recty, 4);
+      BKE_image_stamp_buf(scene, camera, NULL, rect, rectf, rr->rectx, rr->recty, 4);
     }
     RE_render_result_rect_from_ibuf(rr, &scene->r, ibuf_result, oglrender->view_id);
     IMB_freeImBuf(ibuf_result);
@@ -528,7 +534,8 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   const bool is_animation = RNA_boolean_get(op->ptr, "animation");
   const bool is_sequencer = RNA_boolean_get(op->ptr, "sequencer");
   const bool is_write_still = RNA_boolean_get(op->ptr, "write_still");
-  const int samples = U.ogl_multisamples;
+  const eImageFormatDepth color_depth = (is_animation) ? scene->r.im_format.depth :
+                                                         R_IMF_CHAN_DEPTH_32;
   char err_out[256] = "unknown";
 
   if (G.background) {
@@ -573,7 +580,7 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
 
   /* corrects render size with actual size, not every card supports non-power-of-two dimensions */
   DRW_opengl_context_enable(); /* Offscreen creation needs to be done in DRW context. */
-  ofs = GPU_offscreen_create(sizex, sizey, samples, true, true, err_out);
+  ofs = GPU_offscreen_create(sizex, sizey, 0, true, true, err_out);
   DRW_opengl_context_disable();
 
   if (!ofs) {
@@ -596,10 +603,10 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
    * output video handles, which does need evaluated scene. */
   oglrender->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   oglrender->cfrao = scene->r.cfra;
-  oglrender->ofs_samples = samples;
 
   oglrender->write_still = is_write_still && !is_animation;
   oglrender->is_animation = is_animation;
+  oglrender->color_depth = color_depth;
 
   oglrender->views_len = BKE_scene_multiview_num_views_get(&scene->r);
 

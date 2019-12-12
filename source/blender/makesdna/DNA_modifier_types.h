@@ -86,7 +86,8 @@ typedef enum ModifierType {
   eModifierType_MeshSequenceCache = 52,
   eModifierType_SurfaceDeform = 53,
   eModifierType_WeightedNormal = 54,
-  eModifierType_Manta = 55,
+  eModifierType_Weld = 55,
+  eModifierType_Manta = 56,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -1816,6 +1817,16 @@ enum {
   MOD_WIREFRAME_OFS_RELATIVE = (1 << 4),
   MOD_WIREFRAME_CREASE = (1 << 5),
 };
+
+typedef struct WeldModifierData {
+  ModifierData modifier;
+
+  /* The limit below which to merge vertices. */
+  float merge_dist;
+  unsigned int max_interactions;
+  /* Name of vertex group to use to mask, MAX_VGROUP_NAME. */
+  char defgrp_name[64];
+} WeldModifierData;
 
 typedef struct DataTransferModifierData {
   ModifierData modifier;

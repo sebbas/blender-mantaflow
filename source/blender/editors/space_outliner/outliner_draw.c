@@ -818,6 +818,7 @@ static void namebutton_cb(bContext *C, void *tsep, char *oldname)
           BLI_uniquename(
               &gpd->layers, gpl, "GP Layer", '.', offsetof(bGPDlayer, info), sizeof(gpl->info));
 
+          DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
           WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, gpd);
           break;
         }
@@ -2170,6 +2171,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
               break;
             case eModifierType_Wireframe:
               data.icon = ICON_MOD_WIREFRAME;
+              break;
+            case eModifierType_Weld:
+              data.icon = ICON_AUTOMERGE_OFF; /* XXX, needs own icon */
               break;
             case eModifierType_LaplacianDeform:
               data.icon = ICON_MOD_MESHDEFORM; /* XXX, needs own icon */

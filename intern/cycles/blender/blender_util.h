@@ -34,8 +34,8 @@
 extern "C" {
 void BKE_image_user_frame_calc(void *ima, void *iuser, int cfra);
 void BKE_image_user_file_path(void *iuser, void *ima, char *path);
-unsigned char *BKE_image_get_pixels_for_frame(void *image, int frame);
-float *BKE_image_get_float_pixels_for_frame(void *image, int frame);
+unsigned char *BKE_image_get_pixels_for_frame(void *image, int frame, int tile);
+float *BKE_image_get_float_pixels_for_frame(void *image, int frame, int tile);
 }
 
 CCL_NAMESPACE_BEGIN
@@ -159,7 +159,7 @@ static inline void curvemapping_to_array(BL::CurveMapping &cumap, array<float> &
   data.resize(size);
   for (int i = 0; i < size; i++) {
     float t = (float)i / (float)(size - 1);
-    data[i] = curve.evaluate(t);
+    data[i] = cumap.evaluate(curve, t);
   }
 }
 
@@ -197,15 +197,16 @@ static inline void curvemapping_color_to_array(BL::CurveMapping &cumap,
     BL::CurveMap mapI = cumap.curves[3];
     for (int i = 0; i < size; i++) {
       const float t = min_x + (float)i / (float)(size - 1) * range_x;
-      data[i] = make_float3(mapR.evaluate(mapI.evaluate(t)),
-                            mapG.evaluate(mapI.evaluate(t)),
-                            mapB.evaluate(mapI.evaluate(t)));
+      data[i] = make_float3(cumap.evaluate(mapR, cumap.evaluate(mapI, t)),
+                            cumap.evaluate(mapG, cumap.evaluate(mapI, t)),
+                            cumap.evaluate(mapB, cumap.evaluate(mapI, t)));
     }
   }
   else {
     for (int i = 0; i < size; i++) {
       float t = min_x + (float)i / (float)(size - 1) * range_x;
-      data[i] = make_float3(mapR.evaluate(t), mapG.evaluate(t), mapB.evaluate(t));
+      data[i] = make_float3(
+          cumap.evaluate(mapR, t), cumap.evaluate(mapG, t), cumap.evaluate(mapB, t));
     }
   }
 }
@@ -233,8 +234,15 @@ static inline int render_resolution_y(BL::RenderSettings &b_render)
 static inline string image_user_file_path(BL::ImageUser &iuser, BL::Image &ima, int cfra)
 {
   char filepath[1024];
+  iuser.tile(0);
   BKE_image_user_frame_calc(NULL, iuser.ptr.data, cfra);
   BKE_image_user_file_path(iuser.ptr.data, ima.ptr.data, filepath);
+  if (ima.source() == BL::Image::source_TILED) {
+    char *udim_id = strstr(filepath, "1001");
+    if (udim_id != NULL) {
+      memcpy(udim_id, "%04d", 4);
+    }
+  }
   return string(filepath);
 }
 
@@ -244,14 +252,14 @@ static inline int image_user_frame_number(BL::ImageUser &iuser, int cfra)
   return iuser.frame_current();
 }
 
-static inline unsigned char *image_get_pixels_for_frame(BL::Image &image, int frame)
+static inline unsigned char *image_get_pixels_for_frame(BL::Image &image, int frame, int tile)
 {
-  return BKE_image_get_pixels_for_frame(image.ptr.data, frame);
+  return BKE_image_get_pixels_for_frame(image.ptr.data, frame, tile);
 }
 
-static inline float *image_get_float_pixels_for_frame(BL::Image &image, int frame)
+static inline float *image_get_float_pixels_for_frame(BL::Image &image, int frame, int tile)
 {
-  return BKE_image_get_float_pixels_for_frame(image.ptr.data, frame);
+  return BKE_image_get_float_pixels_for_frame(image.ptr.data, frame, tile);
 }
 
 static inline void render_add_metadata(BL::RenderResult &b_rr, string name, string value)

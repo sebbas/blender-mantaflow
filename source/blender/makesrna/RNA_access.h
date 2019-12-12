@@ -40,6 +40,7 @@ struct Main;
 struct ReportList;
 struct Scene;
 struct bContext;
+struct IDProperty;
 
 /* Types */
 extern BlenderRNA BLENDER_RNA;
@@ -572,6 +573,7 @@ extern StructRNA RNA_ShaderNodeMath;
 extern StructRNA RNA_ShaderNodeMixRGB;
 extern StructRNA RNA_ShaderNodeNormal;
 extern StructRNA RNA_ShaderNodeOutput;
+extern StructRNA RNA_ShaderNodeOutputAOV;
 extern StructRNA RNA_ShaderNodeRGB;
 extern StructRNA RNA_ShaderNodeRGBCurve;
 extern StructRNA RNA_ShaderNodeRGBToBW;
@@ -738,6 +740,7 @@ extern StructRNA RNA_Window;
 extern StructRNA RNA_WindowManager;
 extern StructRNA RNA_WipeSequence;
 extern StructRNA RNA_WireframeModifier;
+extern StructRNA RNA_WeldModifier;
 extern StructRNA RNA_WoodTexture;
 extern StructRNA RNA_WorkSpace;
 extern StructRNA RNA_World;
@@ -1154,6 +1157,8 @@ struct PropertyElemRNA {
   int index;
 };
 bool RNA_path_resolve_elements(PointerRNA *ptr, const char *path, struct ListBase *r_elements);
+
+char *RNA_path_from_struct_to_idproperty(PointerRNA *ptr, struct IDProperty *needle);
 
 struct ID *RNA_find_real_ID_and_path(struct Main *bmain, struct ID *id, const char **r_path);
 

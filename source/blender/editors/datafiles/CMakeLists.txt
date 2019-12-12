@@ -528,10 +528,6 @@ set(ICON_NAMES
   axis_side
   axis_front
   axis_top
-  ndof_dom
-  ndof_turn
-  ndof_fly
-  ndof_trans
   layer_used
   layer_active
   sortalpha
