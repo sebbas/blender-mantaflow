@@ -1631,6 +1631,14 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
     else if (md->type == eModifierType_Manta) {
       MantaModifierData *mmd = (MantaModifierData *)md;
 
+      bool is_valid = (mmd->domain || mmd->flow || mmd->effector);
+      /* Mantaflow currently requires experimental flag. */
+      if (!((U.experimental.flag & USER_EXPERIMENTAL_MANTA) ||
+            (U.experimental.flag & USER_EXPERIMENTAL_ALL)) &&
+          (!is_valid)) {
+        continue;
+      }
+
       if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
         writestruct(wd, DATA, MantaDomainSettings, 1, mmd->domain);
 

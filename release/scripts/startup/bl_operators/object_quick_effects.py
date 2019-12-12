@@ -352,6 +352,9 @@ class QuickSmoke(ObjectModeOperator, Operator):
         if not bpy.app.build_options.manta:
             self.report({'ERROR'}, "Built without Fluid Mantaflow modifier")
             return {'CANCELLED'}
+        if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all):
+            self.report({'ERROR'}, "Modifier only available as experimental feature, can be enabled in preferences")
+            return {'CANCELLED'}
 
         fake_context = context.copy()
         mesh_objects = [obj for obj in context.selected_objects
@@ -452,6 +455,13 @@ class QuickLiquid(Operator):
             )
 
     def execute(self, context):
+        if not bpy.app.build_options.manta:
+            self.report({'ERROR'}, "Built without Fluid Mantaflow modifier")
+            return {'CANCELLED'}
+        if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all):
+            self.report({'ERROR'}, "Modifier only available as experimental feature, can be enabled in preferences")
+            return {'CANCELLED'}
+
         fake_context = context.copy()
         mesh_objects = [obj for obj in context.selected_objects
                         if obj.type == 'MESH']

@@ -1019,6 +1019,14 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
   for (; md; md = md->next, md_datamask = md_datamask->next) {
     const ModifierTypeInfo *mti = modifierType_getInfo(md->type);
 
+    /* Mantaflow currently requires experimental flag. */
+    if ((md->type == eModifierType_Manta) && !((U.experimental.flag & USER_EXPERIMENTAL_MANTA) ||
+                                               (U.experimental.flag & USER_EXPERIMENTAL_ALL))) {
+      modifier_setError(
+          md, "Modifier only available as experimental feature, can be enabled in preferences");
+      continue;
+    }
+
     if (!modifier_isEnabled(scene, md, required_mode)) {
       continue;
     }

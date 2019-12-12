@@ -62,7 +62,7 @@ typedef enum ModifierType {
   eModifierType_SimpleDeform = 28,
   eModifierType_Multires = 29,
   eModifierType_Surface = 30,
-  eModifierType_Manta = 31,
+  eModifierType_Smoke = 31,
   eModifierType_ShapeKey = 32,
   eModifierType_Solidify = 33,
   eModifierType_Screw = 34,
@@ -86,6 +86,7 @@ typedef enum ModifierType {
   eModifierType_MeshSequenceCache = 52,
   eModifierType_SurfaceDeform = 53,
   eModifierType_WeightedNormal = 54,
+  eModifierType_Manta = 55,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -983,6 +984,11 @@ typedef struct FluidsimModifierData {
   /** Definition is in DNA_object_fluidsim_types.h. */
   struct FluidsimSettings *fss;
 } FluidsimModifierData;
+
+/* DEPRECATED, only used for versioning. */
+typedef struct SmokeModifierData {
+  ModifierData modifier;
+} SmokeModifierData;
 
 typedef struct ShrinkwrapModifierData {
   ModifierData modifier;

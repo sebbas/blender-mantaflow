@@ -249,6 +249,25 @@ static void rna_userdef_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Pointe
   USERDEF_TAG_DIRTY;
 }
 
+static void rna_userdef_use_manta_fluids_update(bContext *C,
+                                                Main *bmain,
+                                                Scene *scene,
+                                                PointerRNA *ptr)
+{
+  Object *ob = CTX_data_active_object(C);
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, &ob->id);
+  rna_userdef_update(bmain, scene, ptr);
+}
+
+static void rna_userdef_use_experimental_all_update(bContext *C,
+                                                    Main *bmain,
+                                                    Scene *scene,
+                                                    PointerRNA *ptr)
+{
+  rna_userdef_use_manta_fluids_update(C, bmain, scene, ptr);
+}
+
 static void rna_userdef_theme_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   /* Recreate gizmos when changing themes. */
@@ -5842,10 +5861,18 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_experimental_all", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_EXPERIMENTAL_ALL);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
   RNA_def_property_ui_text(prop,
                            "All Experimental Features",
                            "Expose all the experimental features in the user interface");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_use_experimental_all_update");
+
+  prop = RNA_def_property(srna, "use_manta_fluids", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_EXPERIMENTAL_MANTA);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_ui_text(
+      prop, "Mantaflow Fluid Simulation", "Use new Mantaflow Fluid Simulation Framework");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_userdef_use_manta_fluids_update");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)

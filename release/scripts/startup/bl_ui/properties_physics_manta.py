@@ -40,13 +40,19 @@ class PhysicButtonsPanel:
     bl_context = "physics"
 
     @staticmethod
+    def poll_manta_enabled(context):
+        if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all) or not (bpy.app.build_options.manta):
+            return False
+        return True
+
+    @staticmethod
     def poll_fluid(context):
         ob = context.object
         if not ((ob and ob.type == 'MESH') and (context.manta)):
             return False
 
         md = context.manta
-        return md and (context.manta.manta_type != 'NONE') and (bpy.app.build_options.manta)
+        return md and (context.manta.manta_type != 'NONE') and PhysicButtonsPanel.poll_manta_enabled(context)
 
     @staticmethod
     def poll_fluid_domain(context):
@@ -105,7 +111,11 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
             col.alignment = 'RIGHT'
             col.label(text="Built without Fluid modifier")
             return
-
+        if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all):
+            col = layout.column(align=True)
+            col.alignment = 'RIGHT'
+            col.label(text="Modifier only available as experimental feature, can be enabled in preferences", icon='ERROR')
+            return
         md = context.manta
 
         layout.prop(md, "manta_type")

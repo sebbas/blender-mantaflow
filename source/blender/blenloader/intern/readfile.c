@@ -239,7 +239,7 @@
 /* local prototypes */
 static void read_libraries(FileData *basefd, ListBase *mainlist);
 static void *read_struct(FileData *fd, BHead *bh, const char *blockname);
-static void direct_link_modifiers(FileData *fd, ListBase *lb);
+static void direct_link_modifiers(FileData *fd, ListBase *lb, const Object *ob);
 static BHead *find_bhead_from_code_name(FileData *fd, const short idcode, const char *name);
 static BHead *find_bhead_from_idname(FileData *fd, const char *idname);
 
@@ -5471,7 +5471,7 @@ static void direct_link_pose(FileData *fd, bPose *pose)
   }
 }
 
-static void direct_link_modifiers(FileData *fd, ListBase *lb)
+static void direct_link_modifiers(FileData *fd, ListBase *lb, const Object *ob)
 {
   ModifierData *md;
 
@@ -5481,6 +5481,24 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
     md->error = NULL;
     md->runtime = NULL;
 
+    if (md->type == eModifierType_Fluidsim) {
+      blo_reportf_wrap(
+          fd->reports,
+          RPT_WARNING,
+          TIP_(
+              "Possible data loss when saving this file! %s modifier is deprecated (Object: %s)."),
+          md->name,
+          ob->id.name + 2);
+    }
+    else if (md->type == eModifierType_Smoke) {
+      blo_reportf_wrap(
+          fd->reports,
+          RPT_WARNING,
+          TIP_(
+              "Possible data loss when saving this file! %s modifier is deprecated (Object: %s)."),
+          md->name,
+          ob->id.name + 2);
+    }
     /* if modifiers disappear, or for upward compatibility */
     if (NULL == modifierType_getInfo(md->type)) {
       md->type = eModifierType_None;
@@ -5523,16 +5541,8 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb)
 
       clmd->solver_result = NULL;
     }
-    else if (md->type == eModifierType_Fluidsim) {
-      FluidsimModifierData *fluidmd = (FluidsimModifierData *)md;
-
-      fluidmd->fss = newdataadr(fd, fluidmd->fss);
-      if (fluidmd->fss) {
-        fluidmd->fss->fmd = fluidmd;
-        fluidmd->fss->meshVelocities = NULL;
-      }
-    }
     else if (md->type == eModifierType_Manta) {
+
       MantaModifierData *mmd = (MantaModifierData *)md;
 
       if (mmd->type == MOD_MANTA_TYPE_DOMAIN) {
@@ -5930,7 +5940,7 @@ static void direct_link_object(FileData *fd, Object *ob)
   ob->matbits = newdataadr(fd, ob->matbits);
 
   /* do it here, below old data gets converted */
-  direct_link_modifiers(fd, &ob->modifiers);
+  direct_link_modifiers(fd, &ob->modifiers, ob);
   direct_link_gpencil_modifiers(fd, &ob->greasepencil_modifiers);
   direct_link_shaderfxs(fd, &ob->shader_fx);
 
