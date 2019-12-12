@@ -498,7 +498,7 @@ void BKE_bpath_traverse_id(
           }
         }
         else if (md->type == eModifierType_Manta) {
-          MantaModifierData *mmd = (MantaModifierData *)md;
+          FluidModifierData *mmd = (FluidModifierData *)md;
           if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
             rewrite_path_fixed(mmd->domain->cache_directory, visit_cb, absbase, bpath_user_data);
           }

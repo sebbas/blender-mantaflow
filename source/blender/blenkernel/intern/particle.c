@@ -3584,7 +3584,7 @@ void object_remove_particle_system(Main *bmain, Scene *UNUSED(scene), Object *ob
 
   /* clear all other appearances of this pointer (like on manta flow modifier) */
   if ((md = modifiers_findByType(ob, eModifierType_Manta))) {
-    MantaModifierData *mmd = (MantaModifierData *)md;
+    FluidModifierData *mmd = (FluidModifierData *)md;
     if ((mmd->type == MOD_MANTA_TYPE_FLOW) && mmd->flow && mmd->flow->psys) {
       if (mmd->flow->psys == psys) {
         mmd->flow->psys = NULL;

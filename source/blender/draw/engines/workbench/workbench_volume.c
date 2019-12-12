@@ -119,12 +119,12 @@ void workbench_volume_cache_init(WORKBENCH_Data *vedata)
 }
 
 void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
-                                     Scene *scene,
+                                     Scene *UNUSED(scene),
                                      Object *ob,
                                      ModifierData *md)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)md;
+  FluidDomainSettings *mds = mmd->domain;
   WORKBENCH_PrivateData *wpd = vedata->stl->g_data;
   WORKBENCH_EffectInfo *effect_info = vedata->stl->effects;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
@@ -232,7 +232,7 @@ void workbench_volume_smoke_textures_free(WORKBENCH_PrivateData *wpd)
    * modifier is not used for display. We should share them for
    * all viewport in a redraw at least. */
   for (LinkData *link = wpd->smoke_domains.first; link; link = link->next) {
-    MantaModifierData *mmd = (MantaModifierData *)link->data;
+    FluidModifierData *mmd = (FluidModifierData *)link->data;
     GPU_free_smoke(mmd);
   }
   BLI_freelistN(&wpd->smoke_domains);

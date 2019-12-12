@@ -1004,7 +1004,7 @@ static void swizzle_texture_channel_rrrr(GPUTexture *tex)
   GPU_texture_unbind(tex);
 }
 
-static GPUTexture *create_field_texture(MantaDomainSettings *mds)
+static GPUTexture *create_field_texture(FluidDomainSettings *mds)
 {
   float *field = NULL;
 
@@ -1062,7 +1062,7 @@ static GPUTexture *create_field_texture(MantaDomainSettings *mds)
   return tex;
 }
 
-static GPUTexture *create_density_texture(MantaDomainSettings *mds, int highres)
+static GPUTexture *create_density_texture(FluidDomainSettings *mds, int highres)
 {
   float *data = NULL, *source;
   int cell_count = (highres) ? manta_smoke_turbulence_get_cells(mds->fluid) : mds->total_cells;
@@ -1115,7 +1115,7 @@ static GPUTexture *create_density_texture(MantaDomainSettings *mds, int highres)
   return tex;
 }
 
-static GPUTexture *create_flame_texture(MantaDomainSettings *mds, int highres)
+static GPUTexture *create_flame_texture(FluidDomainSettings *mds, int highres)
 {
   float *source = NULL;
   const bool has_fuel = (highres) ? manta_smoke_turbulence_has_fuel(mds->fluid) :
@@ -1141,7 +1141,7 @@ static GPUTexture *create_flame_texture(MantaDomainSettings *mds, int highres)
   return tex;
 }
 
-void GPU_free_smoke(MantaModifierData *mmd)
+void GPU_free_smoke(FluidModifierData *mmd)
 {
   if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
     if (mmd->domain->tex) {
@@ -1176,10 +1176,10 @@ void GPU_free_smoke(MantaModifierData *mmd)
   }
 }
 
-void GPU_create_smoke_coba_field(MantaModifierData *mmd)
+void GPU_create_smoke_coba_field(FluidModifierData *mmd)
 {
   if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-    MantaDomainSettings *mds = mmd->domain;
+    FluidDomainSettings *mds = mmd->domain;
 
     if (!mds->tex_field) {
       mds->tex_field = create_field_texture(mds);
@@ -1190,10 +1190,10 @@ void GPU_create_smoke_coba_field(MantaModifierData *mmd)
   }
 }
 
-void GPU_create_smoke(MantaModifierData *mmd, int highres)
+void GPU_create_smoke(FluidModifierData *mmd, int highres)
 {
   if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-    MantaDomainSettings *mds = mmd->domain;
+    FluidDomainSettings *mds = mmd->domain;
 
     if (!mds->tex) {
       mds->tex = create_density_texture(mds, highres);
@@ -1219,10 +1219,10 @@ void GPU_create_smoke(MantaModifierData *mmd, int highres)
   }
 }
 
-void GPU_create_smoke_velocity(MantaModifierData *mmd)
+void GPU_create_smoke_velocity(FluidModifierData *mmd)
 {
   if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-    MantaDomainSettings *mds = mmd->domain;
+    FluidDomainSettings *mds = mmd->domain;
 
     const float *vel_x = manta_get_velocity_x(mds->fluid);
     const float *vel_y = manta_get_velocity_y(mds->fluid);
@@ -1244,7 +1244,7 @@ void GPU_create_smoke_velocity(MantaModifierData *mmd)
 }
 
 /* TODO Unify with the other GPU_free_smoke. */
-void GPU_free_smoke_velocity(MantaModifierData *mmd)
+void GPU_free_smoke_velocity(FluidModifierData *mmd)
 {
   if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
     if (mmd->domain->tex_velocity_x) {

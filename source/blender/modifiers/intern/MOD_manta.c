@@ -49,7 +49,7 @@
 
 static void initData(ModifierData *md)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
 
   mmd->domain = NULL;
   mmd->flow = NULL;
@@ -60,8 +60,8 @@ static void initData(ModifierData *md)
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const MantaModifierData *mmd = (const MantaModifierData *)md;
-  MantaModifierData *tmmd = (MantaModifierData *)target;
+  const FluidModifierData *mmd = (const FluidModifierData *)md;
+  FluidModifierData *tmmd = (FluidModifierData *)target;
 
   mantaModifier_free(tmmd);
   mantaModifier_copy(mmd, tmmd, flag);
@@ -69,7 +69,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
 static void freeData(ModifierData *md)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
 
   mantaModifier_free(mmd);
 }
@@ -78,7 +78,7 @@ static void requiredDataMask(Object *UNUSED(ob),
                              ModifierData *md,
                              CustomData_MeshMasks *r_cddata_masks)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
 
   if (mmd && (mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow) {
     if (mmd->flow->source == FLUID_FLOW_SOURCE_MESH) {
@@ -96,7 +96,7 @@ static void requiredDataMask(Object *UNUSED(ob),
 
 static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
   Mesh *result = NULL;
 
   if (ctx->flag & MOD_APPLY_ORCO) {
@@ -116,19 +116,19 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
 
 static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
   return (mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow;
 }
 
 static bool is_coll_cb(Object *UNUSED(ob), ModifierData *md)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
   return (mmd->type & MOD_MANTA_TYPE_EFFEC) && mmd->effector;
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
 
   if (mmd && (mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
     DEG_add_collision_relations(ctx->node,
@@ -161,7 +161,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
+  FluidModifierData *mmd = (FluidModifierData *)md;
 
   if (mmd->type == MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
     walk(userData, ob, (ID **)&mmd->domain->effector_group, IDWALK_CB_NOP);
@@ -184,8 +184,8 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
 
 ModifierTypeInfo modifierType_Manta = {
     /* name */ "Fluid",
-    /* structName */ "MantaModifierData",
-    /* structSize */ sizeof(MantaModifierData),
+    /* structName */ "FluidModifierData",
+    /* structSize */ sizeof(FluidModifierData),
     /* type */ eModifierTypeType_Constructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_Single,
 

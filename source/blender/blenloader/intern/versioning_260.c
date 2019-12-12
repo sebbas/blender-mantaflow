@@ -1293,7 +1293,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
       ModifierData *md;
       for (md = ob->modifiers.first; md; md = md->next) {
         if (md->type == eModifierType_Manta) {
-          MantaModifierData *mmd = (MantaModifierData *)md;
+          FluidModifierData *mmd = (FluidModifierData *)md;
           if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
             int maxres = max_iii(mmd->domain->res[0], mmd->domain->res[1], mmd->domain->res[2]);
             mmd->domain->scale = mmd->domain->dx * maxres;
@@ -1611,7 +1611,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
         ModifierData *md;
         for (md = ob->modifiers.first; md; md = md->next) {
           if (md->type == eModifierType_Manta) {
-            MantaModifierData *mmd = (MantaModifierData *)md;
+            FluidModifierData *mmd = (FluidModifierData *)md;
             if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
               /* keep branch saves if possible */
               if (!mmd->domain->flame_max_temp) {
@@ -2141,7 +2141,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
       ModifierData *md;
       for (md = ob->modifiers.first; md; md = md->next) {
         if (md->type == eModifierType_Manta) {
-          MantaModifierData *mmd = (MantaModifierData *)md;
+          FluidModifierData *mmd = (FluidModifierData *)md;
           if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
             if (mmd->domain->flags & FLUID_DOMAIN_USE_HIGH_SMOOTH) {
               mmd->domain->highres_sampling = SM_HRES_LINEAR;
@@ -2208,7 +2208,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
       ModifierData *md;
       for (md = ob->modifiers.first; md; md = md->next) {
         if (md->type == eModifierType_Manta) {
-          MantaModifierData *mmd = (MantaModifierData *)md;
+          FluidModifierData *mmd = (FluidModifierData *)md;
           if ((mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow) {
             if (!mmd->flow->particle_size) {
               mmd->flow->particle_size = 1.0f;

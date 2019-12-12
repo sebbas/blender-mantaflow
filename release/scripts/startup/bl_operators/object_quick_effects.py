@@ -349,8 +349,8 @@ class QuickSmoke(ObjectModeOperator, Operator):
     )
 
     def execute(self, context):
-        if not bpy.app.build_options.manta:
-            self.report({'ERROR'}, "Built without Fluid Mantaflow modifier")
+        if not bpy.app.build_options.fluid:
+            self.report({'ERROR'}, "Built without Fluid modifier")
             return {'CANCELLED'}
         if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all):
             self.report({'ERROR'}, "Modifier only available as experimental feature, can be enabled in preferences")
@@ -369,8 +369,8 @@ class QuickSmoke(ObjectModeOperator, Operator):
         for obj in mesh_objects:
             fake_context["object"] = obj
             # make each selected object a smoke flow
-            bpy.ops.object.modifier_add(fake_context, type='MANTA')
-            obj.modifiers[-1].manta_type = 'FLOW'
+            bpy.ops.object.modifier_add(fake_context, type='FLUID')
+            obj.modifiers[-1].fluid_type = 'FLOW'
 
             # set type
             obj.modifiers[-1].flow_settings.flow_type = self.style
@@ -397,8 +397,8 @@ class QuickSmoke(ObjectModeOperator, Operator):
         obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
 
         # setup smoke domain
-        bpy.ops.object.modifier_add(type='MANTA')
-        obj.modifiers[-1].manta_type = 'DOMAIN'
+        bpy.ops.object.modifier_add(type='FLUID')
+        obj.modifiers[-1].fluid_type = 'DOMAIN'
         if self.style == 'FIRE' or self.style == 'BOTH':
             obj.modifiers[-1].domain_settings.use_noise = True
 
@@ -455,8 +455,8 @@ class QuickLiquid(Operator):
             )
 
     def execute(self, context):
-        if not bpy.app.build_options.manta:
-            self.report({'ERROR'}, "Built without Fluid Mantaflow modifier")
+        if not bpy.app.build_options.fluid:
+            self.report({'ERROR'}, "Built without Fluid modifier")
             return {'CANCELLED'}
         if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all):
             self.report({'ERROR'}, "Modifier only available as experimental feature, can be enabled in preferences")
@@ -475,8 +475,8 @@ class QuickLiquid(Operator):
         for obj in mesh_objects:
             fake_context["object"] = obj
             # make each selected object a liquid flow
-            bpy.ops.object.modifier_add(fake_context, type='MANTA')
-            obj.modifiers[-1].manta_type = 'FLOW'
+            bpy.ops.object.modifier_add(fake_context, type='FLUID')
+            obj.modifiers[-1].fluid_type = 'FLOW'
 
             # set type
             obj.modifiers[-1].flow_settings.flow_type = 'LIQUID'
@@ -503,8 +503,8 @@ class QuickLiquid(Operator):
         obj.scale = 0.5 * (max_co - min_co) + Vector((1.0, 1.0, 2.0))
 
         # setup liquid domain
-        bpy.ops.object.modifier_add(type='MANTA')
-        obj.modifiers[-1].manta_type = 'DOMAIN'
+        bpy.ops.object.modifier_add(type='FLUID')
+        obj.modifiers[-1].fluid_type = 'DOMAIN'
         obj.modifiers[-1].domain_settings.domain_type = 'LIQUID'
         # set all domain borders to obstacle
         obj.modifiers[-1].domain_settings.use_collision_border_front = True

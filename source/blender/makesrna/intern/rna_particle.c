@@ -2348,7 +2348,7 @@ static void rna_def_particle_settings(BlenderRNA *brna)
 
   /* Fluid particle type can't be checked from the type value in RNA
    * as it's not shown in the menu. */
-  prop = RNA_def_property(srna, "is_manta", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "is_fluid", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_PartSettings_is_manta_get", NULL);
   RNA_def_property_ui_text(prop, "Fluid", "Particles were created by a fluid simulation");

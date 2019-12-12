@@ -52,7 +52,7 @@ std::atomic<bool> MANTA::mantaInitialized(false);
 std::atomic<int> MANTA::solverID(0);
 int MANTA::with_debug(0);
 
-MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
+MANTA::MANTA(int *res, FluidModifierData *mmd) : mCurrentID(++solverID)
 {
   if (with_debug)
     std::cout << "MANTA: " << mCurrentID << " with res(" << res[0] << ", " << res[1] << ", "
@@ -255,7 +255,7 @@ MANTA::MANTA(int *res, MantaModifierData *mmd) : mCurrentID(++solverID)
   updatePointers();
 }
 
-void MANTA::initDomain(MantaModifierData *mmd)
+void MANTA::initDomain(FluidModifierData *mmd)
 {
   // Vector will hold all python commands that are to be executed
   std::vector<std::string> pythonCommands;
@@ -279,7 +279,7 @@ void MANTA::initDomain(MantaModifierData *mmd)
   runPythonString(pythonCommands);
 }
 
-void MANTA::initNoise(MantaModifierData *mmd)
+void MANTA::initNoise(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = fluid_variables_noise + fluid_solver_noise;
@@ -289,7 +289,7 @@ void MANTA::initNoise(MantaModifierData *mmd)
   runPythonString(pythonCommands);
 }
 
-void MANTA::initSmoke(MantaModifierData *mmd)
+void MANTA::initSmoke(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = smoke_variables + smoke_alloc + smoke_adaptive_step + smoke_save_data +
@@ -300,7 +300,7 @@ void MANTA::initSmoke(MantaModifierData *mmd)
   runPythonString(pythonCommands);
 }
 
-void MANTA::initSmokeNoise(MantaModifierData *mmd)
+void MANTA::initSmokeNoise(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = smoke_variables_noise + smoke_alloc_noise + smoke_wavelet_noise +
@@ -312,7 +312,7 @@ void MANTA::initSmokeNoise(MantaModifierData *mmd)
   mUsingNoise = true;
 }
 
-void MANTA::initHeat(MantaModifierData *mmd)
+void MANTA::initHeat(FluidModifierData *mmd)
 {
   if (!mHeat) {
     std::vector<std::string> pythonCommands;
@@ -325,7 +325,7 @@ void MANTA::initHeat(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initFire(MantaModifierData *mmd)
+void MANTA::initFire(FluidModifierData *mmd)
 {
   if (!mFuel) {
     std::vector<std::string> pythonCommands;
@@ -338,7 +338,7 @@ void MANTA::initFire(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initFireHigh(MantaModifierData *mmd)
+void MANTA::initFireHigh(FluidModifierData *mmd)
 {
   if (!mFuelHigh) {
     std::vector<std::string> pythonCommands;
@@ -351,7 +351,7 @@ void MANTA::initFireHigh(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initColors(MantaModifierData *mmd)
+void MANTA::initColors(FluidModifierData *mmd)
 {
   if (!mColorR) {
     std::vector<std::string> pythonCommands;
@@ -364,7 +364,7 @@ void MANTA::initColors(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initColorsHigh(MantaModifierData *mmd)
+void MANTA::initColorsHigh(FluidModifierData *mmd)
 {
   if (!mColorRHigh) {
     std::vector<std::string> pythonCommands;
@@ -377,7 +377,7 @@ void MANTA::initColorsHigh(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initLiquid(MantaModifierData *mmd)
+void MANTA::initLiquid(FluidModifierData *mmd)
 {
   if (!mPhiIn) {
     std::vector<std::string> pythonCommands;
@@ -392,7 +392,7 @@ void MANTA::initLiquid(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initMesh(MantaModifierData *mmd)
+void MANTA::initMesh(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = fluid_variables_mesh + fluid_solver_mesh + liquid_load_mesh +
@@ -404,7 +404,7 @@ void MANTA::initMesh(MantaModifierData *mmd)
   mUsingMesh = true;
 }
 
-void MANTA::initLiquidMesh(MantaModifierData *mmd)
+void MANTA::initLiquidMesh(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = liquid_alloc_mesh + liquid_step_mesh + liquid_save_mesh +
@@ -416,7 +416,7 @@ void MANTA::initLiquidMesh(MantaModifierData *mmd)
   mUsingMesh = true;
 }
 
-void MANTA::initObstacle(MantaModifierData *mmd)
+void MANTA::initObstacle(FluidModifierData *mmd)
 {
   if (!mPhiObsIn) {
     std::vector<std::string> pythonCommands;
@@ -429,7 +429,7 @@ void MANTA::initObstacle(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initGuiding(MantaModifierData *mmd)
+void MANTA::initGuiding(FluidModifierData *mmd)
 {
   if (!mPhiGuideIn) {
     std::vector<std::string> pythonCommands;
@@ -443,7 +443,7 @@ void MANTA::initGuiding(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initFractions(MantaModifierData *mmd)
+void MANTA::initFractions(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = fluid_alloc_fractions + fluid_with_fractions;
@@ -454,7 +454,7 @@ void MANTA::initFractions(MantaModifierData *mmd)
   mUsingFractions = true;
 }
 
-void MANTA::initInVelocity(MantaModifierData *mmd)
+void MANTA::initInVelocity(FluidModifierData *mmd)
 {
   if (!mInVelocityX) {
     std::vector<std::string> pythonCommands;
@@ -467,7 +467,7 @@ void MANTA::initInVelocity(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initOutflow(MantaModifierData *mmd)
+void MANTA::initOutflow(FluidModifierData *mmd)
 {
   if (!mPhiOutIn) {
     std::vector<std::string> pythonCommands;
@@ -480,7 +480,7 @@ void MANTA::initOutflow(MantaModifierData *mmd)
   }
 }
 
-void MANTA::initSndParts(MantaModifierData *mmd)
+void MANTA::initSndParts(FluidModifierData *mmd)
 {
   std::vector<std::string> pythonCommands;
   std::string tmpString = fluid_variables_particles + fluid_solver_particles +
@@ -491,7 +491,7 @@ void MANTA::initSndParts(MantaModifierData *mmd)
   runPythonString(pythonCommands);
 }
 
-void MANTA::initLiquidSndParts(MantaModifierData *mmd)
+void MANTA::initLiquidSndParts(FluidModifierData *mmd)
 {
   if (!mSndParticleData) {
     std::vector<std::string> pythonCommands;
@@ -573,7 +573,7 @@ void MANTA::terminateMantaflow()
   mantaInitialized = false;
 }
 
-std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *mmd)
+std::string MANTA::getRealValue(const std::string &varName, FluidModifierData *mmd)
 {
   std::ostringstream ss;
   bool is2D = false;
@@ -950,7 +950,7 @@ std::string MANTA::getRealValue(const std::string &varName, MantaModifierData *m
   return ss.str();
 }
 
-std::string MANTA::parseLine(const std::string &line, MantaModifierData *mmd)
+std::string MANTA::parseLine(const std::string &line, FluidModifierData *mmd)
 {
   if (line.size() == 0)
     return "";
@@ -975,7 +975,7 @@ std::string MANTA::parseLine(const std::string &line, MantaModifierData *mmd)
   return res;
 }
 
-std::string MANTA::parseScript(const std::string &setup_string, MantaModifierData *mmd)
+std::string MANTA::parseScript(const std::string &setup_string, FluidModifierData *mmd)
 {
   std::istringstream f(setup_string);
   std::ostringstream res;
@@ -1009,7 +1009,7 @@ static std::string getCacheFileEnding(char cache_format)
   }
 }
 
-int MANTA::updateFlipStructures(MantaModifierData *mmd, int framenr)
+int MANTA::updateFlipStructures(FluidModifierData *mmd, int framenr)
 {
   if (MANTA::with_debug)
     std::cout << "MANTA::updateFlipStructures()" << std::endl;
@@ -1055,7 +1055,7 @@ int MANTA::updateFlipStructures(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::updateMeshStructures(MantaModifierData *mmd, int framenr)
+int MANTA::updateMeshStructures(FluidModifierData *mmd, int framenr)
 {
   if (MANTA::with_debug)
     std::cout << "MANTA::updateMeshStructures()" << std::endl;
@@ -1104,7 +1104,7 @@ int MANTA::updateMeshStructures(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::updateParticleStructures(MantaModifierData *mmd, int framenr)
+int MANTA::updateParticleStructures(FluidModifierData *mmd, int framenr)
 {
   if (MANTA::with_debug)
     std::cout << "MANTA::updateParticleStructures()" << std::endl;
@@ -1173,12 +1173,12 @@ static std::string escapeSlashes(std::string const &s)
   return result;
 }
 
-int MANTA::writeConfiguration(MantaModifierData *mmd, int framenr)
+int MANTA::writeConfiguration(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::writeConfiguration()" << std::endl;
 
-  MantaDomainSettings *mds = mmd->domain;
+  FluidDomainSettings *mds = mmd->domain;
   std::ostringstream ss;
   char cacheDir[FILE_MAX], targetFile[FILE_MAX];
   ;
@@ -1221,7 +1221,7 @@ int MANTA::writeConfiguration(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::writeData(MantaModifierData *mmd, int framenr)
+int MANTA::writeData(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::writeData()" << std::endl;
@@ -1267,12 +1267,12 @@ int MANTA::writeData(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
+int MANTA::readConfiguration(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::readConfiguration()" << std::endl;
 
-  MantaDomainSettings *mds = mmd->domain;
+  FluidDomainSettings *mds = mmd->domain;
   std::ostringstream ss;
   char cacheDir[FILE_MAX], targetFile[FILE_MAX];
   cacheDir[0] = '\0';
@@ -1317,7 +1317,7 @@ int MANTA::readConfiguration(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::readData(MantaModifierData *mmd, int framenr)
+int MANTA::readData(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::readData()" << std::endl;
@@ -1386,7 +1386,7 @@ int MANTA::readData(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::readNoise(MantaModifierData *mmd, int framenr)
+int MANTA::readNoise(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::readNoise()" << std::endl;
@@ -1428,7 +1428,7 @@ int MANTA::readNoise(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::readMesh(MantaModifierData *mmd, int framenr)
+int MANTA::readMesh(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::readMesh()" << std::endl;
@@ -1477,7 +1477,7 @@ int MANTA::readMesh(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::readParticles(MantaModifierData *mmd, int framenr)
+int MANTA::readParticles(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::readParticles()" << std::endl;
@@ -1523,7 +1523,7 @@ int MANTA::readParticles(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::readGuiding(MantaModifierData *mmd, int framenr, bool sourceDomain)
+int MANTA::readGuiding(FluidModifierData *mmd, int framenr, bool sourceDomain)
 {
   if (with_debug)
     std::cout << "MANTA::readGuiding()" << std::endl;
@@ -1571,7 +1571,7 @@ int MANTA::readGuiding(MantaModifierData *mmd, int framenr, bool sourceDomain)
   return 1;
 }
 
-int MANTA::bakeData(MantaModifierData *mmd, int framenr)
+int MANTA::bakeData(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::bakeData()" << std::endl;
@@ -1611,7 +1611,7 @@ int MANTA::bakeData(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::bakeNoise(MantaModifierData *mmd, int framenr)
+int MANTA::bakeNoise(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::bakeNoise()" << std::endl;
@@ -1649,7 +1649,7 @@ int MANTA::bakeNoise(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::bakeMesh(MantaModifierData *mmd, int framenr)
+int MANTA::bakeMesh(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::bakeMesh()" << std::endl;
@@ -1688,7 +1688,7 @@ int MANTA::bakeMesh(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::bakeParticles(MantaModifierData *mmd, int framenr)
+int MANTA::bakeParticles(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::bakeParticles()" << std::endl;
@@ -1726,7 +1726,7 @@ int MANTA::bakeParticles(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-int MANTA::bakeGuiding(MantaModifierData *mmd, int framenr)
+int MANTA::bakeGuiding(FluidModifierData *mmd, int framenr)
 {
   if (with_debug)
     std::cout << "MANTA::bakeGuiding()" << std::endl;
@@ -1755,7 +1755,7 @@ int MANTA::bakeGuiding(MantaModifierData *mmd, int framenr)
   return 1;
 }
 
-void MANTA::updateVariables(MantaModifierData *mmd)
+void MANTA::updateVariables(FluidModifierData *mmd)
 {
   std::string tmpString, finalString;
   std::vector<std::string> pythonCommands;
@@ -1785,7 +1785,7 @@ void MANTA::updateVariables(MantaModifierData *mmd)
   runPythonString(pythonCommands);
 }
 
-void MANTA::exportSmokeScript(MantaModifierData *mmd)
+void MANTA::exportSmokeScript(FluidModifierData *mmd)
 {
   if (with_debug)
     std::cout << "MANTA::exportSmokeScript()" << std::endl;
@@ -1892,7 +1892,7 @@ void MANTA::exportSmokeScript(MantaModifierData *mmd)
   myfile.close();
 }
 
-void MANTA::exportLiquidScript(MantaModifierData *mmd)
+void MANTA::exportLiquidScript(FluidModifierData *mmd)
 {
   if (with_debug)
     std::cout << "MANTA::exportLiquidScript()" << std::endl;
@@ -2093,9 +2093,9 @@ float MANTA::getTimestep()
   return pyObjectToDouble(callPythonFunction(solver, func, true));
 }
 
-bool MANTA::needsRealloc(MantaModifierData *mmd)
+bool MANTA::needsRealloc(FluidModifierData *mmd)
 {
-  MantaDomainSettings *mds = mmd->domain;
+  FluidDomainSettings *mds = mmd->domain;
   return (mds->res[0] != mResX || mds->res[1] != mResY || mds->res[2] != mResZ);
 }
 

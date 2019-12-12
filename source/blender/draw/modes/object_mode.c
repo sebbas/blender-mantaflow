@@ -2683,8 +2683,8 @@ static void DRW_shgroup_volume_extra(OBJECT_ShadingGroupList *sgl,
                                      Scene *scene,
                                      ModifierData *md)
 {
-  MantaModifierData *mmd = (MantaModifierData *)md;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)md;
+  FluidDomainSettings *mds = mmd->domain;
   float *color;
   float one = 1.0f;
 
@@ -2766,7 +2766,7 @@ static void volumes_free_smoke_textures(void)
    * modifier is not used for display. We should share them for
    * all viewport in a redraw at least. */
   for (LinkData *link = e_data.smoke_domains.first; link; link = link->next) {
-    MantaModifierData *mmd = (MantaModifierData *)link->data;
+    FluidModifierData *mmd = (FluidModifierData *)link->data;
     GPU_free_smoke_velocity(mmd);
   }
   BLI_freelistN(&e_data.smoke_domains);
@@ -3767,7 +3767,7 @@ static void OBJECT_cache_populate(void *vedata, Object *ob)
 
     if ((md = modifiers_findByType(ob, eModifierType_Manta)) &&
         (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-        (((MantaModifierData *)md)->domain != NULL)) {
+        (((FluidModifierData *)md)->domain != NULL)) {
       DRW_shgroup_volume_extra(sgl, ob, view_layer, scene, md);
     }
   }

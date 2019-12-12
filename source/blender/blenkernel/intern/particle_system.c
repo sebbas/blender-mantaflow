@@ -4151,10 +4151,10 @@ static void particles_manta_step(ParticleSimulationData *sim,
 #ifdef WITH_MANTA
   {
     Object *ob = sim->ob;
-    MantaModifierData *mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+    FluidModifierData *mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
 
     if (mmd && mmd->domain && mmd->domain->fluid) {
-      MantaDomainSettings *mds = mmd->domain;
+      FluidDomainSettings *mds = mmd->domain;
 
       ParticleSettings *part = psys->part;
       ParticleData *pa = NULL;

@@ -109,7 +109,7 @@ static bool object_is_smoke_sim(Object *ob)
   ModifierData *md = modifiers_findByType(ob, eModifierType_Manta);
 
   if (md) {
-    MantaModifierData *smd = reinterpret_cast<MantaModifierData *>(md);
+    FluidModifierData *smd = reinterpret_cast<FluidModifierData *>(md);
     return (smd->type == MOD_MANTA_TYPE_DOMAIN && smd->domain &&
             smd->domain->type == FLUID_DOMAIN_TYPE_GAS);
   }

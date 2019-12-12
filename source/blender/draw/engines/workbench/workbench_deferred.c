@@ -1002,8 +1002,8 @@ void workbench_deferred_solid_cache_populate(WORKBENCH_Data *vedata, Object *ob)
   if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
       (md = modifiers_findByType(ob, eModifierType_Manta)) &&
       (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-      (((MantaModifierData *)md)->domain != NULL) &&
-      (((MantaModifierData *)md)->domain->type == FLUID_DOMAIN_TYPE_GAS)) {
+      (((FluidModifierData *)md)->domain != NULL) &&
+      (((FluidModifierData *)md)->domain->type == FLUID_DOMAIN_TYPE_GAS)) {
     workbench_volume_cache_populate(vedata, scene, ob, md);
     return; /* Do not draw solid in this case. */
   }

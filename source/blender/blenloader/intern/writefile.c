@@ -1629,7 +1629,7 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
       write_pointcaches(wd, &clmd->ptcaches);
     }
     else if (md->type == eModifierType_Manta) {
-      MantaModifierData *mmd = (MantaModifierData *)md;
+      FluidModifierData *mmd = (FluidModifierData *)md;
 
       bool is_valid = (mmd->domain || mmd->flow || mmd->effector);
       /* Mantaflow currently requires experimental flag. */
@@ -1640,7 +1640,7 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
       }
 
       if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-        writestruct(wd, DATA, MantaDomainSettings, 1, mmd->domain);
+        writestruct(wd, DATA, FluidDomainSettings, 1, mmd->domain);
 
         if (mmd->domain) {
           write_pointcaches(wd, &(mmd->domain->ptcaches[0]));
@@ -1664,10 +1664,10 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
         }
       }
       else if (mmd->type & MOD_MANTA_TYPE_FLOW) {
-        writestruct(wd, DATA, MantaFlowSettings, 1, mmd->flow);
+        writestruct(wd, DATA, FluidFlowSettings, 1, mmd->flow);
       }
       else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
-        writestruct(wd, DATA, MantaEffectorSettings, 1, mmd->effector);
+        writestruct(wd, DATA, FluidEffectorSettings, 1, mmd->effector);
       }
     }
     else if (md->type == eModifierType_Fluidsim) {

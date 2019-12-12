@@ -451,18 +451,18 @@ enum {
   MOD_BEVEL_VMESH_CUTOFF,
 };
 
-typedef struct MantaModifierData {
+typedef struct FluidModifierData {
   ModifierData modifier;
 
-  struct MantaDomainSettings *domain;
+  struct FluidDomainSettings *domain;
   /** Inflow, outflow, smoke objects. */
-  struct MantaFlowSettings *flow;
+  struct FluidFlowSettings *flow;
   /** Effector objects (collision, guiding). */
-  struct MantaEffectorSettings *effector;
+  struct FluidEffectorSettings *effector;
   float time;
   /** Domain, inflow, outflow, .... */
   int type;
-} MantaModifierData;
+} FluidModifierData;
 
 /* Manta modifier flags */
 enum {

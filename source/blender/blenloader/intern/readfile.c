@@ -5358,7 +5358,7 @@ static void lib_link_object(FileData *fd, Main *main)
       }
 
       {
-        MantaModifierData *mmd = (MantaModifierData *)modifiers_findByType(ob,
+        FluidModifierData *mmd = (FluidModifierData *)modifiers_findByType(ob,
                                                                            eModifierType_Manta);
 
         if (mmd && (mmd->type == MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
@@ -5543,7 +5543,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb, const Object *ob)
     }
     else if (md->type == eModifierType_Manta) {
 
-      MantaModifierData *mmd = (MantaModifierData *)md;
+      FluidModifierData *mmd = (FluidModifierData *)md;
 
       if (mmd->type == MOD_MANTA_TYPE_DOMAIN) {
         mmd->flow = NULL;

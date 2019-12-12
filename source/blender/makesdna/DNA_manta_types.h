@@ -229,15 +229,15 @@ enum {
   VDB_COMPRESSION_NONE = 2,
 };
 
-typedef struct MantaVertexVelocity {
+typedef struct FluidDomainVertexVelocity {
   float vel[3];
-} MantaVertexVelocity;
+} FluidDomainVertexVelocity;
 
-typedef struct MantaDomainSettings {
+typedef struct FluidDomainSettings {
 
   /* -- Runtime-only fields (from here on). -- */
 
-  struct MantaModifierData *mmd; /* For fast RNA access. */
+  struct FluidModifierData *mmd; /* For fast RNA access. */
   struct MANTA *fluid;
   struct MANTA *fluid_old; /* Adaptive domain needs access to old fluid state. */
   void *fluid_mutex;
@@ -255,7 +255,7 @@ typedef struct MantaDomainSettings {
   struct GPUTexture *tex_velocity_y;
   struct GPUTexture *tex_velocity_z;
   struct Object *guiding_parent;
-  struct MantaVertexVelocity *mesh_velocities; /* Vertex velocities of simulated fluid mesh. */
+  struct FluidDomainVertexVelocity *mesh_velocities; /* Vertex velocities of simulated fluid mesh. */
   struct EffectorWeights *effector_weights;
 
   /* Domain object data. */
@@ -444,7 +444,7 @@ typedef struct MantaDomainSettings {
   char cache_file_format;
   char _pad11[7]; /* Unused. */
 
-} MantaDomainSettings;
+} FluidDomainSettings;
 
 /* Flow types. */
 enum {
@@ -489,12 +489,12 @@ enum {
   FLUID_FLOW_USE_PLANE_INIT = (1 << 6),
 };
 
-typedef struct MantaFlowSettings {
+typedef struct FluidFlowSettings {
 
   /* -- Runtime-only fields (from here on). -- */
 
   /* For fast RNA access. */
-  struct MantaModifierData *mmd;
+  struct FluidModifierData *mmd;
   struct Mesh *mesh;
   struct ParticleSystem *psys;
   struct Tex *noise_texture;
@@ -538,7 +538,7 @@ typedef struct MantaFlowSettings {
   short texture_type;
   short _pad3[3];
   int flags; /* Absolute emission etc. */
-} MantaFlowSettings;
+} FluidFlowSettings;
 
 /* Effector types. */
 enum {
@@ -555,12 +555,12 @@ enum {
 };
 
 /* Collision objects (filled with smoke). */
-typedef struct MantaEffectorSettings {
+typedef struct FluidEffectorSettings {
 
   /* -- Runtime-only fields (from here on). -- */
 
   /* For fast RNA access. */
-  struct MantaModifierData *mmd;
+  struct FluidModifierData *mmd;
   struct Mesh *mesh;
   float *verts_old;
   int numverts;
@@ -576,6 +576,6 @@ typedef struct MantaEffectorSettings {
   float vel_multi; /* Multiplier for object velocity. */
   short guiding_mode;
   char _pad2[2];
-} MantaEffectorSettings;
+} FluidEffectorSettings;
 
 #endif

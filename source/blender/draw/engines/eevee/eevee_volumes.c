@@ -432,9 +432,9 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
   if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
       (md = modifiers_findByType(ob, eModifierType_Manta)) &&
       (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
-      ((MantaModifierData *)md)->domain != NULL) {
-    MantaModifierData *mmd = (MantaModifierData *)md;
-    MantaDomainSettings *mds = mmd->domain;
+      ((FluidModifierData *)md)->domain != NULL) {
+    FluidModifierData *mmd = (FluidModifierData *)md;
+    FluidDomainSettings *mds = mmd->domain;
 
     /* Don't try to show liquid domains here. */
     if (!mds->fluid || !(mds->type == FLUID_DOMAIN_TYPE_GAS)) {
@@ -698,7 +698,7 @@ void EEVEE_volumes_free_smoke_textures(void)
 {
   /* Free Smoke Textures after rendering */
   for (LinkData *link = e_data.smoke_domains.first; link; link = link->next) {
-    MantaModifierData *mmd = (MantaModifierData *)link->data;
+    FluidModifierData *mmd = (FluidModifierData *)link->data;
     GPU_free_smoke(mmd);
   }
   BLI_freelistN(&e_data.smoke_domains);

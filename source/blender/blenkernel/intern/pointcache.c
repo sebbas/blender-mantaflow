@@ -591,8 +591,8 @@ static void ptcache_cloth_error(void *cloth_v, const char *message)
 /* Smoke functions */
 static int ptcache_smoke_totpoint(void *smoke_v, int UNUSED(cfra))
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
+  FluidDomainSettings *mds = mmd->domain;
 
   if (mds->fluid) {
     return mds->base_res[0] * mds->base_res[1] * mds->base_res[2];
@@ -604,7 +604,7 @@ static int ptcache_smoke_totpoint(void *smoke_v, int UNUSED(cfra))
 
 static void ptcache_smoke_error(void *smoke_v, const char *message)
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
   modifier_setError(&mmd->modifier, "%s", message);
 }
 
@@ -612,8 +612,8 @@ static void ptcache_smoke_error(void *smoke_v, const char *message)
 
 static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
+  FluidDomainSettings *mds = mmd->domain;
   int ret = 0;
   int fluid_fields = BKE_manta_get_data_flags(mds);
 
@@ -744,8 +744,8 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
 /* read old smoke cache from 2.64 */
 static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
+  FluidDomainSettings *mds = mmd->domain;
 
   if (mds->fluid) {
     const size_t res = mds->res[0] * mds->res[1] * mds->res[2];
@@ -833,8 +833,8 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
 
 static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
+  FluidDomainSettings *mds = mmd->domain;
   char version[4];
   int ch_res[3];
   float ch_dx;
@@ -984,7 +984,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
  * with `vs` = voxel size, and `px, py, pz`,
  * the min position of the domain's bounding box.
  */
-static void compute_fluid_matrices(MantaDomainSettings *mds)
+static void compute_fluid_matrices(FluidDomainSettings *mds)
 {
   float bbox_min[3];
 
@@ -1023,8 +1023,8 @@ static void compute_fluid_matrices(MantaDomainSettings *mds)
 
 static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke_v)
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
-  MantaDomainSettings *mds = mmd->domain;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
+  FluidDomainSettings *mds = mmd->domain;
 
   OpenVDBWriter_set_flags(writer, mds->openvdb_comp, (mds->data_depth == 16));
 
@@ -1183,13 +1183,13 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
 
 static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_v)
 {
-  MantaModifierData *mmd = (MantaModifierData *)smoke_v;
+  FluidModifierData *mmd = (FluidModifierData *)smoke_v;
 
   if (!mmd) {
     return 0;
   }
 
-  MantaDomainSettings *mds = mmd->domain;
+  FluidDomainSettings *mds = mmd->domain;
 
   int fluid_fields = BKE_manta_get_data_flags(mds);
   int active_fields, cache_fields = 0;
@@ -1696,9 +1696,9 @@ void BKE_ptcache_id_from_cloth(PTCacheID *pid, Object *ob, ClothModifierData *cl
   pid->max_step = 1;
   pid->file_type = PTCACHE_FILE_PTCACHE;
 }
-void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct MantaModifierData *mmd)
+void BKE_ptcache_id_from_smoke(PTCacheID *pid, struct Object *ob, struct FluidModifierData *mmd)
 {
-  MantaDomainSettings *mds = mmd->domain;
+  FluidDomainSettings *mds = mmd->domain;
 
   memset(pid, 0, sizeof(PTCacheID));
 
@@ -1907,9 +1907,9 @@ static bool foreach_object_modifier_ptcache(Object *object,
       }
     }
     else if (md->type == eModifierType_Manta) {
-      MantaModifierData *mmd = (MantaModifierData *)md;
+      FluidModifierData *mmd = (FluidModifierData *)md;
       if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-        BKE_ptcache_id_from_smoke(&pid, object, (MantaModifierData *)md);
+        BKE_ptcache_id_from_smoke(&pid, object, (FluidModifierData *)md);
         if (!callback(&pid, callback_user_data)) {
           return false;
         }
@@ -3740,9 +3740,9 @@ int BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
       reset |= BKE_ptcache_id_reset(scene, &pid, mode);
     }
     if (md->type == eModifierType_Manta) {
-      MantaModifierData *mmd = (MantaModifierData *)md;
+      FluidModifierData *mmd = (FluidModifierData *)md;
       if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-        BKE_ptcache_id_from_smoke(&pid, ob, (MantaModifierData *)md);
+        BKE_ptcache_id_from_smoke(&pid, ob, (FluidModifierData *)md);
         reset |= BKE_ptcache_id_reset(scene, &pid, mode);
       }
     }

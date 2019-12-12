@@ -1549,14 +1549,14 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "MantaModifierData", "float", "slice_per_voxel")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "FluidModifierData", "float", "slice_per_voxel")) {
       Object *ob;
       ModifierData *md;
 
       for (ob = bmain->objects.first; ob; ob = ob->id.next) {
         for (md = ob->modifiers.first; md; md = md->next) {
           if (md->type == eModifierType_Manta) {
-            MantaModifierData *mmd = (MantaModifierData *)md;
+            FluidModifierData *mmd = (FluidModifierData *)md;
             if (mmd->domain) {
               mmd->domain->slice_per_voxel = 5.0f;
               mmd->domain->slice_depth = 0.5f;
@@ -1719,14 +1719,14 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 279, 3)) {
-    if (!DNA_struct_elem_find(fd->filesdna, "MantaDomainSettings", "float", "clipping")) {
+    if (!DNA_struct_elem_find(fd->filesdna, "FluidDomainSettings", "float", "clipping")) {
       Object *ob;
       ModifierData *md;
 
       for (ob = bmain->objects.first; ob; ob = ob->id.next) {
         for (md = ob->modifiers.first; md; md = md->next) {
           if (md->type == eModifierType_Manta) {
-            MantaModifierData *mmd = (MantaModifierData *)md;
+            FluidModifierData *mmd = (FluidModifierData *)md;
             if (mmd->domain) {
               mmd->domain->clipping = 1e-3f;
             }

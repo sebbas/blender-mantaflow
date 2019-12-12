@@ -1127,7 +1127,7 @@ void BKE_object_copy_particlesystems(Object *ob_dst, const Object *ob_src, const
         }
       }
       else if (md->type == eModifierType_Manta) {
-        MantaModifierData *mmd = (MantaModifierData *)md;
+        FluidModifierData *mmd = (FluidModifierData *)md;
 
         if (mmd->type == MOD_MANTA_TYPE_FLOW) {
           if (mmd->flow) {
@@ -4377,7 +4377,7 @@ bool BKE_object_modifier_update_subframe(Depsgraph *depsgraph,
     }
   }
   else if (type == eModifierType_Manta) {
-    MantaModifierData *mmd = (MantaModifierData *)md;
+    FluidModifierData *mmd = (FluidModifierData *)md;
 
     if (mmd && (mmd->type & MOD_MANTA_TYPE_DOMAIN) != 0) {
       return true;

@@ -281,7 +281,7 @@ static void mikk_compute_tangents(
 static void create_mesh_volume_attribute(
     BL::Object &b_ob, Mesh *mesh, ImageManager *image_manager, AttributeStandard std, float frame)
 {
-  BL::MantaDomainSettings b_domain = object_manta_domain_find(b_ob);
+  BL::FluidDomainSettings b_domain = object_fluid_domain_find(b_ob);
 
   if (!b_domain)
     return;
@@ -878,7 +878,7 @@ static void sync_mesh_manta_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
   if (scene->need_motion() == Scene::MOTION_NONE)
     return;
 
-  BL::MantaDomainSettings b_manta_domain = object_manta_domain_find(b_ob);
+  BL::FluidDomainSettings b_manta_domain = object_fluid_domain_find(b_ob);
 
   if (!b_manta_domain)
     return;
@@ -901,7 +901,7 @@ static void sync_mesh_manta_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
     float relative_time = motion_times[step] * scene->motion_shutter_time() * 0.5f;
     float3 *mP = attr_mP->data_float3() + step * mesh->verts.size();
 
-    BL::MantaDomainSettings::mesh_vertices_iterator svi;
+    BL::FluidDomainSettings::mesh_vertices_iterator svi;
     int i = 0;
 
     for (b_manta_domain.mesh_vertices.begin(svi); svi != b_manta_domain.mesh_vertices.end();
@@ -1096,7 +1096,7 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph &b_depsgraph,
   BL::Mesh b_mesh(PointerRNA_NULL);
 
   /* manta motion is exported immediate with mesh, skip here */
-  BL::MantaDomainSettings b_manta_domain = object_manta_domain_find(b_ob);
+  BL::FluidDomainSettings b_manta_domain = object_fluid_domain_find(b_ob);
   if (b_manta_domain)
     return;
 

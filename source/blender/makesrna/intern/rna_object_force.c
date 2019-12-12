@@ -740,7 +740,7 @@ static char *rna_EffectorWeight_path(PointerRNA *ptr)
     /* check smoke modifier */
     md = (ModifierData *)modifiers_findByType(ob, eModifierType_Manta);
     if (md) {
-      MantaModifierData *mmd = (MantaModifierData *)md;
+      FluidModifierData *mmd = (FluidModifierData *)md;
       if (mmd->domain->effector_weights == ew) {
         char name_esc[sizeof(md->name) * 2];
         BLI_strescape(name_esc, md->name, sizeof(name_esc));

@@ -25,27 +25,27 @@
  */
 
 struct Scene;
-struct MantaDomainSettings;
-struct MantaModifierData;
+struct FluidDomainSettings;
+struct FluidModifierData;
 
 typedef float (*bresenham_callback)(
     float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
 
-struct Mesh *mantaModifier_do(struct MantaModifierData *mmd,
+struct Mesh *mantaModifier_do(struct FluidModifierData *mmd,
                               struct Depsgraph *depsgraph,
                               struct Scene *scene,
                               struct Object *ob,
                               struct Mesh *me);
 
-void mantaModifier_free(struct MantaModifierData *mmd);
-void mantaModifier_reset(struct MantaModifierData *mmd);
-void mantaModifier_createType(struct MantaModifierData *mmd);
-void mantaModifier_copy(const struct MantaModifierData *mmd,
-                        struct MantaModifierData *tmmd,
+void mantaModifier_free(struct FluidModifierData *mmd);
+void mantaModifier_reset(struct FluidModifierData *mmd);
+void mantaModifier_createType(struct FluidModifierData *mmd);
+void mantaModifier_copy(const struct FluidModifierData *mmd,
+                        struct FluidModifierData *tmmd,
                         const int flag);
 
-void BKE_manta_reallocate_fluid(struct MantaDomainSettings *mds, int res[3], int free_old);
-void BKE_manta_reallocate_copy_fluid(struct MantaDomainSettings *mds,
+void BKE_manta_reallocate_fluid(struct FluidDomainSettings *mds, int res[3], int free_old);
+void BKE_manta_reallocate_copy_fluid(struct FluidDomainSettings *mds,
                                      int o_res[3],
                                      int n_res[3],
                                      int o_min[3],
@@ -53,10 +53,10 @@ void BKE_manta_reallocate_copy_fluid(struct MantaDomainSettings *mds,
                                      int o_max[3],
                                      int o_shift[3],
                                      int n_shift[3]);
-void BKE_manta_cache_free(struct MantaDomainSettings *mds, struct Object *ob, int cache_map);
+void BKE_manta_cache_free(struct FluidDomainSettings *mds, struct Object *ob, int cache_map);
 
 float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
-int BKE_manta_get_data_flags(struct MantaDomainSettings *mds);
+int BKE_manta_get_data_flags(struct FluidDomainSettings *mds);
 
 void BKE_manta_create_particle_system(struct Main *bmain,
                                       struct Object *ob,

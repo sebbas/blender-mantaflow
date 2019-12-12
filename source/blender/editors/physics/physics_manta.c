@@ -73,19 +73,19 @@
 #include "DNA_manta_types.h"
 #include "DNA_mesh_types.h"
 
-#define MANTA_JOB_BAKE_ALL "MANTA_OT_bake_all"
-#define MANTA_JOB_BAKE_DATA "MANTA_OT_bake_data"
-#define MANTA_JOB_BAKE_NOISE "MANTA_OT_bake_noise"
-#define MANTA_JOB_BAKE_MESH "MANTA_OT_bake_mesh"
-#define MANTA_JOB_BAKE_PARTICLES "MANTA_OT_bake_particles"
-#define MANTA_JOB_BAKE_GUIDING "MANTA_OT_bake_guiding"
-#define MANTA_JOB_FREE_ALL "MANTA_OT_free_all"
-#define MANTA_JOB_FREE_DATA "MANTA_OT_free_data"
-#define MANTA_JOB_FREE_NOISE "MANTA_OT_free_noise"
-#define MANTA_JOB_FREE_MESH "MANTA_OT_free_mesh"
-#define MANTA_JOB_FREE_PARTICLES "MANTA_OT_free_particles"
-#define MANTA_JOB_FREE_GUIDING "MANTA_OT_free_guiding"
-#define MANTA_JOB_BAKE_PAUSE "MANTA_OT_pause_bake"
+#define MANTA_JOB_BAKE_ALL "FLUID_OT_bake_all"
+#define MANTA_JOB_BAKE_DATA "FLUID_OT_bake_data"
+#define MANTA_JOB_BAKE_NOISE "FLUID_OT_bake_noise"
+#define MANTA_JOB_BAKE_MESH "FLUID_OT_bake_mesh"
+#define MANTA_JOB_BAKE_PARTICLES "FLUID_OT_bake_particles"
+#define MANTA_JOB_BAKE_GUIDING "FLUID_OT_bake_guiding"
+#define MANTA_JOB_FREE_ALL "FLUID_OT_free_all"
+#define MANTA_JOB_FREE_DATA "FLUID_OT_free_data"
+#define MANTA_JOB_FREE_NOISE "FLUID_OT_free_noise"
+#define MANTA_JOB_FREE_MESH "FLUID_OT_free_mesh"
+#define MANTA_JOB_FREE_PARTICLES "FLUID_OT_free_particles"
+#define MANTA_JOB_FREE_GUIDING "FLUID_OT_free_guiding"
+#define MANTA_JOB_BAKE_PAUSE "FLUID_OT_pause_bake"
 
 typedef struct MantaJob {
   /* from wmJob */
@@ -100,7 +100,7 @@ typedef struct MantaJob {
   Depsgraph *depsgraph;
   Object *ob;
 
-  MantaModifierData *mmd;
+  FluidModifierData *mmd;
 
   int success;
   double start;
@@ -148,11 +148,11 @@ static inline bool manta_is_free_guiding(MantaJob *job) {
 static bool manta_initjob(
     bContext *C, MantaJob *job, wmOperator *op, char *error_msg, int error_size)
 {
-  MantaModifierData *mmd = NULL;
-  MantaDomainSettings *mds;
+  FluidModifierData *mmd = NULL;
+  FluidDomainSettings *mds;
   Object *ob = CTX_data_active_object(C);
 
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   if (!mmd) {
     BLI_strncpy(error_msg, N_("Bake failed: no Fluid modifier found"), error_size);
     return false;
@@ -176,7 +176,7 @@ static bool manta_initjob(
 
 static bool manta_initpaths(MantaJob *job, ReportList *reports)
 {
-  MantaDomainSettings *mds = job->mmd->domain;
+  FluidDomainSettings *mds = job->mmd->domain;
   char tmpDir[FILE_MAX];
   tmpDir[0] = '\0';
 
@@ -240,7 +240,7 @@ static void manta_bake_free(void *customdata)
 
 static void manta_bake_sequence(MantaJob *job)
 {
-  MantaDomainSettings *mds = job->mmd->domain;
+  FluidDomainSettings *mds = job->mmd->domain;
   Scene *scene = job->scene;
   int frame = 1, orig_frame;
   int frames;
@@ -301,7 +301,7 @@ static void manta_bake_sequence(MantaJob *job)
 static void manta_bake_endjob(void *customdata)
 {
   MantaJob *job = customdata;
-  MantaDomainSettings *mds = job->mmd->domain;
+  FluidDomainSettings *mds = job->mmd->domain;
 
   if (manta_is_bake_noise(job) || manta_is_bake_all(job)) {
     mds->cache_flag &= ~FLUID_DOMAIN_BAKING_NOISE;
@@ -356,7 +356,7 @@ static void manta_bake_endjob(void *customdata)
 static void manta_bake_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
   MantaJob *job = customdata;
-  MantaDomainSettings *mds = job->mmd->domain;
+  FluidDomainSettings *mds = job->mmd->domain;
 
   char tmpDir[FILE_MAX];
   tmpDir[0] = '\0';
@@ -432,7 +432,7 @@ static void manta_bake_startjob(void *customdata, short *stop, short *do_update,
 static void manta_free_endjob(void *customdata)
 {
   MantaJob *job = customdata;
-  MantaDomainSettings *mds = job->mmd->domain;
+  FluidDomainSettings *mds = job->mmd->domain;
 
   G.is_rendering = false;
   BKE_spacedata_draw_locks(false);
@@ -460,7 +460,7 @@ static void manta_free_endjob(void *customdata)
 static void manta_free_startjob(void *customdata, short *stop, short *do_update, float *progress)
 {
   MantaJob *job = customdata;
-  MantaDomainSettings *mds = job->mmd->domain;
+  FluidDomainSettings *mds = job->mmd->domain;
   Scene *scene = job->scene;
 
   char tmpDir[FILE_MAX];
@@ -584,15 +584,15 @@ static int manta_bake_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *
 
 static int manta_free_exec(struct bContext *C, struct wmOperator *op)
 {
-  MantaModifierData *mmd = NULL;
-  MantaDomainSettings *mds;
+  FluidModifierData *mmd = NULL;
+  FluidDomainSettings *mds;
   Object *ob = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
 
   /*
    * Get modifier data
    */
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   if (!mmd) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
     return OPERATOR_CANCELLED;
@@ -644,14 +644,14 @@ static int manta_free_exec(struct bContext *C, struct wmOperator *op)
 
 static int manta_pause_exec(struct bContext *C, struct wmOperator *op)
 {
-  MantaModifierData *mmd = NULL;
-  MantaDomainSettings *mds;
+  FluidModifierData *mmd = NULL;
+  FluidDomainSettings *mds;
   Object *ob = CTX_data_active_object(C);
 
   /*
    * Get modifier data
    */
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   if (!mmd) {
     BKE_report(op->reports, RPT_ERROR, "Bake free failed: no Fluid modifier found");
     return OPERATOR_CANCELLED;
@@ -667,7 +667,7 @@ static int manta_pause_exec(struct bContext *C, struct wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void MANTA_OT_bake_all(wmOperatorType *ot)
+void FLUID_OT_bake_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Bake All";
@@ -681,7 +681,7 @@ void MANTA_OT_bake_all(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_free_all(wmOperatorType *ot)
+void FLUID_OT_free_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Free All";
@@ -693,7 +693,7 @@ void MANTA_OT_free_all(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_bake_data(wmOperatorType *ot)
+void FLUID_OT_bake_data(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Bake Data";
@@ -707,7 +707,7 @@ void MANTA_OT_bake_data(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_free_data(wmOperatorType *ot)
+void FLUID_OT_free_data(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Free Data";
@@ -719,7 +719,7 @@ void MANTA_OT_free_data(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_bake_noise(wmOperatorType *ot)
+void FLUID_OT_bake_noise(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Bake Noise";
@@ -733,7 +733,7 @@ void MANTA_OT_bake_noise(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_free_noise(wmOperatorType *ot)
+void FLUID_OT_free_noise(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Free Noise";
@@ -745,7 +745,7 @@ void MANTA_OT_free_noise(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_bake_mesh(wmOperatorType *ot)
+void FLUID_OT_bake_mesh(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Bake Mesh";
@@ -759,7 +759,7 @@ void MANTA_OT_bake_mesh(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_free_mesh(wmOperatorType *ot)
+void FLUID_OT_free_mesh(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Free Mesh";
@@ -771,7 +771,7 @@ void MANTA_OT_free_mesh(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_bake_particles(wmOperatorType *ot)
+void FLUID_OT_bake_particles(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Bake Particles";
@@ -785,7 +785,7 @@ void MANTA_OT_bake_particles(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_free_particles(wmOperatorType *ot)
+void FLUID_OT_free_particles(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Free Particles";
@@ -797,7 +797,7 @@ void MANTA_OT_free_particles(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_bake_guiding(wmOperatorType *ot)
+void FLUID_OT_bake_guiding(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Bake Guiding";
@@ -811,7 +811,7 @@ void MANTA_OT_bake_guiding(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_free_guiding(wmOperatorType *ot)
+void FLUID_OT_free_guiding(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Free Guiding";
@@ -823,7 +823,7 @@ void MANTA_OT_free_guiding(wmOperatorType *ot)
   ot->poll = ED_operator_object_active_editable;
 }
 
-void MANTA_OT_pause_bake(wmOperatorType *ot)
+void FLUID_OT_pause_bake(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Pause Bake";

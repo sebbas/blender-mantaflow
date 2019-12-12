@@ -142,7 +142,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Particle Instance",
      ""},
     {eModifierType_ParticleSystem, "PARTICLE_SYSTEM", ICON_MOD_PARTICLES, "Particle System", ""},
-    {eModifierType_Manta, "MANTA", ICON_MOD_MANTA, "Fluid Simulation", ""},
+    {eModifierType_Manta, "FLUID", ICON_MOD_MANTA, "Fluid Simulation", ""},
     {eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
     {eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
     {0, NULL, 0, NULL, NULL},
@@ -525,7 +525,7 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
     case eModifierType_Surface:
       return &RNA_SurfaceModifier;
     case eModifierType_Manta:
-      return &RNA_MantaModifier;
+      return &RNA_FluidModifier;
     case eModifierType_Solidify:
       return &RNA_SolidifyModifier;
     case eModifierType_Screw:
@@ -883,7 +883,7 @@ static void rna_UVProjector_object_set(PointerRNA *ptr,
 
 static void rna_manta_set_type(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  MantaModifierData *mmd = (MantaModifierData *)ptr->data;
+  FluidModifierData *mmd = (FluidModifierData *)ptr->data;
   Object *ob = (Object *)ptr->owner_id;
 
   /* nothing changed */
@@ -3472,9 +3472,9 @@ static void rna_def_modifier_manta(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  srna = RNA_def_struct(brna, "MantaModifier", "Modifier");
-  RNA_def_struct_ui_text(srna, "Manta Modifier", "Fluid simulation modifier");
-  RNA_def_struct_sdna(srna, "MantaModifierData");
+  srna = RNA_def_struct(brna, "FluidModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Fluid Modifier", "Fluid simulation modifier");
+  RNA_def_struct_sdna(srna, "FluidModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_MANTA);
 
   prop = RNA_def_property(srna, "domain_settings", PROP_POINTER, PROP_NONE);
@@ -3489,7 +3489,7 @@ static void rna_def_modifier_manta(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "effector");
   RNA_def_property_ui_text(prop, "Effector Settings", "");
 
-  prop = RNA_def_property(srna, "manta_type", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "fluid_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
   RNA_def_property_enum_items(prop, prop_manta_type_items);
   RNA_def_property_ui_text(prop, "Type", "");

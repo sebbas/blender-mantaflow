@@ -1790,7 +1790,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
       for (md = ob->modifiers.first; md; md = md->next) {
         if (md->type == eModifierType_Manta) {
-          MantaModifierData *mmd = (MantaModifierData *)md;
+          FluidModifierData *mmd = (FluidModifierData *)md;
 
           if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
             mmd->domain->vorticity = 2.0f;
@@ -1810,7 +1810,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
                 ModifierData *md2;
                 for (md2 = ob2->modifiers.first; md2; md2 = md2->next) {
                   if (md2->type == eModifierType_Manta) {
-                    MantaModifierData *mmd2 = (MantaModifierData *)md2;
+                    FluidModifierData *mmd2 = (FluidModifierData *)md2;
 
                     if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
                       mmd2->flow->flags |= FLUID_FLOW_INITVELOCITY;

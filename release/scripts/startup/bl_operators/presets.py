@@ -398,17 +398,17 @@ class AddPresetFluid(AddPresetBase, Operator):
 
 class AddPresetManta(AddPresetBase, Operator):
     """Add or remove a Mantaflow Preset"""
-    bl_idname = "manta.preset_add"
+    bl_idname = "fluid.preset_add"
     bl_label = "Add Fluid Preset"
     preset_menu = "MANTA_MT_presets"
 
     preset_defines = [
-        "manta = bpy.context.smoke"
+        "fluid = bpy.context.manta"
         ]
 
     preset_values = [
-        "manta.domain_settings.viscosity_base",
-        "manta.domain_settings.viscosity_exponent",
+        "fluid.domain_settings.viscosity_base",
+        "fluidanta.domain_settings.viscosity_exponent",
         ]
 
     preset_subdir = "mantaflow"

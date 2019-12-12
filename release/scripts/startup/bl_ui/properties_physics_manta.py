@@ -41,34 +41,34 @@ class PhysicButtonsPanel:
 
     @staticmethod
     def poll_manta_enabled(context):
-        if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all) or not (bpy.app.build_options.manta):
+        if not (context.preferences.experimental.use_manta_fluids or context.preferences.experimental.use_experimental_all) or not (bpy.app.build_options.fluid):
             return False
         return True
 
     @staticmethod
     def poll_fluid(context):
         ob = context.object
-        if not ((ob and ob.type == 'MESH') and (context.manta)):
+        if not ((ob and ob.type == 'MESH') and (context.fluid)):
             return False
 
-        md = context.manta
-        return md and (context.manta.manta_type != 'NONE') and PhysicButtonsPanel.poll_manta_enabled(context)
+        md = context.fluid
+        return md and (context.fluid.fluid_type != 'NONE') and PhysicButtonsPanel.poll_manta_enabled(context)
 
     @staticmethod
     def poll_fluid_domain(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
 
-        md = context.manta
-        return md and (md.manta_type == 'DOMAIN')
+        md = context.fluid
+        return md and (md.fluid_type == 'DOMAIN')
 
     @staticmethod
     def poll_gas_domain(context):
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
 
-        md = context.manta
-        if md and (md.manta_type == 'DOMAIN'):
+        md = context.fluid
+        if md and (md.fluid_type == 'DOMAIN'):
             domain = md.domain_settings
             return domain.domain_type in {'GAS'}
         return False
@@ -78,8 +78,8 @@ class PhysicButtonsPanel:
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
 
-        md = context.manta
-        if md and (md.manta_type == 'DOMAIN'):
+        md = context.fluid
+        if md and (md.fluid_type == 'DOMAIN'):
             domain = md.domain_settings
             return domain.domain_type in {'LIQUID'}
         return False
@@ -89,8 +89,8 @@ class PhysicButtonsPanel:
         if not PhysicButtonsPanel.poll_fluid(context):
             return False
 
-        md = context.manta
-        return md and (md.manta_type == 'FLOW')
+        md = context.fluid
+        return md and (md.fluid_type == 'FLOW')
 
 
 class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
@@ -100,13 +100,13 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         ob = context.object
-        return (ob and ob.type == 'MESH') and (context.engine in cls.COMPAT_ENGINES) and (context.manta)
+        return (ob and ob.type == 'MESH') and (context.engine in cls.COMPAT_ENGINES) and (context.fluid)
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
 
-        if not bpy.app.build_options.manta:
+        if not bpy.app.build_options.fluid:
             col = layout.column(align=True)
             col.alignment = 'RIGHT'
             col.label(text="Built without Fluid modifier")
@@ -116,9 +116,9 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
             col.alignment = 'RIGHT'
             col.label(text="Modifier only available as experimental feature, can be enabled in preferences", icon='ERROR')
             return
-        md = context.manta
+        md = context.fluid
 
-        layout.prop(md, "manta_type")
+        layout.prop(md, "fluid_type")
 
 
 class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
@@ -137,11 +137,11 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
+        md = context.fluid
         ob = context.object
         scene = context.scene
 
-        if md.manta_type == 'DOMAIN':
+        if md.fluid_type == 'DOMAIN':
             domain = md.domain_settings
 
             # Deactivate UI if guiding is enabled but not baked yet
@@ -189,18 +189,18 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
                 if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
                     col = split.column()
-                    col.operator("manta.bake_data", text="Resume")
+                    col.operator("fluid.bake_data", text="Resume")
                     col = split.column()
-                    col.operator("manta.free_data", text="Free")
+                    col.operator("fluid.free_data", text="Free")
                 elif domain.cache_baking_data and not domain.cache_baked_data:
                     split.enabled = False
-                    split.operator("manta.pause_bake", text="Baking Data - ESC to pause")
+                    split.operator("fluid.pause_bake", text="Baking Data - ESC to pause")
                 elif not domain.cache_baked_data and not domain.cache_baking_data:
-                    split.operator("manta.bake_data", text="Bake Data")
+                    split.operator("fluid.bake_data", text="Bake Data")
                 else:
-                    split.operator("manta.free_data", text="Free Data")
+                    split.operator("fluid.free_data", text="Free Data")
 
-        elif md.manta_type == 'FLOW':
+        elif md.fluid_type == 'FLOW':
             flow = md.flow_settings
 
             row = layout.row()
@@ -233,7 +233,7 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 col.separator()
                 col.prop_search(flow, "density_vertex_group", ob, "vertex_groups", text="Vertex Group")
 
-        elif md.manta_type == 'EFFECTOR':
+        elif md.fluid_type == 'EFFECTOR':
             effec = md.effec_settings
 
             row = layout.row()
@@ -268,7 +268,7 @@ class PHYSICS_PT_manta_borders(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
+        md = context.fluid
         domain = md.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -308,7 +308,7 @@ class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
+        md = context.fluid
         domain = md.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -339,7 +339,7 @@ class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta
+        md = context.fluid
         domain = md.domain_settings
 
         self.layout.prop(domain, "use_dissolve_smoke", text="")
@@ -348,7 +348,7 @@ class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
+        md = context.fluid
         domain = md.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -384,7 +384,7 @@ class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
+        md = context.fluid
         domain = md.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -421,14 +421,14 @@ class PHYSICS_PT_manta_liquid(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
+        md = context.fluid.domain_settings
         self.layout.prop(md, "use_flip_particles", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
+        md = context.fluid
         domain = md.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -481,7 +481,7 @@ class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
         layout.use_property_split = True
 
         ob = context.object
-        flow = context.manta.flow_settings
+        flow = context.fluid.flow_settings
 
         col = layout.column()
         col.prop(flow, "flow_source", expand=False, text="Flow Source")
@@ -518,7 +518,7 @@ class PHYSICS_PT_manta_flow_initial_velocity(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta
+        md = context.fluid
         flow_smoke = md.flow_settings
 
         self.layout.prop(flow_smoke, "use_initial_velocity", text="")
@@ -528,7 +528,7 @@ class PHYSICS_PT_manta_flow_initial_velocity(PhysicButtonsPanel, Panel):
         layout.use_property_split = True
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
-        md = context.manta
+        md = context.fluid
         flow_smoke = md.flow_settings
 
         flow.active = flow_smoke.use_initial_velocity
@@ -557,7 +557,7 @@ class PHYSICS_PT_manta_flow_texture(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta
+        md = context.fluid
         flow_smoke = md.flow_settings
 
         self.layout.prop(flow_smoke, "use_texture", text="")
@@ -568,7 +568,7 @@ class PHYSICS_PT_manta_flow_texture(PhysicButtonsPanel, Panel):
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
         ob = context.object
-        flow_smoke = context.manta.flow_settings
+        flow_smoke = context.fluid.flow_settings
 
         sub = flow.column()
         sub.active = flow_smoke.use_texture
@@ -602,8 +602,8 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
-        domain = context.manta.domain_settings
+        md = context.fluid.domain_settings
+        domain = context.fluid.domain_settings
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
         self.layout.enabled = not baking_any and not baked_any
@@ -613,7 +613,7 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
         layout.active = domain.use_adaptive_domain
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
@@ -646,8 +646,8 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
-        domain = context.manta.domain_settings
+        md = context.fluid.domain_settings
+        domain = context.fluid.domain_settings
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         self.layout.enabled = not baking_any
         self.layout.prop(md, "use_noise", text="")
@@ -656,7 +656,7 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         # Deactivate UI if guiding is enabled but not baked yet
         layout.active = domain.use_noise and not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
@@ -686,16 +686,16 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
             bake_incomplete = (domain.cache_frame_pause_noise < domain.cache_frame_end)
             if domain.cache_baked_noise and not domain.cache_baking_noise and bake_incomplete:
                 col = split.column()
-                col.operator("manta.bake_noise", text="Resume")
+                col.operator("fluid.bake_noise", text="Resume")
                 col = split.column()
-                col.operator("manta.free_noise", text="Free")
+                col.operator("fluid.free_noise", text="Free")
             elif not domain.cache_baked_noise and domain.cache_baking_noise:
                 split.enabled = False
-                split.operator("manta.pause_bake", text="Baking Noise - ESC to pause")
+                split.operator("fluid.pause_bake", text="Baking Noise - ESC to pause")
             elif not domain.cache_baked_noise and not domain.cache_baking_noise:
-                split.operator("manta.bake_noise", text="Bake Noise")
+                split.operator("fluid.bake_noise", text="Bake Noise")
             else:
-                split.operator("manta.free_noise", text="Free Noise")
+                split.operator("fluid.free_noise", text="Free Noise")
 
 
 class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
@@ -712,8 +712,8 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
-        domain = context.manta.domain_settings
+        md = context.fluid.domain_settings
+        domain = context.fluid.domain_settings
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         self.layout.enabled = not baking_any
         self.layout.prop(md, "use_mesh", text="")
@@ -722,7 +722,7 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         # Deactivate UI if guiding is enabled but not baked yet
         layout.active = domain.use_mesh and not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
@@ -765,16 +765,16 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
             bake_incomplete = (domain.cache_frame_pause_mesh < domain.cache_frame_end)
             if domain.cache_baked_mesh and not domain.cache_baking_mesh and bake_incomplete:
                 col = split.column()
-                col.operator("manta.bake_mesh", text="Resume")
+                col.operator("fluid.bake_mesh", text="Resume")
                 col = split.column()
-                col.operator("manta.free_mesh", text="Free")
+                col.operator("fluid.free_mesh", text="Free")
             elif not domain.cache_baked_mesh and domain.cache_baking_mesh:
                 split.enabled = False
-                split.operator("manta.pause_bake", text="Baking Mesh - ESC to pause")
+                split.operator("fluid.pause_bake", text="Baking Mesh - ESC to pause")
             elif not domain.cache_baked_mesh and not domain.cache_baking_mesh:
-                split.operator("manta.bake_mesh", text="Bake Mesh")
+                split.operator("fluid.bake_mesh", text="Bake Mesh")
             else:
-                split.operator("manta.free_mesh", text="Free Mesh")
+                split.operator("fluid.free_mesh", text="Free Mesh")
 
 
 class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
@@ -794,7 +794,7 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         # Deactivate UI if guiding is enabled but not baked yet
         layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
@@ -871,16 +871,16 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
             bake_incomplete = (domain.cache_frame_pause_particles < domain.cache_frame_end)
             if domain.cache_baked_particles and not domain.cache_baking_particles and bake_incomplete:
                 col = split.column()
-                col.operator("manta.bake_particles", text="Resume")
+                col.operator("fluid.bake_particles", text="Resume")
                 col = split.column()
-                col.operator("manta.free_particles", text="Free")
+                col.operator("fluid.free_particles", text="Free")
             elif not domain.cache_baked_particles and domain.cache_baking_particles:
                 split.enabled = False
-                split.operator("manta.pause_bake", text="Baking Particles - ESC to pause")
+                split.operator("fluid.pause_bake", text="Baking Particles - ESC to pause")
             elif not domain.cache_baked_particles and not domain.cache_baking_particles:
-                split.operator("manta.bake_particles", text="Bake Particles")
+                split.operator("fluid.bake_particles", text="Bake Particles")
             else:
-                split.operator("manta.free_particles", text="Free Particles")
+                split.operator("fluid.free_particles", text="Free Particles")
 
 
 class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
@@ -901,7 +901,7 @@ class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         # Deactivate UI if guiding is enabled but not baked yet
         layout.active = not (domain.use_guiding and not domain.cache_baked_guiding and (domain.guiding_source == "EFFECTOR" or (domain.guiding_source == "DOMAIN" and not domain.guiding_parent)))
@@ -921,8 +921,8 @@ class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
         col.menu("MANTA_MT_presets", text=bpy.types.MANTA_MT_presets.bl_label)
 
         col = row.column(align=True)
-        col.operator("manta.preset_add", text="", icon='ADD')
-        col.operator("manta.preset_add", text="", icon='REMOVE').remove_active = True
+        col.operator("fluid.preset_add", text="", icon='ADD')
+        col.operator("fluid.preset_add", text="", icon='REMOVE').remove_active = True
 
         col = flow.column(align=True)
         col.prop(domain, "viscosity_base", text="Base")
@@ -947,8 +947,8 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
-        domain = context.manta.domain_settings
+        md = context.fluid.domain_settings
+        domain = context.fluid.domain_settings
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         self.layout.enabled = not baking_any
         self.layout.prop(md, "use_guiding", text="")
@@ -957,7 +957,7 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         layout.active = domain.use_guiding
 
@@ -985,15 +985,15 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
                 bake_incomplete = (domain.cache_frame_pause_guiding < domain.cache_frame_end)
                 if domain.cache_baked_guiding and not domain.cache_baking_guiding and bake_incomplete:
                     col = split.column()
-                    col.operator("manta.bake_guiding", text="Resume")
+                    col.operator("fluid.bake_guiding", text="Resume")
                     col = split.column()
-                    col.operator("manta.free_guiding", text="Free")
+                    col.operator("fluid.free_guiding", text="Free")
                 elif not domain.cache_baked_guiding and domain.cache_baking_guiding:
-                    split.operator("manta.pause_bake", text="Pause Guiding")
+                    split.operator("fluid.pause_bake", text="Pause Guiding")
                 elif not domain.cache_baked_guiding and not domain.cache_baking_guiding:
-                    split.operator("manta.bake_guiding", text="Bake Guiding")
+                    split.operator("fluid.bake_guiding", text="Bake Guiding")
                 else:
-                    split.operator("manta.free_guiding", text="Free Guiding")
+                    split.operator("fluid.free_guiding", text="Free Guiding")
 
 
 class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
@@ -1013,7 +1013,7 @@ class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
 
@@ -1021,7 +1021,7 @@ class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
         col.prop(domain, "fluid_group", text="Flow")
 
         # col.prop(domain, "effector_group", text="Forces")
-        col.prop(domain, "collision_group", text="Effector")
+        col.prop(domain, "effector_group", text="Effector")
 
 
 class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
@@ -1039,8 +1039,8 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
 
-        md = context.manta
-        domain = context.manta.domain_settings
+        md = context.fluid
+        domain = context.fluid.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
@@ -1089,16 +1089,16 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
             bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
             if domain.cache_baked_data and not domain.cache_baking_data and bake_incomplete:
                 col = split.column()
-                col.operator("manta.bake_all", text="Resume")
+                col.operator("fluid.bake_all", text="Resume")
                 col = split.column()
-                col.operator("manta.free_all", text="Free")
+                col.operator("fluid.free_all", text="Free")
             elif domain.cache_baking_data and not domain.cache_baked_data:
                 split.enabled = False
-                split.operator("manta.pause_bake", text="Baking All - ESC to pause")
+                split.operator("fluid.pause_bake", text="Baking All - ESC to pause")
             elif not domain.cache_baked_data and not domain.cache_baking_data:
-                split.operator("manta.bake_all", text="Bake All")
+                split.operator("fluid.bake_all", text="Bake All")
             else:
-                split.operator("manta.free_all", text="Free All")
+                split.operator("fluid.free_all", text="Free All")
 
 
 class PHYSICS_PT_manta_export(PhysicButtonsPanel, Panel):
@@ -1118,8 +1118,8 @@ class PHYSICS_PT_manta_export(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        md = context.manta
-        domain = context.manta.domain_settings
+        md = context.fluid
+        domain = context.fluid.domain_settings
 
         baking_any = domain.cache_baking_data or domain.cache_baking_mesh or domain.cache_baking_particles or domain.cache_baking_noise or domain.cache_baking_guiding
         baked_any = domain.cache_baked_data or domain.cache_baked_mesh or domain.cache_baked_particles or domain.cache_baked_noise or domain.cache_baked_guiding
@@ -1145,7 +1145,7 @@ class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
         effector_weights_ui(self, domain.effector_weights, 'SMOKE')
 
 
@@ -1163,7 +1163,7 @@ class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
         layout.use_property_split = True
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         col = flow.column()
         col.prop(domain, "display_thickness")
@@ -1205,7 +1205,7 @@ class PHYSICS_PT_manta_viewport_display_color(PhysicButtonsPanel, Panel):
         return (PhysicButtonsPanel.poll_gas_domain(context))
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
+        md = context.fluid.domain_settings
 
         self.layout.prop(md, "use_color_ramp", text="")
 
@@ -1213,7 +1213,7 @@ class PHYSICS_PT_manta_viewport_display_color(PhysicButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
         col = layout.column()
         col.enabled = domain.use_color_ramp
 
@@ -1235,7 +1235,7 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
         return (PhysicButtonsPanel.poll_gas_domain(context))
 
     def draw_header(self, context):
-        md = context.manta.domain_settings
+        md = context.fluid.domain_settings
 
         self.layout.prop(md, "show_velocity", text="")
 
@@ -1244,7 +1244,7 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
         layout.use_property_split = True
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
-        domain = context.manta.domain_settings
+        domain = context.fluid.domain_settings
 
         col = flow.column()
         col.enabled = domain.show_velocity

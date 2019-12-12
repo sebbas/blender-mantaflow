@@ -75,7 +75,7 @@ static void rna_Manta_dependency_update(Main *bmain, Scene *scene, PointerRNA *p
 
 static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *scene, PointerRNA *ptr)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   if (settings->mmd && settings->mmd->domain) {
     settings->mmd->domain->cache_flag |= (FLUID_DOMAIN_OUTDATED_DATA |
                                           FLUID_DOMAIN_OUTDATED_NOISE |
@@ -87,7 +87,7 @@ static void rna_Manta_resetCache(Main *UNUSED(bmain), Scene *scene, PointerRNA *
 }
 static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   mantaModifier_reset(settings->mmd);
   rna_Manta_resetCache(bmain, scene, ptr);
@@ -97,7 +97,7 @@ static void rna_Manta_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 static void rna_Manta_reset_dependency(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   mantaModifier_reset(settings->mmd);
 
@@ -141,7 +141,7 @@ static void rna_Manta_draw_type_update(Main *UNUSED(bmain),
                                        struct PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   /* Wireframe mode more convenient when particles present */
   if (settings->particle_type == 0) {
@@ -155,8 +155,8 @@ static void rna_Manta_draw_type_update(Main *UNUSED(bmain),
 static void rna_Manta_flip_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaModifierData *mmd;
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd;
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_FLIP);
 
   if (ob->type == OB_MESH && !exists) {
@@ -181,8 +181,8 @@ static void rna_Manta_flip_parts_update(Main *bmain, Scene *scene, PointerRNA *p
 static void rna_Manta_spray_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaModifierData *mmd;
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd;
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_SPRAY);
 
   if (ob->type == OB_MESH && !exists) {
@@ -207,8 +207,8 @@ static void rna_Manta_spray_parts_update(Main *bmain, Scene *scene, PointerRNA *
 static void rna_Manta_bubble_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaModifierData *mmd;
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd;
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_BUBBLE);
 
   if (ob->type == OB_MESH && !exists) {
@@ -233,8 +233,8 @@ static void rna_Manta_bubble_parts_update(Main *bmain, Scene *scene, PointerRNA 
 static void rna_Manta_foam_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaModifierData *mmd;
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd;
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_FOAM);
 
   if (ob->type == OB_MESH && !exists) {
@@ -259,8 +259,8 @@ static void rna_Manta_foam_parts_update(Main *bmain, Scene *scene, PointerRNA *p
 static void rna_Manta_tracer_parts_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaModifierData *mmd;
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd;
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
   bool exists = rna_Manta_parts_exists(ptr, PART_MANTA_TRACER);
 
   if (ob->type == OB_MESH && !exists) {
@@ -285,8 +285,8 @@ static void rna_Manta_tracer_parts_update(Main *bmain, Scene *scene, PointerRNA 
 static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
-  MantaModifierData *mmd;
-  mmd = (MantaModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd;
+  mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
 
   if (mmd->domain->sndparticle_combined_export == SNDPARTICLE_COMBINED_EXPORT_OFF) {
     rna_Manta_parts_delete(ptr, (PART_MANTA_SPRAY | PART_MANTA_FOAM | PART_MANTA_BUBBLE));
@@ -387,7 +387,7 @@ static void rna_Manta_combined_export_update(Main *bmain, Scene *scene, PointerR
 
 static void rna_Manta_cachetype_mesh_set(struct PointerRNA *ptr, int value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   if (value != settings->cache_mesh_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -397,7 +397,7 @@ static void rna_Manta_cachetype_mesh_set(struct PointerRNA *ptr, int value)
 
 static void rna_Manta_cachetype_data_set(struct PointerRNA *ptr, int value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   if (value != settings->cache_data_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -407,7 +407,7 @@ static void rna_Manta_cachetype_data_set(struct PointerRNA *ptr, int value)
 
 static void rna_Manta_cachetype_particle_set(struct PointerRNA *ptr, int value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   if (value != settings->cache_particle_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -417,7 +417,7 @@ static void rna_Manta_cachetype_particle_set(struct PointerRNA *ptr, int value)
 
 static void rna_Manta_cachetype_noise_set(struct PointerRNA *ptr, int value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   if (value != settings->cache_noise_format) {
     /* TODO (sebbas): Clear old caches. */
@@ -427,7 +427,7 @@ static void rna_Manta_cachetype_noise_set(struct PointerRNA *ptr, int value)
 
 static void rna_Manta_cachetype_set(struct PointerRNA *ptr, int value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   if (value != settings->cache_type) {
     settings->cache_type = value;
@@ -439,13 +439,13 @@ static void rna_Manta_guiding_parent_set(struct PointerRNA *ptr,
                                          struct PointerRNA value,
                                          struct ReportList *UNUSED(reports))
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   Object *par = (Object *)value.data;
 
-  MantaModifierData *mmd_par = NULL;
+  FluidModifierData *mmd_par = NULL;
 
   if (par != NULL) {
-    mmd_par = (MantaModifierData *)modifiers_findByType(par, eModifierType_Manta);
+    mmd_par = (FluidModifierData *)modifiers_findByType(par, eModifierType_Manta);
     if (mmd_par && mmd_par->domain) {
       mds->guiding_parent = value.data;
       copy_v3_v3_int(mds->guide_res, mmd_par->domain->res);
@@ -541,7 +541,7 @@ static const EnumPropertyItem *rna_Manta_cachetype_particle_itemf(bContext *UNUS
 
 static void rna_Manta_collisionextents_set(struct PointerRNA *ptr, int value, bool clear)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   if (clear) {
     settings->border_collisions &= value;
   }
@@ -552,7 +552,7 @@ static void rna_Manta_collisionextents_set(struct PointerRNA *ptr, int value, bo
 
 static void rna_Manta_cache_directory_set(struct PointerRNA *ptr, const char *value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
 
   if (STREQ(settings->cache_directory, value)) {
     return;
@@ -567,7 +567,7 @@ static void rna_Manta_cache_directory_set(struct PointerRNA *ptr, const char *va
 
 static void rna_Manta_domaintype_set(struct PointerRNA *ptr, int value)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   Object *ob = (Object *)ptr->owner_id;
 
   if (value != settings->type) {
@@ -605,9 +605,9 @@ static void rna_Manta_domaintype_set(struct PointerRNA *ptr, int value)
   }
 }
 
-static char *rna_MantaDomainSettings_path(PointerRNA *ptr)
+static char *rna_FluidDomainSettings_path(PointerRNA *ptr)
 {
-  MantaDomainSettings *settings = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
@@ -615,9 +615,9 @@ static char *rna_MantaDomainSettings_path(PointerRNA *ptr)
   return BLI_sprintfN("modifiers[\"%s\"].domain_settings", name_esc);
 }
 
-static char *rna_MantaFlowSettings_path(PointerRNA *ptr)
+static char *rna_FluidFlowSettings_path(PointerRNA *ptr)
 {
-  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *settings = (FluidFlowSettings *)ptr->data;
   ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
@@ -625,9 +625,9 @@ static char *rna_MantaFlowSettings_path(PointerRNA *ptr)
   return BLI_sprintfN("modifiers[\"%s\"].flow_settings", name_esc);
 }
 
-static char *rna_MantaEffectorSettings_path(PointerRNA *ptr)
+static char *rna_FluidEffectorSettings_path(PointerRNA *ptr)
 {
-  MantaEffectorSettings *settings = (MantaEffectorSettings *)ptr->data;
+  FluidEffectorSettings *settings = (FluidEffectorSettings *)ptr->data;
   ModifierData *md = (ModifierData *)settings->mmd;
   char name_esc[sizeof(md->name) * 2];
 
@@ -635,9 +635,9 @@ static char *rna_MantaEffectorSettings_path(PointerRNA *ptr)
   return BLI_sprintfN("modifiers[\"%s\"].effec_settings", name_esc);
 }
 
-static int rna_MantaModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
+static int rna_FluidModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX_ARRAY_DIMENSION])
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   float *density = NULL;
   int size = 0;
 
@@ -660,19 +660,19 @@ static int rna_MantaModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX
   return length[0];
 }
 
-static int rna_MantaModifier_color_grid_get_length(PointerRNA *ptr,
+static int rna_FluidModifier_color_grid_get_length(PointerRNA *ptr,
                                                    int length[RNA_MAX_ARRAY_DIMENSION])
 {
-  rna_MantaModifier_grid_get_length(ptr, length);
+  rna_FluidModifier_grid_get_length(ptr, length);
 
   length[0] *= 4;
   return length[0];
 }
 
-static int rna_MantaModifier_velocity_grid_get_length(PointerRNA *ptr,
+static int rna_FluidModifier_velocity_grid_get_length(PointerRNA *ptr,
                                                       int length[RNA_MAX_ARRAY_DIMENSION])
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   float *vx = NULL;
   float *vy = NULL;
   float *vz = NULL;
@@ -690,10 +690,10 @@ static int rna_MantaModifier_velocity_grid_get_length(PointerRNA *ptr,
   return length[0];
 }
 
-static int rna_MantaModifier_heat_grid_get_length(PointerRNA *ptr,
+static int rna_FluidModifier_heat_grid_get_length(PointerRNA *ptr,
                                                   int length[RNA_MAX_ARRAY_DIMENSION])
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   float *heat = NULL;
   int size = 0;
 
@@ -707,11 +707,11 @@ static int rna_MantaModifier_heat_grid_get_length(PointerRNA *ptr,
   return length[0];
 }
 
-static void rna_MantaModifier_density_grid_get(PointerRNA *ptr, float *values)
+static void rna_FluidModifier_density_grid_get(PointerRNA *ptr, float *values)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_MantaModifier_grid_get_length(ptr, length);
+  int size = rna_FluidModifier_grid_get_length(ptr, length);
   float *density;
 
   BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
@@ -726,11 +726,11 @@ static void rna_MantaModifier_density_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_MantaModifier_velocity_grid_get(PointerRNA *ptr, float *values)
+static void rna_FluidModifier_velocity_grid_get(PointerRNA *ptr, float *values)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_MantaModifier_velocity_grid_get_length(ptr, length);
+  int size = rna_FluidModifier_velocity_grid_get_length(ptr, length);
   float *vx, *vy, *vz;
   int i;
 
@@ -749,11 +749,11 @@ static void rna_MantaModifier_velocity_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_MantaModifier_color_grid_get(PointerRNA *ptr, float *values)
+static void rna_FluidModifier_color_grid_get(PointerRNA *ptr, float *values)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_MantaModifier_grid_get_length(ptr, length);
+  int size = rna_FluidModifier_grid_get_length(ptr, length);
 
   BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
 
@@ -778,11 +778,11 @@ static void rna_MantaModifier_color_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_MantaModifier_flame_grid_get(PointerRNA *ptr, float *values)
+static void rna_FluidModifier_flame_grid_get(PointerRNA *ptr, float *values)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_MantaModifier_grid_get_length(ptr, length);
+  int size = rna_FluidModifier_grid_get_length(ptr, length);
   float *flame;
 
   BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
@@ -800,11 +800,11 @@ static void rna_MantaModifier_flame_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_MantaModifier_heat_grid_get(PointerRNA *ptr, float *values)
+static void rna_FluidModifier_heat_grid_get(PointerRNA *ptr, float *values)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_MantaModifier_heat_grid_get_length(ptr, length);
+  int size = rna_FluidModifier_heat_grid_get_length(ptr, length);
   float *heat;
 
   BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
@@ -824,11 +824,11 @@ static void rna_MantaModifier_heat_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_unlock(mds->fluid_mutex);
 }
 
-static void rna_MantaModifier_temperature_grid_get(PointerRNA *ptr, float *values)
+static void rna_FluidModifier_temperature_grid_get(PointerRNA *ptr, float *values)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
   int length[RNA_MAX_ARRAY_DIMENSION];
-  int size = rna_MantaModifier_grid_get_length(ptr, length);
+  int size = rna_FluidModifier_grid_get_length(ptr, length);
   float *flame;
 
   BLI_rw_mutex_lock(mds->fluid_mutex, THREAD_LOCK_READ);
@@ -858,31 +858,31 @@ static void rna_MantaModifier_temperature_grid_get(PointerRNA *ptr, float *value
 
 static void rna_MantaFlow_density_vgroup_get(PointerRNA *ptr, char *value)
 {
-  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *flow = (FluidFlowSettings *)ptr->data;
   rna_object_vgroup_name_index_get(ptr, value, flow->vgroup_density);
 }
 
 static int rna_MantaFlow_density_vgroup_length(PointerRNA *ptr)
 {
-  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *flow = (FluidFlowSettings *)ptr->data;
   return rna_object_vgroup_name_index_length(ptr, flow->vgroup_density);
 }
 
 static void rna_MantaFlow_density_vgroup_set(struct PointerRNA *ptr, const char *value)
 {
-  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *flow = (FluidFlowSettings *)ptr->data;
   rna_object_vgroup_name_index_set(ptr, value, &flow->vgroup_density);
 }
 
 static void rna_MantaFlow_uvlayer_set(struct PointerRNA *ptr, const char *value)
 {
-  MantaFlowSettings *flow = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *flow = (FluidFlowSettings *)ptr->data;
   rna_object_uvlayer_name_set(ptr, value, flow->uvlayer_name, sizeof(flow->uvlayer_name));
 }
 
 static void rna_Manta_use_color_ramp_set(struct PointerRNA *ptr, bool value)
 {
-  MantaDomainSettings *mds = (MantaDomainSettings *)ptr->data;
+  FluidDomainSettings *mds = (FluidDomainSettings *)ptr->data;
 
   mds->use_coba = value;
 
@@ -893,7 +893,7 @@ static void rna_Manta_use_color_ramp_set(struct PointerRNA *ptr, bool value)
 
 static void rna_Manta_flowsource_set(struct PointerRNA *ptr, int value)
 {
-  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *settings = (FluidFlowSettings *)ptr->data;
 
   if (value != settings->source) {
     settings->source = value;
@@ -905,7 +905,7 @@ static const EnumPropertyItem *rna_Manta_flowsource_itemf(bContext *UNUSED(C),
                                                           PropertyRNA *UNUSED(prop),
                                                           bool *r_free)
 {
-  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *settings = (FluidFlowSettings *)ptr->data;
 
   EnumPropertyItem *item = NULL;
   EnumPropertyItem tmp = {0, "", 0, "", ""};
@@ -935,7 +935,7 @@ static const EnumPropertyItem *rna_Manta_flowsource_itemf(bContext *UNUSED(C),
 
 static void rna_Manta_flowtype_set(struct PointerRNA *ptr, int value)
 {
-  MantaFlowSettings *settings = (MantaFlowSettings *)ptr->data;
+  FluidFlowSettings *settings = (FluidFlowSettings *)ptr->data;
 
   if (value != settings->type) {
     settings->type = value;
@@ -958,7 +958,7 @@ static void rna_def_manta_mesh_vertices(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "MantaVertexVelocity", NULL);
+  srna = RNA_def_struct(brna, "FluidDomainVertexVelocity", NULL);
   RNA_def_struct_ui_text(srna, "Fluid Mesh Velocity", "Velocity of a simulated fluid mesh");
   RNA_def_struct_ui_icon(srna, ICON_VERTEXSEL);
 
@@ -1161,10 +1161,10 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  srna = RNA_def_struct(brna, "MantaDomainSettings", NULL);
+  srna = RNA_def_struct(brna, "FluidDomainSettings", NULL);
   RNA_def_struct_ui_text(srna, "Domain Settings", "Fluid domain settings");
-  RNA_def_struct_sdna(srna, "MantaDomainSettings");
-  RNA_def_struct_path_func(srna, "rna_MantaDomainSettings_path");
+  RNA_def_struct_sdna(srna, "FluidDomainSettings");
+  RNA_def_struct_path_func(srna, "rna_FluidDomainSettings_path");
 
   prop = RNA_def_property(srna, "effector_weights", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "EffectorWeights");
@@ -1200,48 +1200,48 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_MantaModifier_density_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_FluidModifier_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_FluidModifier_density_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Density Grid", "Smoke density grid");
 
   prop = RNA_def_property(srna, "velocity_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_velocity_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_MantaModifier_velocity_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_FluidModifier_velocity_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_FluidModifier_velocity_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Velocity Grid", "Smoke velocity grid");
 
   prop = RNA_def_property(srna, "flame_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_MantaModifier_flame_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_FluidModifier_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_FluidModifier_flame_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Flame Grid", "Smoke flame grid");
 
   prop = RNA_def_property(srna, "color_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_color_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_MantaModifier_color_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_FluidModifier_color_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_FluidModifier_color_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Color Grid", "Smoke color grid");
 
   prop = RNA_def_property(srna, "heat_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_heat_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_MantaModifier_heat_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_FluidModifier_heat_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_FluidModifier_heat_grid_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Heat Grid", "Smoke heat grid");
 
   prop = RNA_def_property(srna, "temperature_grid", PROP_FLOAT, PROP_NONE);
   RNA_def_property_array(prop, 32);
   RNA_def_property_flag(prop, PROP_DYNAMIC);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_dynamic_array_funcs(prop, "rna_MantaModifier_grid_get_length");
-  RNA_def_property_float_funcs(prop, "rna_MantaModifier_temperature_grid_get", NULL, NULL);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_FluidModifier_grid_get_length");
+  RNA_def_property_float_funcs(prop, "rna_FluidModifier_temperature_grid_get", NULL, NULL);
   RNA_def_property_ui_text(
       prop, "Temperature Grid", "Smoke temperature grid, range 0..1 represents 0..1000K");
 
@@ -1651,7 +1651,7 @@ static void rna_def_manta_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "mesh_vertices", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "mesh_velocities", "totvert");
-  RNA_def_property_struct_type(prop, "MantaVertexVelocity");
+  RNA_def_property_struct_type(prop, "FluidDomainVertexVelocity");
   RNA_def_property_ui_text(
       prop, "Fluid Mesh Vertices", "Vertices of the fluid mesh generated by simulation");
 
@@ -2263,10 +2263,10 @@ static void rna_def_manta_flow_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  srna = RNA_def_struct(brna, "MantaFlowSettings", NULL);
+  srna = RNA_def_struct(brna, "FluidFlowSettings", NULL);
   RNA_def_struct_ui_text(srna, "Flow Settings", "Fluid flow settings");
-  RNA_def_struct_sdna(srna, "MantaFlowSettings");
-  RNA_def_struct_path_func(srna, "rna_MantaFlowSettings_path");
+  RNA_def_struct_sdna(srna, "FluidFlowSettings");
+  RNA_def_struct_path_func(srna, "rna_FluidFlowSettings_path");
 
   prop = RNA_def_property(srna, "density", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "density");
@@ -2491,10 +2491,10 @@ static void rna_def_manta_effec_settings(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "MantaEffectorSettings", NULL);
+  srna = RNA_def_struct(brna, "FluidEffectorSettings", NULL);
   RNA_def_struct_ui_text(srna, "Effector Settings", "Smoke collision settings");
-  RNA_def_struct_sdna(srna, "MantaEffectorSettings");
-  RNA_def_struct_path_func(srna, "rna_MantaEffectorSettings_path");
+  RNA_def_struct_sdna(srna, "FluidEffectorSettings");
+  RNA_def_struct_path_func(srna, "rna_FluidEffectorSettings_path");
 
   prop = RNA_def_property(srna, "effec_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "type");
