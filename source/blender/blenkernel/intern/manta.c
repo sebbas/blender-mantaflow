@@ -808,7 +808,6 @@ void mantaModifier_createType(struct MantaModifierData *mmd)
     mmd->domain->guiding_alpha = 2.0f;
     mmd->domain->guiding_beta = 5;
     mmd->domain->guiding_vel_factor = 2.0f;
-    mmd->domain->guide_res = NULL;
     mmd->domain->guiding_source = FLUID_DOMAIN_GUIDING_SRC_DOMAIN;
 
     /* cache options */
@@ -1049,7 +1048,7 @@ void mantaModifier_copy(const struct MantaModifierData *mmd,
     tmds->guiding_alpha = mds->guiding_alpha;
     tmds->guiding_beta = mds->guiding_beta;
     tmds->guiding_vel_factor = mds->guiding_vel_factor;
-    tmds->guide_res = mds->guide_res;
+    copy_v3_v3_int(tmds->guide_res, mds->guide_res);
     tmds->guiding_source = mds->guiding_source;
 
     /* cache options */
@@ -4116,7 +4115,7 @@ static void mantaModifier_processDomain(MantaModifierData *mmd,
   if (guiding_parent) {
     mmd_parent = (MantaModifierData *)modifiers_findByType(guiding_parent, eModifierType_Manta);
     if (mmd_parent->domain) {
-      mds->guide_res = mmd_parent->domain->res;
+      copy_v3_v3_int(mds->guide_res, mmd_parent->domain->res);
     }
   }
 

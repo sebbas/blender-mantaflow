@@ -377,9 +377,9 @@ typedef struct MantaDomainSettings {
   float guiding_alpha;      /* Guiding weight scalar (determines strength). */
   int guiding_beta;         /* Guiding blur radius (affects size of vortices). */
   float guiding_vel_factor; /* Multiply guiding velocity by this factor. */
-  int *guide_res;           /* Res for velocity guide grids - independent from base res. */
+  int guide_res[3];         /* Res for velocity guide grids - independent from base res. */
   short guiding_source;
-  char _pad7[6]; /* Unused. */
+  char _pad7[2]; /* Unused. */
 
   /* Cache options. */
   int cache_frame_start;

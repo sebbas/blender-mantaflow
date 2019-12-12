@@ -46,6 +46,7 @@
 
 #ifdef RNA_RUNTIME
 
+#  include "BLI_math.h"
 #  include "BLI_threads.h"
 
 #  include "BKE_colorband.h"
@@ -447,12 +448,11 @@ static void rna_Manta_guiding_parent_set(struct PointerRNA *ptr,
     mmd_par = (MantaModifierData *)modifiers_findByType(par, eModifierType_Manta);
     if (mmd_par && mmd_par->domain) {
       mds->guiding_parent = value.data;
-      mds->guide_res = mmd_par->domain->res;
+      copy_v3_v3_int(mds->guide_res, mmd_par->domain->res);
     }
   }
   else {
     mds->guiding_parent = NULL;
-    mds->guide_res = NULL;
   }
 }
 
