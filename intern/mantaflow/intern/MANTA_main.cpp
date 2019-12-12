@@ -60,23 +60,23 @@ MANTA::MANTA(int *res, FluidModifierData *mmd) : mCurrentID(++solverID)
 
   mmd->domain->fluid = this;
 
-  mUsingHeat = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_HEAT;
-  mUsingFire = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_FIRE;
-  mUsingColors = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_COLORS;
-  mUsingObstacle = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE;
-  mUsingInvel = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL;
-  mUsingOutflow = mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW;
-  mUsingNoise = mmd->domain->flags & FLUID_DOMAIN_USE_NOISE;
-  mUsingMesh = mmd->domain->flags & FLUID_DOMAIN_USE_MESH;
-  mUsingMVel = mmd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS;
-  mUsingGuiding = mmd->domain->flags & FLUID_DOMAIN_USE_GUIDING;
-  mUsingFractions = mmd->domain->flags & FLUID_DOMAIN_USE_FRACTIONS;
-  mUsingLiquid = mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID;
-  mUsingSmoke = mmd->domain->type == FLUID_DOMAIN_TYPE_GAS;
-  mUsingDrops = mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY;
-  mUsingBubbles = mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE;
-  mUsingFloats = mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM;
-  mUsingTracers = mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_TRACER;
+  mUsingLiquid = (mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID);
+  mUsingSmoke = (mmd->domain->type == FLUID_DOMAIN_TYPE_GAS);
+  mUsingHeat = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_HEAT) && mUsingSmoke;
+  mUsingFire = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_FIRE) && mUsingSmoke;
+  mUsingColors = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) && mUsingSmoke;
+  mUsingNoise = (mmd->domain->flags & FLUID_DOMAIN_USE_NOISE) && mUsingSmoke;
+  mUsingFractions = (mmd->domain->flags & FLUID_DOMAIN_USE_FRACTIONS) && mUsingLiquid;
+  mUsingDrops = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_SPRAY) && mUsingLiquid;
+  mUsingBubbles = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_BUBBLE) && mUsingLiquid;
+  mUsingFloats = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_FOAM) && mUsingLiquid;
+  mUsingTracers = (mmd->domain->particle_type & FLUID_DOMAIN_PARTICLE_TRACER) && mUsingLiquid;
+  mUsingMesh = (mmd->domain->flags & FLUID_DOMAIN_USE_MESH) && mUsingLiquid;
+  mUsingMVel = (mmd->domain->flags & FLUID_DOMAIN_USE_SPEED_VECTORS) && mUsingLiquid;
+  mUsingObstacle = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OBSTACLE);
+  mUsingInvel = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_INVEL);
+  mUsingOutflow = (mmd->domain->active_fields & FLUID_DOMAIN_ACTIVE_OUTFLOW);
+  mUsingGuiding = (mmd->domain->flags & FLUID_DOMAIN_USE_GUIDING);
 
   // Simulation constants
   mTempAmb = 0;  // TODO: Maybe use this later for buoyancy calculation

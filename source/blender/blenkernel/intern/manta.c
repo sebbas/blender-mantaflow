@@ -1453,6 +1453,10 @@ static void update_obstacleflags(FluidDomainSettings *mds, Object **collobjs, in
   int active_fields = mds->active_fields;
   unsigned int collIndex;
 
+  /* First, remove all flags that we want to update. */
+  int prev_flags = (FLUID_DOMAIN_ACTIVE_OBSTACLE | FLUID_DOMAIN_ACTIVE_GUIDING);
+  active_fields &= ~prev_flags;
+
   /* Monitor active fields based on flow settings */
   for (collIndex = 0; collIndex < numcollobj; collIndex++) {
     Object *collob = collobjs[collIndex];
@@ -3132,6 +3136,12 @@ static void update_flowsflags(FluidDomainSettings *mds, Object **flowobjs, int n
     if (!mmd2) {
       continue;
     }
+
+    /* First, remove all flags that we want to update. */
+    int prev_flags = (FLUID_DOMAIN_ACTIVE_INVEL | FLUID_DOMAIN_ACTIVE_OUTFLOW |
+                      FLUID_DOMAIN_ACTIVE_HEAT | FLUID_DOMAIN_ACTIVE_FIRE |
+                      FLUID_DOMAIN_ACTIVE_COLOR_SET | FLUID_DOMAIN_ACTIVE_COLORS);
+    active_fields &= ~prev_flags;
 
     if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
       FluidFlowSettings *mfs = mmd2->flow;

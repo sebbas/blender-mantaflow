@@ -155,9 +155,9 @@ smoke_noise_dict_s$ID$ = dict(density_noise=density_sn$ID$, uv0_noise=uvGrid0_s$
 const std::string smoke_alloc_colors =
     "\n\
 # Sanity check, clear grids first\n\
-del color_r_s$ID$\n\
-del color_g_s$ID$\n\
-del color_b_s$ID$\n\
+if 'color_r_s$ID$' in globals(): del color_r_s$ID$\n\
+if 'color_g_s$ID$' in globals(): del color_g_s$ID$\n\
+if 'color_b_s$ID$' in globals(): del color_b_s$ID$\n\
 \n\
 mantaMsg('Allocating colors')\n\
 color_r_s$ID$    = s$ID$.create(RealGrid)\n\
@@ -175,9 +175,9 @@ if 'smoke_data_dict_s$ID$' in globals():\n\
 const std::string smoke_alloc_colors_noise =
     "\n\
 # Sanity check, clear grids first\n\
-del color_r_sn$ID$\n\
-del color_g_sn$ID$\n\
-del color_b_sn$ID$\n\
+if 'color_r_sn$ID$' in globals(): del color_r_sn$ID$\n\
+if 'color_g_sn$ID$' in globals(): del color_g_sn$ID$\n\
+if 'color_b_sn$ID$' in globals(): del color_b_sn$ID$\n\
 \n\
 mantaMsg('Allocating colors noise')\n\
 color_r_sn$ID$ = sn$ID$.create(RealGrid)\n\
@@ -211,8 +211,8 @@ color_b_sn$ID$.multConst($COLOR_B$)\n";
 const std::string smoke_alloc_heat =
     "\n\
 # Sanity check, clear grids first\n\
-del heat_s$ID$\n\
-del heatIn_s$ID$\n\
+if 'heat_s$ID$' in globals(): del heat_s$ID$\n\
+if 'heatIn_s$ID$' in globals(): del heatIn_s$ID$\n\
 \n\
 mantaMsg('Allocating heat')\n\
 heat_s$ID$   = s$ID$.create(RealGrid)\n\
@@ -225,11 +225,11 @@ if 'smoke_data_dict_s$ID$' in globals():\n\
 const std::string smoke_alloc_fire =
     "\n\
 # Sanity check, clear grids first\n\
-del flame_s$ID$\n\
-del fuel_s$ID$\n\
-del react_s$ID$\n\
-del fuelIn_s$ID$\n\
-del reactIn_s$ID$\n\
+if 'flame_s$ID$' in globals(): del flame_s$ID$\n\
+if 'fuel_s$ID$' in globals(): del fuel_s$ID$\n\
+if 'react_s$ID$' in globals(): del react_s$ID$\n\
+if 'fuelIn_s$ID$' in globals(): del fuelIn_s$ID$\n\
+if 'reactIn_s$ID$' in globals(): del reactIn_s$ID$\n\
 \n\
 mantaMsg('Allocating fire')\n\
 flame_s$ID$   = s$ID$.create(RealGrid)\n\
@@ -246,9 +246,9 @@ if 'smoke_data_dict_s$ID$' in globals():\n\
 const std::string smoke_alloc_fire_noise =
     "\n\
 # Sanity check, clear grids first\n\
-del flame_sn$ID$\n\
-del fuel_sn$ID$\n\
-del react_sn$ID$\n\
+if 'flame_sn$ID$' in globals(): del flame_sn$ID$\n\
+if 'fuel_sn$ID$' in globals(): del fuel_sn$ID$\n\
+if 'react_sn$ID$' in globals(): del react_sn$ID$\n\
 \n\
 mantaMsg('Allocating fire noise')\n\
 flame_sn$ID$ = sn$ID$.create(RealGrid)\n\
