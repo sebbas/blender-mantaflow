@@ -908,7 +908,6 @@ typedef enum eUserPref_SpaceData_Flag {
 /** #UserDef_Experimental.flag. */
 typedef enum eUserPref_Experimental_Flag {
   USER_EXPERIMENTAL_ALL = (1 << 0),
-  USER_EXPERIMENTAL_MANTA = (1 << 1),
 } eUserPref_Experimental_Flag;
 
 /** #UserDef.flag */

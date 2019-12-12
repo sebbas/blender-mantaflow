@@ -2165,23 +2165,6 @@ class USERPREF_PT_experimental_all(ExperimentalPanel, Panel):
         # For the other settings create new panels
         # and make sure they are disabled if use_experimental_all is True
 
-
-class USERPREF_PT_experimental_physics(ExperimentalPanel, Panel):
-    bl_label = "Physics"
-
-    def draw_props(self, context, layout):
-        prefs = context.preferences
-        experimental = prefs.experimental
-        layout.active = not experimental.use_experimental_all
-
-        task = "T59995"
-        split = layout.split(factor=0.66)
-        col = split.split()
-        col.prop(experimental, "use_manta_fluids")
-        col = split.split()
-        col.operator("wm.url_open", text=task, icon='URL').url = "https://developer.blender.org/" + task
-
-
 """
 # Example panel, leave it here so we always have a template to follow even
 # after the features are gone from the experimental panel.
@@ -2293,7 +2276,6 @@ classes = (
     USERPREF_PT_studiolight_world,
 
     USERPREF_PT_experimental_all,
-    USERPREF_PT_experimental_physics,
 
     # Add dynamically generated editor theme panels last,
     # so they show up last in the theme section.
