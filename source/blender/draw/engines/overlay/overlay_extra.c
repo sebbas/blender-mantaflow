@@ -1442,7 +1442,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     int slice_axis = -1;
     line_count *= mds->res[0] * mds->res[1] * mds->res[2];
 
-    if (mds->slice_method == MOD_SMOKE_SLICE_AXIS_ALIGNED &&
+    if (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
         mds->axis_slice_method == AXIS_SLICE_SINGLE) {
       float viewinv[4][4];
       DRW_view_viewmat_get(NULL, viewinv, true);
@@ -1555,7 +1555,7 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const bool draw_xform = draw_ctx->object_mode == OB_MODE_OBJECT &&
                           (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) &&
                           (ob->base_flag & BASE_SELECTED) && !is_select_mode;
-  const bool draw_volume = !from_dupli && (md = modifiers_findByType(ob, eModifierType_Smoke)) &&
+  const bool draw_volume = !from_dupli && (md = modifiers_findByType(ob, eModifierType_Manta)) &&
                            (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
                            (((FluidModifierData *)md)->domain != NULL);
 
