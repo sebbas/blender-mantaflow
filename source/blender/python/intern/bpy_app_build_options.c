@@ -58,11 +58,8 @@ static PyStructSequence_Field app_builtopts_info_fields[] = {
     {(char *)"openmp", NULL},
     {(char *)"openvdb", NULL},
     {(char *)"alembic", NULL},
-<<<<<<< HEAD
-    {(char *)"fluid", NULL},
-=======
     {(char *)"usd", NULL},
->>>>>>> master
+    {(char *)"fluid", NULL},
     {NULL},
 };
 
