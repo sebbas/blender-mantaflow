@@ -4167,8 +4167,8 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
   with_guiding = mds->flags & FLUID_DOMAIN_USE_GUIDING;
   with_particles = drops || bubble || floater;
 
-  bool has_config, has_data, has_noise, has_mesh, has_particles, has_guiding;
-  has_config = has_data = has_noise = has_mesh = has_particles = has_guiding = false;
+  bool has_data, has_noise, has_mesh, has_particles, has_guiding;
+  has_data = has_noise = has_mesh = has_particles = has_guiding = false;
 
   bool baking_data, baking_noise, baking_mesh, baking_particles, baking_guiding, bake_outdated;
   baking_data = mds->cache_flag & FLUID_DOMAIN_BAKING_DATA;
@@ -4240,6 +4240,7 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
       CLAMP(noise_frame, noise_frame, data_frame);
       CLAMP(mesh_frame, mesh_frame, data_frame);
       CLAMP(particles_frame, particles_frame, data_frame);
+      CLAMP(guiding_frame, guiding_frame, mds->cache_frame_end);
 
       /* Force to read cache as we're resuming the bake */
       read_cache = true;

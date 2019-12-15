@@ -109,9 +109,9 @@ static void rna_Manta_reset_dependency(Main *bmain, Scene *scene, PointerRNA *pt
 
 static void rna_Manta_parts_create(Main *bmain,
                                    PointerRNA *ptr,
-                                   char *pset_name,
-                                   char *parts_name,
-                                   char *psys_name,
+                                   const char *pset_name,
+                                   const char *parts_name,
+                                   const char *psys_name,
                                    int psys_type)
 {
   Object *ob = (Object *)ptr->owner_id;
