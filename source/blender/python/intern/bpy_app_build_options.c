@@ -58,7 +58,11 @@ static PyStructSequence_Field app_builtopts_info_fields[] = {
     {(char *)"openmp", NULL},
     {(char *)"openvdb", NULL},
     {(char *)"alembic", NULL},
+<<<<<<< HEAD
     {(char *)"fluid", NULL},
+=======
+    {(char *)"usd", NULL},
+>>>>>>> master
     {NULL},
 };
 
@@ -257,6 +261,12 @@ static PyObject *make_builtopts_info(void)
 #endif
 
 #ifdef WITH_ALEMBIC
+  SetObjIncref(Py_True);
+#else
+  SetObjIncref(Py_False);
+#endif
+
+#ifdef WITH_USD
   SetObjIncref(Py_True);
 #else
   SetObjIncref(Py_False);
