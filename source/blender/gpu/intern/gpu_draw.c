@@ -44,7 +44,7 @@
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_particle_types.h"
 
@@ -1162,7 +1162,7 @@ static GPUTexture *create_flame_texture(FluidDomainSettings *mds, int highres)
 
 void GPU_free_smoke(FluidModifierData *mmd)
 {
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN && mmd->domain) {
     if (mmd->domain->tex) {
       GPU_texture_free(mmd->domain->tex);
     }
@@ -1197,7 +1197,7 @@ void GPU_free_smoke(FluidModifierData *mmd)
 
 void GPU_create_smoke_coba_field(FluidModifierData *mmd)
 {
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *mds = mmd->domain;
 
     if (!mds->tex_field) {
@@ -1211,7 +1211,7 @@ void GPU_create_smoke_coba_field(FluidModifierData *mmd)
 
 void GPU_create_smoke(FluidModifierData *mmd, int highres)
 {
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *mds = mmd->domain;
 
     if (!mds->tex) {
@@ -1240,7 +1240,7 @@ void GPU_create_smoke(FluidModifierData *mmd, int highres)
 
 void GPU_create_smoke_velocity(FluidModifierData *mmd)
 {
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *mds = mmd->domain;
 
     const float *vel_x = manta_get_velocity_x(mds->fluid);
@@ -1265,7 +1265,7 @@ void GPU_create_smoke_velocity(FluidModifierData *mmd)
 /* TODO Unify with the other GPU_free_smoke. */
 void GPU_free_smoke_velocity(FluidModifierData *mmd)
 {
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN && mmd->domain) {
     if (mmd->domain->tex_velocity_x) {
       GPU_texture_free(mmd->domain->tex_velocity_x);
     }

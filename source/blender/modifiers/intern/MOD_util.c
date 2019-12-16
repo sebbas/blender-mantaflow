@@ -283,7 +283,7 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(SimpleDeform);
   INIT_TYPE(Multires);
   INIT_TYPE(Surface);
-  INIT_TYPE(Manta);
+  INIT_TYPE(Fluid);
   INIT_TYPE(ShapeKey);
   INIT_TYPE(Solidify);
   INIT_TYPE(Screw);

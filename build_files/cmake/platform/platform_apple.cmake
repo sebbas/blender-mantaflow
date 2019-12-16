@@ -411,6 +411,10 @@ if(NOT WITH_TBB OR NOT TBB_FOUND)
     message(STATUS "TBB not found, disabling OpenVDB")
     set(WITH_OPENVDB OFF)
   endif()
+  if(WITH_MOD_FLUID)
+    message(STATUS "TBB not found, disabling Fluid modifier")
+    set(WITH_MOD_FLUID OFF)
+  endif()
 endif()
 
 # CMake FindOpenMP doesn't know about AppleClang before 3.12, so provide custom flags.
@@ -431,13 +435,6 @@ if(WITH_OPENMP)
     execute_process(
         COMMAND mkdir -p ${CMAKE_BINARY_DIR}/bin/Resources/lib
         COMMAND cp -p ${LIBDIR}/openmp/lib/libomp.dylib ${CMAKE_BINARY_DIR}/bin/Resources/lib/libomp.dylib)
-  endif()
-endif()
-
-if(WITH_MOD_MANTA)
-  if(NOT WITH_OPENMP OR NOT WITH_MANTA_OMP)
-    set(TBB_INCLUDE_DIRS ${LIBDIR}/tbb/include)
-    set(TBB_LIBRARIES ${LIBDIR}/tbb/lib/libtbb.a)
   endif()
 endif()
 

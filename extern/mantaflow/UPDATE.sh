@@ -14,7 +14,6 @@ BLENDER_INSTALLATION=/Users/sebbas/Developer/Blender/fluid-mantaflow
 CLEAN_REPOSITORY=0
 
 # Choose which multithreading platform to use for Mantaflow preprocessing
-# When using OpenMP, make sure to compile with WITH_MANTA_OMP=1
 USE_OMP=0
 USE_TBB=1
 

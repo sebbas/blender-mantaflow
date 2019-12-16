@@ -21,8 +21,6 @@
  * \ingroup bke
  */
 
-/* Part of the code copied from elbeem fluid library, copyright by Nils Thuerey */
-
 #include "MEM_guardedalloc.h"
 
 #include <float.h>
@@ -47,7 +45,7 @@
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 
 #include "BKE_appdir.h"
 #include "BKE_animsys.h"
@@ -67,7 +65,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
-#include "BKE_manta.h"
+#include "BKE_fluid.h"
 #include "BKE_texture.h"
 
 #include "DEG_depsgraph.h"
@@ -76,9 +74,6 @@
 #include "RE_shader_ext.h"
 
 #include "GPU_glew.h"
-
-/* UNUSED so far, may be enabled later */
-/* #define USE_SMOKE_COLLISION_DM */
 
 //#define DEBUG_TIME
 
@@ -106,7 +101,7 @@ struct FluidModifierData;
 #define ADD_IF_LOWER_NEG(a, b) (max_ff((a) + (b), min_ff((a), (b))))
 #define ADD_IF_LOWER(a, b) (((b) > 0) ? ADD_IF_LOWER_POS((a), (b)) : ADD_IF_LOWER_NEG((a), (b)))
 
-void BKE_manta_reallocate_fluid(FluidDomainSettings *mds, int res[3], int free_old)
+void BKE_fluid_reallocate_fluid(FluidDomainSettings *mds, int res[3], int free_old)
 {
   if (free_old && mds->fluid) {
     manta_free(mds->fluid);
@@ -123,7 +118,7 @@ void BKE_manta_reallocate_fluid(FluidDomainSettings *mds, int res[3], int free_o
   mds->res_noise[2] = res[2] * mds->noise_scale;
 }
 
-void BKE_manta_reallocate_copy_fluid(FluidDomainSettings *mds,
+void BKE_fluid_reallocate_copy_fluid(FluidDomainSettings *mds,
                                      int o_res[3],
                                      int n_res[3],
                                      int o_min[3],
@@ -139,7 +134,7 @@ void BKE_manta_reallocate_copy_fluid(FluidDomainSettings *mds,
   sub_v3_v3v3_int(new_shift, n_shift, o_shift);
 
   /* allocate new fluid data */
-  BKE_manta_reallocate_fluid(mds, n_res, 0);
+  BKE_fluid_reallocate_fluid(mds, n_res, 0);
 
   int o_total_cells = o_res[0] * o_res[1] * o_res[2];
   int n_total_cells = n_res[0] * n_res[1] * n_res[2];
@@ -327,7 +322,7 @@ void BKE_manta_reallocate_copy_fluid(FluidDomainSettings *mds,
   manta_free(fluid_old);
 }
 
-void BKE_manta_cache_free(FluidDomainSettings *mds, Object *ob, int cache_map)
+void BKE_fluid_cache_free(FluidDomainSettings *mds, Object *ob, int cache_map)
 {
   char tmpDir[FILE_MAX];
   int flags = mds->cache_flag;
@@ -496,12 +491,12 @@ static void manta_set_domain_gravity(Scene *scene, FluidDomainSettings *mds)
   }
 }
 
-static bool mantaModifier_init(
+static bool fluidModifier_init(
     FluidModifierData *mmd, Depsgraph *depsgraph, Object *ob, Scene *scene, Mesh *me)
 {
   int scene_framenr = (int)DEG_get_ctime(depsgraph);
 
-  if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain && !mmd->domain->fluid) {
+  if ((mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain && !mmd->domain->fluid) {
     FluidDomainSettings *mds = mmd->domain;
     int res[3];
     /* Set domain dimensions from mesh. */
@@ -538,22 +533,22 @@ static bool mantaModifier_init(
     mds->time_total = (scene_framenr - 1) * mds->frame_length;
 
     /* Allocate fluid. */
-    BKE_manta_reallocate_fluid(mds, mds->res, 0);
+    BKE_fluid_reallocate_fluid(mds, mds->res, 0);
 
     mmd->time = scene_framenr;
 
     return true;
   }
-  else if (mmd->type & MOD_MANTA_TYPE_FLOW) {
+  else if (mmd->type & MOD_FLUID_TYPE_FLOW) {
     if (!mmd->flow) {
-      mantaModifier_createType(mmd);
+      fluidModifier_createType(mmd);
     }
     mmd->time = scene_framenr;
     return true;
   }
-  else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
+  else if (mmd->type & MOD_FLUID_TYPE_EFFEC) {
     if (!mmd->effector) {
-      mantaModifier_createType(mmd);
+      fluidModifier_createType(mmd);
     }
     mmd->time = scene_framenr;
     return true;
@@ -561,7 +556,7 @@ static bool mantaModifier_init(
   return false;
 }
 
-static void mantaModifier_freeDomain(FluidModifierData *mmd)
+static void fluidModifier_freeDomain(FluidModifierData *mmd)
 {
   if (mmd->domain) {
     if (mmd->domain->fluid) {
@@ -596,7 +591,7 @@ static void mantaModifier_freeDomain(FluidModifierData *mmd)
   }
 }
 
-static void mantaModifier_freeFlow(FluidModifierData *mmd)
+static void fluidModifier_freeFlow(FluidModifierData *mmd)
 {
   if (mmd->flow) {
     if (mmd->flow->mesh) {
@@ -615,7 +610,7 @@ static void mantaModifier_freeFlow(FluidModifierData *mmd)
   }
 }
 
-static void mantaModifier_freeEffector(FluidModifierData *mmd)
+static void fluidModifier_freeEffector(FluidModifierData *mmd)
 {
   if (mmd->effector) {
     if (mmd->effector->mesh) {
@@ -634,7 +629,7 @@ static void mantaModifier_freeEffector(FluidModifierData *mmd)
   }
 }
 
-static void mantaModifier_reset_ex(struct FluidModifierData *mmd, bool need_lock)
+static void fluidModifier_reset_ex(struct FluidModifierData *mmd, bool need_lock)
 {
   if (!mmd) {
     return;
@@ -674,31 +669,31 @@ static void mantaModifier_reset_ex(struct FluidModifierData *mmd, bool need_lock
   }
 }
 
-void mantaModifier_reset(struct FluidModifierData *mmd)
+void fluidModifier_reset(struct FluidModifierData *mmd)
 {
-  mantaModifier_reset_ex(mmd, true);
+  fluidModifier_reset_ex(mmd, true);
 }
 
-void mantaModifier_free(FluidModifierData *mmd)
+void fluidModifier_free(FluidModifierData *mmd)
 {
   if (!mmd) {
     return;
   }
 
-  mantaModifier_freeDomain(mmd);
-  mantaModifier_freeFlow(mmd);
-  mantaModifier_freeEffector(mmd);
+  fluidModifier_freeDomain(mmd);
+  fluidModifier_freeFlow(mmd);
+  fluidModifier_freeEffector(mmd);
 }
 
-void mantaModifier_createType(struct FluidModifierData *mmd)
+void fluidModifier_createType(struct FluidModifierData *mmd)
 {
   if (!mmd) {
     return;
   }
 
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
     if (mmd->domain) {
-      mantaModifier_freeDomain(mmd);
+      fluidModifier_freeDomain(mmd);
     }
 
     /* domain object data */
@@ -869,9 +864,9 @@ void mantaModifier_createType(struct FluidModifierData *mmd)
     mmd->domain->clipping = 1e-3f;
     mmd->domain->data_depth = 0;
   }
-  else if (mmd->type & MOD_MANTA_TYPE_FLOW) {
+  else if (mmd->type & MOD_FLUID_TYPE_FLOW) {
     if (mmd->flow) {
-      mantaModifier_freeFlow(mmd);
+      fluidModifier_freeFlow(mmd);
     }
 
     /* flow object data */
@@ -912,9 +907,9 @@ void mantaModifier_createType(struct FluidModifierData *mmd)
     mmd->flow->type = FLUID_FLOW_TYPE_SMOKE;
     mmd->flow->flags = FLUID_FLOW_ABSOLUTE | FLUID_FLOW_USE_PART_SIZE | FLUID_FLOW_USE_INFLOW;
   }
-  else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
+  else if (mmd->type & MOD_FLUID_TYPE_EFFEC) {
     if (mmd->effector) {
-      mantaModifier_freeEffector(mmd);
+      fluidModifier_freeEffector(mmd);
     }
 
     /* effector object data */
@@ -933,14 +928,14 @@ void mantaModifier_createType(struct FluidModifierData *mmd)
   }
 }
 
-void mantaModifier_copy(const struct FluidModifierData *mmd,
+void fluidModifier_copy(const struct FluidModifierData *mmd,
                         struct FluidModifierData *tmmd,
                         const int flag)
 {
   tmmd->type = mmd->type;
   tmmd->time = mmd->time;
 
-  mantaModifier_createType(tmmd);
+  fluidModifier_createType(tmmd);
 
   if (tmmd->domain) {
     FluidDomainSettings *tmds = tmmd->domain;
@@ -1461,9 +1456,9 @@ static void update_obstacleflags(FluidDomainSettings *mds, Object **collobjs, in
   for (collIndex = 0; collIndex < numcollobj; collIndex++) {
     Object *collob = collobjs[collIndex];
     FluidModifierData *mmd2 = (FluidModifierData *)modifiers_findByType(collob,
-                                                                        eModifierType_Manta);
+                                                                        eModifierType_Fluid);
 
-    if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effector) {
+    if ((mmd2->type & MOD_FLUID_TYPE_EFFEC) && mmd2->effector) {
       FluidEffectorSettings *mes = mmd2->effector;
       if (!mes) {
         break;
@@ -1499,7 +1494,7 @@ static void update_obstacles(Depsgraph *depsgraph,
   unsigned int numcollobj = 0, collIndex = 0;
 
   collobjs = BKE_collision_objects_create(
-      depsgraph, ob, mds->effector_group, &numcollobj, eModifierType_Manta);
+      depsgraph, ob, mds->effector_group, &numcollobj, eModifierType_Fluid);
 
   /* Update all flow related flags and ensure that corresponding grids get initialized. */
   update_obstacleflags(mds, collobjs, numcollobj);
@@ -1559,10 +1554,10 @@ static void update_obstacles(Depsgraph *depsgraph,
   for (collIndex = 0; collIndex < numcollobj; collIndex++) {
     Object *collob = collobjs[collIndex];
     FluidModifierData *mmd2 = (FluidModifierData *)modifiers_findByType(collob,
-                                                                        eModifierType_Manta);
+                                                                        eModifierType_Fluid);
 
     /* TODO (sebbas): check if modifier is active? */
-    if ((mmd2->type & MOD_MANTA_TYPE_EFFEC) && mmd2->effector) {
+    if ((mmd2->type & MOD_FLUID_TYPE_EFFEC) && mmd2->effector) {
       FluidEffectorSettings *mes = mmd2->effector;
 
       /* Length of one frame. If using adaptive stepping, length is smaller than actual frame
@@ -1588,7 +1583,7 @@ static void update_obstacles(Depsgraph *depsgraph,
       /* TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph) as
        * subframes dont work with the latter yet. */
       BKE_object_modifier_update_subframe(
-          depsgraph, scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
+          depsgraph, scene, collob, true, 5, BKE_scene_frame_get(scene), eModifierType_Fluid);
 
       if (mes && (mes->type == FLUID_EFFECTOR_TYPE_COLLISION)) {
         obstacles_from_mesh(collob, mds, mes, phiObsIn, velx, vely, velz, num_obstacles, dt);
@@ -2947,7 +2942,7 @@ static void adaptiveDomainAdjust(
   }
 
   if (res_changed || shift_changed) {
-    BKE_manta_reallocate_copy_fluid(
+    BKE_fluid_reallocate_copy_fluid(
         mds, mds->res, res, mds->res_min, min, mds->res_max, tmpShift, total_shift);
 
     /* set new domain dimensions */
@@ -3130,7 +3125,7 @@ static void update_flowsflags(FluidDomainSettings *mds, Object **flowobjs, int n
   for (flowIndex = 0; flowIndex < numflowobj; flowIndex++) {
     Object *collob = flowobjs[flowIndex];
     FluidModifierData *mmd2 = (FluidModifierData *)modifiers_findByType(collob,
-                                                                        eModifierType_Manta);
+                                                                        eModifierType_Fluid);
 
     // Sanity check
     if (!mmd2) {
@@ -3143,7 +3138,7 @@ static void update_flowsflags(FluidDomainSettings *mds, Object **flowobjs, int n
                       FLUID_DOMAIN_ACTIVE_COLOR_SET | FLUID_DOMAIN_ACTIVE_COLORS);
     active_fields &= ~prev_flags;
 
-    if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
+    if ((mmd2->type & MOD_FLUID_TYPE_FLOW) && mmd2->flow) {
       FluidFlowSettings *mfs = mmd2->flow;
       if (!mfs) {
         break;
@@ -3237,7 +3232,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
   bool is_first_frame = (frame == mds->cache_frame_start);
 
   flowobjs = BKE_collision_objects_create(
-      depsgraph, ob, mds->fluid_group, &numflowobj, eModifierType_Manta);
+      depsgraph, ob, mds->fluid_group, &numflowobj, eModifierType_Fluid);
 
   /* Update all flow related flags and ensure that corresponding grids get initialized */
   update_flowsflags(mds, flowobjs, numflowobj);
@@ -3249,10 +3244,10 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
   for (flowIndex = 0; flowIndex < numflowobj; flowIndex++) {
     Object *flowobj = flowobjs[flowIndex];
     FluidModifierData *mmd2 = (FluidModifierData *)modifiers_findByType(flowobj,
-                                                                        eModifierType_Manta);
+                                                                        eModifierType_Fluid);
 
     /* Check for initialized smoke object */
-    if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
+    if ((mmd2->type & MOD_FLUID_TYPE_FLOW) && mmd2->flow) {
       FluidFlowSettings *mfs = mmd2->flow;
       int subframes = mfs->subframes;
       EmissionMap *em = &emaps[flowIndex];
@@ -3317,7 +3312,7 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
          * TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph)
          * as subframes dont work with the latter yet */
         BKE_object_modifier_update_subframe(
-            depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Manta);
+            depsgraph, scene, flowobj, true, 5, BKE_scene_frame_get(scene), eModifierType_Fluid);
 
         /* Emission from particles */
         if (mfs->source == FLUID_FLOW_SOURCE_PARTICLES) {
@@ -3427,10 +3422,10 @@ static void update_flowsfluids(struct Depsgraph *depsgraph,
   for (flowIndex = 0; flowIndex < numflowobj; flowIndex++) {
     Object *flowobj = flowobjs[flowIndex];
     FluidModifierData *mmd2 = (FluidModifierData *)modifiers_findByType(flowobj,
-                                                                        eModifierType_Manta);
+                                                                        eModifierType_Fluid);
 
     // check for initialized flow object
-    if ((mmd2->type & MOD_MANTA_TYPE_FLOW) && mmd2->flow) {
+    if ((mmd2->type & MOD_FLUID_TYPE_FLOW) && mmd2->flow) {
       FluidFlowSettings *mfs = mmd2->flow;
       EmissionMap *em = &emaps[flowIndex];
       float *velocity_map = em->velocity;
@@ -4035,7 +4030,7 @@ static void manta_guiding(
   BLI_mutex_unlock(&object_update_lock);
 }
 
-static void mantaModifier_processFlow(FluidModifierData *mmd,
+static void fluidModifier_processFlow(FluidModifierData *mmd,
                                       Depsgraph *depsgraph,
                                       Scene *scene,
                                       Object *ob,
@@ -4043,7 +4038,7 @@ static void mantaModifier_processFlow(FluidModifierData *mmd,
                                       const int scene_framenr)
 {
   if (scene_framenr >= mmd->time) {
-    mantaModifier_init(mmd, depsgraph, ob, scene, me);
+    fluidModifier_init(mmd, depsgraph, ob, scene, me);
   }
 
   if (mmd->flow) {
@@ -4058,11 +4053,11 @@ static void mantaModifier_processFlow(FluidModifierData *mmd,
   }
   else if (scene_framenr < mmd->time) {
     mmd->time = scene_framenr;
-    mantaModifier_reset_ex(mmd, false);
+    fluidModifier_reset_ex(mmd, false);
   }
 }
 
-static void mantaModifier_processEffector(FluidModifierData *mmd,
+static void fluidModifier_processEffector(FluidModifierData *mmd,
                                           Depsgraph *depsgraph,
                                           Scene *scene,
                                           Object *ob,
@@ -4070,7 +4065,7 @@ static void mantaModifier_processEffector(FluidModifierData *mmd,
                                           const int scene_framenr)
 {
   if (scene_framenr >= mmd->time) {
-    mantaModifier_init(mmd, depsgraph, ob, scene, me);
+    fluidModifier_init(mmd, depsgraph, ob, scene, me);
   }
 
   if (mmd->effector) {
@@ -4085,11 +4080,11 @@ static void mantaModifier_processEffector(FluidModifierData *mmd,
   }
   else if (scene_framenr < mmd->time) {
     mmd->time = scene_framenr;
-    mantaModifier_reset_ex(mmd, false);
+    fluidModifier_reset_ex(mmd, false);
   }
 }
 
-static void mantaModifier_processDomain(FluidModifierData *mmd,
+static void fluidModifier_processDomain(FluidModifierData *mmd,
                                         Depsgraph *depsgraph,
                                         Scene *scene,
                                         Object *ob,
@@ -4108,10 +4103,10 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
   /* Reset fluid if no fluid present (obviously)
    * or if timeline gets reset to startframe */
   if (!mds->fluid || is_startframe) {
-    mantaModifier_reset_ex(mmd, false);
+    fluidModifier_reset_ex(mmd, false);
   }
 
-  mantaModifier_init(mmd, depsgraph, ob, scene, me);
+  fluidModifier_init(mmd, depsgraph, ob, scene, me);
 
   /* ensure that time parameters are initialized correctly before every step */
   float fps = scene->r.frs_sec / scene->r.frs_sec_base;
@@ -4123,21 +4118,21 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
   /* Guiding parent res pointer needs initialization */
   guiding_parent = mds->guiding_parent;
   if (guiding_parent) {
-    mmd_parent = (FluidModifierData *)modifiers_findByType(guiding_parent, eModifierType_Manta);
+    mmd_parent = (FluidModifierData *)modifiers_findByType(guiding_parent, eModifierType_Fluid);
     if (mmd_parent->domain) {
       copy_v3_v3_int(mds->guide_res, mmd_parent->domain->res);
     }
   }
 
   objs = BKE_collision_objects_create(
-      depsgraph, ob, mds->fluid_group, &numobj, eModifierType_Manta);
+      depsgraph, ob, mds->fluid_group, &numobj, eModifierType_Fluid);
   update_flowsflags(mds, objs, numobj);
   if (objs) {
     MEM_freeN(objs);
   }
 
   objs = BKE_collision_objects_create(
-      depsgraph, ob, mds->effector_group, &numobj, eModifierType_Manta);
+      depsgraph, ob, mds->effector_group, &numobj, eModifierType_Fluid);
   update_obstacleflags(mds, objs, numobj);
   if (objs) {
     MEM_freeN(objs);
@@ -4258,7 +4253,7 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
   if (bake_outdated && mode_replay) {
     read_cache = false;
     bake_cache = true;
-    BKE_manta_cache_free(mds, ob, mds->cache_flag);
+    BKE_fluid_cache_free(mds, ob, mds->cache_flag);
   }
 
   /* Try to read from cache and keep track of read success. */
@@ -4287,7 +4282,7 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
       if ((!baking_noise || (baking_noise && resume_noise)) &&
           manta_read_config(mds->fluid, mmd, noise_frame) &&
           manta_needs_realloc(mds->fluid, mmd)) {
-        BKE_manta_reallocate_fluid(mds, mds->res, 1);
+        BKE_fluid_reallocate_fluid(mds, mds->res, 1);
       }
       has_noise = manta_read_noise(mds->fluid, mmd, noise_frame);
 
@@ -4301,7 +4296,7 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
         copy_v3_v3_int(o_shift, mds->shift);
         if (manta_read_config(mds->fluid, mmd, data_frame) &&
             manta_needs_realloc(mds->fluid, mmd)) {
-          BKE_manta_reallocate_copy_fluid(
+          BKE_fluid_reallocate_copy_fluid(
               mds, o_res, mds->res, o_min, mds->res_min, o_max, o_shift, mds->shift);
         }
       }
@@ -4311,7 +4306,7 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
     else {
       /* Read config and realloc fluid object if needed. */
       if (manta_read_config(mds->fluid, mmd, data_frame) && manta_needs_realloc(mds->fluid, mmd)) {
-        BKE_manta_reallocate_fluid(mds, mds->res, 1);
+        BKE_fluid_reallocate_fluid(mds, mds->res, 1);
       }
       /* Read data cache */
       has_data = manta_read_data(mds->fluid, mmd, data_frame);
@@ -4378,38 +4373,38 @@ static void mantaModifier_processDomain(FluidModifierData *mmd,
   mmd->time = scene_framenr;
 }
 
-static void mantaModifier_process(
+static void fluidModifier_process(
     FluidModifierData *mmd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *me)
 {
   const int scene_framenr = (int)DEG_get_ctime(depsgraph);
 
-  if ((mmd->type & MOD_MANTA_TYPE_FLOW)) {
-    mantaModifier_processFlow(mmd, depsgraph, scene, ob, me, scene_framenr);
+  if ((mmd->type & MOD_FLUID_TYPE_FLOW)) {
+    fluidModifier_processFlow(mmd, depsgraph, scene, ob, me, scene_framenr);
   }
-  else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
-    mantaModifier_processEffector(mmd, depsgraph, scene, ob, me, scene_framenr);
+  else if (mmd->type & MOD_FLUID_TYPE_EFFEC) {
+    fluidModifier_processEffector(mmd, depsgraph, scene, ob, me, scene_framenr);
   }
-  else if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
-    mantaModifier_processDomain(mmd, depsgraph, scene, ob, me, scene_framenr);
+  else if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
+    fluidModifier_processDomain(mmd, depsgraph, scene, ob, me, scene_framenr);
   }
 }
 
-struct Mesh *mantaModifier_do(
+struct Mesh *fluidModifier_do(
     FluidModifierData *mmd, Depsgraph *depsgraph, Scene *scene, Object *ob, Mesh *me)
 {
   /* Lock so preview render does not read smoke data while it gets modified. */
-  if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+  if ((mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
     BLI_rw_mutex_lock(mmd->domain->fluid_mutex, THREAD_LOCK_WRITE);
   }
 
-  mantaModifier_process(mmd, depsgraph, scene, ob, me);
+  fluidModifier_process(mmd, depsgraph, scene, ob, me);
 
-  if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+  if ((mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
     BLI_rw_mutex_unlock(mmd->domain->fluid_mutex);
   }
 
   Mesh *result = NULL;
-  if (mmd->type & MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
+  if (mmd->type & MOD_FLUID_TYPE_DOMAIN && mmd->domain) {
     /* Return generated geometry depending on domain type. */
     if (mmd->domain->type == FLUID_DOMAIN_TYPE_LIQUID) {
       result = createLiquidGeometry(mmd->domain, me, ob);
@@ -4640,12 +4635,12 @@ static void manta_smoke_calc_transparency(FluidDomainSettings *mds, ViewLayer *v
 
 /* get smoke velocity and density at given coordinates
  * returns fluid density or -1.0f if outside domain. */
-float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velocity[3])
+float BKE_fluid_get_velocity_at(struct Object *ob, float position[3], float velocity[3])
 {
-  FluidModifierData *mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+  FluidModifierData *mmd = (FluidModifierData *)modifiers_findByType(ob, eModifierType_Fluid);
   zero_v3(velocity);
 
-  if (mmd && (mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain && mmd->domain->fluid) {
+  if (mmd && (mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain && mmd->domain->fluid) {
     FluidDomainSettings *mds = mmd->domain;
     float time_mult = 25.f * DT_DEFAULT;
     float vel_mag;
@@ -4705,7 +4700,7 @@ float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velo
   return -1.0f;
 }
 
-int BKE_manta_get_data_flags(FluidDomainSettings *mds)
+int BKE_fluid_get_data_flags(FluidDomainSettings *mds)
 {
   int flags = 0;
 
@@ -4724,7 +4719,7 @@ int BKE_manta_get_data_flags(FluidDomainSettings *mds)
   return flags;
 }
 
-void BKE_manta_create_particle_system(struct Main *bmain,
+void BKE_fluid_create_particle_system(struct Main *bmain,
                                       struct Object *ob,
                                       const char *pset_name,
                                       const char *parts_name,
@@ -4741,7 +4736,7 @@ void BKE_manta_create_particle_system(struct Main *bmain,
 
   part->type = psys_type;
   part->totpart = 0;
-  part->draw_size = 0.05f;  // make fluid particles more subtle in viewport
+  part->draw_size = 0.01f;  // make fluid particles more subtle in viewport
   part->draw_col = PART_DRAW_COL_VEL;
   psys->part = part;
   psys->pointcache = BKE_ptcache_add(&psys->ptcaches);
@@ -4756,7 +4751,7 @@ void BKE_manta_create_particle_system(struct Main *bmain,
   modifier_unique_name(&ob->modifiers, (ModifierData *)pmmd);
 }
 
-void BKE_manta_delete_particle_system(struct Object *ob, const int particle_type)
+void BKE_fluid_delete_particle_system(struct Object *ob, const int particle_type)
 {
   ParticleSystemModifierData *pmmd;
   ParticleSystem *psys, *next_psys;

@@ -1821,11 +1821,11 @@ static int modifier_can_delete(ModifierData *md)
   if (md->type == eModifierType_ParticleSystem) {
     short particle_type = ((ParticleSystemModifierData *)md)->psys->part->type;
     if (particle_type == PART_FLUID ||
-        particle_type == PART_MANTA_FLIP ||
-        particle_type == PART_MANTA_FOAM ||
-        particle_type == PART_MANTA_SPRAY ||
-        particle_type == PART_MANTA_BUBBLE ||
-        particle_type == PART_MANTA_BUBBLE) {
+        particle_type == PART_FLUID_FLIP ||
+        particle_type == PART_FLUID_FOAM ||
+        particle_type == PART_FLUID_SPRAY ||
+        particle_type == PART_FLUID_BUBBLE ||
+        particle_type == PART_FLUID_BUBBLE) {
       return 0;
     }
   }
@@ -1841,7 +1841,7 @@ static int modifier_is_simulation(ModifierData *md)
            eModifierType_Cloth,
            eModifierType_Collision,
            eModifierType_Fluidsim,
-           eModifierType_Manta,
+           eModifierType_Fluid,
            eModifierType_Softbody,
            eModifierType_Surface,
            eModifierType_DynamicPaint)) {
@@ -2074,7 +2074,7 @@ static uiLayout *draw_modifier(uiLayout *layout,
                 eModifierType_Softbody,
                 eModifierType_ParticleSystem,
                 eModifierType_Cloth,
-                eModifierType_Manta)) {
+                eModifierType_Fluid)) {
         uiItemO(row,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy"),
                 ICON_NONE,

@@ -269,7 +269,7 @@ static PyObject *make_builtopts_info(void)
   SetObjIncref(Py_False);
 #endif
 
-#ifdef WITH_MANTA
+#ifdef WITH_FLUID
   SetObjIncref(Py_True);
 #else
   SetObjIncref(Py_False);

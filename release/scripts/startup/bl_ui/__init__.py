@@ -56,7 +56,7 @@ _modules = [
     "properties_physics_field",
     "properties_physics_rigidbody",
     "properties_physics_rigidbody_constraint",
-    "properties_physics_manta",
+    "properties_physics_fluid",
     "properties_physics_softbody",
     "properties_render",
     "properties_output",

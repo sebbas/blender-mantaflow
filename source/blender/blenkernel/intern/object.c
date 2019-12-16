@@ -39,7 +39,7 @@
 #include "DNA_key_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lattice_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_mesh_types.h"
@@ -1126,10 +1126,10 @@ void BKE_object_copy_particlesystems(Object *ob_dst, const Object *ob_src, const
           }
         }
       }
-      else if (md->type == eModifierType_Manta) {
+      else if (md->type == eModifierType_Fluid) {
         FluidModifierData *mmd = (FluidModifierData *)md;
 
-        if (mmd->type == MOD_MANTA_TYPE_FLOW) {
+        if (mmd->type == MOD_FLUID_TYPE_FLOW) {
           if (mmd->flow) {
             if (mmd->flow->psys == psys) {
               mmd->flow->psys = npsys;
@@ -4376,10 +4376,10 @@ bool BKE_object_modifier_update_subframe(Depsgraph *depsgraph,
       return true;
     }
   }
-  else if (type == eModifierType_Manta) {
+  else if (type == eModifierType_Fluid) {
     FluidModifierData *mmd = (FluidModifierData *)md;
 
-    if (mmd && (mmd->type & MOD_MANTA_TYPE_DOMAIN) != 0) {
+    if (mmd && (mmd->type & MOD_FLUID_TYPE_DOMAIN) != 0) {
       return true;
     }
   }

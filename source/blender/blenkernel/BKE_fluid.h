@@ -17,8 +17,8 @@
  * All rights reserved.
  */
 
-#ifndef __BKE_MANTA_H__
-#define __BKE_MANTA_H__
+#ifndef __BKE_FLUID_H__
+#define __BKE_FLUID_H__
 
 /** \file
  * \ingroup bke
@@ -31,21 +31,21 @@ struct FluidModifierData;
 typedef float (*bresenham_callback)(
     float *result, float *input, int res[3], int *pixel, float *tRay, float correct);
 
-struct Mesh *mantaModifier_do(struct FluidModifierData *mmd,
+struct Mesh *fluidModifier_do(struct FluidModifierData *mmd,
                               struct Depsgraph *depsgraph,
                               struct Scene *scene,
                               struct Object *ob,
                               struct Mesh *me);
 
-void mantaModifier_free(struct FluidModifierData *mmd);
-void mantaModifier_reset(struct FluidModifierData *mmd);
-void mantaModifier_createType(struct FluidModifierData *mmd);
-void mantaModifier_copy(const struct FluidModifierData *mmd,
+void fluidModifier_free(struct FluidModifierData *mmd);
+void fluidModifier_reset(struct FluidModifierData *mmd);
+void fluidModifier_createType(struct FluidModifierData *mmd);
+void fluidModifier_copy(const struct FluidModifierData *mmd,
                         struct FluidModifierData *tmmd,
                         const int flag);
 
-void BKE_manta_reallocate_fluid(struct FluidDomainSettings *mds, int res[3], int free_old);
-void BKE_manta_reallocate_copy_fluid(struct FluidDomainSettings *mds,
+void BKE_fluid_reallocate_fluid(struct FluidDomainSettings *mds, int res[3], int free_old);
+void BKE_fluid_reallocate_copy_fluid(struct FluidDomainSettings *mds,
                                      int o_res[3],
                                      int n_res[3],
                                      int o_min[3],
@@ -53,17 +53,17 @@ void BKE_manta_reallocate_copy_fluid(struct FluidDomainSettings *mds,
                                      int o_max[3],
                                      int o_shift[3],
                                      int n_shift[3]);
-void BKE_manta_cache_free(struct FluidDomainSettings *mds, struct Object *ob, int cache_map);
+void BKE_fluid_cache_free(struct FluidDomainSettings *mds, struct Object *ob, int cache_map);
 
-float BKE_manta_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
-int BKE_manta_get_data_flags(struct FluidDomainSettings *mds);
+float BKE_fluid_get_velocity_at(struct Object *ob, float position[3], float velocity[3]);
+int BKE_fluid_get_data_flags(struct FluidDomainSettings *mds);
 
-void BKE_manta_create_particle_system(struct Main *bmain,
+void BKE_fluid_create_particle_system(struct Main *bmain,
                                       struct Object *ob,
                                       const char *pset_name,
                                       const char *parts_name,
                                       const char *psys_name,
                                       const int psys_type);
-void BKE_manta_delete_particle_system(struct Object *ob, const int particle_type);
+void BKE_fluid_delete_particle_system(struct Object *ob, const int particle_type);
 
-#endif /* __BKE_MANTA_H__ */
+#endif /* __BKE_FLUID_H__ */

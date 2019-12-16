@@ -99,7 +99,7 @@ class PHYSICS_PT_add(PhysicButtonsPanel, Panel):
             physics_add(col, context.soft_body, "Soft Body", 'SOFT_BODY', 'MOD_SOFT', True)
 
         if obj.type == 'MESH':
-            physics_add(col, context.fluid, "Fluid", 'FLUID', 'MOD_MANTA', True)
+            physics_add(col, context.fluid, "Fluid", 'FLUID', 'MOD_FLUIDSIM', True)
 
             physics_add_special(
                 col, obj.rigid_body, "Rigid Body",

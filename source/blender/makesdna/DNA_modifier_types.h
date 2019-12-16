@@ -87,7 +87,7 @@ typedef enum ModifierType {
   eModifierType_SurfaceDeform = 53,
   eModifierType_WeightedNormal = 54,
   eModifierType_Weld = 55,
-  eModifierType_Manta = 56,
+  eModifierType_Fluid = 56,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -465,11 +465,11 @@ typedef struct FluidModifierData {
   int type;
 } FluidModifierData;
 
-/* Manta modifier flags */
+/* Fluid modifier flags */
 enum {
-  MOD_MANTA_TYPE_DOMAIN = (1 << 0),
-  MOD_MANTA_TYPE_FLOW = (1 << 1),
-  MOD_MANTA_TYPE_EFFEC = (1 << 2),
+  MOD_FLUID_TYPE_DOMAIN = (1 << 0),
+  MOD_FLUID_TYPE_FLOW = (1 << 1),
+  MOD_FLUID_TYPE_EFFEC = (1 << 2),
 };
 
 typedef struct DisplaceModifierData {

@@ -83,7 +83,7 @@
 #include "DNA_sdna_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_space_types.h"
@@ -5373,9 +5373,9 @@ static void lib_link_object(FileData *fd, Main *main)
 
       {
         FluidModifierData *mmd = (FluidModifierData *)modifiers_findByType(ob,
-                                                                           eModifierType_Manta);
+                                                                           eModifierType_Fluid);
 
-        if (mmd && (mmd->type == MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+        if (mmd && (mmd->type == MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
           /* Flag for refreshing the simulation after loading */
           mmd->domain->flags |= FLUID_DOMAIN_FILE_LOAD;
         }
@@ -5555,11 +5555,11 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb, const Object *ob)
 
       clmd->solver_result = NULL;
     }
-    else if (md->type == eModifierType_Manta) {
+    else if (md->type == eModifierType_Fluid) {
 
       FluidModifierData *mmd = (FluidModifierData *)md;
 
-      if (mmd->type == MOD_MANTA_TYPE_DOMAIN) {
+      if (mmd->type == MOD_FLUID_TYPE_DOMAIN) {
         mmd->flow = NULL;
         mmd->effector = NULL;
         mmd->domain = newdataadr(fd, mmd->domain);
@@ -5607,7 +5607,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb, const Object *ob)
           mmd->domain->point_cache[1] = NULL;
         }
       }
-      else if (mmd->type == MOD_MANTA_TYPE_FLOW) {
+      else if (mmd->type == MOD_FLUID_TYPE_FLOW) {
         mmd->domain = NULL;
         mmd->effector = NULL;
         mmd->flow = newdataadr(fd, mmd->flow);
@@ -5617,7 +5617,7 @@ static void direct_link_modifiers(FileData *fd, ListBase *lb, const Object *ob)
         mmd->flow->numverts = 0;
         mmd->flow->psys = newdataadr(fd, mmd->flow->psys);
       }
-      else if (mmd->type == MOD_MANTA_TYPE_EFFEC) {
+      else if (mmd->type == MOD_FLUID_TYPE_EFFEC) {
         mmd->flow = NULL;
         mmd->domain = NULL;
         mmd->effector = newdataadr(fd, mmd->effector);

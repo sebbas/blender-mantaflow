@@ -925,18 +925,18 @@ static void create_subd_mesh(Scene *scene,
 
 /* Sync */
 
-static void sync_mesh_manta_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
+static void sync_mesh_fluid_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
 {
   if (scene->need_motion() == Scene::MOTION_NONE)
     return;
 
-  BL::FluidDomainSettings b_manta_domain = object_fluid_domain_find(b_ob);
+  BL::FluidDomainSettings b_fluid_domain = object_fluid_domain_find(b_ob);
 
-  if (!b_manta_domain)
+  if (!b_fluid_domain)
     return;
 
   /* If the mesh has modifiers following the fluid domain we can't export motion. */
-  if (b_manta_domain.mesh_vertices.length() != mesh->verts.size())
+  if (b_fluid_domain.mesh_vertices.length() != mesh->verts.size())
     return;
 
   /* Find or add attribute */
@@ -956,7 +956,7 @@ static void sync_mesh_manta_motion(BL::Object &b_ob, Scene *scene, Mesh *mesh)
     BL::FluidDomainSettings::mesh_vertices_iterator svi;
     int i = 0;
 
-    for (b_manta_domain.mesh_vertices.begin(svi); svi != b_manta_domain.mesh_vertices.end();
+    for (b_fluid_domain.mesh_vertices.begin(svi); svi != b_fluid_domain.mesh_vertices.end();
          ++svi, ++i) {
       mP[i] = P[i] + get_float3(svi->velocity()) * relative_time;
     }
@@ -1099,7 +1099,7 @@ Mesh *BlenderSync::sync_mesh(BL::Depsgraph &b_depsgraph,
   mesh->geometry_flags = requested_geometry_flags;
 
   /* mesh fluid motion mantaflow */
-  sync_mesh_manta_motion(b_ob, scene, mesh);
+  sync_mesh_fluid_motion(b_ob, scene, mesh);
 
   /* tag update */
   bool rebuild = (oldtriangles != mesh->triangles) || (oldsubd_faces != mesh->subd_faces) ||
@@ -1148,8 +1148,8 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph &b_depsgraph,
   BL::Mesh b_mesh(PointerRNA_NULL);
 
   /* manta motion is exported immediate with mesh, skip here */
-  BL::FluidDomainSettings b_manta_domain = object_fluid_domain_find(b_ob);
-  if (b_manta_domain)
+  BL::FluidDomainSettings b_fluid_domain = object_fluid_domain_find(b_ob);
+  if (b_fluid_domain)
     return;
 
   if (ccl::BKE_object_is_deform_modified(b_ob, b_scene, preview)) {

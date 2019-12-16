@@ -39,7 +39,7 @@
 #include "DNA_view3d_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sdna_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_space_types.h"
 #include "DNA_world_types.h"
 #include "DNA_light_types.h"
@@ -1292,9 +1292,9 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       ModifierData *md;
       for (md = ob->modifiers.first; md; md = md->next) {
-        if (md->type == eModifierType_Manta) {
+        if (md->type == eModifierType_Fluid) {
           FluidModifierData *mmd = (FluidModifierData *)md;
-          if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+          if ((mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
             int maxres = max_iii(mmd->domain->res[0], mmd->domain->res[1], mmd->domain->res[2]);
             mmd->domain->scale = mmd->domain->dx * maxres;
             mmd->domain->dx = 1.0f / mmd->domain->scale;
@@ -1610,9 +1610,9 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (ob = bmain->objects.first; ob; ob = ob->id.next) {
         ModifierData *md;
         for (md = ob->modifiers.first; md; md = md->next) {
-          if (md->type == eModifierType_Manta) {
+          if (md->type == eModifierType_Fluid) {
             FluidModifierData *mmd = (FluidModifierData *)md;
-            if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+            if ((mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
               /* keep branch saves if possible */
               if (!mmd->domain->flame_max_temp) {
                 mmd->domain->burning_rate = 0.75f;
@@ -1627,7 +1627,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
                 mmd->domain->flame_smoke_color[2] = 0.7f;
               }
             }
-            else if ((mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow) {
+            else if ((mmd->type & MOD_FLUID_TYPE_FLOW) && mmd->flow) {
               if (!mmd->flow->texture_size) {
                 mmd->flow->fuel_amount = 1.0;
                 mmd->flow->surface_distance = 1.5;
@@ -2140,9 +2140,9 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       ModifierData *md;
       for (md = ob->modifiers.first; md; md = md->next) {
-        if (md->type == eModifierType_Manta) {
+        if (md->type == eModifierType_Fluid) {
           FluidModifierData *mmd = (FluidModifierData *)md;
-          if ((mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+          if ((mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
             if (mmd->domain->flags & FLUID_DOMAIN_USE_HIGH_SMOOTH) {
               mmd->domain->highres_sampling = SM_HRES_LINEAR;
             }
@@ -2207,9 +2207,9 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (ob = bmain->objects.first; ob; ob = ob->id.next) {
       ModifierData *md;
       for (md = ob->modifiers.first; md; md = md->next) {
-        if (md->type == eModifierType_Manta) {
+        if (md->type == eModifierType_Fluid) {
           FluidModifierData *mmd = (FluidModifierData *)md;
-          if ((mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow) {
+          if ((mmd->type & MOD_FLUID_TYPE_FLOW) && mmd->flow) {
             if (!mmd->flow->particle_size) {
               mmd->flow->particle_size = 1.0f;
             }

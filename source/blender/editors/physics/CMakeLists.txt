@@ -40,7 +40,7 @@ set(SRC
   particle_edit.c
   particle_edit_undo.c
   particle_object.c
-  physics_manta.c
+  physics_fluid.c
   physics_ops.c
   physics_pointcache.c
   rigidbody_constraint.c
@@ -56,7 +56,7 @@ set(LIB
   bf_blenlib
 )
 
-if(WITH_MOD_MANTA)
+if(WITH_MOD_FLUID)
   list(APPEND LIB
     bf_intern_mantaflow
   )

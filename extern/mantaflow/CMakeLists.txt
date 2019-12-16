@@ -25,7 +25,7 @@
 
 set(MANTAVERSION "0.12")
 
-add_definitions(-DWITH_MANTA=1)
+add_definitions(-DWITH_FLUID=1)
 
 set(MANTA_DEP
   dependencies

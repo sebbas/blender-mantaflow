@@ -950,12 +950,12 @@ static float rna_PartSetting_linelenhead_get(struct PointerRNA *ptr)
   return settings->draw_line[1];
 }
 
-static int rna_PartSettings_is_manta_get(PointerRNA *ptr)
+static int rna_PartSettings_is_fluid_get(PointerRNA *ptr)
 {
   ParticleSettings *part = (ParticleSettings *)ptr->data;
 
-  return (part->type & (PART_MANTA_FLIP | PART_MANTA_SPRAY | PART_MANTA_BUBBLE | PART_MANTA_FOAM |
-                        PART_MANTA_TRACER));
+  return (part->type & (PART_FLUID_FLIP | PART_FLUID_SPRAY | PART_FLUID_BUBBLE | PART_FLUID_FOAM |
+                        PART_FLUID_TRACER));
 }
 
 static void rna_ParticleSettings_use_clump_curve_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -2350,7 +2350,7 @@ static void rna_def_particle_settings(BlenderRNA *brna)
    * as it's not shown in the menu. */
   prop = RNA_def_property(srna, "is_fluid", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_funcs(prop, "rna_PartSettings_is_manta_get", NULL);
+  RNA_def_property_boolean_funcs(prop, "rna_PartSettings_is_fluid_get", NULL);
   RNA_def_property_ui_text(prop, "Fluid", "Particles were created by a fluid simulation");
 
   /* flag */

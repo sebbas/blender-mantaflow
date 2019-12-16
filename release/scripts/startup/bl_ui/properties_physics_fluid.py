@@ -27,9 +27,9 @@ from .properties_physics_common import (
     effector_weights_ui,
 )
 
-class MANTA_MT_presets(Menu):
+class FLUID_MT_presets(Menu):
     bl_label = "Fluid Presets"
-    preset_subdir = "mantaflow"
+    preset_subdir = "fluid"
     preset_operator = "script.execute_preset"
     draw = Menu.draw_preset
 
@@ -87,7 +87,7 @@ class PhysicButtonsPanel:
         return md and (md.fluid_type == 'FLOW')
 
 
-class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):
     bl_label = "Fluid"
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -110,9 +110,9 @@ class PHYSICS_PT_manta(PhysicButtonsPanel, Panel):
         layout.prop(md, "fluid_type")
 
 
-class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_settings(PhysicButtonsPanel, Panel):
     bl_label = "Settings"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -241,9 +241,9 @@ class PHYSICS_PT_manta_fluid(PhysicButtonsPanel, Panel):
                 col.prop(effec, "guiding_mode", text="Guiding Mode")
 
 
-class PHYSICS_PT_manta_borders(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_borders(PhysicButtonsPanel, Panel):
     bl_label = "Border Collisions"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -281,9 +281,9 @@ class PHYSICS_PT_manta_borders(PhysicButtonsPanel, Panel):
         col.prop(domain, "use_collision_border_bottom", text="Bottom")
 
 
-class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_smoke(PhysicButtonsPanel, Panel):
     bl_label = "Smoke"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -314,9 +314,9 @@ class PHYSICS_PT_manta_smoke(PhysicButtonsPanel, Panel):
         col.prop(domain, "vorticity")
 
 
-class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_smoke_dissolve(PhysicButtonsPanel, Panel):
     bl_label = "Dissolve"
-    bl_parent_id = 'PHYSICS_PT_manta_smoke'
+    bl_parent_id = 'PHYSICS_PT_smoke'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -356,9 +356,9 @@ class PHYSICS_PT_manta_smoke_dissolve(PhysicButtonsPanel, Panel):
         col.prop(domain, "use_dissolve_smoke_log", text="Slow")
 
 
-class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_fire(PhysicButtonsPanel, Panel):
     bl_label = "Fire"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -397,9 +397,9 @@ class PHYSICS_PT_manta_fire(PhysicButtonsPanel, Panel):
         col.prop(domain, "flame_smoke_color", text="Flame Color")
 
 
-class PHYSICS_PT_manta_liquid(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_liquid(PhysicButtonsPanel, Panel):
     bl_label = "Liquid"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
 
     @classmethod
@@ -452,9 +452,9 @@ class PHYSICS_PT_manta_liquid(PhysicButtonsPanel, Panel):
         col3.prop(domain, "fractions_threshold", text="Obstacle-Fluid Threshold")
 
 
-class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_flow_source(PhysicButtonsPanel, Panel):
     bl_label = "Flow Source"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -494,9 +494,9 @@ class PHYSICS_PT_manta_flow_source(PhysicButtonsPanel, Panel):
             sub.prop(flow, "particle_size")
 
 
-class PHYSICS_PT_manta_flow_initial_velocity(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_flow_initial_velocity(PhysicButtonsPanel, Panel):
     bl_label = "Initial Velocity"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
 
     @classmethod
@@ -532,9 +532,9 @@ class PHYSICS_PT_manta_flow_initial_velocity(PhysicButtonsPanel, Panel):
             col.prop(flow_smoke, "velocity_coord")
 
 
-class PHYSICS_PT_manta_flow_texture(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_flow_texture(PhysicButtonsPanel, Panel):
     bl_label = "Texture"
-    bl_parent_id = 'PHYSICS_PT_manta_fluid'
+    bl_parent_id = 'PHYSICS_PT_settings'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -577,9 +577,9 @@ class PHYSICS_PT_manta_flow_texture(PhysicButtonsPanel, Panel):
         sub.prop(flow_smoke, "texture_offset")
 
 
-class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_adaptive_domain(PhysicButtonsPanel, Panel):
     bl_label = "Adaptive Domain"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
 
@@ -621,9 +621,9 @@ class PHYSICS_PT_manta_adaptive_domain(PhysicButtonsPanel, Panel):
         col.prop(domain, "adapt_threshold", text="Threshold")
 
 
-class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_noise(PhysicButtonsPanel, Panel):
     bl_label = "Noise"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -687,9 +687,9 @@ class PHYSICS_PT_manta_noise(PhysicButtonsPanel, Panel):
                 split.operator("fluid.free_noise", text="Free Noise")
 
 
-class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_mesh(PhysicButtonsPanel, Panel):
     bl_label = "Mesh"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -766,9 +766,9 @@ class PHYSICS_PT_manta_mesh(PhysicButtonsPanel, Panel):
                 split.operator("fluid.free_mesh", text="Free Mesh")
 
 
-class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_particles(PhysicButtonsPanel, Panel):
     bl_label = "Particles"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
 
@@ -872,9 +872,9 @@ class PHYSICS_PT_manta_particles(PhysicButtonsPanel, Panel):
                 split.operator("fluid.free_particles", text="Free Particles")
 
 
-class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_diffusion(PhysicButtonsPanel, Panel):
     bl_label = "Diffusion"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -907,7 +907,7 @@ class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
 
         col = row.column()
         col.label(text="Viscosity Presets:")
-        col.menu("MANTA_MT_presets", text=bpy.types.MANTA_MT_presets.bl_label)
+        col.menu("FLUID_MT_presets", text=bpy.types.FLUID_MT_presets.bl_label)
 
         col = row.column(align=True)
         col.operator("fluid.preset_add", text="", icon='ADD')
@@ -922,9 +922,9 @@ class PHYSICS_PT_manta_diffusion(PhysicButtonsPanel, Panel):
         col.prop(domain, "surface_tension", text="Surface Tension")
 
 
-class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_guiding(PhysicButtonsPanel, Panel):
     bl_label = "Guiding"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_OPENGL'}
 
@@ -985,9 +985,9 @@ class PHYSICS_PT_manta_guiding(PhysicButtonsPanel, Panel):
                     split.operator("fluid.free_guiding", text="Free Guiding")
 
 
-class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_collections(PhysicButtonsPanel, Panel):
     bl_label = "Collections"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -1013,9 +1013,9 @@ class PHYSICS_PT_manta_collections(PhysicButtonsPanel, Panel):
         col.prop(domain, "effector_group", text="Effector")
 
 
-class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_cache(PhysicButtonsPanel, Panel):
     bl_label = "Cache"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     @classmethod
@@ -1090,9 +1090,9 @@ class PHYSICS_PT_manta_cache(PhysicButtonsPanel, Panel):
                 split.operator("fluid.free_all", text="Free All")
 
 
-class PHYSICS_PT_manta_export(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_export(PhysicButtonsPanel, Panel):
     bl_label = "Advanced"
-    bl_parent_id = 'PHYSICS_PT_manta_cache'
+    bl_parent_id = 'PHYSICS_PT_cache'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -1120,9 +1120,9 @@ class PHYSICS_PT_manta_export(PhysicButtonsPanel, Panel):
         col.prop(domain, "export_manta_script", text="Export Mantaflow Script")
 
 
-class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_field_weights(PhysicButtonsPanel, Panel):
     bl_label = "Field Weights"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -1138,9 +1138,9 @@ class PHYSICS_PT_manta_field_weights(PhysicButtonsPanel, Panel):
         effector_weights_ui(self, domain.effector_weights, 'SMOKE')
 
 
-class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
     bl_label = "Viewport Display"
-    bl_parent_id = 'PHYSICS_PT_manta'
+    bl_parent_id = 'PHYSICS_PT_fluid'
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1184,9 +1184,9 @@ class PHYSICS_PT_manta_viewport_display(PhysicButtonsPanel, Panel):
         col.prop(domain, "display_interpolation")
 
 
-class PHYSICS_PT_manta_viewport_display_color(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
     bl_label = "Color Mapping"
-    bl_parent_id = 'PHYSICS_PT_manta_viewport_display'
+    bl_parent_id = 'PHYSICS_PT_viewport_display'
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1214,9 +1214,9 @@ class PHYSICS_PT_manta_viewport_display_color(PhysicButtonsPanel, Panel):
         col.template_color_ramp(domain, "color_ramp", expand=True)
 
 
-class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
+class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
     bl_label = "Debug Velocity"
-    bl_parent_id = 'PHYSICS_PT_manta_viewport_display'
+    bl_parent_id = 'PHYSICS_PT_viewport_display'
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -1242,30 +1242,30 @@ class PHYSICS_PT_manta_viewport_display_debug(PhysicButtonsPanel, Panel):
 
 
 classes = (
-    MANTA_MT_presets,
-    PHYSICS_PT_manta,
-    PHYSICS_PT_manta_fluid,
-    PHYSICS_PT_manta_borders,
-    PHYSICS_PT_manta_smoke,
-    PHYSICS_PT_manta_smoke_dissolve,
-    PHYSICS_PT_manta_fire,
-    PHYSICS_PT_manta_liquid,
-    PHYSICS_PT_manta_flow_source,
-    PHYSICS_PT_manta_flow_initial_velocity,
-    PHYSICS_PT_manta_flow_texture,
-    PHYSICS_PT_manta_adaptive_domain,
-    PHYSICS_PT_manta_noise,
-    PHYSICS_PT_manta_mesh,
-    PHYSICS_PT_manta_particles,
-    PHYSICS_PT_manta_diffusion,
-    PHYSICS_PT_manta_guiding,
-    PHYSICS_PT_manta_collections,
-    PHYSICS_PT_manta_cache,
-    PHYSICS_PT_manta_export,
-    PHYSICS_PT_manta_field_weights,
-    PHYSICS_PT_manta_viewport_display,
-    PHYSICS_PT_manta_viewport_display_color,
-    PHYSICS_PT_manta_viewport_display_debug,
+    FLUID_MT_presets,
+    PHYSICS_PT_fluid,
+    PHYSICS_PT_settings,
+    PHYSICS_PT_borders,
+    PHYSICS_PT_smoke,
+    PHYSICS_PT_smoke_dissolve,
+    PHYSICS_PT_fire,
+    PHYSICS_PT_liquid,
+    PHYSICS_PT_flow_source,
+    PHYSICS_PT_flow_initial_velocity,
+    PHYSICS_PT_flow_texture,
+    PHYSICS_PT_adaptive_domain,
+    PHYSICS_PT_noise,
+    PHYSICS_PT_mesh,
+    PHYSICS_PT_particles,
+    PHYSICS_PT_diffusion,
+    PHYSICS_PT_guiding,
+    PHYSICS_PT_collections,
+    PHYSICS_PT_cache,
+    PHYSICS_PT_export,
+    PHYSICS_PT_field_weights,
+    PHYSICS_PT_viewport_display,
+    PHYSICS_PT_viewport_display_color,
+    PHYSICS_PT_viewport_display_debug,
 )
 
 

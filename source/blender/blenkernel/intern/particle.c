@@ -34,7 +34,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_particle_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_dynamicpaint_types.h"
 
@@ -3583,9 +3583,9 @@ void object_remove_particle_system(Main *bmain, Scene *UNUSED(scene), Object *ob
   }
 
   /* clear all other appearances of this pointer (like on manta flow modifier) */
-  if ((md = modifiers_findByType(ob, eModifierType_Manta))) {
+  if ((md = modifiers_findByType(ob, eModifierType_Fluid))) {
     FluidModifierData *mmd = (FluidModifierData *)md;
-    if ((mmd->type == MOD_MANTA_TYPE_FLOW) && mmd->flow && mmd->flow->psys) {
+    if ((mmd->type == MOD_FLUID_TYPE_FLOW) && mmd->flow && mmd->flow->psys) {
       if (mmd->flow->psys == psys) {
         mmd->flow->psys = NULL;
       }

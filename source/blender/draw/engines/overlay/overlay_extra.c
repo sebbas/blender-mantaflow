@@ -45,7 +45,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_rigidbody_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1555,7 +1555,7 @@ void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob)
   const bool draw_xform = draw_ctx->object_mode == OB_MODE_OBJECT &&
                           (scene->toolsettings->transform_flag & SCE_XFORM_DATA_ORIGIN) &&
                           (ob->base_flag & BASE_SELECTED) && !is_select_mode;
-  const bool draw_volume = !from_dupli && (md = modifiers_findByType(ob, eModifierType_Manta)) &&
+  const bool draw_volume = !from_dupli && (md = modifiers_findByType(ob, eModifierType_Fluid)) &&
                            (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
                            (((FluidModifierData *)md)->domain != NULL);
 

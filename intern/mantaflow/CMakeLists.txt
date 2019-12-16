@@ -23,7 +23,7 @@
 #
 # ***** END GPL LICENSE BLOCK *****
 
-add_definitions(-DWITH_MANTA=1)
+add_definitions(-DWITH_FLUID=1)
 
 if(WITH_OPENVDB)
   add_definitions(-DOPENVDB=1)

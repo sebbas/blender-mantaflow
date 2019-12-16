@@ -53,7 +53,7 @@ set(SRC_DNA_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_linestyle_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_listBase.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_mask_types.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_manta_types.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_fluid_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_material_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_mesh_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_meshdata_types.h

@@ -106,6 +106,6 @@ if(WITH_QUADRIFLOW)
   add_subdirectory(quadriflow)
 endif()
 
-if(WITH_MOD_MANTA)
+if(WITH_MOD_FLUID)
   add_subdirectory(mantaflow)
 endif()

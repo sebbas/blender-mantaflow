@@ -23,7 +23,7 @@
 #include "workbench_private.h"
 
 #include "BKE_object.h"
-#include "BKE_manta.h"
+#include "BKE_fluid.h"
 
 #include "BLI_rand.h"
 #include "BLI_dynstr.h"
@@ -31,7 +31,7 @@
 
 #include "DNA_modifier_types.h"
 #include "DNA_object_force_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 
 #include "GPU_draw.h"
 

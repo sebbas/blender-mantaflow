@@ -126,7 +126,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_space_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_speaker_types.h"
@@ -1628,10 +1628,10 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
       writestruct(wd, DATA, EffectorWeights, 1, clmd->sim_parms->effector_weights);
       write_pointcaches(wd, &clmd->ptcaches);
     }
-    else if (md->type == eModifierType_Manta) {
+    else if (md->type == eModifierType_Fluid) {
       FluidModifierData *mmd = (FluidModifierData *)md;
 
-      if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+      if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
         writestruct(wd, DATA, FluidDomainSettings, 1, mmd->domain);
 
         if (mmd->domain) {
@@ -1655,10 +1655,10 @@ static void write_modifiers(WriteData *wd, ListBase *modbase)
           writestruct(wd, DATA, EffectorWeights, 1, mmd->domain->effector_weights);
         }
       }
-      else if (mmd->type & MOD_MANTA_TYPE_FLOW) {
+      else if (mmd->type & MOD_FLUID_TYPE_FLOW) {
         writestruct(wd, DATA, FluidFlowSettings, 1, mmd->flow);
       }
-      else if (mmd->type & MOD_MANTA_TYPE_EFFEC) {
+      else if (mmd->type & MOD_FLUID_TYPE_EFFEC) {
         writestruct(wd, DATA, FluidEffectorSettings, 1, mmd->effector);
       }
     }

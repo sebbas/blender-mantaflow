@@ -46,7 +46,7 @@
 
 #include "DNA_scene_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 
 std::atomic<bool> MANTA::mantaInitialized(false);
 std::atomic<int> MANTA::solverID(0);

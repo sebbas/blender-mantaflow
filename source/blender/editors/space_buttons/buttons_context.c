@@ -1023,7 +1023,7 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
 
     if (ptr && ptr->data) {
       Object *ob = ptr->data;
-      ModifierData *md = modifiers_findByType(ob, eModifierType_Manta);
+      ModifierData *md = modifiers_findByType(ob, eModifierType_Fluid);
       CTX_data_pointer_set(result, &ob->id, &RNA_FluidModifier, md);
       return 1;
     }

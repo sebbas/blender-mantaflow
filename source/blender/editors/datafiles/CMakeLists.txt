@@ -386,7 +386,7 @@ set(ICON_NAMES
   mod_cloth
   mod_explode
   mod_multires
-  mod_manta
+  mod_fluid
   mod_solidify
   mod_screw
   mod_vertex_weight

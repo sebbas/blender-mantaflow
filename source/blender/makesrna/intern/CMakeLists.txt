@@ -54,7 +54,7 @@ set(DEFSRC
   rna_lightprobe.c
   rna_linestyle.c
   rna_main.c
-  rna_manta.c
+  rna_fluid.c
   rna_mask.c
   rna_material.c
   rna_mesh.c
@@ -244,8 +244,8 @@ if(WITH_FFTW3)
   add_definitions(-DWITH_FFTW3)
 endif()
 
-if(WITH_MOD_MANTA)
-  add_definitions(-DWITH_MANTA)
+if(WITH_MOD_FLUID)
+  add_definitions(-DWITH_FLUID)
 endif()
 
 if(WITH_MOD_OCEANSIM)

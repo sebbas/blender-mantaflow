@@ -122,9 +122,9 @@ static void operatortypes_boids(void)
   WM_operatortype_append(BOID_OT_state_move_down);
 }
 
-/********************************* mantaflow ***********************************/
+/********************************* fluid ***********************************/
 
-static void operatortypes_manta(void)
+static void operatortypes_fluid(void)
 {
   WM_operatortype_append(FLUID_OT_bake_all);
   WM_operatortype_append(FLUID_OT_free_all);
@@ -171,7 +171,7 @@ void ED_operatortypes_physics(void)
 {
   operatortypes_particle();
   operatortypes_boids();
-  operatortypes_manta();
+  operatortypes_fluid();
   operatortypes_pointcache();
   operatortypes_dynamicpaint();
 }

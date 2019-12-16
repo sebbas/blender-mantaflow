@@ -21,8 +21,8 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_MANTA_TYPES_H__
-#define __DNA_MANTA_TYPES_H__
+#ifndef __DNA_FLUID_TYPES_H__
+#define __DNA_FLUID_TYPES_H__
 
 /* Domain flags. */
 enum {

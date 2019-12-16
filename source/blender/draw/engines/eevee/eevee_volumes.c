@@ -28,12 +28,12 @@
 #include "BLI_string_utils.h"
 
 #include "DNA_object_force_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_world_types.h"
 
 #include "BKE_modifier.h"
 #include "BKE_mesh.h"
-#include "BKE_manta.h"
+#include "BKE_fluid.h"
 
 #include "ED_screen.h"
 
@@ -430,7 +430,7 @@ void EEVEE_volumes_cache_object_add(EEVEE_ViewLayerData *sldata,
 
   /* Smoke Simulation */
   if (((ob->base_flag & BASE_FROM_DUPLI) == 0) &&
-      (md = modifiers_findByType(ob, eModifierType_Manta)) &&
+      (md = modifiers_findByType(ob, eModifierType_Fluid)) &&
       (modifier_isEnabled(scene, md, eModifierMode_Realtime)) &&
       ((FluidModifierData *)md)->domain != NULL) {
     FluidModifierData *mmd = (FluidModifierData *)md;

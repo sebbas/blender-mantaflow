@@ -40,7 +40,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -64,7 +64,7 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
-#include "BKE_manta.h"
+#include "BKE_fluid.h"
 #include "BKE_softbody.h"
 
 #include "BIK_api.h"
@@ -615,7 +615,7 @@ static int ptcache_smoke_write(PTCacheFile *pf, void *smoke_v)
   FluidModifierData *mmd = (FluidModifierData *)smoke_v;
   FluidDomainSettings *mds = mmd->domain;
   int ret = 0;
-  int fluid_fields = BKE_manta_get_data_flags(mds);
+  int fluid_fields = BKE_fluid_get_data_flags(mds);
 
   /* version header */
   ptcache_file_write(pf, SMOKE_CACHE_VERSION, 4, sizeof(char));
@@ -754,7 +754,7 @@ static int ptcache_smoke_read_old(PTCacheFile *pf, void *smoke_v)
     unsigned char *obstacles;
     float *tmp_array = MEM_callocN(out_len, "Smoke old cache tmp");
 
-    int fluid_fields = BKE_manta_get_data_flags(mds);
+    int fluid_fields = BKE_fluid_get_data_flags(mds);
 
     /* Part part of the new cache header */
     mds->active_color[0] = 0.7f;
@@ -838,7 +838,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
   char version[4];
   int ch_res[3];
   float ch_dx;
-  int fluid_fields = BKE_manta_get_data_flags(mds);
+  int fluid_fields = BKE_fluid_get_data_flags(mds);
   int cache_fields = 0;
   int active_fields = 0;
   int reallocate = 0;
@@ -874,7 +874,7 @@ static int ptcache_smoke_read(PTCacheFile *pf, void *smoke_v)
   /* reallocate fluid if needed*/
   if (reallocate) {
     mds->active_fields = active_fields | cache_fields;
-    BKE_manta_reallocate_fluid(mds, ch_res, 1);
+    BKE_fluid_reallocate_fluid(mds, ch_res, 1);
     mds->dx = ch_dx;
     copy_v3_v3_int(mds->res, ch_res);
     mds->total_cells = ch_res[0] * ch_res[1] * ch_res[2];
@@ -1041,7 +1041,7 @@ static int ptcache_smoke_openvdb_write(struct OpenVDBWriter *writer, void *smoke
   OpenVDBWriter_add_meta_v3(writer, "blender/smoke/active_color", mds->active_color);
   OpenVDBWriter_add_meta_mat4(writer, "blender/smoke/obmat", mds->obmat);
 
-  int fluid_fields = BKE_manta_get_data_flags(mds);
+  int fluid_fields = BKE_fluid_get_data_flags(mds);
 
   struct OpenVDBFloatGrid *clip_grid = NULL;
 
@@ -1191,7 +1191,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
 
   FluidDomainSettings *mds = mmd->domain;
 
-  int fluid_fields = BKE_manta_get_data_flags(mds);
+  int fluid_fields = BKE_fluid_get_data_flags(mds);
   int active_fields, cache_fields = 0;
   int cache_res[3];
   float cache_dx;
@@ -1230,7 +1230,7 @@ static int ptcache_smoke_openvdb_read(struct OpenVDBReader *reader, void *smoke_
   /* reallocate fluid if needed*/
   if (reallocate) {
     mds->active_fields = active_fields | cache_fields;
-    BKE_manta_reallocate_fluid(mds, cache_dx, cache_res, 1);
+    BKE_fluid_reallocate_fluid(mds, cache_dx, cache_res, 1);
     mds->dx = cache_dx;
     copy_v3_v3_int(mds->res, cache_res);
     mds->total_cells = cache_res[0] * cache_res[1] * cache_res[2];
@@ -1906,9 +1906,9 @@ static bool foreach_object_modifier_ptcache(Object *object,
         return false;
       }
     }
-    else if (md->type == eModifierType_Manta) {
+    else if (md->type == eModifierType_Fluid) {
       FluidModifierData *mmd = (FluidModifierData *)md;
-      if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+      if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
         BKE_ptcache_id_from_smoke(&pid, object, (FluidModifierData *)md);
         if (!callback(&pid, callback_user_data)) {
           return false;
@@ -3739,9 +3739,9 @@ int BKE_ptcache_object_reset(Scene *scene, Object *ob, int mode)
       BKE_ptcache_id_from_cloth(&pid, ob, (ClothModifierData *)md);
       reset |= BKE_ptcache_id_reset(scene, &pid, mode);
     }
-    if (md->type == eModifierType_Manta) {
+    if (md->type == eModifierType_Fluid) {
       FluidModifierData *mmd = (FluidModifierData *)md;
-      if (mmd->type & MOD_MANTA_TYPE_DOMAIN) {
+      if (mmd->type & MOD_FLUID_TYPE_DOMAIN) {
         BKE_ptcache_id_from_smoke(&pid, ob, (FluidModifierData *)md);
         reset |= BKE_ptcache_id_reset(scene, &pid, mode);
       }

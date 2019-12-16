@@ -25,7 +25,7 @@
 #include "DNA_object_force_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -738,7 +738,7 @@ static char *rna_EffectorWeight_path(PointerRNA *ptr)
     }
 
     /* check smoke modifier */
-    md = (ModifierData *)modifiers_findByType(ob, eModifierType_Manta);
+    md = (ModifierData *)modifiers_findByType(ob, eModifierType_Fluid);
     if (md) {
       FluidModifierData *mmd = (FluidModifierData *)md;
       if (mmd->domain->effector_weights == ew) {

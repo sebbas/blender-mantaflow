@@ -197,7 +197,7 @@ void BPY_context_set(bContext *C)
   BPy_SetContext(C);
 }
 
-#ifdef WITH_MANTA
+#ifdef WITH_FLUID
 /* defined in manta module */
 extern PyObject *Manta_initPython(void);
 #endif
@@ -232,7 +232,7 @@ static struct _inittab bpy_internal_modules[] = {
     {"bmesh.utils", BPyInit_bmesh_utils},
     {"bmesh.utils", BPyInit_bmesh_geometry},
 #endif
-#ifdef WITH_MANTA
+#ifdef WITH_FLUID
     {"manta", Manta_initPython},
 #endif
 #ifdef WITH_AUDASPACE

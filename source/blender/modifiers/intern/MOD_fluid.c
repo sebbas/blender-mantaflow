@@ -30,7 +30,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_manta_types.h"
+#include "DNA_fluid_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_mesh_types.h"
 
@@ -38,7 +38,7 @@
 #include "BKE_layer.h"
 #include "BKE_library_query.h"
 #include "BKE_modifier.h"
-#include "BKE_manta.h"
+#include "BKE_fluid.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -63,15 +63,15 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   const FluidModifierData *mmd = (const FluidModifierData *)md;
   FluidModifierData *tmmd = (FluidModifierData *)target;
 
-  mantaModifier_free(tmmd);
-  mantaModifier_copy(mmd, tmmd, flag);
+  fluidModifier_free(tmmd);
+  fluidModifier_copy(mmd, tmmd, flag);
 }
 
 static void freeData(ModifierData *md)
 {
   FluidModifierData *mmd = (FluidModifierData *)md;
 
-  mantaModifier_free(mmd);
+  fluidModifier_free(mmd);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -80,7 +80,7 @@ static void requiredDataMask(Object *UNUSED(ob),
 {
   FluidModifierData *mmd = (FluidModifierData *)md;
 
-  if (mmd && (mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow) {
+  if (mmd && (mmd->type & MOD_FLUID_TYPE_FLOW) && mmd->flow) {
     if (mmd->flow->source == FLUID_FLOW_SOURCE_MESH) {
       /* vertex groups */
       if (mmd->flow->vgroup_density) {
@@ -105,7 +105,7 @@ static Mesh *applyModifier(ModifierData *md, const ModifierEvalContext *ctx, Mes
 
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
 
-  result = mantaModifier_do(mmd, ctx->depsgraph, scene, ctx->object, me);
+  result = fluidModifier_do(mmd, ctx->depsgraph, scene, ctx->object, me);
   return result ? result : me;
 }
 
@@ -117,38 +117,38 @@ static bool dependsOnTime(ModifierData *UNUSED(md))
 static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)
 {
   FluidModifierData *mmd = (FluidModifierData *)md;
-  return (mmd->type & MOD_MANTA_TYPE_FLOW) && mmd->flow;
+  return (mmd->type & MOD_FLUID_TYPE_FLOW) && mmd->flow;
 }
 
 static bool is_coll_cb(Object *UNUSED(ob), ModifierData *md)
 {
   FluidModifierData *mmd = (FluidModifierData *)md;
-  return (mmd->type & MOD_MANTA_TYPE_EFFEC) && mmd->effector;
+  return (mmd->type & MOD_FLUID_TYPE_EFFEC) && mmd->effector;
 }
 
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   FluidModifierData *mmd = (FluidModifierData *)md;
 
-  if (mmd && (mmd->type & MOD_MANTA_TYPE_DOMAIN) && mmd->domain) {
+  if (mmd && (mmd->type & MOD_FLUID_TYPE_DOMAIN) && mmd->domain) {
     DEG_add_collision_relations(ctx->node,
                                 ctx->object,
                                 mmd->domain->fluid_group,
-                                eModifierType_Manta,
+                                eModifierType_Fluid,
                                 is_flow_cb,
-                                "Manta Flow");
+                                "Fluid Flow");
     DEG_add_collision_relations(ctx->node,
                                 ctx->object,
                                 mmd->domain->effector_group,
-                                eModifierType_Manta,
+                                eModifierType_Fluid,
                                 is_coll_cb,
-                                "Manta Coll");
+                                "Fluid Effector");
     DEG_add_forcefield_relations(ctx->node,
                                  ctx->object,
                                  mmd->domain->effector_weights,
                                  true,
                                  PFIELD_SMOKEFLOW,
-                                 "Manta Force Field");
+                                 "Fluid Force Field");
 
     if (mmd->domain->guiding_parent != NULL) {
       DEG_add_object_relation(
@@ -163,7 +163,7 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
 {
   FluidModifierData *mmd = (FluidModifierData *)md;
 
-  if (mmd->type == MOD_MANTA_TYPE_DOMAIN && mmd->domain) {
+  if (mmd->type == MOD_FLUID_TYPE_DOMAIN && mmd->domain) {
     walk(userData, ob, (ID **)&mmd->domain->effector_group, IDWALK_CB_NOP);
     walk(userData, ob, (ID **)&mmd->domain->fluid_group, IDWALK_CB_NOP);
     walk(userData, ob, (ID **)&mmd->domain->force_group, IDWALK_CB_NOP);
@@ -177,12 +177,12 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
     }
   }
 
-  if (mmd->type == MOD_MANTA_TYPE_FLOW && mmd->flow) {
+  if (mmd->type == MOD_FLUID_TYPE_FLOW && mmd->flow) {
     walk(userData, ob, (ID **)&mmd->flow->noise_texture, IDWALK_CB_USER);
   }
 }
 
-ModifierTypeInfo modifierType_Manta = {
+ModifierTypeInfo modifierType_Fluid = {
     /* name */ "Fluid",
     /* structName */ "FluidModifierData",
     /* structSize */ sizeof(FluidModifierData),

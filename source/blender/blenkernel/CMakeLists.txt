@@ -143,7 +143,7 @@ set(SRC
   intern/lightprobe.c
   intern/linestyle.c
   intern/main.c
-  intern/manta.c
+  intern/fluid.c
   intern/mask.c
   intern/mask_evaluate.c
   intern/mask_rasterize.c
@@ -305,7 +305,7 @@ set(SRC
   BKE_lightprobe.h
   BKE_linestyle.h
   BKE_main.h
-  BKE_manta.h
+  BKE_fluid.h
   BKE_mask.h
   BKE_material.h
   BKE_mball.h
@@ -523,11 +523,11 @@ if(WITH_PYTHON)
   endif()
 endif()
 
-if(WITH_MOD_MANTA)
+if(WITH_MOD_FLUID)
   list(APPEND LIB
     bf_intern_mantaflow
   )
-  add_definitions(-DWITH_MANTA)
+  add_definitions(-DWITH_FLUID)
 endif()
 
 if(WITH_MOD_OCEANSIM)

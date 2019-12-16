@@ -438,11 +438,11 @@ enum {
   /* PART_REACTOR = (1 << 1), */
   PART_HAIR = (1 << 2),
   PART_FLUID = (1 << 3), /* deprecated (belonged to elbeem) */
-  PART_MANTA_FLIP = (1 << 4),
-  PART_MANTA_SPRAY = (1 << 5),
-  PART_MANTA_BUBBLE = (1 << 6),
-  PART_MANTA_FOAM = (1 << 7),
-  PART_MANTA_TRACER = (1 << 8),
+  PART_FLUID_FLIP = (1 << 4),
+  PART_FLUID_SPRAY = (1 << 5),
+  PART_FLUID_BUBBLE = (1 << 6),
+  PART_FLUID_FOAM = (1 << 7),
+  PART_FLUID_TRACER = (1 << 8),
 };
 
 /* Mirroring Mantaflow particle types from particle.h (Mantaflow header). */
